@@ -11,6 +11,7 @@
 *.VC.db
 *.VC.opendb
 core
+.cache
 vgcore.*
 .buildstamp
 .dirstamp

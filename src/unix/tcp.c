@@ -453,26 +453,89 @@ int uv__tcp_nodelay(int fd, int on) {
 
 
 int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
+  int idle;
   int intvl;
   int cnt;
 
+  (void) &idle;
   (void) &intvl;
   (void) &cnt;
-    
+
   if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &on, sizeof(on)))
     return UV__ERR(errno);
 
   if (!on)
     return 0;
 
+  if (delay == 0)
+    return -1;
+    
+  /* The implementation of TCP keep-alive on Solaris/SmartOS is a bit unusual
+   * compared to other Unix-like systems.
+   * Thus, we need to specialize it on Solaris. */
+#ifdef __sun
+  /* There are two keep-alive mechanisms on Solaris:
+   * - By default, the first keep-alive probe is sent out after a TCP connection is idle for two hours.
+   * If the peer does not respond to the probe within eight minutes, the TCP connection is aborted.
+   * You can alter the interval for sending out the first probe using the socket option TCP_KEEPALIVE_THRESHOLD
+   * in milliseconds or TCP_KEEPIDLE in seconds.
+   * The system default is controlled by the TCP ndd parameter tcp_keepalive_interval. The minimum value is ten seconds.
+   * The maximum is ten days, while the default is two hours. If you receive no response to the probe,
+   * you can use the TCP_KEEPALIVE_ABORT_THRESHOLD socket option to change the time threshold for aborting a TCP connection.
+   * The option value is an unsigned integer in milliseconds. The value zero indicates that TCP should never time out and
+   * abort the connection when probing. The system default is controlled by the TCP ndd parameter tcp_keepalive_abort_interval.
+   * The default is eight minutes.
+   * 
+   * - The second implementation is activated if socket option TCP_KEEPINTVL and/or TCP_KEEPCNT are set.
+   * The time between each consequent probes is set by TCP_KEEPINTVL in seconds.
+   * The minimum value is ten seconds. The maximum is ten days, while the default is two hours.
+   * The TCP connection will be aborted after certain amount of probes, which is set by TCP_KEEPCNT, without receiving response.
+   */
+
+  idle = delay;
+  /* Kernel expects at least 10 seconds. */
+  if (idle < 10)
+    idle = 10;
+  /* Kernel expects at most 10 days. */
+  if (idle > 10*24*60*60)
+    idle = 10*24*60*60;
+    
+  /* `TCP_KEEPIDLE`, `TCP_KEEPINTVL`, and `TCP_KEEPCNT` were not available on Solaris 
+   * until version 11.4, but let's take a chance here. */
+#if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)))
+    return UV__ERR(errno);
+  intvl = idle/3;
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
+    return UV__ERR(errno);
+  cnt = 3;
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
+    return UV__ERR(errno);
+  return 0;
+#endif
+
+  /* Fall back to the first implementation of tcp-alive mechanism for older Solaris, 
+   * simulate the tcp-alive mechanism on other platforms via `TCP_KEEPALIVE_THRESHOLD` + `TCP_KEEPALIVE_ABORT_THRESHOLD`.
+   */
+  idle *= 1000; /* kernel expects milliseconds */
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, &idle, sizeof(idle)))
+    return UV__ERR(errno);
+
+  /* Note that the consequent probes will not be sent at equal intervals on Solaris, 
+   * but will be sent using the exponential backoff algorithm. */
+  intvl = idle/3;
+  cnt = 3;
+  int time_to_abort = intvl * cnt;
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, &time_to_abort, sizeof(time_to_abort)))
+    return UV__ERR(errno);
+
+  return 0;
+#endif
+
 #ifdef TCP_KEEPIDLE
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
     return UV__ERR(errno);
-/* Solaris/SmartOS, if you don't support keep-alive,
- * then don't advertise it in your system headers...
- */
-/* FIXME(bnoordhuis) That's possibly because sizeof(delay) should be 1. */
-#elif defined(TCP_KEEPALIVE) && !defined(__sun)
+#elif defined(TCP_KEEPALIVE)
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &delay, sizeof(delay)))
     return UV__ERR(errno);
 #endif
