@@ -1630,6 +1630,16 @@ static void uv__fs_done(struct uv__work* w, int status) {
 }
 
 
+void uv__fs_post(uv_loop_t* loop, uv_fs_t* req) {
+  uv__req_register(loop, req);
+  uv__work_submit(loop,
+                  &req->work_req,
+                  UV__WORK_FAST_IO,
+                  uv__fs_work,
+                  uv__fs_done);
+}
+
+
 int uv_fs_access(uv_loop_t* loop,
                  uv_fs_t* req,
                  const char* path,
