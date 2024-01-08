@@ -470,11 +470,12 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   if (delay == 0)
     return -1;
 
+#ifdef __sun
   /* The implementation of TCP keep-alive on Solaris/SmartOS is a bit unusual
    * compared to other Unix-like systems.
-   * Thus, we need to specialize it on Solaris. */
-#ifdef __sun
-  /* There are two keep-alive mechanisms on Solaris:
+   * Thus, we need to specialize it on Solaris.
+   *
+   * There are two keep-alive mechanisms on Solaris:
    * - By default, the first keep-alive probe is sent out after a TCP connection is idle for two hours.
    * If the peer does not respond to the probe within eight minutes, the TCP connection is aborted.
    * You can alter the interval for sending out the first probe using the socket option TCP_KEEPALIVE_THRESHOLD
@@ -529,6 +530,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, &time_to_abort, sizeof(time_to_abort)))
     return UV__ERR(errno);
 #endif
+
   return 0;
 #endif
 
@@ -536,6 +538,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
     return UV__ERR(errno);
 #elif defined(TCP_KEEPALIVE)
+  /* Darwin/macOS uses TCP_KEEPALIVE in place of TCP_KEEPIDLE. */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &delay, sizeof(delay)))
     return UV__ERR(errno);
 #endif
