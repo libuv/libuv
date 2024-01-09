@@ -2371,7 +2371,7 @@ static uv__cpu_constraint uv__get_cgroupv1_constrained_cpu(const char *cgroup) {
   return constraint;
 }
 
-uv__cpu_constraint uv__get_constrained_cpu() {
+uv__cpu_constraint uv__get_constrained_cpu(void) {
   char cgroup[1024];
   char path[256];
   char controllers[256];

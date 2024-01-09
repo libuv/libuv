@@ -1865,7 +1865,7 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
 }
 
 #ifndef __linux__
-  uv__cpu_constraint uv__get_constrained_cpu() {
+  uv__cpu_constraint uv__get_constrained_cpu(void) {
     uv__cpu_constraint c = {0, 0, 0};
     return c;
   }

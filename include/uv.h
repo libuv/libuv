@@ -1308,7 +1308,7 @@ typedef struct {
   double proportions;
 } uv__cpu_constraint;
 
-uv__cpu_constraint uv__get_constrained_cpu(void);
+UV_EXTERN uv__cpu_constraint uv__get_constrained_cpu(void);
 UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
