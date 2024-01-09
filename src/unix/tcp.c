@@ -554,7 +554,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
     return UV__ERR(errno);
 #endif
 
-#endif
+#endif  /* !defined(__sun) */
   return 0;
 }
 
