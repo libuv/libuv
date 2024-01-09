@@ -531,8 +531,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
     return UV__ERR(errno);
 #endif
 
-  return 0;
-#endif
+#else
 
 #ifdef TCP_KEEPIDLE
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
@@ -555,6 +554,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
     return UV__ERR(errno);
 #endif
 
+#endif
   return 0;
 }
 
