@@ -463,6 +463,9 @@ static int uv__use_io_uring(void) {
 #elif defined(__arm__) && __SIZEOF_POINTER__ == 4
   /* See https://github.com/libuv/libuv/issues/4158. */
   return 0;  /* All 32 bits kernels appear buggy. */
+#elif defined(__powerpc64__) || defined(__ppc64__)
+  /* See https://github.com/libuv/libuv/issues/4283. */
+  return 0; /* Random SIGSEGV in signal handler. */
 #else
   /* Ternary: unknown=0, yes=1, no=-1 */
   static _Atomic int use_io_uring;
