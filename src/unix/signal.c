@@ -24,6 +24,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <signal.h>
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -231,8 +232,10 @@ static void uv__signal_handler(int signum) {
     assert(r == sizeof msg ||
            (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)));
 
-    if (r != -1)
-      handle->caught_signals++;
+    if (r != -1) {
+      atomic_fetch_add_explicit((atomic_uint*) &handle->caught_signals, 1,
+                                memory_order_seq_cst);
+    }
   }
 
   uv__signal_unlock();

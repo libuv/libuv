@@ -22,6 +22,7 @@
 #include "internal.h"
 #include "strtok.h"
 
+#include <stdatomic.h>
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
 #include <stdlib.h>
@@ -289,6 +290,7 @@ int uv__getiovmax(void) {
 
 
 static void uv__finish_close(uv_handle_t* handle) {
+  atomic_uint caught_signals;
   uv_signal_t* sh;
 
   /* Note: while the handle is in the UV_HANDLE_CLOSING state now, it's still
@@ -322,7 +324,9 @@ static void uv__finish_close(uv_handle_t* handle) {
        * okay because we only need to deliver the pending events.
        */
       sh = (uv_signal_t*) handle;
-      if (sh->caught_signals > sh->dispatched_signals) {
+      caught_signals = atomic_load_explicit((atomic_uint*) &sh->caught_signals,
+                                            memory_order_seq_cst);
+      if (caught_signals > sh->dispatched_signals) {
         handle->flags ^= UV_HANDLE_CLOSED;
         uv__make_close_pending(handle);  /* Back into the queue. */
         return;
