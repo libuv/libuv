@@ -98,19 +98,21 @@ jobs:
         with:
           version: "17"
 
-      - name: ASAN Build
+      - name: UBSAN Configure
         run:
-          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DHOST_ARCH=x86_64 -DCMAKE_TOOLCHAIN_FILE="cmake-toolchains\\cross-mingw32.cmake"
-
-          cmake --build build-asan
-      - name: ASAN Test
-        run: |
-          ./build-asan/uv_run_tests_a
-
-      - name: UBSAN Build
-        run: |
           cmake -B build-ubsan -S . -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
+      - name: UBSAN Build
           cmake --build build-ubsan
       - name: UBSAN Test
         run: |
           ./build-ubsan/uv_run_tests_a
+
+      - name: ASAN Configure
+        run:
+          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
+      - name: ASAN Build
+        run:
+          cmake --build build-asan
+      - name: ASAN Test
+        run: |
+          ./build-asan/uv_run_tests_a
