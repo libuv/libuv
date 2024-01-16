@@ -14,7 +14,7 @@ on:
 
 jobs:
   sanitizers-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04x
     steps:
       - uses: actions/checkout@v2
       - name: Setup
@@ -25,8 +25,7 @@ jobs:
 
       - name: ASAN Build
         run: |
-          mkdir build-asan
-          cmake -B build-asan - S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-asan
       - name: ASAN Test
         run: |
@@ -34,7 +33,6 @@ jobs:
 
       - name: MSAN Build
         run: |
-          mkdir build-msan
           cmake -B build-msan -S . -G Ninja -DBUILD_TESTING=ON -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-msan
       - name: MSAN Test
@@ -43,7 +41,6 @@ jobs:
 
       - name: TSAN Build
         run: |
-          mkdir build-tsan
           cmake -B build-tsan -S . -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build build-tsan
       - name: TSAN Test
@@ -54,7 +51,6 @@ jobs:
 
       - name: UBSAN Build
         run: |
-          mkdir build-ubsan
           cmake -B build-ubsan -S . -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-ubsan
       - name: UBSAN Test
@@ -62,7 +58,7 @@ jobs:
           ./build-ubsan/uv_run_tests_a
 
   sanitizers-macos:
-    runs-on: macos-11
+    runs-on: macos-11x
     steps:
       - uses: actions/checkout@v2
 
@@ -71,7 +67,6 @@ jobs:
 
       - name: ASAN Build
         run: |
-          mkdir build-asan
           cmake -B build-asan -S . -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-asan
       - name: ASAN Test
@@ -80,7 +75,6 @@ jobs:
 
       - name: TSAN Build
         run: |
-          mkdir build-tsan
           cmake -B build-tsan -S . -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build build-tsan
       - name: TSAN Test
@@ -89,7 +83,6 @@ jobs:
 
       - name: UBSAN Build
         run: |
-          mkdir build-ubsan
           cmake -B build-ubsan -S . -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-ubsan
       - name: UBSAN Test
@@ -115,8 +108,7 @@ jobs:
 
       - name: ASAN Build
         run: |
-          mkdir build-asan
-          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
+          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DHOST_ARCH=x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
           cmake --build build-asan
       - name: ASAN Test
         run: |
@@ -124,7 +116,6 @@ jobs:
 
       - name: UBSAN Build
         run: |
-          mkdir build-ubsan
           cmake -B build-ubsan -S . -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-ubsan
       - name: UBSAN Test
