@@ -39,9 +39,11 @@ jobs:
 
           cmake --build build --config RelWithDebInfo
 
-          ls -l build
+          copy build\\*.dll build\\*.exe build\\RelWithDebInfo
 
-          set
+          ls -l build
+          
+          ls -l build\\RelWithDebInfo
       - name: platform_output
         if: ${{ matrix.config.arch != 'arm64' }}
         shell: cmd
