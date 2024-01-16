@@ -21,13 +21,13 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          #- {toolchain: Visual Studio 16 2019, arch: Win32, server: 2019}
-          #- {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
-          #- {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
-          #- {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
+          - {toolchain: Visual Studio 16 2019, arch: Win32, server: 2019}
+          - {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
+          - {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
-          #- {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: UBSAN}
-          #- {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: UBSAN}
+          - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
     steps:
       - uses: actions/checkout@v2
       - name: Build
@@ -39,9 +39,9 @@ jobs:
 
           cmake --build build --config RelWithDebInfo
 
-          Copy-Item -Path "build\\*.exe" -Destination "build\\RelWithDebInfo\\"
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.exe" -Destination "build\\RelWithDebInfo\\"' || '' }}
 
-          Copy-Item -Path "build\\*.dll" -Destination "build\\RelWithDebInfo\\"
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.dll" -Destination "build\\RelWithDebInfo\\"' || '' }}
 
           ls -l build
           
