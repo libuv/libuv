@@ -20,8 +20,6 @@ jobs:
       - name: Setup
         run: |
           sudo apt-get install ninja-build
-      - name: Envinfo
-        run: npx envinfo
 
       - name: ASAN Build
         run: |
@@ -62,9 +60,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Envinfo
-        run: npx envinfo
-
       - name: ASAN Build
         run: |
           cmake -B build-asan -S . -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
@@ -103,12 +98,9 @@ jobs:
         with:
           version: "17"
 
-      - name: Envinfo
-        run: npx envinfo
-
       - name: ASAN Build
         run: |
-          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DHOST_ARCH=x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
+          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DHOST_ARCH=x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains\cross-mingw32.cmake
           cmake --build build-asan
       - name: ASAN Test
         run: |
