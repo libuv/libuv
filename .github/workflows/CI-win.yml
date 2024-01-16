@@ -39,10 +39,6 @@ jobs:
 
           cmake --build build --config RelWithDebInfo
 
-          Copy-Item -Path build\\*.dll -Destination build\\RelWithDebInfo
-
-          Copy-Item -Path build\\*.exe -Destination build\\RelWithDebInfo
-
           ls -l build
           
           ls -l build\\RelWithDebInfo
