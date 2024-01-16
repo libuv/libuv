@@ -102,6 +102,7 @@ jobs:
         run:
           cmake -B build-ubsan -S . -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
       - name: UBSAN Build
+        run:
           cmake --build build-ubsan
       - name: UBSAN Test
         run: |
