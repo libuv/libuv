@@ -100,7 +100,7 @@ jobs:
 
       - name: ASAN Build
         run: |
-          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DHOST_ARCH=x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains\cross-mingw32.cmake
+          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DHOST_ARCH=x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains\\cross-mingw32.cmake
           cmake --build build-asan
       - name: ASAN Test
         run: |
