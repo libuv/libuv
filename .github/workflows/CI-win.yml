@@ -30,8 +30,6 @@ jobs:
           #- {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
     steps:
       - uses: actions/checkout@v2
-      - name: Envinfo
-        run: npx envinfo
       - name: Build
         shell: cmd
         run:
@@ -39,8 +37,13 @@ jobs:
             -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
             ${{ matrix.config.config == 'ASAN' && '-DASAN=on -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded' ||
                 matrix.config.config == 'UBSAN' && '-DUBSAN=on' || '' }}
+
           cmake --build build --config RelWithDebInfo
+
           copy "%VCToolsInstallDir%\bin\Hostx64\x64\clang_rt.asan_dbg_dynamic-x86_64.dll" build
+
+          copy "%VCToolsInstallDir%\bin\Hostx64\x64\llvm-symbolizer.exe" build
+
           ls -l build
       - name: platform_output
         if: ${{ matrix.config.arch != 'arm64' }}
@@ -59,6 +62,7 @@ jobs:
         shell: cmd
         run:
           cd build
+
           ctest -C RelWithDebInfo -V
       - name: Test only static
         if: ${{ matrix.config.config == 'ASAN' && matrix.config.arch != 'arm64' }}
