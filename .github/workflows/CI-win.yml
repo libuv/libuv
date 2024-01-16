@@ -39,12 +39,11 @@ jobs:
             -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
             ${{ matrix.config.config == 'ASAN' && '-DASAN=on -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded' ||
                 matrix.config.config == 'UBSAN' && '-DUBSAN=on' || '' }}
-
           cmake --build build --config RelWithDebInfo
-
+          copy "%VCToolsInstallDir%\bin\Hostx64\x64\clang_rt.asan_dbg_dynamic-x86_64.dll" build
           ls -l build
       - name: platform_output
-        if: ${{ matrix.config.config != 'ASAN' && matrix.config.arch != 'arm64' }}
+        if: ${{ matrix.config.arch != 'arm64' }}
         shell: cmd
         run:
           build\\RelWithDebInfo\\uv_run_tests.exe platform_output
