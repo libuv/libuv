@@ -113,6 +113,15 @@ jobs:
       - name: Envinfo
         run: npx envinfo
 
+      - name: ASAN Build
+        run: |
+          mkdir build-asan
+          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-asan
+      - name: ASAN Test
+        run: |
+          ./build-asan/uv_run_tests_a
+
       - name: UBSAN Build
         run: |
           mkdir build-ubsan
