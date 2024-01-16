@@ -39,14 +39,6 @@ jobs:
 
           cmake --build build --config RelWithDebInfo
 
-          echo "%VCToolsInstallDir%"
-
-          echo "$VCToolsInstallDir"
-
-          copy "%VCToolsInstallDir%\\bin\\Hostx64\\x64\\clang_rt.asan_dbg_dynamic-x86_64.dll" build\\RelWithDebInfo
-
-          copy "%VCToolsInstallDir%\\bin\\Hostx64\\x64\\llvm-symbolizer.exe" build\\RelWithDebInfo
-
           ls -l build
 
           set
