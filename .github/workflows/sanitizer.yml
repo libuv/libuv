@@ -26,7 +26,7 @@ jobs:
       - name: ASAN Build
         run: |
           mkdir build-asan
-          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake -B build-asan - S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-asan
       - name: ASAN Test
         run: |
@@ -35,7 +35,7 @@ jobs:
       - name: MSAN Build
         run: |
           mkdir build-msan
-          (cd build-msan && cmake .. -G Ninja -DBUILD_TESTING=ON -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake -B build-msan -S . -G Ninja -DBUILD_TESTING=ON -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-msan
       - name: MSAN Test
         run: |
@@ -44,7 +44,7 @@ jobs:
       - name: TSAN Build
         run: |
           mkdir build-tsan
-          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake -B build-tsan -S . -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build build-tsan
       - name: TSAN Test
         # Note: path must be absolute because some tests chdir.
@@ -55,7 +55,7 @@ jobs:
       - name: UBSAN Build
         run: |
           mkdir build-ubsan
-          (cd build-ubsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake -B build-ubsan -S . -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-ubsan
       - name: UBSAN Test
         run: |
@@ -72,7 +72,7 @@ jobs:
       - name: ASAN Build
         run: |
           mkdir build-asan
-          (cd build-asan && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake -B build-asan -S . -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-asan
       - name: ASAN Test
         run: |
@@ -81,7 +81,7 @@ jobs:
       - name: TSAN Build
         run: |
           mkdir build-tsan
-          (cd build-tsan && cmake .. -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake -B build-tsan -S . -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
           cmake --build build-tsan
       - name: TSAN Test
         run: |
@@ -90,7 +90,7 @@ jobs:
       - name: UBSAN Build
         run: |
           mkdir build-ubsan
-          (cd build-ubsan && cmake .. -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake -B build-ubsan -S . -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-ubsan
       - name: UBSAN Test
         run: |
@@ -116,7 +116,7 @@ jobs:
       - name: ASAN Build
         run: |
           mkdir build-asan
-          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake -B build-asan -S . -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-asan
       - name: ASAN Test
         run: |
@@ -125,7 +125,7 @@ jobs:
       - name: UBSAN Build
         run: |
           mkdir build-ubsan
-          cmake -B build-ubsan -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
+          cmake -B build-ubsan -S . -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-ubsan
       - name: UBSAN Test
         run: |
