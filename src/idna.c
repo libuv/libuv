@@ -322,6 +322,9 @@ ssize_t uv__idna_toascii(const char* s, const char* se, char* d, char* de) {
   char* ds;
   int rc;
 
+  if (s == se)
+    return UV_EINVAL;
+
   ds = d;
 
   si = s;
