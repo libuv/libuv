@@ -115,6 +115,7 @@ TEST_IMPL(utf8_decode1_overrun) {
   ASSERT_PTR_EQ(p, b + 1);
 
   b[0] = 0x7F;
+  ASSERT_EQ(UV_EINVAL, uv__idna_toascii(b, b + 0, c, c + 1));
   ASSERT_EQ(UV_EINVAL, uv__idna_toascii(b, b + 1, c, c + 1));
 
   return 0;
