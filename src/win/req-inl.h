@@ -83,7 +83,7 @@
 
 
 INLINE static uv_req_t* uv__overlapped_to_req(OVERLAPPED* overlapped) {
-  return CONTAINING_RECORD(overlapped, uv_req_t, u.io.overlapped);
+  return container_of(overlapped, uv_req_t, u.io.overlapped);
 }
 
 
