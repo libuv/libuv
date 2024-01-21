@@ -767,6 +767,12 @@ endif()
 
 if(MSVC)
   set(CMAKE_DEBUG_POSTFIX d)
+  get_filename_component(CMAKE_C_COMPILER_DIR ${CMAKE_C_COMPILER} DIRECTORY)
+  if(ASAN)
+    file(INSTALL "${CMAKE_C_COMPILER_DIR}/llvm-symbolizer.exe" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+    file(INSTALL "${CMAKE_C_COMPILER_DIR}/clang_rt.asan_dynamic-x86_64.dll" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+    file(INSTALL "${CMAKE_C_COMPILER_DIR}/clang_rt.asan_dbg_dynamic-x86_64.dll" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+  endif()
 endif()
 
 message(STATUS "summary of build options:
