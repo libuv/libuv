@@ -2272,100 +2272,96 @@ uint64_t uv_get_available_memory(void) {
 
 #define BUF_SIZE 1024
 
-static uv__cpu_constraint uv__get_cgroupv2_constrained_cpu(const char *cgroup) {
+static uv__cpu_constraint uv__get_cgroupv2_constrained_cpu(const char* cgroup) {
   uv__cpu_constraint constraint = {0, 0, 0};
   char path[256];
   char buf[BUF_SIZE];
   unsigned int weight;
   int cgroup_size;
-  char *cgroup_trimmed;
+  const char* cgroup_trimmed;
 
-  // Trim ending \n by replacing it with a 0
-  cgroup_trimmed = cgroup + strlen("0::/");          // Skip the prefix "0::/"
-  cgroup_size = (int)strcspn(cgroup_trimmed, "\n");  // Find the first slash
+  /* Trim ending \n by replacing it with a 0 */
+  cgroup_trimmed = cgroup + sizeof("0::/") - 1;      /* Skip the prefix "0::/" */
+  cgroup_size = (int)strcspn(cgroup_trimmed, "\n");  /* Find the first slash */
 
-  // Construct the path to the cpu.max file
+  /* Construct the path to the cpu.max file */
   snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.max", cgroup_size,
-            cgroup_trimmed);
+           cgroup_trimmed);
 
-  // Read cpu.max
-  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
-      char max_usage_str[16];
-      sscanf(buf, "%15s %lld", max_usage_str, &constraint.period_length);
-      if (strcmp(max_usage_str, "max") == 0)
-          constraint.quota_per_period = LLONG_MAX;
-      else
-          constraint.quota_per_period = strtoll(max_usage_str, NULL, 10);
+  /* Read cpu.max */
+  if (uv__slurp(path, buf, sizeof(buf)) >= 0) {
+    char max_usage_str[16];
+    sscanf(buf, "%15s %lld", max_usage_str, &constraint.period_length);
+    if (strcmp(max_usage_str, "max") == 0)
+      constraint.quota_per_period = LLONG_MAX;
+    else
+      constraint.quota_per_period = strtoll(max_usage_str, NULL, 10);
   }
 
-  // Construct the path to the cpu.weight file
+  /* Construct the path to the cpu.weight file */
   snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.weight", cgroup_size,
-            cgroup_trimmed);
+           cgroup_trimmed);
 
-  // Read cpu.weight
-  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
-      sscanf(buf, "%u", &weight);
-      constraint.proportions = (double)weight / 100;
+  /* Read cpu.weight */
+  if (uv__slurp(path, buf, sizeof(buf)) >= 0) {
+    sscanf(buf, "%u", &weight);
+    constraint.proportions = (double)weight / 100;
   }
 
   return constraint;
 }
 
-static char *uv__cgroup1_find_cpu_controller(const char *cgroup,
-                                             int *cgroup_size) {
-  char *cgroup_cpu;
+static char* uv__cgroup1_find_cpu_controller(const char* cgroup,
+                                             int* cgroup_size) {
+  char* cgroup_cpu;
 
   /* Seek to the cpu controller line. */
-  cgroup_cpu = strchr(cgroup, ':');
-  while (cgroup_cpu != NULL && strncmp(cgroup_cpu, ":cpu,", 5)) {
-      cgroup_cpu = strchr(cgroup_cpu, '\n');
-      if (cgroup_cpu != NULL) cgroup_cpu = strchr(cgroup_cpu, ':');
-  }
+  cgroup_cpu = strstr(cgroup, ":cpu,");
 
   if (cgroup_cpu != NULL) {
-      /* Determine the length of the mount path. */
-      cgroup_cpu = cgroup_cpu + strlen(":cpu,");
-      *cgroup_size = (int)strcspn(cgroup_cpu, "\n");
+    /* Determine the length of the mount path. */
+    cgroup_cpu = cgroup_cpu + sizeof(":cpu,") - 1;
+    *cgroup_size = (int)strcspn(cgroup_cpu, "\n");
   }
 
   return cgroup_cpu;
 }
 
-static uv__cpu_constraint uv__get_cgroupv1_constrained_cpu(const char *cgroup) {
+static uv__cpu_constraint uv__get_cgroupv1_constrained_cpu(const char* cgroup) {
   uv__cpu_constraint constraint = {0, 0, 0};
   char path[256];
   char buf[BUF_SIZE];
   unsigned int shares;
   int cgroup_size;
-  char *cgroup_cpu;
+  char* cgroup_cpu;
 
   cgroup_cpu = uv__cgroup1_find_cpu_controller(cgroup, &cgroup_size);
 
-  // Construct the path to the cpu.max file
+  /* Construct the path to the cpu.max file */
   snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_quota_us",
-            cgroup_size, cgroup_cpu);
+           cgroup_size, cgroup_cpu);
 
-  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
-      sscanf(buf, "%lld", &constraint.quota_per_period);
+  if (uv__slurp(path, buf, sizeof(buf)) >= 0) {
+    sscanf(buf, "%lld", &constraint.quota_per_period);
   }
 
-  // Construct the path to the cpu.cfs_period_us file
+  /* Construct the path to the cpu.cfs_period_us file */
   snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_period_us",
-            cgroup_size, cgroup_cpu);
+           cgroup_size, cgroup_cpu);
 
-  // Read cpu.cfs_period_us
-  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
-      sscanf(buf, "%lld", &constraint.period_length);
+  /* Read cpu.cfs_period_us */
+  if (uv__slurp(path, buf, sizeof(buf)) >= 0) {
+    sscanf(buf, "%lld", &constraint.period_length);
   }
 
-  // Construct the path to the cpu.shares file
+  /* Construct the path to the cpu.shares file */
   snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.shares", cgroup_size,
-            cgroup_cpu);
+           cgroup_cpu);
 
-  // Read cpu.shares
-  if (uv__slurp(path, buf, BUF_SIZE) >= 0) {
-      sscanf(buf, "%u", &shares);
-      constraint.proportions = (double)shares / 1024;
+  /* Read cpu.shares */
+  if (uv__slurp(path, buf, sizeof(buf)) >= 0) {
+    sscanf(buf, "%u", &shares);
+    constraint.proportions = (double)shares / 1024;
   }
 
   return constraint;
@@ -2376,22 +2372,19 @@ uv__cpu_constraint uv__get_constrained_cpu(void) {
   char path[256];
   char controllers[256];
 
-  // Read the cgroup from /proc/self/cgroup
-  strcpy(path, "/proc/self/cgroup");
+  /* Read the cgroup from /proc/self/cgroup */
+  snprintf(path, sizeof(path), "/proc/self/cgroup");
   if (uv__slurp(path, cgroup, sizeof(cgroup)) < 0) {
-      uv__cpu_constraint constraint = {0, 0, 0};
-      return constraint;
+    uv__cpu_constraint constraint = {0, 0, 0};
+    return constraint;
   }
 
-  // Check if the system is using cgroup v2
-  strcpy(path, "/sys/fs/cgroup/cgroup.controllers");
-  if (uv__slurp(path, controllers, sizeof(controllers)) >= 0) {
-      // The system is using cgroup v2
-      return uv__get_cgroupv2_constrained_cpu(cgroup);
-  } else {
-      // The system is using cgroup v1
-      return uv__get_cgroupv1_constrained_cpu(cgroup);
-  }
+  /* Check if the system is using cgroup v2 */
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/cgroup.controllers");
+  if (uv__slurp(path, controllers, sizeof(controllers)) >= 0)
+    return uv__get_cgroupv2_constrained_cpu(cgroup);
+  else
+    return uv__get_cgroupv1_constrained_cpu(cgroup);
 }
 
 
