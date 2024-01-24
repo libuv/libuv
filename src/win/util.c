@@ -510,11 +510,6 @@ int uv_uptime(double* uptime) {
   return 0;
 }
 
-uv__cpu_constraint uv__get_constrained_cpu(void) {
-  uv__cpu_constraint c = {0, 0, 0};
-  return c;
-}
-
 unsigned int uv_available_parallelism(void) {
   SYSTEM_INFO info;
   unsigned rc;

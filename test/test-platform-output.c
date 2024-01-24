@@ -42,7 +42,6 @@ TEST_IMPL(platform_output) {
   int count;
   int i;
   int err;
-  uv__cpu_constraint constraint;
 
   err = uv_get_process_title(buffer, sizeof(buffer));
   ASSERT_OK(err);
@@ -86,13 +85,6 @@ TEST_IMPL(platform_output) {
   printf("  page faults: %llu\n", (unsigned long long) rusage.ru_majflt);
   printf("  maximum resident set size: %llu\n",
          (unsigned long long)rusage.ru_maxrss);
-
-  constraint = uv__get_constrained_cpu();
-  printf("uv__get_constrained_cpu:\n");
-  printf("  quota_per_period: %llu\n",
-         (unsigned long long)constraint.quota_per_period);
-  printf("  period_length: %llu\n", (unsigned long long)constraint.period_length);
-  printf("  proportions: %f\n", constraint.proportions);
 
   par = uv_available_parallelism();
   ASSERT_GE(par, 1);
@@ -207,3 +199,4 @@ TEST_IMPL(platform_output) {
 
   return 0;
 }
+
