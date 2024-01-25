@@ -1110,8 +1110,8 @@ enum uv_process_flags {
   /*
    * On Windows, if the path to the program to execute, specified in
    * uv_process_options_t's file field, has a directory component,
-   * interpret the program file name as exact and do not search for
-   * variants with extensions like '.exe' or '.cmd'.
+   * search for the exact file name before trying variants with
+   * extensions like '.exe' or '.cmd'.
    */
   UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
 };
