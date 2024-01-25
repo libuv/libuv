@@ -1438,8 +1438,7 @@ TEST_IMPL(spawn_path_no_ext) {
            (int) (file_len - sizeof(".exe") + 1),
            exepath + len);
   exepath[len] = 0;
-  strcpy(path, "PATH=");
-  strcpy(path + 5, exepath);
+  snprintf(path, sizeof(path), "PATH=%s", exepath);
 
   env[0] = path;
   env[1] = NULL;
