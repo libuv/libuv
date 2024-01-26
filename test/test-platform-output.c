@@ -238,4 +238,3 @@ TEST_IMPL(platform_output) {
 
   return 0;
 }
-
