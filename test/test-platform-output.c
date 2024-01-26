@@ -84,77 +84,50 @@ TEST_IMPL(platform_output) {
          (unsigned long long) rusage.ru_stime.tv_usec);
   printf("  page faults: %llu\n", (unsigned long long) rusage.ru_majflt);
   printf("  maximum resident set size: %llu\n",
-         (unsigned long long)rusage.ru_maxrss);
+         (unsigned long long) rusage.ru_maxrss);
 
   par = uv_available_parallelism();
   ASSERT_GE(par, 1);
   printf("uv_available_parallelism: %u\n", par);
 
-  #ifdef __linux__
+#ifdef __linux__
   FILE* file;
-  char* line = NULL;
-  size_t len = 0;
-  ssize_t read;
   int cgroup_version = 0;
   unsigned int cgroup_par = 0;
+  uint64_t quota, period;
 
-  // Check if the system is using cgroup v2
-  file = fopen("/sys/fs/cgroup/cgroup.controllers", "r");
-  if (file != NULL) {
-    cgroup_version = 2;
-    fclose(file);
-  } else {
-    // Check if the system is using cgroup v1
-    file = fopen("/proc/self/cgroup", "r");
-    if (file != NULL) {
-      cgroup_version = 1;
-      fclose(file);
+  // Attempt to parse cgroup v2 to deduce parallelism constraints
+  file = fopen("/sys/fs/cgroup/cpu.max", "r");
+  if (file) {
+    if (fscanf(file, "%lu %lu", &quota, &period) == 2 && quota > 0) {
+      cgroup_version = 2;
+      cgroup_par = (unsigned int)(quota / period);
     }
+    fclose(file);
   }
 
-  if (cgroup_version == 1) {
-    // Parse cgroup v1 to deduce parallelism constraints
+  // If cgroup v2 wasn't present, try parsing cgroup v1
+  if (cgroup_version == 0) {
     file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us", "r");
     if (file) {
-      if (getline(&line, &len, file) != -1) {
-        long long quota = atoll(line);
-        if (quota > 0) {
-          fclose(file);
-          file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_period_us", "r");
-          if (file && getline(&line, &len, file) != -1) {
-            long long period = atoll(line);
-            cgroup_par = (unsigned int)(quota / period);
-          }
+      if (fscanf(file, "%lu", &quota) == 1 && quota > 0) {
+        fclose(file);
+        file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_period_us", "r");
+        if (file && fscanf(file, "%lu", &period) == 1) {
+          cgroup_version = 1;
+          cgroup_par = (unsigned int)(quota / period);
         }
       }
       if (file) fclose(file);
     }
-  } else if (cgroup_version == 2) {
-    // Parse cgroup v2 to deduce parallelism constraints
-    file = fopen("/sys/fs/cgroup/cpu.max", "r");
-    if (file) {
-      if (getline(&line, &len, file) != -1) {
-        char* token = strtok(line, " ");
-        if (token) {
-          long long max = atoll(token);
-          if (max > 0) {
-            token = strtok(NULL, " ");
-            if (token) {
-              long long period = atoll(token);
-              cgroup_par = (unsigned int)(max / period);
-            }
-          }
-        }
-      }
-      fclose(file);
-    }
   }
 
+  // If we found cgroup parallelism constraints, assert and print them
   if (cgroup_par > 0) {
     ASSERT_GE(par, cgroup_par);
     printf("cgroup v%d available parallelism: %u\n", cgroup_version, cgroup_par);
   }
-  #endif
+#endif
 
   err = uv_cpu_info(&cpus, &count);
 #if defined(__CYGWIN__) || defined(__MSYS__)
