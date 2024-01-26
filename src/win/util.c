@@ -510,6 +510,7 @@ int uv_uptime(double* uptime) {
   return 0;
 }
 
+
 unsigned int uv_available_parallelism(void) {
   SYSTEM_INFO info;
   unsigned rc;
