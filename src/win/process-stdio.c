@@ -30,7 +30,7 @@
 
 
 /*
- * The `child_stdio_buffer` buffer has the following layout:
+ * The `uv__stdio_t.buffer` buffer has the following layout:
  *   int number_of_fds
  *   unsigned char crt_flags[number_of_fds]
  *   HANDLE os_handle[number_of_fds]
@@ -165,15 +165,16 @@ int uv__create_nul_handle(HANDLE* handle_ptr,
   return 0;
 }
 
-
 int uv__stdio_create(uv_loop_t* loop,
                      const uv_process_options_t* options,
-                     BYTE** buffer_ptr) {
-  BYTE* buffer;
+                     uv__stdio_t* stdio) {
   int count, i;
   int err;
+  int inherit_handles;
 
   count = options->stdio_count;
+  inherit_handles = options->flags &
+                    UV_PROCESS_WINDOWS_INHERIT_SPECIFIC_HANDLES;
 
   if (count < 0 || count > 255) {
     /* Only support FDs 0-255 */
@@ -184,17 +185,28 @@ int uv__stdio_create(uv_loop_t* loop,
   }
 
   /* Allocate the child stdio buffer */
-  buffer = (BYTE*) uv__malloc(CHILD_STDIO_SIZE(count));
-  if (buffer == NULL) {
+  stdio->buffer = (BYTE*) uv__malloc(CHILD_STDIO_SIZE(count));
+  if (stdio->buffer == NULL) {
     return ERROR_OUTOFMEMORY;
+  }
+
+  if (inherit_handles) {
+    stdio->handles = (HANDLE*) uv__malloc(count * sizeof(HANDLE));
+    if (stdio->handles == NULL) {
+      uv__free(stdio->buffer);
+      return ERROR_OUTOFMEMORY;
+    }
   }
 
   /* Prepopulate the buffer with INVALID_HANDLE_VALUE handles so we can clean
    * up on failure. */
-  CHILD_STDIO_COUNT(buffer) = count;
+  CHILD_STDIO_COUNT(stdio->buffer) = count;
   for (i = 0; i < count; i++) {
-    CHILD_STDIO_CRT_FLAGS(buffer, i) = 0;
-    CHILD_STDIO_HANDLE(buffer, i) = INVALID_HANDLE_VALUE;
+    CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = 0;
+    CHILD_STDIO_HANDLE(stdio->buffer, i) = INVALID_HANDLE_VALUE;
+    if (inherit_handles) {
+      stdio->handles[i] = INVALID_HANDLE_VALUE;
+    }
   }
 
   for (i = 0; i < count; i++) {
@@ -218,12 +230,15 @@ int uv__stdio_create(uv_loop_t* loop,
           DWORD access = (i == 0) ? FILE_GENERIC_READ :
                                     FILE_GENERIC_WRITE | FILE_READ_ATTRIBUTES;
 
-          err = uv__create_nul_handle(&CHILD_STDIO_HANDLE(buffer, i),
+          err = uv__create_nul_handle(&CHILD_STDIO_HANDLE(stdio->buffer, i),
                                       access);
           if (err)
             goto error;
 
-          CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FDEV;
+          CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = FOPEN | FDEV;
+          if (inherit_handles) {
+            stdio->handles[i] = CHILD_STDIO_HANDLE(stdio->buffer, i);
+          }
         }
         break;
 
@@ -247,8 +262,11 @@ int uv__stdio_create(uv_loop_t* loop,
         if (err)
           goto error;
 
-        CHILD_STDIO_HANDLE(buffer, i) = child_pipe;
-        CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FPIPE;
+        CHILD_STDIO_HANDLE(stdio->buffer, i) = child_pipe;
+        CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = FOPEN | FPIPE;
+        if (inherit_handles) {
+          stdio->handles[i] = child_pipe;
+        }
         break;
       }
 
@@ -262,8 +280,6 @@ int uv__stdio_create(uv_loop_t* loop,
           /* If fdopt. data. fd is not valid and fd <= 2, then ignore the
            * error. */
           if (fdopt.data.fd <= 2 && err == ERROR_INVALID_HANDLE) {
-            CHILD_STDIO_CRT_FLAGS(buffer, i) = 0;
-            CHILD_STDIO_HANDLE(buffer, i) = INVALID_HANDLE_VALUE;
             break;
           }
           goto error;
@@ -272,16 +288,16 @@ int uv__stdio_create(uv_loop_t* loop,
         /* Figure out what the type is. */
         switch (GetFileType(child_handle)) {
           case FILE_TYPE_DISK:
-            CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN;
+            CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = FOPEN;
             break;
 
           case FILE_TYPE_PIPE:
-            CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FPIPE;
+            CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = FOPEN | FPIPE;
             break;
 
           case FILE_TYPE_CHAR:
           case FILE_TYPE_REMOTE:
-            CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FDEV;
+            CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = FOPEN | FDEV;
             break;
 
           case FILE_TYPE_UNKNOWN:
@@ -290,7 +306,7 @@ int uv__stdio_create(uv_loop_t* loop,
               CloseHandle(child_handle);
               goto error;
             }
-            CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FDEV;
+            CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = FOPEN | FDEV;
             break;
 
           default:
@@ -298,7 +314,10 @@ int uv__stdio_create(uv_loop_t* loop,
             return -1;
         }
 
-        CHILD_STDIO_HANDLE(buffer, i) = child_handle;
+        CHILD_STDIO_HANDLE(stdio->buffer, i) = child_handle;
+        if (inherit_handles) {
+          stdio->handles[i] = child_handle;
+        }
         break;
       }
 
@@ -334,8 +353,12 @@ int uv__stdio_create(uv_loop_t* loop,
         if (err)
           goto error;
 
-        CHILD_STDIO_HANDLE(buffer, i) = child_handle;
-        CHILD_STDIO_CRT_FLAGS(buffer, i) = crt_flags;
+        CHILD_STDIO_HANDLE(stdio->buffer, i) = child_handle;
+        CHILD_STDIO_CRT_FLAGS(stdio->buffer, i) = crt_flags;
+        if (inherit_handles) {
+          stdio->handles[i] = child_handle;
+        }
+
         break;
       }
 
@@ -345,27 +368,29 @@ int uv__stdio_create(uv_loop_t* loop,
     }
   }
 
-  *buffer_ptr  = buffer;
   return 0;
 
  error:
-  uv__stdio_destroy(buffer);
+  uv__stdio_destroy(stdio);
   return err;
 }
 
 
-void uv__stdio_destroy(BYTE* buffer) {
+void uv__stdio_destroy(uv__stdio_t* stdio) {
   int i, count;
 
-  count = CHILD_STDIO_COUNT(buffer);
-  for (i = 0; i < count; i++) {
-    HANDLE handle = CHILD_STDIO_HANDLE(buffer, i);
-    if (handle != INVALID_HANDLE_VALUE) {
-      CloseHandle(handle);
+  if (stdio->buffer != NULL) {
+    count = CHILD_STDIO_COUNT(stdio->buffer);
+    for (i = 0; i < count; i++) {
+      HANDLE handle = CHILD_STDIO_HANDLE(stdio->buffer, i);
+      if (handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(handle);
+      }
     }
-  }
 
-  uv__free(buffer);
+    uv__free(stdio->buffer);
+    uv__free(stdio->handles);
+  }
 }
 
 
@@ -407,10 +432,15 @@ int uv__stdio_verify(BYTE* buffer, WORD size) {
 
 
 WORD uv__stdio_size(BYTE* buffer) {
-  return (WORD) CHILD_STDIO_SIZE(CHILD_STDIO_COUNT((buffer)));
+  return (WORD) CHILD_STDIO_SIZE(CHILD_STDIO_COUNT(buffer));
 }
 
 
 HANDLE uv__stdio_handle(BYTE* buffer, int fd) {
   return CHILD_STDIO_HANDLE(buffer, fd);
+}
+
+
+int uv__stdio_count(BYTE* buffer) {
+  return CHILD_STDIO_COUNT(buffer);
 }

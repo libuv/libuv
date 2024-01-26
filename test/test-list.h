@@ -496,6 +496,7 @@ TEST_DECLARE   (poll_closesocket)
 TEST_DECLARE   (close_fd)
 TEST_DECLARE   (closed_fd_events)
 TEST_DECLARE   (spawn_fs_open)
+TEST_DECLARE   (spawn_fs_open_inheritable)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
 #if !defined(USING_UV_SHARED)
@@ -1016,6 +1017,7 @@ TASK_LIST_START
   TEST_ENTRY  (close_fd)
   TEST_ENTRY  (closed_fd_events)
   TEST_ENTRY  (spawn_fs_open)
+  TEST_ENTRY  (spawn_fs_open_inheritable)
 #ifdef _WIN32
   TEST_ENTRY  (spawn_detect_pipe_name_collisions_on_windows)
 #if !defined(USING_UV_SHARED)
