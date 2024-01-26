@@ -1875,9 +1875,9 @@ unsigned int uv_available_parallelism(void) {
   memset(&set, 0, sizeof(set));
 
   /* sysconf(_SC_NPROCESSORS_ONLN) in musl calls sched_getaffinity() but in
-  * glibc it's... complicated... so for consistency try sched_getaffinity()
-  * before falling back to sysconf(_SC_NPROCESSORS_ONLN).
-  */
+   * glibc it's... complicated... so for consistency try sched_getaffinity()
+   * before falling back to sysconf(_SC_NPROCESSORS_ONLN).
+   */
   if (0 == sched_getaffinity(0, sizeof(set), &set))
     rc = CPU_COUNT(&set);
   else
