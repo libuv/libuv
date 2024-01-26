@@ -479,7 +479,7 @@ typedef struct {
   double proportions;
 } uv__cpu_constraint;
 
-uv__cpu_constraint uv__get_constrained_cpu(void);
+int uv__get_constrained_cpu(uv__cpu_constraint* constraint);
 #endif
 
 #endif /* UV_UNIX_INTERNAL_H_ */
