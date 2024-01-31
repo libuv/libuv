@@ -25,16 +25,12 @@ jobs:
           - {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
           - {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
-          # Currently broken, see https://github.com/libuv/libuv/issues/4210
-          #- {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: UBSAN}
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
     steps:
       - uses: actions/checkout@v2
-      - name: Envinfo
-        run: npx envinfo
       - name: Build
-        shell: cmd
         run:
           cmake -S . -B build -DBUILD_TESTING=ON
             -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
@@ -43,17 +39,23 @@ jobs:
 
           cmake --build build --config RelWithDebInfo
 
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.exe" -Destination "build\\RelWithDebInfo\\"' || '' }}
+
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.dll" -Destination "build\\RelWithDebInfo\\"' || '' }}
+
           ls -l build
-      - name: platform_output
-        if: ${{ matrix.config.arch != 'arm64' }}
-        shell: cmd
-        run:
-          build\\RelWithDebInfo\\uv_run_tests.exe platform_output
+          
+          ls -l build\\RelWithDebInfo
       - name: platform_output_a
         if: ${{ matrix.config.arch != 'arm64' }}
         shell: cmd
         run:
           build\\RelWithDebInfo\\uv_run_tests_a.exe platform_output
+      - name: platform_output
+        if: ${{ matrix.config.arch != 'arm64' }}
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests.exe platform_output
       - name: Test
         # only valid with libuv-master with the fix for
         # https://github.com/libuv/leps/blob/master/005-windows-handles-not-fd.md
