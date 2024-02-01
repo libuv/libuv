@@ -35,7 +35,7 @@
 #include <dbghelp.h>
 #include <shlobj.h>
 #include <psapi.h>     /* GetModuleBaseNameW */
-#include <shellapi.h>  /* ShellExecuteEx */
+#include <shellapi.h>  /* ShellExecuteExW */
 
 
 #define SIGKILL         9
@@ -923,6 +923,7 @@ int uv_spawn(uv_loop_t* loop,
   HANDLE hProc;
   DWORD  dwProcId;
   HANDLE hThread = NULL;
+  ULONG fMask = 0; // for keep the ProcHandle
 
   DWORD process_flags;
   BYTE* child_stdio_buffer;
@@ -1041,8 +1042,10 @@ int uv_spawn(uv_loop_t* loop,
     for (i = 0; i < options->stdio_count; i++) {
       if (options->stdio[i].flags & UV_INHERIT_FD)
         break;
-      if (i == options->stdio_count - 1)
+      if (i == options->stdio_count - 1) {
         process_flags |= CREATE_NO_WINDOW;
+        fMask |= SEE_MASK_NO_CONSOLE;
+      }
     }
   }
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_GUI) ||
@@ -1070,11 +1073,11 @@ int uv_spawn(uv_loop_t* loop,
 
   if (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN) {
     shellexecuteinfo.cbSize = sizeof(SHELLEXECUTEINFOW);
-    shellexecuteinfo.fMask = SEE_MASK_NOCLOSEPROCESS;
+    shellexecuteinfo.fMask = fMask | SEE_MASK_WAITFORINPUTIDLE  | SEE_MASK_NOCLOSEPROCESS; // for shellexecuteinfo.hProcess
     shellexecuteinfo.lpVerb = L"runas";
     shellexecuteinfo.lpFile = application_path;
     shellexecuteinfo.lpParameters = arguments;
-    shellexecuteinfo.nShow = SW_NORMAL;
+    shellexecuteinfo.nShow = startup.wShowWindow;
     if (!ShellExecuteExW(&shellexecuteinfo)) {
         err = GetLastError();
         goto done;
