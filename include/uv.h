@@ -1113,7 +1113,14 @@ enum uv_process_flags {
    * search for the exact file name before trying variants with
    * extensions like '.exe' or '.cmd'.
    */
-  UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
+  UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7),
+  /**
+   * Run the subprocess as administrator. This option is only meaningful on
+   * Windows systems. On Unix it is silently ignored.
+   *
+   * See https://github.com/libuv/libuv/issues/4295
+   */
+  UV_PROCESS_WINDOWS_RUNAS_ADMIN = (1 << 8)
 };
 
 /*
