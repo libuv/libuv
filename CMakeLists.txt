@@ -707,6 +707,12 @@ if(LIBUV_BUILD_TESTS)
     set_tests_properties(uv_test PROPERTIES ENVIRONMENT
                          "LIBPATH=${CMAKE_BINARY_DIR}:$ENV{LIBPATH}")
   endif()
+  if(WIN32)
+    add_custom_command(TARGET uv_run_tests POST_BUILD
+                       COMMAND "${CMAKE_COMMAND}" -E copy
+                       "$<TARGET_FILE:uv_run_tests>"
+                       "$<TARGET_FILE_DIR:uv_run_tests>/uv_run_tests_no_ext")
+  endif()
   add_executable(uv_run_tests_a ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
@@ -722,6 +728,12 @@ if(LIBUV_BUILD_TESTS)
     set_target_properties(uv_run_benchmarks_a PROPERTIES LINKER_LANGUAGE CXX)
     set_target_properties(uv_run_tests PROPERTIES LINKER_LANGUAGE CXX)
     set_target_properties(uv_run_tests_a PROPERTIES LINKER_LANGUAGE CXX)
+  endif()
+  if(WIN32)
+    add_custom_command(TARGET uv_run_tests_a POST_BUILD
+                       COMMAND "${CMAKE_COMMAND}" -E copy
+                       "$<TARGET_FILE:uv_run_tests_a>"
+                       "$<TARGET_FILE_DIR:uv_run_tests_a>/uv_run_tests_a_no_ext")
   endif()
 endif()
 

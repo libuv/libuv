@@ -304,8 +304,9 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  * - If there's really only a filename, check the current directory for file,
  *   then search all path directories.
  *
- * - If filename specified has *any* extension, search for the file with the
- *   specified extension first.
+ * - If filename specified has *any* extension, or already contains a path
+ *   and the UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME flag is specified,
+ *   search for the file with the exact specified filename first.
  *
  * - If the literal filename is not found in a directory, try *appending*
  *   (not replacing) .com first and then .exe.
@@ -331,7 +332,8 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  */
 static WCHAR* search_path(const WCHAR *file,
                             WCHAR *cwd,
-                            const WCHAR *path) {
+                            const WCHAR *path,
+                            unsigned int flags) {
   int file_has_dir;
   WCHAR* result = NULL;
   WCHAR *file_name_start;
@@ -372,7 +374,7 @@ static WCHAR* search_path(const WCHAR *file,
         file, file_name_start - file,
         file_name_start, file_len - (file_name_start - file),
         cwd, cwd_len,
-        name_has_ext);
+        name_has_ext || (flags & UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME));
 
   } else {
     dir_end = path;
@@ -935,6 +937,7 @@ int uv_spawn(uv_loop_t* loop,
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
+                              UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
                               UV_PROCESS_WINDOWS_HIDE_GUI |
@@ -1014,7 +1017,8 @@ int uv_spawn(uv_loop_t* loop,
 
   application_path = search_path(application,
                                  cwd,
-                                 path);
+                                 path,
+                                 options->flags);
   if (application_path == NULL) {
     /* Not found. */
     err = ERROR_FILE_NOT_FOUND;
