@@ -1307,7 +1307,6 @@ static int uv__kill(HANDLE process_handle, int signum) {
     case SIGINT: {
       /* Unconditionally terminate the process. On Windows, killed processes
        * normally return 1. */
-      DWORD status;
       int err;
 
       if (TerminateProcess(process_handle, 1))
@@ -1317,8 +1316,7 @@ static int uv__kill(HANDLE process_handle, int signum) {
        * TerminateProcess will fail with ERROR_ACCESS_DENIED. */
       err = GetLastError();
       if (err == ERROR_ACCESS_DENIED &&
-          GetExitCodeProcess(process_handle, &status) &&
-          status != STILL_ACTIVE) {
+          WaitForSingleObject(process_handle, 0) == WAIT_OBJECT_0) {
         return UV_ESRCH;
       }
 
@@ -1327,15 +1325,16 @@ static int uv__kill(HANDLE process_handle, int signum) {
 
     case 0: {
       /* Health check: is the process still alive? */
-      DWORD status;
-
-      if (!GetExitCodeProcess(process_handle, &status))
-        return uv_translate_sys_error(GetLastError());
-
-      if (status != STILL_ACTIVE)
-        return UV_ESRCH;
-
-      return 0;
+      switch (WaitForSingleObject(process_handle, 0)) {
+        case WAIT_OBJECT_0:
+          return UV_ESRCH;
+        case WAIT_FAILED:
+          return uv_translate_sys_error(GetLastError());
+        case WAIT_TIMEOUT:
+          return 0;
+        default:
+          return UV_UNKNOWN;
+      }
     }
 
     default:
@@ -1370,7 +1369,7 @@ int uv_kill(int pid, int signum) {
   if (pid == 0) {
     process_handle = GetCurrentProcess();
   } else {
-    process_handle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION,
+    process_handle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
                                  FALSE,
                                  pid);
   }
