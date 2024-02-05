@@ -92,7 +92,15 @@ Data types
              * search for the exact file name before trying variants with
              * extensions like '.exe' or '.cmd'.
              */
-            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
+            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7),
+            /*
+             * Run the subprocess as administrator. This option is only meaningful on
+             * Windows systems. On Unix it is silently ignored.
+             *
+             * See https://github.com/libuv/libuv/issues/4295
+             */
+            UV_PROCESS_WINDOWS_RUNAS_ADMIN = (1 << 8)
+
         };
 
 .. c:type:: uv_stdio_container_t
@@ -268,9 +276,6 @@ API
 
     .. versionchanged:: 1.24.0 Added `UV_PROCESS_WINDOWS_HIDE_CONSOLE` and
                         `UV_PROCESS_WINDOWS_HIDE_GUI` flags.
-
-    .. versionchanged:: 1.48.0 Added the
-                        `UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME` flag.
 
 .. c:function:: int uv_process_kill(uv_process_t* handle, int signum)
 
