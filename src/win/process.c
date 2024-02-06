@@ -1073,7 +1073,7 @@ int uv_spawn(uv_loop_t* loop,
 
   if (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN) {
     shellexecuteinfo.cbSize = sizeof(SHELLEXECUTEINFOW);
-    shellexecuteinfo.fMask = fMask | SEE_MASK_WAITFORINPUTIDLE  | SEE_MASK_NOCLOSEPROCESS; // for shellexecuteinfo.hProcess
+    shellexecuteinfo.fMask = fMask | SEE_MASK_NOCLOSEPROCESS; // for shellexecuteinfo.hProcess
     shellexecuteinfo.lpVerb = L"runas";
     shellexecuteinfo.lpFile = application_path;
     shellexecuteinfo.lpParameters = arguments;
