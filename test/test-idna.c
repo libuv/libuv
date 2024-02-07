@@ -151,8 +151,8 @@ TEST_IMPL(idna_toascii) {
   /* Illegal inputs. */
   F("\xC0\x80\xC1\x80", UV_EINVAL);  /* Overlong UTF-8 sequence. */
   F("\xC0\x80\xC1\x80.com", UV_EINVAL);  /* Overlong UTF-8 sequence. */
+  F("", UV_EINVAL);
   /* No conversion. */
-  T("", "");
   T(".", ".");
   T(".com", ".com");
   T("example", "example");
