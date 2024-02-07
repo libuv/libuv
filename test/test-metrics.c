@@ -330,9 +330,7 @@ TEST_IMPL(metrics_pool_events) {
 
   pool_events_counter = 0;
   r = uv_fs_open(NULL,
-                  &open_req,
-                  "test_file",
-                  UV_FS_O_WRONLY | UV_FS_O_CREAT,
+                  &open_req, "test_file", UV_FS_O_WRONLY | UV_FS_O_CREAT,
                   S_IRUSR | S_IWUSR,
                   NULL);
   ASSERT_EQ(r, 0);

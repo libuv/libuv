@@ -30,6 +30,19 @@
 #include <stdlib.h>
 
 
+/* Does the file path contain embedded nul bytes? */
+static int includes_nul(const char *s, size_t n) {
+  if (n == 0)
+    return 0;
+#ifdef __linux__
+  /* Accept abstract socket namespace path ("\0/virtual/path"). */
+  s++;
+  n--;
+#endif
+  return NULL != memchr(s, '\0', n);
+}
+
+
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
   handle->shutdown_req = NULL;
@@ -53,6 +66,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   char* pipe_fname;
   int sockfd;
   int err;
+  socklen_t addrlen;
 
   pipe_fname = NULL;
   sockfd = -1;
@@ -66,11 +80,8 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (namelen == 0)
     return UV_EINVAL;
 
-#ifndef __linux__
-  /* Abstract socket namespace only works on Linux. */
-  if (*name == '\0')
+  if (includes_nul(name, namelen))
     return UV_EINVAL;
-#endif
 
   if (namelen > sizeof(saddr.sun_path) - 1)
     return UV_ENAMETOOLONG;
@@ -86,10 +97,15 @@ int uv_pipe_bind2(uv_pipe_t* handle,
    * We unlink the file later but abstract sockets disappear
    * automatically since they're not real file system entities.
    */
-  if (*name != '\0') {
-    pipe_fname = uv__strdup(name);
+  if (*name == '\0') {
+    addrlen = offsetof(struct sockaddr_un, sun_path) + namelen;
+  } else {
+    pipe_fname = uv__malloc(namelen + 1);
     if (pipe_fname == NULL)
       return UV_ENOMEM;
+    memcpy(pipe_fname, name, namelen);
+    pipe_fname[namelen] = '\0';
+    addrlen = sizeof saddr;
   }
 
   err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
@@ -101,7 +117,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   memcpy(&saddr.sun_path, name, namelen);
   saddr.sun_family = AF_UNIX;
 
-  if (bind(sockfd, (struct sockaddr*)&saddr, sizeof saddr)) {
+  if (bind(sockfd, (struct sockaddr*)&saddr, addrlen)) {
     err = UV__ERR(errno);
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == UV_ENOENT)
@@ -113,7 +129,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
 
   /* Success. */
   handle->flags |= UV_HANDLE_BOUND;
-  handle->pipe_fname = pipe_fname; /* NULL or a strdup'ed copy. */
+  handle->pipe_fname = pipe_fname; /* NULL or a copy of |name| */
   handle->io_watcher.fd = sockfd;
   return 0;
 
@@ -235,6 +251,7 @@ int uv_pipe_connect2(uv_connect_t* req,
   int new_sock;
   int err;
   int r;
+  socklen_t addrlen;
 
   if (flags & ~UV_PIPE_NO_TRUNCATE)
     return UV_EINVAL;
@@ -245,11 +262,8 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (namelen == 0)
     return UV_EINVAL;
 
-#ifndef __linux__
-  /* Abstract socket namespace only works on Linux. */
-  if (*name == '\0')
+  if (includes_nul(name, namelen))
     return UV_EINVAL;
-#endif
 
   if (namelen > sizeof(saddr.sun_path) - 1)
     return UV_ENAMETOOLONG;
@@ -267,9 +281,13 @@ int uv_pipe_connect2(uv_connect_t* req,
   memcpy(&saddr.sun_path, name, namelen);
   saddr.sun_family = AF_UNIX;
 
+  if (*name == '\0')
+    addrlen = offsetof(struct sockaddr_un, sun_path) + namelen;
+  else
+    addrlen = sizeof saddr;
+
   do {
-    r = connect(uv__stream_fd(handle),
-                (struct sockaddr*)&saddr, sizeof saddr);
+    r = connect(uv__stream_fd(handle), (struct sockaddr*)&saddr, addrlen);
   }
   while (r == -1 && errno == EINTR);
 

@@ -26,7 +26,9 @@
 #include <limits.h>
 #include <math.h>
 #include <sys/stat.h> /* stat constants */
+#include <sys/types.h>
 #include <sys/utime.h>
+#include <io.h> /* _umask */
 #include <stdio.h>
 
 #include "uv.h"
@@ -431,8 +433,8 @@ void fs__open(uv_fs_t* req) {
 
   /* Obtain the active umask. umask() never fails and returns the previous
    * umask. */
-  current_umask = umask(0);
-  umask(current_umask);
+  current_umask = _umask(0);
+  _umask(current_umask);
 
   /* convert flags and mode to CreateFile parameters */
   switch (flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) {

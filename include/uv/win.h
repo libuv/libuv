@@ -33,7 +33,7 @@ typedef intptr_t ssize_t;
 #endif
 
 #include <mswsock.h>
-// Disable the typedef in mstcpip.h of MinGW.
+/* Disable the typedef in mstcpip.h of MinGW. */
 #define _TCP_INITIAL_RTO_PARAMETERS _TCP_INITIAL_RTO_PARAMETERS__AVOID
 #define TCP_INITIAL_RTO_PARAMETERS TCP_INITIAL_RTO_PARAMETERS__AVOID
 #define PTCP_INITIAL_RTO_PARAMETERS PTCP_INITIAL_RTO_PARAMETERS__AVOID
@@ -54,7 +54,7 @@ typedef intptr_t ssize_t;
 # define S_IFLNK 0xA000
 #endif
 
-// Define missing in Windows Kit Include\{VERSION}\ucrt\sys\stat.h
+/* Define missing in Windows Kit Include\{VERSION}\ucrt\sys\stat.h */
 #if defined(_CRT_INTERNAL_NONSTDC_NAMES) && _CRT_INTERNAL_NONSTDC_NAMES && !defined(S_IFIFO)
 # define S_IFIFO _S_IFIFO
 #endif
@@ -418,7 +418,10 @@ typedef struct {
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \
   uv_timer_cb timer_cb;                                                       \
-  void* heap_node[3];                                                         \
+  union {                                                                     \
+    void* heap[3];                                                            \
+    struct uv__queue queue;                                                   \
+  } node;                                                                     \
   uint64_t timeout;                                                           \
   uint64_t repeat;                                                            \
   uint64_t start_id;

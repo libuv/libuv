@@ -360,7 +360,7 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
   r = uv_fs_open(uv_default_loop(),
                  &create_req,
                  "test_dir/file1",
-                 O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR,
+                 UV_FS_O_WRONLY | UV_FS_O_CREAT, S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT_OK(r);
   ASSERT_GE(create_req.result, 0);
@@ -373,7 +373,7 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
   r = uv_fs_open(uv_default_loop(),
                  &create_req,
                  "test_dir/file2",
-                 O_WRONLY | O_CREAT, S_IWUSR | S_IRUSR,
+                 UV_FS_O_WRONLY | UV_FS_O_CREAT, S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT_OK(r);
   ASSERT_GE(create_req.result, 0);

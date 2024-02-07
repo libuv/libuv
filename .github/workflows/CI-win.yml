@@ -30,10 +30,7 @@ jobs:
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
     steps:
       - uses: actions/checkout@v2
-      - name: Envinfo
-        run: npx envinfo
       - name: Build
-        shell: cmd
         run:
           cmake -S . -B build -DBUILD_TESTING=ON
             -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
@@ -42,17 +39,23 @@ jobs:
 
           cmake --build build --config RelWithDebInfo
 
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.exe" -Destination "build\\RelWithDebInfo\\"' || '' }}
+
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.dll" -Destination "build\\RelWithDebInfo\\"' || '' }}
+
           ls -l build
-      - name: platform_output
-        if: ${{ matrix.config.arch != 'arm64' }}
-        shell: cmd
-        run:
-          build\\RelWithDebInfo\\uv_run_tests.exe platform_output
+          
+          ls -l build\\RelWithDebInfo
       - name: platform_output_a
         if: ${{ matrix.config.arch != 'arm64' }}
         shell: cmd
         run:
           build\\RelWithDebInfo\\uv_run_tests_a.exe platform_output
+      - name: platform_output
+        if: ${{ matrix.config.arch != 'arm64' }}
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_tests.exe platform_output
       - name: Test
         # only valid with libuv-master with the fix for
         # https://github.com/libuv/leps/blob/master/005-windows-handles-not-fd.md
@@ -90,7 +93,7 @@ jobs:
           cmake --install build --prefix "`pwd`/build/usr"
           mkdir -p build/usr/test build/usr/bin
           cp -av test/fixtures build/usr/test
-          cp -av build/uv_run_tests_a.exe build/uv_run_tests.exe \
+          cp -av build/uv_run_tests_a.exe build/uv_run_tests.exe build/uv_run_tests_a_no_ext build/uv_run_tests_no_ext \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libgcc_s_${{ matrix.config.libgcc }}-1.dll` \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libwinpthread-1.dll` \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libatomic-1.dll` \
