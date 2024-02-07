@@ -93,7 +93,7 @@ jobs:
           cmake --install build --prefix "`pwd`/build/usr"
           mkdir -p build/usr/test build/usr/bin
           cp -av test/fixtures build/usr/test
-          cp -av build/uv_run_tests_a.exe build/uv_run_tests.exe \
+          cp -av build/uv_run_tests_a.exe build/uv_run_tests.exe build/uv_run_tests_a_no_ext build/uv_run_tests_no_ext \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libgcc_s_${{ matrix.config.libgcc }}-1.dll` \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libwinpthread-1.dll` \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libatomic-1.dll` \

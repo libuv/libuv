@@ -1106,7 +1106,14 @@ enum uv_process_flags {
    * option is only meaningful on Windows systems. On Unix it is silently
    * ignored.
    */
-  UV_PROCESS_WINDOWS_HIDE_GUI = (1 << 6)
+  UV_PROCESS_WINDOWS_HIDE_GUI = (1 << 6),
+  /*
+   * On Windows, if the path to the program to execute, specified in
+   * uv_process_options_t's file field, has a directory component,
+   * search for the exact file name before trying variants with
+   * extensions like '.exe' or '.cmd'.
+   */
+  UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
 };
 
 /*

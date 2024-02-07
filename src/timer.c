@@ -94,20 +94,18 @@ int uv_timer_start(uv_timer_t* handle,
   return 0;
 }
 
-static void timer_stop(uv_timer_t* handle) {
-  heap_remove(timer_heap(handle->loop),
-              (struct heap_node*) &handle->node.heap,
-              timer_less_than);
-  uv__handle_stop(handle);
-  uv__queue_init(&handle->node.queue);
-}
-
 
 int uv_timer_stop(uv_timer_t* handle) {
-  if (uv__is_active(handle))
-    timer_stop(handle);
-  else
+  if (uv__is_active(handle)) {
+    heap_remove(timer_heap(handle->loop),
+                (struct heap_node*) &handle->node.heap,
+                timer_less_than);
+    uv__handle_stop(handle);
+  } else {
     uv__queue_remove(&handle->node.queue);
+  }
+
+  uv__queue_init(&handle->node.queue);
   return 0;
 }
 
@@ -181,7 +179,7 @@ void uv__run_timers(uv_loop_t* loop) {
     if (handle->timeout > loop->time)
       break;
 
-    timer_stop(handle);
+    uv_timer_stop(handle);
     uv__queue_insert_tail(&ready_queue, &handle->node.queue);
   }
 

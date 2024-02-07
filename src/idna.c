@@ -322,6 +322,9 @@ ssize_t uv__idna_toascii(const char* s, const char* se, char* d, char* de) {
   char* ds;
   int rc;
 
+  if (s == se)
+    return UV_EINVAL;
+
   ds = d;
 
   si = s;
@@ -356,9 +359,10 @@ ssize_t uv__idna_toascii(const char* s, const char* se, char* d, char* de) {
       return rc;
   }
 
-  if (d < de)
-    *d++ = '\0';
+  if (d >= de)
+    return UV_EINVAL;
 
+  *d++ = '\0';
   return d - ds;  /* Number of bytes written. */
 }
 
