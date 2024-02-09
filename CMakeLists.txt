@@ -787,6 +787,14 @@ if(MSVC)
   endif()
 endif()
 
+if(BUILD_SHARED_LIBS)
+  set(LIB_SELECTED uv)
+else()
+  set(LIB_SELECTED uv_a)
+endif()
+
+add_library(libuv::libuv ALIAS ${LIB_SELECTED})
+
 message(STATUS "summary of build options:
     Install prefix:  ${CMAKE_INSTALL_PREFIX}
     Target system:   ${CMAKE_SYSTEM_NAME}
