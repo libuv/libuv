@@ -1301,14 +1301,6 @@ enum {
 
 UV_EXTERN int uv_thread_getpriority(uv_thread_t tid, int* priority);
 UV_EXTERN int uv_thread_setpriority(uv_thread_t tid, int priority);
-
-typedef struct {
-  long long quota_per_period;
-  long long period_length;
-  double proportions;
-} uv__cpu_constraint;
-
-UV_EXTERN uv__cpu_constraint uv__get_constrained_cpu(void);
 UV_EXTERN unsigned int uv_available_parallelism(void);
 UV_EXTERN int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count);
 UV_EXTERN void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count);
