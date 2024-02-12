@@ -27,10 +27,6 @@
 #include <pthread.h>
 #endif
 
-#if defined(PTHREAD_BARRIER_SERIAL_THREAD)
-STATIC_ASSERT(sizeof(uv_barrier_t) == sizeof(pthread_barrier_t));
-#endif
-
 /* Note: guard clauses should match uv_barrier_t's in include/uv/unix.h. */
 #if defined(_AIX) || \
     defined(__OpenBSD__) || \
@@ -112,6 +108,8 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
 }
 
 #else
+
+STATIC_ASSERT(sizeof(uv_barrier_t) == sizeof(pthread_barrier_t));
 
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   return UV__ERR(pthread_barrier_init(barrier, NULL, count));
