@@ -2297,10 +2297,10 @@ static int uv__get_cgroupv2_constrained_cpu(const char* cgroup,
   if (sscanf(buf, "%15s %llu", quota_buf, &constraint->period_length) != 2)
     return UV_EINVAL;
 
-  if (strcmp(quota_buf, "max") == 0)
+  if (strncmp(quota_buf, "max", 3) == 0)
     constraint->quota_per_period = LLONG_MAX;
-  else
-    constraint->quota_per_period = strtoll(quota_buf, NULL, 10);
+  else if (sscanf(quota_buf, "%lld", &constraint->quota_per_period) != 1)
+    return UV_EINVAL; // conversion failed
 
   /* Construct the path to the cpu.weight file */
   snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.weight", cgroup_size,
