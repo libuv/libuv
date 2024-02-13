@@ -1125,7 +1125,6 @@ int uv_spawn(uv_loop_t* loop,
     thread_handle = info.hThread;
   }
 
-
   /* If the process isn't spawned as detached, assign to the global job object
    * so windows will kill it when the parent process dies. */
   if (!(options->flags & UV_PROCESS_DETACHED)) {
