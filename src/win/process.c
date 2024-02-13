@@ -918,7 +918,7 @@ int uv_spawn(uv_loop_t* loop,
          *env = NULL, *cwd = NULL;
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;
-  SHELLEXECUTEINFOW shellexecuteinfo = {0};
+  SHELLEXECUTEINFOW shell_execute_info_w = {0};
 
   HANDLE proc_handle;
   DWORD proc_id;
@@ -1072,17 +1072,17 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   if (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN) {
-    shellexecuteinfo.cbSize = sizeof(SHELLEXECUTEINFOW);
-    shellexecuteinfo.fMask = flag_mask | SEE_MASK_NOCLOSEPROCESS; /* for shellexecuteinfo.hProcess */
-    shellexecuteinfo.lpVerb = L"runas";
-    shellexecuteinfo.lpFile = application_path;
-    shellexecuteinfo.lpParameters = arguments;
-    shellexecuteinfo.nShow = startup.wShowWindow;
-    if (!ShellExecuteExW(&shellexecuteinfo)) {
+    shell_execute_info_w.cbSize = sizeof(shell_execute_info_w);
+    shell_execute_info_w.fMask = flag_mask | SEE_MASK_NOCLOSEPROCESS; /* for shell_execute_info_w.hProcess */
+    shell_execute_info_w.lpVerb = L"runas";
+    shell_execute_info_w.lpFile = application_path;
+    shell_execute_info_w.lpParameters = arguments;
+    shell_execute_info_w.nShow = startup.wShowWindow;
+    if (!ShellExecuteExW(&shell_execute_info_w)) {
         err = GetLastError();
         goto done;
     }
-    proc_handle = shellexecuteinfo.hProcess;
+    proc_handle = shell_execute_info_w.hProcess;
     if ((proc_id = GetProcessId(proc_handle)) == 0) {
       err = GetLastError();
       goto done;
