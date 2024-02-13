@@ -920,10 +920,10 @@ int uv_spawn(uv_loop_t* loop,
   PROCESS_INFORMATION info;
   SHELLEXECUTEINFOW shellexecuteinfo = {0};
 
-  HANDLE hProc;
-  DWORD  dwProcId;
-  HANDLE hThread = NULL;
-  ULONG fMask = 0; // for keep the ProcHandle
+  HANDLE proc_handle;
+  DWORD proc_id;
+  HANDLE thread_handle = NULL;
+  ULONG flag_mask = 0; /* for keep the ProcHandle */
 
   DWORD process_flags;
   BYTE* child_stdio_buffer;
@@ -1044,7 +1044,7 @@ int uv_spawn(uv_loop_t* loop,
         break;
       if (i == options->stdio_count - 1) {
         process_flags |= CREATE_NO_WINDOW;
-        fMask |= SEE_MASK_NO_CONSOLE;
+        flag_mask |= SEE_MASK_NO_CONSOLE;
       }
     }
   }
@@ -1073,7 +1073,7 @@ int uv_spawn(uv_loop_t* loop,
 
   if (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN) {
     shellexecuteinfo.cbSize = sizeof(SHELLEXECUTEINFOW);
-    shellexecuteinfo.fMask = fMask | SEE_MASK_NOCLOSEPROCESS; // for shellexecuteinfo.hProcess
+    shellexecuteinfo.fMask = flag_mask | SEE_MASK_NOCLOSEPROCESS; /* for shellexecuteinfo.hProcess */
     shellexecuteinfo.lpVerb = L"runas";
     shellexecuteinfo.lpFile = application_path;
     shellexecuteinfo.lpParameters = arguments;
@@ -1082,8 +1082,8 @@ int uv_spawn(uv_loop_t* loop,
         err = GetLastError();
         goto done;
     }
-    hProc = shellexecuteinfo.hProcess;
-    if ((dwProcId = GetProcessId(hProc)) == 0) {
+    proc_handle = shellexecuteinfo.hProcess;
+    if ((proc_id = GetProcessId(proc_handle)) == 0) {
       err = GetLastError();
       goto done;
     }
@@ -1115,9 +1115,9 @@ int uv_spawn(uv_loop_t* loop,
         err = GetLastError();
         goto done;
     }
-    hProc = info.hProcess;
-    dwProcId = info.dwProcessId;
-    hThread = info.hThread;
+    proc_handle = info.hProcess;
+    proc_id = info.dwProcessId;
+    thread_handle = info.hThread;
   }
 
 
@@ -1126,7 +1126,7 @@ int uv_spawn(uv_loop_t* loop,
   if (!(options->flags & UV_PROCESS_DETACHED)) {
     uv_once(&uv_global_job_handle_init_guard_, uv__init_global_job_handle);
 
-    if (!AssignProcessToJobObject(uv_global_job_handle_, hProc)) {
+    if (!AssignProcessToJobObject(uv_global_job_handle_, proc_handle)) {
       /* AssignProcessToJobObject might fail if this process is under job
        * control and the job doesn't have the
        * JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK flag set, on a Windows version
@@ -1143,18 +1143,18 @@ int uv_spawn(uv_loop_t* loop,
     }
   }
 
-  if (process_flags & CREATE_SUSPENDED && hThread != NULL) {
-    if (ResumeThread(hThread) == ((DWORD)-1)) {
+  if (process_flags & CREATE_SUSPENDED && thread_handle != NULL) {
+    if (ResumeThread(thread_handle) == ((DWORD)-1)) {
       err = GetLastError();
-      TerminateProcess(hProc, 1);
+      TerminateProcess(proc_handle, 1);
       goto done;
     }
   }
 
   /* Spawn succeeded. Beyond this point, failure is reported asynchronously. */
 
-  process->process_handle = hProc;
-  process->pid = dwProcId;
+  process->process_handle = proc_handle;
+  process->pid = proc_id;
 
   /* Set IPC pid to all IPC pipes. */
   for (i = 0; i < options->stdio_count; i++) {
@@ -1175,8 +1175,8 @@ int uv_spawn(uv_loop_t* loop,
     uv_fatal_error(GetLastError(), "RegisterWaitForSingleObject");
   }
 
-  if (hThread != NULL) {
-    CloseHandle(hThread);
+  if (thread_handle != NULL) {
+    CloseHandle(thread_handle);
   }
 
   assert(!err);

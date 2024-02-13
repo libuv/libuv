@@ -1114,7 +1114,7 @@ enum uv_process_flags {
    * extensions like '.exe' or '.cmd'.
    */
   UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7),
-  /**
+  /*
    * Run the subprocess as administrator. This option is only meaningful on
    * Windows systems. On Unix it is silently ignored.
    *
