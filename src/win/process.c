@@ -1147,7 +1147,7 @@ int uv_spawn(uv_loop_t* loop,
     }
   }
 
-  if (process_flags & CREATE_SUSPENDED && thread_handle != NULL) {
+  if ((process_flags & CREATE_SUSPENDED) && thread_handle != NULL) {
     if (ResumeThread(thread_handle) == ((DWORD)-1)) {
       err = GetLastError();
       TerminateProcess(proc_handle, 1);
