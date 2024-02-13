@@ -277,6 +277,9 @@ API
     .. versionchanged:: 1.24.0 Added `UV_PROCESS_WINDOWS_HIDE_CONSOLE` and
                         `UV_PROCESS_WINDOWS_HIDE_GUI` flags.
 
+    .. versionchanged:: 1.48.0 Added the
+                        `UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME` flag.
+
 .. c:function:: int uv_process_kill(uv_process_t* handle, int signum)
 
     Sends the specified signal to the given process handle. Check the documentation
