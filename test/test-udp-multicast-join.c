@@ -29,7 +29,14 @@
 #define CHECK_HANDLE(handle) \
   ASSERT_NE((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client, 0)
 
+/* Use 224.0.0.x subnet for MAC OS 13.0 and above
+ * Refs https://github.com/libuv/libuv/issues/4263
+ */
+#if defined(__APPLE__) && defined(MAC_OS_VERSION_13_0)
+#define MULTICAST_ADDR "224.0.0.9"
+#else
 #define MULTICAST_ADDR "239.255.0.1"
+#endif
 
 static uv_udp_t server;
 static uv_udp_t client;
