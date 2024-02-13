@@ -1083,7 +1083,12 @@ int uv_spawn(uv_loop_t* loop,
         goto done;
     }
     proc_handle = shell_execute_info_w.hProcess;
-    if ((proc_id = GetProcessId(proc_handle)) == 0) {
+    if (proc_handle == NULL) {
+      err = UV_ENOENT;
+      goto done_uv;
+    }
+    proc_id = GetProcessId(proc_handle);
+    if (proc_id == 0) {
       err = GetLastError();
       goto done;
     }
