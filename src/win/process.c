@@ -1122,7 +1122,6 @@ int uv_spawn(uv_loop_t* loop,
                         cwd,
                         &startup,
                         &info)) {
-        /* CreateProcessW failed. */
         err = GetLastError();
         goto done;
     }
