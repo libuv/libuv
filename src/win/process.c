@@ -937,7 +937,13 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   if (options->file == NULL ||
-      options->args == NULL) {
+      options->args == NULL ||
+      /*
+       * UV_PROCESS_DETACHED and UV_PROCESS_WINDOWS_RUNAS_ADMIN are
+       * mutually exclusive. If both are set, we return UV_EINVAL.
+       * */
+      ((options->flags & UV_PROCESS_DETACHED) &&
+       (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN))) {
     return UV_EINVAL;
   }
 
