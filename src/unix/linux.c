@@ -622,7 +622,7 @@ fail:
 
 
 static void uv__iou_delete(struct uv__iou* iou) {
-  if (iou->ringfd != -1) {
+  if (iou->ringfd > -1) {
     munmap(iou->sq, iou->maxlen);
     munmap(iou->sqe, iou->sqelen);
     uv__close(iou->ringfd);
@@ -636,7 +636,7 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
   lfields = uv__get_internal_fields(loop);
   lfields->ctl.ringfd = -1;
-  lfields->iou.ringfd = -1;
+  lfields->iou.ringfd = -2;  /* "uninitialized" */
 
   loop->inotify_watchers = NULL;
   loop->inotify_fd = -1;
@@ -645,7 +645,6 @@ int uv__platform_loop_init(uv_loop_t* loop) {
   if (loop->backend_fd == -1)
     return UV__ERR(errno);
 
-  uv__iou_init(loop->backend_fd, &lfields->iou, 64, UV__IORING_SETUP_SQPOLL);
   uv__iou_init(loop->backend_fd, &lfields->ctl, 256, 0);
 
   return 0;
@@ -763,6 +762,15 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
   uint32_t tail;
   uint32_t mask;
   uint32_t slot;
+
+  /* Lazily create the ring. State machine: -2 means uninitialized, -1 means
+   * initialization failed. Anything else is a valid ring file descriptor.
+   */
+  if (iou->ringfd == -2) {
+    uv__iou_init(loop->backend_fd, iou, 64, UV__IORING_SETUP_SQPOLL);
+    if (iou->ringfd == -2)
+      iou->ringfd = -1;  /* "failed" */
+  }
 
   if (iou->ringfd == -1)
     return NULL;
