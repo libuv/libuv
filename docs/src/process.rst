@@ -96,6 +96,8 @@ Data types
             /*
              * Run the subprocess as administrator. This option is only meaningful on
              * Windows systems. On Unix it is silently ignored.
+             * This flag is mutually exclusive with UV_PROCESS_DETACHED. UV_EINVAL will
+             * be returned if both are specified.
              *
              * See https://github.com/libuv/libuv/issues/4295
              */
