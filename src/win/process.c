@@ -941,8 +941,16 @@ int uv_spawn(uv_loop_t* loop,
       /*
        * UV_PROCESS_DETACHED and UV_PROCESS_WINDOWS_RUNAS_ADMIN are
        * mutually exclusive. If both are set, we return UV_EINVAL.
+       *
+       * stdio, cwd, env and stdio_count are not supported when
+       * UV_PROCESS_WINDOWS_RUNAS_ADMIN is set. If any of these are
+       * set, we return UV_EINVAL.
        */
-      ((options->flags & UV_PROCESS_DETACHED) &&
+      ((options->flags & UV_PROCESS_DETACHED ||
+        options->stdio != NULL ||
+        options->cwd != NULL ||
+        options->env != NULL ||
+        options->stdio_count > 0) &&
        (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN))) {
     return UV_EINVAL;
   }
