@@ -946,7 +946,7 @@ int uv_spawn(uv_loop_t* loop,
        * UV_PROCESS_WINDOWS_RUNAS_ADMIN is set. If any of these are
        * set, we return UV_EINVAL.
        */
-      ((options->flags & UV_PROCESS_DETACHED ||
+      (((options->flags & UV_PROCESS_DETACHED) ||
         options->stdio != NULL ||
         options->cwd != NULL ||
         options->env != NULL ||
