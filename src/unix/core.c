@@ -1678,7 +1678,7 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
     param.sched_priority = prio;
     r = pthread_setschedparam(tid, policy, &param);
     if (r != 0)
-      return UV__ERR(errno);  
+      return UV__ERR(errno);
   }
 
   return 0;
