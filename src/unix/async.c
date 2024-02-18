@@ -34,6 +34,10 @@
 #include <unistd.h>
 #include <sched.h>  /* sched_yield() */
 
+#if defined(__APPLE__) || defined(__FreeBSD__)
+#include <sys/event.h>
+#endif
+
 #ifdef __linux__
 #include <sys/eventfd.h>
 #endif
@@ -130,14 +134,15 @@ void uv__async_close(uv_async_t* handle) {
 
 
 static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
-  char buf[1024];
-  ssize_t r;
+  assert(w == &loop->async_io_watcher);
+
   struct uv__queue queue;
   struct uv__queue* q;
   uv_async_t* h;
   _Atomic int *pending;
-
-  assert(w == &loop->async_io_watcher);
+#ifndef EVFILT_USER
+  char buf[1024];
+  ssize_t r;
 
   for (;;) {
     r = read(w->fd, buf, sizeof(buf));
@@ -156,6 +161,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     abort();
   }
+#endif
 
   uv__queue_move(&loop->async_handles, &queue);
   while (!uv__queue_empty(&queue)) {
@@ -179,6 +185,14 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 static void uv__async_send(uv_loop_t* loop) {
+#if defined(EVFILT_USER) && defined(NOTE_TRIGGER)
+  struct kevent ev;
+  struct timespec timeout = { 0, 0 };
+  EV_SET(&ev, loop->async_io_watcher.fd, EVFILT_USER, 0, NOTE_TRIGGER, 0, 0);
+  int err = kevent(loop->backend_fd, &ev, 1, NULL, 0, &timeout);
+  if (err < 0)
+    abort();
+#else
   const void* buf;
   ssize_t len;
   int fd;
@@ -209,6 +223,7 @@ static void uv__async_send(uv_loop_t* loop) {
       return;
 
   abort();
+#endif
 }
 
 
@@ -223,6 +238,13 @@ static int uv__async_start(uv_loop_t* loop) {
   err = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if (err < 0)
     return UV__ERR(errno);
+
+  pipefd[0] = err;
+  pipefd[1] = -1;
+#elif defined(EVFILT_USER) && defined(NOTE_TRIGGER) /* EVFILT_USER is available since macOS 10.6 and FreeBSD 8.1 */
+  err = uv__open_cloexec("/dev/null", O_RDWR); /* this fd will not be actually used, only for a unique index */
+  if (err < 0)
+    return err;
 
   pipefd[0] = err;
   pipefd[1] = -1;
