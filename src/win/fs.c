@@ -1124,25 +1124,6 @@ void fs__unlink(uv_fs_t* req) {
     }
   }
 
-  if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
-    /* Remove read-only attribute */
-    FILE_BASIC_INFORMATION basic = { 0 };
-
-    basic.FileAttributes = (info.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY) |
-                           FILE_ATTRIBUTE_ARCHIVE;
-
-    status = pNtSetInformationFile(handle,
-                                   &iosb,
-                                   &basic,
-                                   sizeof basic,
-                                   FileBasicInformation);
-    if (!NT_SUCCESS(status)) {
-      SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
-      CloseHandle(handle);
-      return;
-    }
-  }
-
   /* Try posix delete first */
   disposition_ex.Flags = FILE_DISPOSITION_DELETE | FILE_DISPOSITION_POSIX_SEMANTICS |
                           FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE;
@@ -1158,6 +1139,25 @@ void fs__unlink(uv_fs_t* req) {
     DWORD error = GetLastError();
     if (error == ERROR_NOT_SUPPORTED) {
       /* posix delete not supported so try fallback */
+      if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+        /* Remove read-only attribute */
+        FILE_BASIC_INFORMATION basic = { 0 };
+
+        basic.FileAttributes = (info.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY) |
+                              FILE_ATTRIBUTE_ARCHIVE;
+
+        status = pNtSetInformationFile(handle,
+                                      &iosb,
+                                      &basic,
+                                      sizeof basic,
+                                      FileBasicInformation);
+        if (!NT_SUCCESS(status)) {
+          SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
+          CloseHandle(handle);
+          return;
+        }
+      }
+
       FILE_DISPOSITION_INFORMATION disposition;
       /* Try to set the delete flag. */
       disposition.DeleteFile = TRUE;
