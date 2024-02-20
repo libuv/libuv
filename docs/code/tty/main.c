@@ -5,6 +5,9 @@
 
 uv_loop_t *loop;
 uv_tty_t tty;
+uv_write_t req;
+uv_buf_t buf;
+
 int main() {
     loop = uv_default_loop();
 
@@ -19,8 +22,6 @@ int main() {
         uv_write(&req, (uv_stream_t*) &tty, &buf, 1, NULL);
     }
 
-    uv_write_t req;
-    uv_buf_t buf;
     buf.base = "Hello TTY\n";
     buf.len = strlen(buf.base);
     uv_write(&req, (uv_stream_t*) &tty, &buf, 1, NULL);
