@@ -406,16 +406,20 @@ API
     .. note::
         Returns [0,0,0] on Windows (i.e., it's not implemented).
 
-.. c:function:: int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr)
+.. c:function:: int uv_ip4_addr(const char* ip, unsigned short port, struct sockaddr_in* addr)
 
     Convert a string containing an IPv4 addresses to a binary structure.
 
-.. c:function:: int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr)
+    .. versionchanged:: 2.0.0 now `port` is a `unsigned short` instead
+                        of an `int`.
+
+.. c:function:: int uv_ip6_addr(const char* ip, unsigned short port, struct sockaddr_in6* addr)
 
     Convert a string containing an IPv6 addresses to a binary structure.
 
     .. versionchanged:: 2.0.0: :man:`if_nametoindex(3)` errors are no longer
                         ignored on Unix platforms.
+                        `port` is a `unsigned short` instead of an `int`.
 
 .. c:function:: int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size)
 
