@@ -1064,16 +1064,7 @@ void fs__write(uv_fs_t* req) {
 }
 
 
-void fs__rmdir(uv_fs_t* req) {
-  int result = _wrmdir(req->file.pathw);
-  if (result == -1)
-    SET_REQ_WIN32_ERROR(req, _doserrno);
-  else
-    SET_REQ_RESULT(req, 0);
-}
-
-
-void fs__unlink(uv_fs_t* req) {
+void __unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   const WCHAR* pathw = req->file.pathw;
   HANDLE handle;
   BY_HANDLE_FILE_INFORMATION info;
@@ -1102,10 +1093,17 @@ void fs__unlink(uv_fs_t* req) {
     return;
   }
 
-  if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-    /* Do not allow deletion of directories, unless it is a symlink. When the
-     * path refers to a non-symlink directory, report EPERM as mandated by
-     * POSIX.1. */
+  if (isrmdir & !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+    /* Error if we're in rmdir mode but it is not a dir */
+    SET_REQ_UV_ERROR(req, UV_ENOTDIR, ERROR_DIRECTORY);
+    CloseHandle(handle);
+    return;
+  }
+
+  if (!isrmdir & info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+    /* If not explicitly allowed, do not allow deletion of directories, unless
+     * it is a symlink. When the path refers to a non-symlink directory, report
+     * EPERM as mandated by POSIX.1. */
 
     /* Check if it is a reparse point. If it's not, it's a normal directory. */
     if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
@@ -1138,7 +1136,7 @@ void fs__unlink(uv_fs_t* req) {
   if (NT_SUCCESS(status)) {
     SET_REQ_SUCCESS(req);
   } else {
-    error = GetLastError();
+    error = pRtlNtStatusToDosError(status);
     if (error == ERROR_NOT_SUPPORTED) {
       /* posix delete not supported so try fallback */
       if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
@@ -1178,6 +1176,16 @@ void fs__unlink(uv_fs_t* req) {
   }
 
   CloseHandle(handle);
+}
+
+
+void fs__rmdir(uv_fs_t* req) {
+  __unlink_rmdir(req, 1);
+}
+
+
+void fs__unlink(uv_fs_t* req) {
+  __unlink_rmdir(req, 0);
 }
 
 
