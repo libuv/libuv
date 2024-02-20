@@ -943,7 +943,7 @@ int uv_spawn(uv_loop_t* loop,
   if (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN) {
     /* UV_PROCESS_WINDOWS_RUNAS_ADMIN and UV_PROCESS_DETACHED are mutually
      * exclusive. */
-    if (options->flags & UV_PROCESS_DETACHED) {
+    if (options->flags & UV_PROCESS_DETACHED)
       return UV_EINVAL;
     /* These options are not supported when UV_PROCESS_WINDOWS_RUNAS_ADMIN is
      * set. */
