@@ -1093,8 +1093,8 @@ int uv_spawn(uv_loop_t* loop,
     shell_execute_info_w.lpParameters = arguments;
     shell_execute_info_w.nShow = startup.wShowWindow;
     if (!ShellExecuteExW(&shell_execute_info_w)) {
-        err = GetLastError();
-        goto done;
+      err = GetLastError();
+      goto done;
     }
     proc_handle = shell_execute_info_w.hProcess;
     if (proc_handle == NULL) {
