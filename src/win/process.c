@@ -1130,8 +1130,8 @@ int uv_spawn(uv_loop_t* loop,
                         cwd,
                         &startup,
                         &info)) {
-        err = GetLastError();
-        goto done;
+      err = GetLastError();
+      goto done;
     }
     proc_handle = info.hProcess;
     proc_id = info.dwProcessId;
