@@ -141,7 +141,7 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   if (revents & POLLIN)
     uv__udp_recvmsg(handle);
 
-  if (revents & POLLOUT) {
+  if (revents & POLLOUT && !uv__is_closing(handle)) {
     uv__udp_sendmsg(handle);
     uv__udp_run_completed(handle);
   }
