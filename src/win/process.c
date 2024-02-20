@@ -936,23 +936,22 @@ int uv_spawn(uv_loop_t* loop,
     return UV_ENOTSUP;
   }
 
-  if (options->file == NULL ||
-      options->args == NULL ||
-      /*
-       * UV_PROCESS_DETACHED and UV_PROCESS_WINDOWS_RUNAS_ADMIN are
-       * mutually exclusive. If both are set, we return UV_EINVAL.
-       *
-       * stdio, cwd, env and stdio_count are not supported when
-       * UV_PROCESS_WINDOWS_RUNAS_ADMIN is set. If any of these are
-       * set, we return UV_EINVAL.
-       */
-      (((options->flags & UV_PROCESS_DETACHED) ||
-        options->stdio != NULL ||
-        options->cwd != NULL ||
-        options->env != NULL ||
-        options->stdio_count > 0) &&
-       (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN))) {
+  if (options->file == NULL || options->args == NULL) {
     return UV_EINVAL;
+  }
+
+  if (options->flags & UV_PROCESS_WINDOWS_RUNAS_ADMIN) {
+    /* UV_PROCESS_WINDOWS_RUNAS_ADMIN and UV_PROCESS_DETACHED are mutually
+     * exclusive. */
+    if (options->flags & UV_PROCESS_DETACHED) {
+      return UV_EINVAL;
+    /* These options are not supported when UV_PROCESS_WINDOWS_RUNAS_ADMIN is
+     * set. */
+    if (options->stdio != NULL || options->cwd != NULL ||
+        options->env != NULL)
+      return UV_EINVAL;
+    if (options->stdio_count > 0)
+      return UV_EINVAL;
   }
 
   assert(options->file != NULL);
