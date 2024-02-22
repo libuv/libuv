@@ -1183,6 +1183,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   uint64_t v;
   char* path;
   
+
   path = (char*)req->path;
   len = wcslen(req->file.pathw);
   ep = req->file.pathw + len;
@@ -1655,7 +1656,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     statbuf->st_mode |= (_S_IREAD | _S_IWRITE) | ((_S_IREAD | _S_IWRITE) >> 3) |
                         ((_S_IREAD | _S_IWRITE) >> 6);
     statbuf->st_nlink = 1;
-    statbuf->st_blksize = 4096;    
+    statbuf->st_blksize = 4096;
     statbuf->st_rdev = FILE_DEVICE_NULL << 16;
     return 0;
   }
