@@ -4125,6 +4125,24 @@ typedef const UNICODE_STRING *PCUNICODE_STRING;
 # define DEVICE_TYPE DWORD
 #endif
 
+typedef struct _FILE_STAT_BASIC_INFORMATION {
+  LARGE_INTEGER FileId;
+  LARGE_INTEGER CreationTime;
+  LARGE_INTEGER LastAccessTime;
+  LARGE_INTEGER LastWriteTime;
+  LARGE_INTEGER ChangeTime;
+  LARGE_INTEGER AllocationSize;
+  LARGE_INTEGER EndOfFile;
+  ULONG FileAttributes;
+  ULONG ReparseTag;
+  ULONG NumberOfLinks;
+  ULONG DeviceType;
+  ULONG DeviceCharacteristics;
+  ULONG Reserved;
+  FILE_ID_128 FileId128;
+  LARGE_INTEGER VolumeSerialNumber;
+} FILE_STAT_BASIC_INFORMATION;
+
 /* MinGW already has a definition for REPARSE_DATA_BUFFER, but mingw-w64 does
  * not.
  */
@@ -4752,6 +4770,21 @@ typedef struct _TCP_INITIAL_RTO_PARAMETERS {
 # define  SIO_TCP_INITIAL_RTO _WSAIOW(IOC_VENDOR,17)
 #endif
 
+/* from winnt.h */
+typedef enum _FILE_INFO_BY_NAME_CLASS {
+  FileStatByNameInfo,
+  FileStatLxByNameInfo,
+  FileCaseSensitiveByNameInfo,
+  FileStatBasicByNameInfo,
+  MaximumFileInfoByNameClass
+} FILE_INFO_BY_NAME_CLASS;
+
+typedef BOOL(WINAPI* sGetFileInformationByName)(
+    PCWSTR FileName,
+    FILE_INFO_BY_NAME_CLASS FileInformationClass,
+    PVOID FileInfoBuffer,
+    ULONG FileInfoBufferSize);
+
 /* Ntdll function pointers */
 extern sRtlGetVersion pRtlGetVersion;
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
@@ -4771,6 +4804,9 @@ extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotifi
 
 /* User32.dll function pointer */
 extern sSetWinEventHook pSetWinEventHook;
+
+/* api-ms-win-core-file-l2-1-4.dll function pointers */
+extern sGetFileInformationByName pGetFileInformationByName;
 
 /* ws2_32.dll function pointer */
 /* mingw doesn't have this definition, so let's declare it here locally */
