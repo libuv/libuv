@@ -46,9 +46,17 @@
 #define UV_FS_FREE_PTR           0x0008
 #define UV_FS_CLEANEDUP          0x0010
 
+#ifndef FILE_DISPOSITION_DELETE
 #define FILE_DISPOSITION_DELETE                     0x0001
+#endif  /* FILE_DISPOSITION_DELETE */
+
+#ifndef FILE_DISPOSITION_POSIX_SEMANTICS
 #define FILE_DISPOSITION_POSIX_SEMANTICS            0x0002
+#endif  /* FILE_DISPOSITION_POSIX_SEMANTICS */
+
+#ifndef FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE
 #define FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE  0x0010
+#endif  /* FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE */
 
 #define INIT(subtype)                                                         \
   do {                                                                        \
@@ -1064,7 +1072,7 @@ void fs__write(uv_fs_t* req) {
 }
 
 
-void __unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
+static void __unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   const WCHAR* pathw = req->file.pathw;
   HANDLE handle;
   BY_HANDLE_FILE_INFORMATION info;
@@ -1182,12 +1190,12 @@ void __unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
 
 
 void fs__rmdir(uv_fs_t* req) {
-  __unlink_rmdir(req, 1);
+  __unlink_rmdir(req, /*isrmdir*/1);
 }
 
 
 void fs__unlink(uv_fs_t* req) {
-  __unlink_rmdir(req, 0);
+  __unlink_rmdir(req, /*isrmdir*/0);
 }
 
 
