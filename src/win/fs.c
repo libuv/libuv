@@ -1144,6 +1144,10 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   if (NT_SUCCESS(status)) {
     SET_REQ_SUCCESS(req);
   } else {
+    /* If status == STATUS_CANNOT_DELETE here, given we set
+     * FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE, STATUS_CANNOT_DELETE can only mean
+     * that there is an existing mapped view to the file, preventing delete.
+     * STATUS_CANNOT_DELETE maps to UV_EACCES so it's not specifically worth handling  */
     error = pRtlNtStatusToDosError(status);
     if (error == ERROR_NOT_SUPPORTED /* filesystem does not support posix deletion */ ||
         error == ERROR_INVALID_PARAMETER /* pre Windows 10 error */ ||
