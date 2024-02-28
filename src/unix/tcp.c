@@ -507,11 +507,11 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)))
     return UV__ERR(errno);
 
-  intvl = idle/3;
+  intvl = 10; /* required at least 10 seconds */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
     return UV__ERR(errno);
 
-  cnt = 3;
+  cnt = 1; /* 1 retry, ensure (TCP_KEEPINTVL * TCP_KEEPCNT) is 10 seconds */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
     return UV__ERR(errno);
 #else
@@ -524,9 +524,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
 
   /* Note that the consequent probes will not be sent at equal intervals on Solaris,
    * but will be sent using the exponential backoff algorithm. */
-  intvl = idle/3;
-  cnt = 3;
-  int time_to_abort = intvl * cnt;
+  int time_to_abort = 10*1000; /* 10 seconds, kernel expects milliseconds */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, &time_to_abort, sizeof(time_to_abort)))
     return UV__ERR(errno);
 #endif
@@ -543,7 +541,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
 #endif
 
 #ifdef TCP_KEEPINTVL
-  intvl = 1;  /*  1 second; same as default on Win32 */
+  intvl = 1;  /* 1 second; same as default on Win32 */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
     return UV__ERR(errno);
 #endif
