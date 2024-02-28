@@ -1072,7 +1072,7 @@ void fs__write(uv_fs_t* req) {
 }
 
 
-static void __unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
+static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   const WCHAR* pathw = req->file.pathw;
   HANDLE handle;
   BY_HANDLE_FILE_INFORMATION info;
@@ -1190,12 +1190,12 @@ static void __unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
 
 
 void fs__rmdir(uv_fs_t* req) {
-  __unlink_rmdir(req, /*isrmdir*/1);
+  fs__unlink_rmdir(req, /*isrmdir*/1);
 }
 
 
 void fs__unlink(uv_fs_t* req) {
-  __unlink_rmdir(req, /*isrmdir*/0);
+  fs__unlink_rmdir(req, /*isrmdir*/0);
 }
 
 
