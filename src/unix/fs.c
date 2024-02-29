@@ -85,8 +85,11 @@
 #if defined(__CYGWIN__) ||                                                    \
     (defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) || \
     (defined(__sun) && !defined(__illumos__)) ||                              \
-    (defined(__APPLE__) && !TARGET_OS_IPHONE &&                               \
-     MAC_OS_X_VERSION_MIN_REQUIRED < 110000)
+    (defined(__APPLE__) &&                                                    \
+      (TARGET_OS_IOS && __IPHONE_OS_VERSION_MIN_REQUIRED < 140000) ||         \
+      (TARGET_OS_TV && __IPHONE_OS_VERSION_MIN_REQUIRED < 140000) ||          \
+      (TARGET_OS_WATCH && __IPHONE_OS_VERSION_MIN_REQUIRED < 70000) ||        \
+      (TARGET_OS_OSX && __MAC_OS_X_VERSION_MIN_REQUIRED < 110000))
 #define preadv(fd, bufs, nbufs, off)                                          \
   pread(fd, (bufs)->iov_base, (bufs)->iov_len, off)
 #define pwritev(fd, bufs, nbufs, off)                                         \
