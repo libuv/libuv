@@ -1193,12 +1193,12 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
 }
 
 
-void fs__rmdir(uv_fs_t* req) {
+static void fs__rmdir(uv_fs_t* req) {
   fs__unlink_rmdir(req, /*isrmdir*/1);
 }
 
 
-void fs__unlink(uv_fs_t* req) {
+static void fs__unlink(uv_fs_t* req) {
   fs__unlink_rmdir(req, /*isrmdir*/0);
 }
 
