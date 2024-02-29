@@ -172,7 +172,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(w->fd >= 0);
     assert(w->fd < (int) loop->nwatchers);
 
-#if defined(EVFILT_USER) && !defined(__APPLE__) /* EVFILT_USER seems to be broken on macOS, so don't apply this on macOS */
+#if defined(EVFILT_USER) && defined(NOTE_TRIGGER) && !defined(__APPLE__) /* EVFILT_USER seems to be broken on macOS, so don't apply this on macOS */
     if (w == &loop->async_io_watcher && (w->pevents & POLLIN) != 0) {
       filter = EVFILT_USER;
       fflags = 0;
@@ -364,7 +364,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       revents = 0;
 
-#if defined(EVFILT_USER) && !defined(__APPLE__)
+#if defined(EVFILT_USER) && defined(NOTE_TRIGGER) && !defined(__APPLE__)
       if (ev->filter == EVFILT_READ || ev->filter == EVFILT_USER) {
 #else
       if (ev->filter == EVFILT_READ) {

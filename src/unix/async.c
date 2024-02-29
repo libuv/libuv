@@ -242,7 +242,7 @@ static int uv__async_start(uv_loop_t* loop) {
   pipefd[0] = err;
   pipefd[1] = -1;
 #elif defined(EVFILT_USER) && defined(NOTE_TRIGGER) /* EVFILT_USER is available since FreeBSD 8.1 and NetBSD 10.0 */
-  err = uv__open_cloexec("/dev/null", O_RDWR); /* this fd will not be actually used, only for a unique index */
+  err = uv__open_cloexec("/dev/null", O_RDWR); /* This fd will not be actually used, only for a unique index */
   if (err < 0)
     return err;
 
