@@ -35,10 +35,69 @@ int uv_uptime(double* uptime) {
   return 0;
 }
 
-int uv_resident_set_memory(size_t* rss) {
-  /* FIXME: read /proc/meminfo? */
-  *rss = 0;
+int uv_resident_set_memory(size_t* rss)
+{
+  char buf[1024];
+  const char* s;
+  ssize_t n;
+  long val;
+  int fd;
+  int i;
+  int e;
+  struct sysinfo si;
+
+  do
+    fd = open("/proc/self/stat", O_RDONLY);
+  while (fd == -1 && errno == EINTR);
+
+  if (fd == -1)
+    return UV__ERR(errno);
+
+  do
+    n = read(fd, buf, sizeof(buf) - 1);
+  while (n == -1 && errno == EINTR);
+
+  uv__close(fd);
+  if (n == -1)
+    return UV__ERR(errno);
+  buf[n] = '\0';
+
+  s = strchr(buf, ' ');
+  if (s == NULL)
+    goto err;
+
+  s += 1;
+  if (*s != '(')
+    goto err;
+
+  s = strchr(s, ')');
+  if (s == NULL)
+    goto err;
+
+  for (i = 1; i <= 22; i++) {
+    s = strchr(s + 1, ' ');
+    if (s == NULL)
+      goto err;
+  }
+
+  errno = 0;
+  val = strtol(s, NULL, 10);
+  if (errno != 0)
+    goto err;
+  if (val < 0)
+    goto err;
+
+  do
+    e = sysinfo(&si);
+  while (e == -1 && errno == EINTR);
+  if (e == -1)
+    return UV__ERR(errno);
+
+  *rss = val * si.mem_unit;
   return 0;
+
+err:
+  return UV_EINVAL;
 }
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
