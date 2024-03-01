@@ -35,62 +35,35 @@ int uv_uptime(double* uptime) {
   return 0;
 }
 
-int uv_resident_set_memory(size_t* rss)
-{
+int uv_resident_set_memory(size_t* rss) {
   char buf[1024];
   const char* s;
   ssize_t n;
   long val;
-  int fd;
+  int rc;
   int i;
-  int e;
   struct sysinfo si;
 
-  do
-    fd = open("/proc/self/stat", O_RDONLY);
-  while (fd == -1 && errno == EINTR);
+  rc = uv__slurp("/proc/self/stat", buf, sizeof(buf));
+  if (rc < 0)
+    return rc;
 
-  if (fd == -1)
-    return UV__ERR(errno);
-
-  do
-    n = read(fd, buf, sizeof(buf) - 1);
-  while (n == -1 && errno == EINTR);
-
-  uv__close(fd);
-  if (n == -1)
-    return UV__ERR(errno);
-  buf[n] = '\0';
-
-  s = strchr(buf, ' ');
-  if (s == NULL)
-    goto err;
-
-  s += 1;
-  if (*s != '(')
-    goto err;
-
-  s = strchr(s, ')');
-  if (s == NULL)
-    goto err;
-
-  for (i = 1; i <= 22; i++) {
-    s = strchr(s + 1, ' ');
+  /* rss: 24th element */
+  for (s = buf, i = 1; i <= 23; i++, s++) {
+    s = strchr(s, ' ');
     if (s == NULL)
       goto err;
   }
 
   errno = 0;
   val = strtol(s, NULL, 10);
-  if (errno != 0)
-    goto err;
-  if (val < 0)
+  if (val < 0 || errno != 0)
     goto err;
 
   do
-    e = sysinfo(&si);
-  while (e == -1 && errno == EINTR);
-  if (e == -1)
+    rc = sysinfo(&si);
+  while (rc == -1 && errno == EINTR);
+  if (rc == -1)
     return UV__ERR(errno);
 
   *rss = val * si.mem_unit;
