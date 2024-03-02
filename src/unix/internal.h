@@ -35,6 +35,9 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#if defined(__FreeBSD__) || defined(__NetBSD__)
+#include <sys/event.h>
+#endif
 
 #define uv__msan_unpoison(p, n)                                               \
   do {                                                                        \
@@ -483,3 +486,12 @@ int uv__get_constrained_cpu(uv__cpu_constraint* constraint);
 #endif
 
 #endif /* UV_UNIX_INTERNAL_H_ */
+
+/* EVFILT_USER is available since FreeBSD 8.1 and NetBSD 10.0,
+ * this filter seems to be broken on macOS, so don't apply it on macOS.
+ */
+#if defined(EVFILT_USER) && defined(NOTE_TRIGGER) && !defined(__APPLE__)
+#define UV__KQUEUE_EVFILT_USER 1
+#else
+#define UV__KQUEUE_EVFILT_USER 0
+#endif

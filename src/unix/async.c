@@ -34,10 +34,6 @@
 #include <unistd.h>
 #include <sched.h>  /* sched_yield() */
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
-#include <sys/event.h>
-#endif
-
 #ifdef __linux__
 #include <sys/eventfd.h>
 #endif
@@ -140,7 +136,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   struct uv__queue* q;
   uv_async_t* h;
   _Atomic int *pending;
-#ifndef EVFILT_USER
+#if !UV__KQUEUE_EVFILT_USER
   char buf[1024];
   ssize_t r;
 
@@ -185,7 +181,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 static void uv__async_send(uv_loop_t* loop) {
-#if defined(EVFILT_USER) && defined(NOTE_TRIGGER)
+#if UV__KQUEUE_EVFILT_USER
   struct kevent ev;
   struct timespec timeout = { 0, 0 };
   EV_SET(&ev, loop->async_io_watcher.fd, EVFILT_USER, 0, NOTE_TRIGGER, 0, 0);
@@ -241,7 +237,7 @@ static int uv__async_start(uv_loop_t* loop) {
 
   pipefd[0] = err;
   pipefd[1] = -1;
-#elif defined(EVFILT_USER) && defined(NOTE_TRIGGER) /* EVFILT_USER is available since FreeBSD 8.1 and NetBSD 10.0 */
+#elif UV__KQUEUE_EVFILT_USER
   err = uv__open_cloexec("/dev/null", O_RDWR); /* This fd will not be actually used, only for a unique index */
   if (err < 0)
     return err;
