@@ -38,19 +38,23 @@ int uv_uptime(double* uptime) {
 int uv_resident_set_memory(size_t* rss) {
   char buf[1024];
   const char* s;
-  ssize_t n;
   long val;
   int rc;
   int i;
   struct sysinfo si;
 
+  /* rss: 24th element */
   rc = uv__slurp("/proc/self/stat", buf, sizeof(buf));
   if (rc < 0)
     return rc;
 
-  /* rss: 24th element */
-  for (s = buf, i = 1; i <= 23; i++, s++) {
-    s = strchr(s, ' ');
+  /* find the last ')' */
+  s = strrchr(buf, ')');
+  if (s == NULL)
+    goto err;
+
+  for (i = 1; i <= 22; i++) {
+    s = strchr(s + 1, ' ');
     if (s == NULL)
       goto err;
   }
