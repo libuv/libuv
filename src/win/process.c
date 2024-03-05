@@ -1308,16 +1308,34 @@ static int uv__kill(HANDLE process_handle, int signum) {
       /* Unconditionally terminate the process. On Windows, killed processes
        * normally return 1. */
       int err;
+      DWORD status;
 
       if (TerminateProcess(process_handle, 1))
         return 0;
 
-      /* If the process already exited before TerminateProcess was called,.
+      /* If the process already exited before TerminateProcess was called,
        * TerminateProcess will fail with ERROR_ACCESS_DENIED. */
       err = GetLastError();
-      if (err == ERROR_ACCESS_DENIED &&
-          WaitForSingleObject(process_handle, 0) == WAIT_OBJECT_0) {
-        return UV_ESRCH;
+      if (err == ERROR_ACCESS_DENIED) {
+        /* First check using GetExitCodeProcess() with status different from
+         * STILL_ACTIVE (259). This check can be set incorrectly by the process,
+         * though that is uncommon. */
+        if (GetExitCodeProcess(process_handle, &status) &&
+            status != STILL_ACTIVE) {
+          return UV_ESRCH;
+        }
+
+        /* But the process could have exited with code == STILL_ACTIVE, use then
+         * WaitForSingleObject with timeout zero. This is prone to a race
+         * condition as it could return WAIT_TIMEOUT because the handle might
+         * not have been signaled yet.That would result in returning the wrong
+         * error code here (UV_EACCES instead of UV_ESRCH), but we cannot fix
+         * the kernel synchronization issue that TerminateProcess is
+         * inconsistent with WaitForSingleObject with just the APIs available to
+         * us in user space. */
+        if (WaitForSingleObject(process_handle, 0) == WAIT_OBJECT_0) {
+          return UV_ESRCH;
+        }
       }
 
       return uv_translate_sys_error(err);
@@ -1325,6 +1343,14 @@ static int uv__kill(HANDLE process_handle, int signum) {
 
     case 0: {
       /* Health check: is the process still alive? */
+      DWORD status;
+
+      if (!GetExitCodeProcess(process_handle, &status))
+        return uv_translate_sys_error(GetLastError());
+
+      if (status != STILL_ACTIVE)
+        return UV_ESRCH;
+
       switch (WaitForSingleObject(process_handle, 0)) {
         case WAIT_OBJECT_0:
           return UV_ESRCH;
