@@ -31,6 +31,7 @@
 
 #include <errno.h>
 #include <dlfcn.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,17 +81,6 @@
 # include <sys/statvfs.h>
 #else
 # include <sys/statfs.h>
-#endif
-
-#if defined(__CYGWIN__) ||                                                    \
-    (defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) || \
-    (defined(__sun) && !defined(__illumos__)) ||                              \
-    (defined(__APPLE__) && !TARGET_OS_IPHONE &&                               \
-     MAC_OS_X_VERSION_MIN_REQUIRED < 110000)
-#define preadv(fd, bufs, nbufs, off)                                          \
-  pread(fd, (bufs)->iov_base, (bufs)->iov_len, off)
-#define pwritev(fd, bufs, nbufs, off)                                         \
-  pwrite(fd, (bufs)->iov_base, (bufs)->iov_len, off)
 #endif
 
 #if defined(_AIX) && _XOPEN_SOURCE <= 600
@@ -406,6 +396,115 @@ static ssize_t uv__fs_open(uv_fs_t* req) {
 }
 
 
+static ssize_t uv__preadv_or_pwritev_emul(int fd,
+                                          const struct iovec* bufs,
+                                          size_t nbufs,
+                                          off_t off,
+                                          int is_pread) {
+  ssize_t total;
+  ssize_t r;
+  size_t i;
+  size_t n;
+  void* p;
+
+  total = 0;
+  for (i = 0; i < (size_t) nbufs; i++) {
+    p = bufs[i].iov_base;
+    n = bufs[i].iov_len;
+
+    do
+      if (is_pread)
+        r = pread(fd, p, n, off);
+      else
+        r = pwrite(fd, p, n, off);
+    while (r == -1 && errno == EINTR);
+
+    if (r == -1) {
+      if (total > 0)
+        return total;
+      return -1;
+    }
+
+    off += r;
+    total += r;
+
+    if ((size_t) r < n)
+      return total;
+  }
+
+  return total;
+}
+
+
+#ifdef __linux__
+typedef int uv__iovcnt;
+#else
+typedef size_t uv__iovcnt;
+#endif
+
+
+static ssize_t uv__preadv_emul(int fd,
+                               const struct iovec* bufs,
+                               uv__iovcnt nbufs,
+                               off_t off) {
+  return uv__preadv_or_pwritev_emul(fd, bufs, nbufs, off, /*is_pread*/1);
+}
+
+
+static ssize_t uv__pwritev_emul(int fd,
+                                const struct iovec* bufs,
+                                uv__iovcnt nbufs,
+                                off_t off) {
+  return uv__preadv_or_pwritev_emul(fd, bufs, nbufs, off, /*is_pread*/0);
+}
+
+
+/* The function pointer cache is an uintptr_t because _Atomic void*
+ * doesn't work on macos/ios/etc...
+ */
+static ssize_t uv__preadv_or_pwritev(int fd,
+                                     const struct iovec* bufs,
+                                     size_t nbufs,
+                                     off_t off,
+                                     _Atomic uintptr_t* cache,
+                                     int is_pread) {
+  ssize_t (*f)(int, const struct iovec*, uv__iovcnt, off_t);
+  void* p;
+
+  p = (void*) atomic_load_explicit(cache, memory_order_relaxed);
+  if (p == NULL) {
+#ifdef RTLD_DEFAULT
+    p = dlsym(RTLD_DEFAULT, is_pread ? "preadv" : "pwritev");
+    dlerror();  /* Clear errors. */
+#endif  /* RTLD_DEFAULT */
+    if (p == NULL)
+      p = is_pread ? uv__preadv_emul : uv__pwritev_emul;
+    atomic_store_explicit(cache, (uintptr_t) p, memory_order_relaxed);
+  }
+
+  f = p;
+  return f(fd, bufs, nbufs, off);
+}
+
+
+static ssize_t uv__preadv(int fd,
+                          const struct iovec* bufs,
+                          size_t nbufs,
+                          off_t off) {
+  static _Atomic uintptr_t cache;
+  return uv__preadv_or_pwritev(fd, bufs, nbufs, off, &cache, /*is_pread*/1);
+}
+
+
+static ssize_t uv__pwritev(int fd,
+                           const struct iovec* bufs,
+                           size_t nbufs,
+                           off_t off) {
+  static _Atomic uintptr_t cache;
+  return uv__preadv_or_pwritev(fd, bufs, nbufs, off, &cache, /*is_pread*/0);
+}
+
+
 static ssize_t uv__fs_read(uv_fs_t* req) {
   const struct iovec* bufs;
   unsigned int iovmax;
@@ -433,7 +532,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
     if (nbufs == 1)
       r = pread(fd, bufs->iov_base, bufs->iov_len, off);
     else if (nbufs > 1)
-      r = preadv(fd, bufs, nbufs, off);
+      r = uv__preadv(fd, bufs, nbufs, off);
   }
 
 #ifdef __PASE__
@@ -1121,7 +1220,7 @@ static ssize_t uv__fs_write(uv_fs_t* req) {
     if (nbufs == 1)
       r = pwrite(fd, bufs->iov_base, bufs->iov_len, off);
     else if (nbufs > 1)
-      r = pwritev(fd, bufs, nbufs, off);
+      r = uv__pwritev(fd, bufs, nbufs, off);
   }
 
   return r;
