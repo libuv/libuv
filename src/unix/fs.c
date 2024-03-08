@@ -691,13 +691,22 @@ static ssize_t uv__fs_readlink(uv_fs_t* req) {
 
 static ssize_t uv__fs_realpath(uv_fs_t* req) {
   char* buf;
+  char* tmp;
 
 #if defined(_POSIX_VERSION) && _POSIX_VERSION >= 200809L
-  buf = realpath(req->path, NULL);
-  if (buf == NULL)
+  tmp = realpath(req->path, NULL);
+  if (tmp == NULL)
     return -1;
+  buf = uv__strdup(tmp);
+  free(tmp); /* _Not_ uv__free. */
+  if (buf == NULL) {
+    errno = ENOMEM;
+    return -1;
+  }
 #else
   ssize_t len;
+
+  (void)tmp;
 
   len = uv__fs_pathmax_size(req->path);
   buf = uv__malloc(len + 1);
