@@ -467,9 +467,6 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   if (!on)
     return 0;
 
-  if (delay == 0)
-    return -1;
-
 #ifdef __sun
   /* The implementation of TCP keep-alive on Solaris/SmartOS is a bit unusual
    * compared to other Unix-like systems.
