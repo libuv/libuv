@@ -1652,9 +1652,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   errno = 0;
   val = strtol(s, NULL, 10);
-  if (errno != 0)
-    goto err;
-  if (val < 0)
+  if (val < 0 || errno != 0)
     goto err;
 
   *rss = val * getpagesize();
