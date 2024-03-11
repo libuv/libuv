@@ -1003,8 +1003,10 @@ static int uv__stream_recv_cmsg(uv_stream_t* stream, struct msghdr* msg) {
         err = uv__stream_queue_fd(stream, fd);
         if (err != 0) {
           /* Close rest */
-          for (; i < count; i++)
+          for (; i < count; i++) {
+            memcpy(&fd, (char*) CMSG_DATA(cmsg) + i * sizeof(fd), sizeof(fd));
             uv__close(fd);
+          }
           return err;
         }
       } else {
