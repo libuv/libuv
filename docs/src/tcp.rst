@@ -65,6 +65,10 @@ API
     at the end of this procedure, then the handle is destroyed with a
     ``UV_ETIMEDOUT`` error passed to the corresponding callback.
 
+    If `delay` is less than 1 then ``UV_EINVAL`` is returned.
+
+    .. versionchanged:: 1.49.0 If `delay` is less than 1 then ``UV_EINVAL``` is returned.
+
 .. c:function:: int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable)
 
     Enable / disable simultaneous asynchronous accept requests that are

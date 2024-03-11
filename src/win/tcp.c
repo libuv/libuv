@@ -58,11 +58,17 @@ static int uv__tcp_keepalive(uv_tcp_t* handle, SOCKET socket, int enable, unsign
     return WSAGetLastError();
   }
 
-  if (enable && setsockopt(socket,
-                           IPPROTO_TCP,
-                           TCP_KEEPALIVE,
-                           (const char*)&delay,
-                           sizeof delay) == -1) {
+  if (!enable)
+    return 0;
+
+  if (delay < 1)
+    return UV_EINVAL;
+
+  if (setsockopt(socket,
+                 IPPROTO_TCP,
+                 TCP_KEEPALIVE,
+                 (const char*)&delay,
+                 sizeof delay) == -1) {
     return WSAGetLastError();
   }
 
