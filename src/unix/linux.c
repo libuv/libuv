@@ -1630,36 +1630,17 @@ done:
 int uv_resident_set_memory(size_t* rss) {
   char buf[1024];
   const char* s;
-  ssize_t n;
   long val;
-  int fd;
+  int rc;
   int i;
-
-  do
-    fd = open("/proc/self/stat", O_RDONLY);
-  while (fd == -1 && errno == EINTR);
-
-  if (fd == -1)
-    return UV__ERR(errno);
-
-  do
-    n = read(fd, buf, sizeof(buf) - 1);
-  while (n == -1 && errno == EINTR);
-
-  uv__close(fd);
-  if (n == -1)
-    return UV__ERR(errno);
-  buf[n] = '\0';
-
-  s = strchr(buf, ' ');
-  if (s == NULL)
-    goto err;
-
-  s += 1;
-  if (*s != '(')
-    goto err;
-
-  s = strchr(s, ')');
+  
+  /* rss: 24th element */
+  rc = uv__slurp("/proc/self/stat", buf, sizeof(buf));
+  if (rc < 0)
+    return rc;
+    
+  /* find the last ')' */
+  s = strrchr(buf, ')');
   if (s == NULL)
     goto err;
 
@@ -1671,9 +1652,7 @@ int uv_resident_set_memory(size_t* rss) {
 
   errno = 0;
   val = strtol(s, NULL, 10);
-  if (errno != 0)
-    goto err;
-  if (val < 0)
+  if (val < 0 || errno != 0)
     goto err;
 
   *rss = val * getpagesize();
