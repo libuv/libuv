@@ -174,7 +174,7 @@ int uv_uptime(double* uptime) {
   time_t now;
   struct timeval info;
   size_t size = sizeof(info);
-  static int which[] = {CTL_KERN, KERN_BOOTTIME};
+  int which[] = {CTL_KERN, KERN_BOOTTIME};
 
   if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0))
     return UV__ERR(errno);
