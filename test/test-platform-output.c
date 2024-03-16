@@ -110,7 +110,7 @@ TEST_IMPL(platform_output) {
   if (cgroup_version == 0) {
     file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us", "r");
     if (file) {
-      if (fscanf(file, "%lu", &quota) == 1 && quota > 0) {
+      if (fscanf(file, "%lu", &quota) == 1 && quota > 0 && quota < ~0ULL) {
         fclose(file);
         file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_period_us", "r");
         if (file && fscanf(file, "%lu", &period) == 1) {
