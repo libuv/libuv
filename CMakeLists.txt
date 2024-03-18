@@ -20,7 +20,7 @@ include(CTest)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
-set(CMAKE_C_STANDARD 90)
+set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -358,24 +358,29 @@ if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
        src/unix/os390.c
        src/unix/os390-syscalls.c
        src/unix/os390-proctitle.c)
-  list(APPEND uv_cflags
-       -q64
-       -qascii
-       -qexportall
-       -qgonumber
-       -qlongname
-       -qlibansi
-       -qfloat=IEEE
-       -qtune=10
-       -qarch=10
-       -qasm
-       -qasmlib=sys1.maclib:sys1.modgen)
-  find_library(ZOSLIB
-    NAMES zoslib
-    PATHS ${ZOSLIB_DIR}
-    PATH_SUFFIXES lib
-  )
-  list(APPEND uv_libraries ${ZOSLIB})
+  if(${CMAKE_C_COMPILER} MATCHES xlclang)
+    list(APPEND uv_cflags
+      -fgnu-keywords
+      -q64
+      -qascii
+      -qexportall
+      -qgonumber
+      -qlongname
+      -qlibansi
+      -qfloat=IEEE
+      -qtune=10
+      -qarch=10
+      -qasm
+      -qasmlib=sys1.maclib:sys1.modgen)
+  else()
+    list(APPEND uv_cflags
+      -fgnu-keywords
+      -fno-short-enums
+      -fzos-le-char-mode=ascii
+      -m64
+      -march=arch10
+      -mtune=arch10)
+  endif()
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "OS400")
@@ -462,6 +467,12 @@ if(LIBUV_BUILD_SHARED)
   if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
     target_include_directories(uv PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
     set_target_properties(uv PROPERTIES LINKER_LANGUAGE CXX)
+    find_library(ZOSLIB
+      NAMES "libzoslib.x"
+      PATHS ${ZOSLIB_DIR}
+      PATH_SUFFIXES "lib"
+    )
+  target_link_libraries(uv ${ZOSLIB})
   endif()
   target_link_libraries(uv ${uv_libraries})
   set_target_properties(uv PROPERTIES OUTPUT_NAME "uv")
@@ -479,6 +490,12 @@ target_include_directories(uv_a
 if(CMAKE_SYSTEM_NAME STREQUAL "OS390")
   target_include_directories(uv_a PUBLIC $<BUILD_INTERFACE:${ZOSLIB_DIR}/include>)
   set_target_properties(uv_a PROPERTIES LINKER_LANGUAGE CXX)
+  find_library(ZOSLIB_A
+    NAMES "libzoslib.a"
+    PATHS ${ZOSLIB_DIR}
+    PATH_SUFFIXES "lib"
+  )
+  target_link_libraries(uv_a ${ZOSLIB_A})
 endif()
 target_link_libraries(uv_a ${uv_libraries})
 set_target_properties(uv_a PROPERTIES OUTPUT_NAME "uv")

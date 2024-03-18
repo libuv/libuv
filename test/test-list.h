@@ -469,7 +469,9 @@ TEST_DECLARE   (thread_rwlock_trylock)
 TEST_DECLARE   (thread_create)
 TEST_DECLARE   (thread_equal)
 TEST_DECLARE   (thread_affinity)
+#if !defined(__MVS__)
 TEST_DECLARE   (thread_priority)
+#endif
 TEST_DECLARE   (dlerror)
 #if (defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))) && \
     !defined(__sun)
@@ -1172,7 +1174,9 @@ TASK_LIST_START
   TEST_ENTRY  (thread_create)
   TEST_ENTRY  (thread_equal)
   TEST_ENTRY  (thread_affinity)
+#if !defined(__MVS__)
   TEST_ENTRY  (thread_priority)
+#endif
   TEST_ENTRY  (dlerror)
   TEST_ENTRY  (ip4_addr)
   TEST_ENTRY  (ip6_addr_link_local)

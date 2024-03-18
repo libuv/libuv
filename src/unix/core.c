@@ -586,6 +586,9 @@ int uv__accept(int sockfd) {
  * by making the system call directly. Musl libc is unaffected.
  */
 int uv__close_nocancel(int fd) {
+#if defined(__MVS__)
+  SAVE_ERRNO(epoll_file_close(fd));
+#endif
 #if defined(__APPLE__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
@@ -632,9 +635,6 @@ int uv__close_nocheckstdio(int fd) {
 
 int uv__close(int fd) {
   assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
-#if defined(__MVS__)
-  SAVE_ERRNO(epoll_file_close(fd));
-#endif
   return uv__close_nocheckstdio(fd);
 }
 
@@ -1564,6 +1564,7 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
  * for Linux, when schedule policy is SCHED_OTHER (default), priority is 0.
  * So the output parameter priority is actually the nice value.
 */
+#if !defined(__MVS__)
 int uv_thread_getpriority(uv_thread_t tid, int* priority) {
   int r;
   int policy;
@@ -1593,6 +1594,7 @@ int uv_thread_getpriority(uv_thread_t tid, int* priority) {
   *priority = param.sched_priority;
   return 0;
 }
+#endif
 
 #ifdef __linux__
 static int set_nice_for_calling_thread(int priority) {
@@ -1615,6 +1617,7 @@ static int set_nice_for_calling_thread(int priority) {
  * If the function succeeds, the return value is 0.
  * If the function fails, the return value is non-zero.
 */
+#if !defined(__MVS__)
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
   int r;
   int min;
@@ -1682,6 +1685,7 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
 
   return 0;
 }
+#endif
 
 int uv_os_uname(uv_utsname_t* buffer) {
   struct utsname buf;

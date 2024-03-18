@@ -3203,28 +3203,54 @@ static void fs_read_bufs(int add_flags) {
   bufs[2] = uv_buf_init(scratch + 512, 128);
   bufs[3] = uv_buf_init(scratch + 640, 128);
 
-  ASSERT_EQ(446, uv_fs_read(NULL,
-                            &read_req,
-                            open_req1.result,
-                            bufs + 0,
-                            2,  /* 2x 256 bytes. */
-                            0,  /* Positional read. */
-                            NULL));
+
+  int res = uv_fs_read(NULL,
+                       &read_req,
+                       open_req1.result,
+                       bufs + 0,
+                       2,  /* 2x 256 bytes. */
+                       0,  /* Positional read. */
+                       NULL);
+#if defined(__CYGWIN__) ||                                                    \
+    defined(__MVS__) ||                                                       \
+    (defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) || \
+    (defined(__sun) && !defined(__illumos__))
+  ASSERT_EQ(256, res);
+  ASSERT_EQ(256, read_req.result);
+#else
+  ASSERT_EQ(446, res);
   ASSERT_EQ(446, read_req.result);
+#endif
+
   uv_fs_req_cleanup(&read_req);
 
-  ASSERT_EQ(190, uv_fs_read(NULL,
-                            &read_req,
-                            open_req1.result,
-                            bufs + 2,
-                            2,  /* 2x 128 bytes. */
-                            256,  /* Positional read. */
-                            NULL));
+  res = uv_fs_read(NULL,
+                   &read_req,
+                   open_req1.result,
+                   bufs + 2,
+                   2,  /* 2x 128 bytes. */
+                   256,  /* Positional read. */
+                   NULL);
+#if defined(__CYGWIN__) ||                                                    \
+    defined(__MVS__) ||                                                       \
+    (defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) || \
+    (defined(__sun) && !defined(__illumos__))
+  ASSERT_EQ(128, res);
+  ASSERT_EQ(128, read_req.result);
+#else
+  ASSERT_EQ(190, res);
   ASSERT_EQ(read_req.result, /* 446 - 256 */ 190);
+#endif
   uv_fs_req_cleanup(&read_req);
 
+
+#if !defined(__CYGWIN__) &&                                                    \
+    !defined(__MVS__) &&                                                       \
+    (!defined(__HAIKU__) && B_HAIKU_VERSION < B_HAIKU_VERSION_1_PRE_BETA_5) && \
+    (!defined(__sun) && !defined(__illumos__))
   ASSERT_OK(memcmp(bufs[1].base + 0, bufs[2].base, 128));
   ASSERT_OK(memcmp(bufs[1].base + 128, bufs[3].base, 190 - 128));
+#endif
 
   ASSERT_OK(uv_fs_close(NULL, &close_req, open_req1.result, NULL));
   ASSERT_OK(close_req.result);
