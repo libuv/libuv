@@ -30,6 +30,8 @@ TEST_IMPL(iouring_pollhup) {
 
 #else  /* !_WIN32 */
 
+#include <unistd.h>  /* close() */
+
 static uv_pipe_t p1;
 static uv_pipe_t p2;
 static uv_idle_t idle_handle;
