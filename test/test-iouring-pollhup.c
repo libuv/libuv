@@ -74,6 +74,9 @@ static void read_data(uv_stream_t* stream,
 }
 
 TEST_IMPL(iouring_pollhup) {
+#ifdef _WIN32
+  RETURN_SKIP("Not on Windows.");
+#else
   uv_loop_t* loop;
   int pipefds[2];
 
@@ -96,4 +99,5 @@ TEST_IMPL(iouring_pollhup) {
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
+#endif
 }
