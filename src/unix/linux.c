@@ -712,23 +712,17 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
    * This avoids a problem where the same file description remains open
    * in another process, causing repeated junk epoll events.
    *
+   * Perform EPOLL_CTL_DEL immediately instead of going through
+   * io_uring's submit queue, otherwise the file descriptor may
+   * be closed by the time the kernel starts the operation.
+   *
    * We pass in a dummy epoll_event, to work around a bug in old kernels.
    *
    * Work around a bug in kernels 3.10 to 3.19 where passing a struct that
    * has the EPOLLWAKEUP flag set generates spurious audit syslog warnings.
    */
   memset(&dummy, 0, sizeof(dummy));
-
-  if (inv == NULL) {
-    epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &dummy);
-  } else {
-    uv__epoll_ctl_prep(loop->backend_fd,
-                       &lfields->ctl,
-                       inv->prep,
-                       EPOLL_CTL_DEL,
-                       fd,
-                       &dummy);
-  }
+  epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, &dummy);
 }
 
 
@@ -1215,6 +1209,10 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
 }
 
 
+/* Only for EPOLL_CTL_ADD and EPOLL_CTL_MOD. EPOLL_CTL_DEL should always be
+ * executed immediately, otherwise the file descriptor may have been closed
+ * by the time the kernel starts the operation.
+ */
 static void uv__epoll_ctl_prep(int epollfd,
                                struct uv__iou* ctl,
                                struct epoll_event (*events)[256],
@@ -1226,45 +1224,28 @@ static void uv__epoll_ctl_prep(int epollfd,
   uint32_t mask;
   uint32_t slot;
 
-  if (ctl->ringfd == -1) {
-    if (!epoll_ctl(epollfd, op, fd, e))
-      return;
+  assert(op == EPOLL_CTL_ADD || op == EPOLL_CTL_MOD);
+  assert(ctl->ringfd != -1);
 
-    if (op == EPOLL_CTL_DEL)
-      return;  /* Ignore errors, may be racing with another thread. */
+  mask = ctl->sqmask;
+  slot = (*ctl->sqtail)++ & mask;
 
-    if (op != EPOLL_CTL_ADD)
-      abort();
+  pe = &(*events)[slot];
+  *pe = *e;
 
-    if (errno != EEXIST)
-      abort();
+  sqe = ctl->sqe;
+  sqe = &sqe[slot];
 
-    /* File descriptor that's been watched before, update event mask. */
-    if (!epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, e))
-      return;
+  memset(sqe, 0, sizeof(*sqe));
+  sqe->addr = (uintptr_t) pe;
+  sqe->fd = epollfd;
+  sqe->len = op;
+  sqe->off = fd;
+  sqe->opcode = UV__IORING_OP_EPOLL_CTL;
+  sqe->user_data = op | slot << 2 | (int64_t) fd << 32;
 
-    abort();
-  } else {
-    mask = ctl->sqmask;
-    slot = (*ctl->sqtail)++ & mask;
-
-    pe = &(*events)[slot];
-    *pe = *e;
-
-    sqe = ctl->sqe;
-    sqe = &sqe[slot];
-
-    memset(sqe, 0, sizeof(*sqe));
-    sqe->addr = (uintptr_t) pe;
-    sqe->fd = epollfd;
-    sqe->len = op;
-    sqe->off = fd;
-    sqe->opcode = UV__IORING_OP_EPOLL_CTL;
-    sqe->user_data = op | slot << 2 | (int64_t) fd << 32;
-
-    if ((*ctl->sqhead & mask) == (*ctl->sqtail & mask))
-      uv__epoll_ctl_flush(epollfd, ctl, events);
-  }
+  if ((*ctl->sqhead & mask) == (*ctl->sqtail & mask))
+    uv__epoll_ctl_flush(epollfd, ctl, events);
 }
 
 
@@ -1405,8 +1386,22 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     w->events = w->pevents;
     e.events = w->pevents;
     e.data.fd = w->fd;
+    fd = w->fd;
 
-    uv__epoll_ctl_prep(epollfd, ctl, &prep, op, w->fd, &e);
+    if (ctl->ringfd != -1) {
+      uv__epoll_ctl_prep(epollfd, ctl, &prep, op, fd, &e);
+      continue;
+    }
+
+    if (!epoll_ctl(epollfd, op, fd, &e))
+      continue;
+
+    assert(op == EPOLL_CTL_ADD);
+    assert(errno == EEXIST);
+
+    /* File descriptor that's been watched before, update event mask. */
+    if (epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &e))
+      abort();
   }
 
   inv.events = events;
@@ -1494,8 +1489,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          *
          * Ignore all errors because we may be racing with another thread
          * when the file descriptor is closed.
+         *
+         * Perform EPOLL_CTL_DEL immediately instead of going through
+         * io_uring's submit queue, otherwise the file descriptor may
+         * be closed by the time the kernel starts the operation.
          */
-        uv__epoll_ctl_prep(epollfd, ctl, &prep, EPOLL_CTL_DEL, fd, pe);
+        epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, pe);
         continue;
       }
 
