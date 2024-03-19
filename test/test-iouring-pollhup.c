@@ -22,6 +22,14 @@
 #include "uv.h"
 #include "task.h"
 
+#ifdef _WIN32
+
+TEST_IMPL(iouring_pollhup) {
+  RETURN_SKIP("Not on Windows.");
+}
+
+#else  /* !_WIN32 */
+
 static uv_pipe_t p1;
 static uv_pipe_t p2;
 static uv_idle_t idle_handle;
@@ -74,9 +82,6 @@ static void read_data(uv_stream_t* stream,
 }
 
 TEST_IMPL(iouring_pollhup) {
-#ifdef _WIN32
-  RETURN_SKIP("Not on Windows.");
-#else
   uv_loop_t* loop;
   int pipefds[2];
 
@@ -99,5 +104,6 @@ TEST_IMPL(iouring_pollhup) {
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
-#endif
 }
+
+#endif  /* !_WIN32 */
