@@ -26,7 +26,6 @@
 #include <signal.h>
 #include <limits.h>
 #include <wchar.h>
-#include <malloc.h>    /* _alloca */
 
 #include "uv.h"
 #include "internal.h"
@@ -598,11 +597,9 @@ error:
 }
 
 
-int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
+static int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   wchar_t* a_eq;
   wchar_t* b_eq;
-  wchar_t* A;
-  wchar_t* B;
   int nb;
   int r;
 
@@ -617,27 +614,8 @@ int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   assert(b_eq);
   nb = b_eq - b;
 
-  A = _alloca((na+1) * sizeof(wchar_t));
-  B = _alloca((nb+1) * sizeof(wchar_t));
-
-  r = LCMapStringW(LOCALE_INVARIANT, LCMAP_UPPERCASE, a, na, A, na);
-  assert(r==na);
-  A[na] = L'\0';
-  r = LCMapStringW(LOCALE_INVARIANT, LCMAP_UPPERCASE, b, nb, B, nb);
-  assert(r==nb);
-  B[nb] = L'\0';
-
-  for (;;) {
-    wchar_t AA = *A++;
-    wchar_t BB = *B++;
-    if (AA < BB) {
-      return -1;
-    } else if (AA > BB) {
-      return 1;
-    } else if (!AA && !BB) {
-      return 0;
-    }
-  }
+  r = CompareStringOrdinal(a, na, b, nb, /*case insensitive*/TRUE);
+  return r - CSTR_EQUAL;
 }
 
 
@@ -676,6 +654,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   WCHAR* dst_copy;
   WCHAR** ptr_copy;
   WCHAR** env_copy;
+  char* p;
   size_t required_vars_value_len[ARRAY_SIZE(required_vars)];
 
   /* first pass: determine size in UTF-16 */
@@ -691,11 +670,13 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   }
 
   /* second pass: copy to UTF-16 environment block */
-  dst_copy = uv__malloc(env_len * sizeof(WCHAR));
-  if (dst_copy == NULL && env_len > 0) {
+  len = env_block_count * sizeof(WCHAR*);
+  p = uv__malloc(len + env_len * sizeof(WCHAR));
+  if (p == NULL) {
     return UV_ENOMEM;
   }
-  env_copy = _alloca(env_block_count * sizeof(WCHAR*));
+  env_copy = (void*) &p[0];
+  dst_copy = (void*) &p[len];
 
   ptr = dst_copy;
   ptr_copy = env_copy;
@@ -745,7 +726,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   /* final pass: copy, in sort order, and inserting required variables */
   dst = uv__malloc((1+env_len) * sizeof(WCHAR));
   if (!dst) {
-    uv__free(dst_copy);
+    uv__free(p);
     return UV_ENOMEM;
   }
 
@@ -790,7 +771,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   assert(env_len == (size_t) (ptr - dst));
   *ptr = L'\0';
 
-  uv__free(dst_copy);
+  uv__free(p);
   *dst_ptr = dst;
   return 0;
 }
