@@ -62,6 +62,7 @@ AM_CPPFLAGS += -I$(top_srcdir)/src/win \
                -D_WIN32_WINNT=0x0602
 libuv_la_SOURCES += src/win/async.c \
                     src/win/atomicops-inl.h \
+                    src/win/battery.c \
                     src/win/core.c \
                     src/win/detect-wakeup.c \
                     src/win/dl.c \
@@ -97,6 +98,7 @@ else  # WINNT
 uvinclude_HEADERS += include/uv/unix.h
 AM_CPPFLAGS += -I$(top_srcdir)/src/unix
 libuv_la_SOURCES += src/unix/async.c \
+                   src/unix/battery.c \
                    src/unix/core.c \
                    src/unix/dl.c \
                    src/unix/fs.c \
