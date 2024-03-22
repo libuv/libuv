@@ -911,7 +911,7 @@ Changes since version 1.41.0:
 
 * zos: treat __rfim_utok as binary (Shuowang (Wayne) Zhang)
 
-* zos: use execvpe() to set environ explictly (Shuowang (Wayne) Zhang)
+* zos: use execvpe() to set environ explicitly (Shuowang (Wayne) Zhang)
 
 * zos: use custom proctitle implementation (Shuowang (Wayne) Zhang)
 
@@ -3417,7 +3417,7 @@ Changes since version 1.9.1:
 
 * zos: implement uv__io_check_fd (John Barboza)
 
-* unix: unneccessary use const qualifier in container_of (John Barboza)
+* unix: unnecessary use const qualifier in container_of (John Barboza)
 
 * win,tty: add support for ANSI codes in win10 v1511 (Imran Iqbal)
 
@@ -5520,7 +5520,7 @@ Changes since version 0.11.8:
   is an int64_t, and no longer an int. (Bert Belder)
 
 * process: make uv_spawn() return some types of errors immediately on windows,
-  instead of passing the error code the the exit callback. This brings it on
+  instead of passing the error code the exit callback. This brings it on
   par with libuv's behavior on unix. (Bert Belder)
 
 
