@@ -287,15 +287,11 @@ typedef struct {
   DWORD tls_index;
 } uv_key_t;
 
-#define UV_ONCE_INIT { .init_once = INIT_ONCE_STATIC_INIT }
+#define UV_ONCE_INIT { 0, NULL }
 
-typedef union {
+typedef struct uv_once_s {
+  unsigned char unused;
   INIT_ONCE init_once;
-  /* TODO: remove in v2. */
-  struct {
-    unsigned char ran;
-    HANDLE event;
-  } unused;
 } uv_once_t;
 
 /* Platform-specific definitions for uv_spawn support. */
