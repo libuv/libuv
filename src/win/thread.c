@@ -38,8 +38,8 @@ typedef struct {
   uv__once_cb callback;
 } uv__once_data_t;
 
-static BOOL WINAPI uv__once_inner(INIT_ONCE *once, void *param, void **context) {
-  uv__once_data_t *data = param;
+static BOOL WINAPI uv__once_inner(INIT_ONCE *once, void* param, void** context) {
+  uv__once_data_t* data = param;
 
   data->callback();
 
