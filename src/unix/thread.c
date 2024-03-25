@@ -53,7 +53,7 @@
 
 
 #undef NANOSEC
-#define NANOSEC ((uint64_t) 1e9)
+#define NANOSEC (1000 * 1000 * 1000)
 
 /* Musl's PTHREAD_STACK_MIN is 2 KB on all architectures, which is
  * too small to safely receive signals on.
@@ -706,13 +706,13 @@ int uv_sem_trywait(uv_sem_t* sem) {
 #endif /* defined(__APPLE__) && defined(__MACH__) */
 
 
-#if defined(__APPLE__) && defined(__MACH__) || defined(__MVS__)
+#if defined(__MVS__)
 
 int uv_cond_init(uv_cond_t* cond) {
   return UV__ERR(pthread_cond_init(cond, NULL));
 }
 
-#else /* !(defined(__APPLE__) && defined(__MACH__)) */
+#else /* !defined(__MVS__) */
 
 int uv_cond_init(uv_cond_t* cond) {
   pthread_condattr_t attr;
@@ -743,7 +743,7 @@ error2:
   return UV__ERR(err);
 }
 
-#endif /* defined(__APPLE__) && defined(__MACH__) */
+#endif /* !defined(__MVS__) */
 
 void uv_cond_destroy(uv_cond_t* cond) {
 #if defined(__APPLE__) && defined(__MACH__)
@@ -824,24 +824,25 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
   struct timeval tv;
 #endif
 
-#if defined(__APPLE__) && defined(__MACH__)
-  ts.tv_sec = timeout / NANOSEC;
-  ts.tv_nsec = timeout % NANOSEC;
-  r = pthread_cond_timedwait_relative_np(cond, mutex, &ts);
-#else
 #if defined(__MVS__)
   if (gettimeofday(&tv, NULL))
     abort();
-  timeout += tv.tv_sec * NANOSEC + tv.tv_usec * 1e3;
+  ts.tv_sec = tv.tv_sec;
+  ts.tv_nsec = tv.tv_usec * 1000;
 #else
-  timeout += uv__hrtime(UV_CLOCK_PRECISE);
+  if (clock_gettime(CLOCK_MONOTONIC, &ts))
+    abort();
 #endif
-  ts.tv_sec = timeout / NANOSEC;
-  ts.tv_nsec = timeout % NANOSEC;
+
+  ts.tv_sec += timeout / NANOSEC;
+  ts.tv_nsec += timeout % NANOSEC;
+
+  if (ts.tv_nsec >= NANOSEC) {
+    ts.tv_nsec -= NANOSEC;
+    ts.tv_sec += 1;
+  }
+
   r = pthread_cond_timedwait(cond, mutex, &ts);
-#endif
-
-
   if (r == 0)
     return 0;
 
