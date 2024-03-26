@@ -4224,6 +4224,15 @@ typedef enum _FILE_INFORMATION_CLASS {
   FileNumaNodeInformation,
   FileStandardLinkInformation,
   FileRemoteProtocolInformation,
+  FileRenameInformationBypassAccessCheck,
+  FileLinkInformationBypassAccessCheck,
+  FileVolumeNameInformation,
+  FileIdInformation,
+  FileIdExtdDirectoryInformation,
+  FileReplaceCompletionInformation,
+  FileHardLinkFullIdInformation,
+  FileIdExtdBothDirectoryInformation,
+  FileDispositionInformationEx, /* based on https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/wdm/ne-wdm-_file_information_class */
   FileMaximumInformation
 } FILE_INFORMATION_CLASS, *PFILE_INFORMATION_CLASS;
 
@@ -4322,6 +4331,10 @@ typedef struct _FILE_ALL_INFORMATION {
 typedef struct _FILE_DISPOSITION_INFORMATION {
   BOOLEAN DeleteFile;
 } FILE_DISPOSITION_INFORMATION, *PFILE_DISPOSITION_INFORMATION;
+
+typedef struct _FILE_DISPOSITION_INFORMATION_EX {
+  DWORD Flags;
+} FILE_DISPOSITION_INFORMATION_EX, *PFILE_DISPOSITION_INFORMATION_EX;
 
 typedef struct _FILE_PIPE_LOCAL_INFORMATION {
   ULONG NamedPipeType;

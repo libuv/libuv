@@ -46,6 +46,17 @@
 #define UV_FS_FREE_PTR           0x0008
 #define UV_FS_CLEANEDUP          0x0010
 
+#ifndef FILE_DISPOSITION_DELETE
+#define FILE_DISPOSITION_DELETE                     0x0001
+#endif  /* FILE_DISPOSITION_DELETE */
+
+#ifndef FILE_DISPOSITION_POSIX_SEMANTICS
+#define FILE_DISPOSITION_POSIX_SEMANTICS            0x0002
+#endif  /* FILE_DISPOSITION_POSIX_SEMANTICS */
+
+#ifndef FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE
+#define FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE  0x0010
+#endif  /* FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE */
 
 #define INIT(subtype)                                                         \
   do {                                                                        \
@@ -1061,22 +1072,15 @@ void fs__write(uv_fs_t* req) {
 }
 
 
-void fs__rmdir(uv_fs_t* req) {
-  int result = _wrmdir(req->file.pathw);
-  if (result == -1)
-    SET_REQ_WIN32_ERROR(req, _doserrno);
-  else
-    SET_REQ_RESULT(req, 0);
-}
-
-
-void fs__unlink(uv_fs_t* req) {
+static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   const WCHAR* pathw = req->file.pathw;
   HANDLE handle;
   BY_HANDLE_FILE_INFORMATION info;
   FILE_DISPOSITION_INFORMATION disposition;
+  FILE_DISPOSITION_INFORMATION_EX disposition_ex;
   IO_STATUS_BLOCK iosb;
   NTSTATUS status;
+  DWORD error;
 
   handle = CreateFileW(pathw,
                        FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES | DELETE,
@@ -1097,10 +1101,17 @@ void fs__unlink(uv_fs_t* req) {
     return;
   }
 
-  if (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-    /* Do not allow deletion of directories, unless it is a symlink. When the
-     * path refers to a non-symlink directory, report EPERM as mandated by
-     * POSIX.1. */
+  if (isrmdir && !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+    /* Error if we're in rmdir mode but it is not a dir */
+    SET_REQ_UV_ERROR(req, UV_ENOTDIR, ERROR_DIRECTORY);
+    CloseHandle(handle);
+    return;
+  }
+
+  if (!isrmdir && (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+    /* If not explicitly allowed, do not allow deletion of directories, unless
+     * it is a symlink. When the path refers to a non-symlink directory, report
+     * EPERM as mandated by POSIX.1. */
 
     /* Check if it is a reparse point. If it's not, it's a normal directory. */
     if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
@@ -1112,7 +1123,7 @@ void fs__unlink(uv_fs_t* req) {
     /* Read the reparse point and check if it is a valid symlink. If not, don't
      * unlink. */
     if (fs__readlink_handle(handle, NULL, NULL) < 0) {
-      DWORD error = GetLastError();
+      error = GetLastError();
       if (error == ERROR_SYMLINK_NOT_SUPPORTED)
         error = ERROR_ACCESS_DENIED;
       SET_REQ_WIN32_ERROR(req, error);
@@ -1121,39 +1132,74 @@ void fs__unlink(uv_fs_t* req) {
     }
   }
 
-  if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
-    /* Remove read-only attribute */
-    FILE_BASIC_INFORMATION basic = { 0 };
+  /* Try posix delete first */
+  disposition_ex.Flags = FILE_DISPOSITION_DELETE | FILE_DISPOSITION_POSIX_SEMANTICS |
+                          FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE;
 
-    basic.FileAttributes = (info.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY) |
-                           FILE_ATTRIBUTE_ARCHIVE;
-
-    status = pNtSetInformationFile(handle,
-                                   &iosb,
-                                   &basic,
-                                   sizeof basic,
-                                   FileBasicInformation);
-    if (!NT_SUCCESS(status)) {
-      SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
-      CloseHandle(handle);
-      return;
-    }
-  }
-
-  /* Try to set the delete flag. */
-  disposition.DeleteFile = TRUE;
   status = pNtSetInformationFile(handle,
                                  &iosb,
-                                 &disposition,
-                                 sizeof disposition,
-                                 FileDispositionInformation);
+                                 &disposition_ex,
+                                 sizeof disposition_ex,
+                                 FileDispositionInformationEx);
   if (NT_SUCCESS(status)) {
     SET_REQ_SUCCESS(req);
   } else {
-    SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
+    /* If status == STATUS_CANNOT_DELETE here, given we set
+     * FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE, STATUS_CANNOT_DELETE can only mean
+     * that there is an existing mapped view to the file, preventing delete.
+     * STATUS_CANNOT_DELETE maps to UV_EACCES so it's not specifically worth handling  */
+    error = pRtlNtStatusToDosError(status);
+    if (error == ERROR_NOT_SUPPORTED /* filesystem does not support posix deletion */ ||
+        error == ERROR_INVALID_PARAMETER /* pre Windows 10 error */ ||
+        error == ERROR_INVALID_FUNCTION /* pre Windows 10 1607 error */) {
+      /* posix delete not supported so try fallback */
+      if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+        /* Remove read-only attribute */
+        FILE_BASIC_INFORMATION basic = { 0 };
+
+        basic.FileAttributes = (info.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY) |
+                              FILE_ATTRIBUTE_ARCHIVE;
+
+        status = pNtSetInformationFile(handle,
+                                      &iosb,
+                                      &basic,
+                                      sizeof basic,
+                                      FileBasicInformation);
+        if (!NT_SUCCESS(status)) {
+          SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
+          CloseHandle(handle);
+          return;
+        }
+      }
+
+      /* Try to set the delete flag. */
+      disposition.DeleteFile = TRUE;
+      status = pNtSetInformationFile(handle,
+                                    &iosb,
+                                    &disposition,
+                                    sizeof disposition,
+                                    FileDispositionInformation);
+      if (NT_SUCCESS(status)) {
+        SET_REQ_SUCCESS(req);
+      } else {
+        SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
+      }
+    } else {
+      SET_REQ_WIN32_ERROR(req, error);
+    }
   }
 
   CloseHandle(handle);
+}
+
+
+static void fs__rmdir(uv_fs_t* req) {
+  fs__unlink_rmdir(req, /*isrmdir*/1);
+}
+
+
+static void fs__unlink(uv_fs_t* req) {
+  fs__unlink_rmdir(req, /*isrmdir*/0);
 }
 
 
@@ -1182,7 +1228,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
   size_t len;
   uint64_t v;
   char* path;
-  
+
   path = (char*)req->path;
   len = wcslen(req->file.pathw);
   ep = req->file.pathw + len;
@@ -1655,7 +1701,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     statbuf->st_mode |= (_S_IREAD | _S_IWRITE) | ((_S_IREAD | _S_IWRITE) >> 3) |
                         ((_S_IREAD | _S_IWRITE) >> 6);
     statbuf->st_nlink = 1;
-    statbuf->st_blksize = 4096;    
+    statbuf->st_blksize = 4096;
     statbuf->st_rdev = FILE_DEVICE_NULL << 16;
     return 0;
   }
