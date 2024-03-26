@@ -92,7 +92,20 @@ Data types
              * search for the exact file name before trying variants with
              * extensions like '.exe' or '.cmd'.
              */
-            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
+            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7),
+            /*
+             * Run the subprocess as administrator. This option is only meaningful on
+             * Windows systems. On Unix it is silently ignored.
+             * This flag is mutually exclusive with UV_PROCESS_DETACHED. UV_EINVAL is
+             * returned when both are specified.
+             * This flag is mutually exclusive with the stdio, cwd, env and stdio_count options in
+             * the uv_process_options_t struct. UV_EINVAL is returned when any of them
+             * are specified.
+             *
+             * See https://github.com/libuv/libuv/issues/4295
+             */
+            UV_PROCESS_WINDOWS_RUNAS_ADMIN = (1 << 8)
+
         };
 
 .. c:type:: uv_stdio_container_t
