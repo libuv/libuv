@@ -172,6 +172,25 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(w->fd >= 0);
     assert(w->fd < (int) loop->nwatchers);
 
+#if UV__KQUEUE_EVFILT_USER
+    if (w == &loop->async_io_watcher && (w->pevents & POLLIN) != 0) {
+      filter = EVFILT_USER;
+      fflags = 0;
+      op = EV_ADD | EV_CLEAR;
+
+      EV_SET(events + nevents, w->fd, filter, op, fflags, 0, 0);
+
+      if (++nevents == ARRAY_SIZE(events)) {
+        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+          abort();
+        nevents = 0;
+      }
+
+      w->events = w->pevents;
+      continue;
+    }
+ #endif
+
     if ((w->events & POLLIN) == 0 && (w->pevents & POLLIN) != 0) {
       filter = EVFILT_READ;
       fflags = 0;
@@ -345,7 +364,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       revents = 0;
 
+#if UV__KQUEUE_EVFILT_USER
+      if (ev->filter == EVFILT_READ || ev->filter == EVFILT_USER) {
+#else
       if (ev->filter == EVFILT_READ) {
+#endif
         if (w->pevents & POLLIN)
           revents |= POLLIN;
         else
