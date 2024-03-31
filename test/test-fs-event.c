@@ -81,6 +81,22 @@ static void create_file(const char* name) {
   uv_fs_req_cleanup(&req);
 }
 
+static int delete_dir(const char* name) {
+  int r;
+  uv_fs_t req;
+  r = uv_fs_rmdir(NULL, &req, name, NULL);
+  uv_fs_req_cleanup(&req);
+  return r;
+}
+
+static int delete_file(const char* name) {
+  int r;
+  uv_fs_t req;
+  r = uv_fs_unlink(NULL, &req, name, NULL);
+  uv_fs_req_cleanup(&req);
+  return r;
+}
+
 static void touch_file(const char* name) {
   int r;
   uv_file file;
@@ -129,6 +145,19 @@ static void fs_event_cb_dir(uv_fs_event_t* handle, const char* filename,
   uv_close((uv_handle_t*)handle, close_cb);
 }
 
+static void fs_event_cb_del_dir(uv_fs_event_t* handle,
+                                const char* filename,
+                                int events,
+                                int status) {
+  ++fs_event_cb_called;
+  ASSERT_PTR_EQ(handle, &fs_event);
+  ASSERT_OK(status);
+  ASSERT_EQ(events, UV_RENAME);
+  ASSERT_OK(strcmp(filename, "watch_del_dir"));
+  ASSERT_OK(uv_fs_event_stop(handle));
+  uv_close((uv_handle_t*)handle, close_cb);
+}
+
 static const char* fs_event_get_filename(int i) {
   snprintf(fs_event_filename,
            sizeof(fs_event_filename),
@@ -152,6 +181,15 @@ static void fs_event_create_files(uv_timer_t* handle) {
   }
 }
 
+static void fs_event_del_dir(uv_timer_t* handle) {
+  int r;
+
+  r = delete_dir("watch_del_dir");
+  ASSERT_OK(r);
+
+  uv_close((uv_handle_t*)handle, close_cb);
+}
+
 static void fs_event_unlink_files(uv_timer_t* handle) {
   int r;
   int i;
@@ -160,7 +198,7 @@ static void fs_event_unlink_files(uv_timer_t* handle) {
   if (handle == NULL) {
     /* Unlink all files */
     for (i = 0; i < 16; i++) {
-      r = remove(fs_event_get_filename(i));
+      r = delete_file(fs_event_get_filename(i));
       if (handle != NULL)
         ASSERT_OK(r);
     }
@@ -169,7 +207,7 @@ static void fs_event_unlink_files(uv_timer_t* handle) {
     ASSERT_LT(fs_event_removed, fs_event_file_count);
 
     /* Remove the file */
-    ASSERT_OK(remove(fs_event_get_filename(fs_event_removed)));
+    ASSERT_OK(delete_file(fs_event_get_filename(fs_event_removed)));
 
     if (++fs_event_removed < fs_event_file_count) {
       /* Remove another file on a different event loop tick.  We do it this way
@@ -237,7 +275,7 @@ static void fs_event_unlink_files_in_subdir(uv_timer_t* handle) {
   if (handle == NULL) {
     /* Unlink all files */
     for (i = 0; i < 16; i++) {
-      r = remove(fs_event_get_filename_in_subdir(i));
+      r = delete_file(fs_event_get_filename_in_subdir(i));
       if (handle != NULL)
         ASSERT_OK(r);
     }
@@ -246,7 +284,7 @@ static void fs_event_unlink_files_in_subdir(uv_timer_t* handle) {
     ASSERT_LT(fs_event_removed, fs_event_file_count);
 
     /* Remove the file */
-    ASSERT_OK(remove(fs_event_get_filename_in_subdir(fs_event_removed)));
+    ASSERT_OK(delete_file(fs_event_get_filename_in_subdir(fs_event_removed)));
 
     if (++fs_event_removed < fs_event_file_count) {
       /* Remove another file on a different event loop tick.  We do it this way
@@ -407,9 +445,9 @@ TEST_IMPL(fs_event_watch_dir) {
 
   /* Setup */
   fs_event_unlink_files(NULL);
-  remove("watch_dir/file2");
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file2");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
 
   r = uv_fs_event_init(loop, &fs_event);
@@ -428,9 +466,47 @@ TEST_IMPL(fs_event_watch_dir) {
 
   /* Cleanup */
   fs_event_unlink_files(NULL);
-  remove("watch_dir/file2");
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file2");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+TEST_IMPL(fs_event_watch_delete_dir) {
+#if defined(NO_FS_EVENTS)
+  RETURN_SKIP(NO_FS_EVENTS);
+#elif defined(__MVS__)
+  RETURN_SKIP("Directory watching not supported on this platform.");
+#elif defined(__APPLE__) && defined(__TSAN__)
+  RETURN_SKIP("Times out under TSAN.");
+#endif
+
+  uv_loop_t* loop = uv_default_loop();
+  int r;
+
+  /* Setup */
+  fs_event_unlink_files(NULL);
+  delete_dir("watch_del_dir/");
+  create_dir("watch_del_dir");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_del_dir, "watch_del_dir", 0);
+  ASSERT_OK(r);
+  r = uv_timer_init(loop, &timer);
+  ASSERT_OK(r);
+  r = uv_timer_start(&timer, fs_event_del_dir, 100, 0);
+  ASSERT_OK(r);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(1, fs_event_cb_called);
+  ASSERT_EQ(2, close_cb_called);
+
+  /* Cleanup */
+  fs_event_unlink_files(NULL);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -448,10 +524,10 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
   /* Setup */
   loop = uv_default_loop();
   fs_event_unlink_files(NULL);
-  remove("watch_dir/file2");
-  remove("watch_dir/file1");
-  remove("watch_dir/subdir");
-  remove("watch_dir/");
+  delete_file("watch_dir/file2");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/subdir");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
   create_dir("watch_dir/subdir");
 
@@ -491,10 +567,10 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 
   /* Cleanup */
   fs_event_unlink_files_in_subdir(NULL);
-  remove("watch_dir/file2");
-  remove("watch_dir/file1");
-  remove("watch_dir/subdir");
-  remove("watch_dir/");
+  delete_file("watch_dir/file2");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/subdir");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -512,8 +588,8 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
 
   /* Setup */
   loop = uv_default_loop();
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
   create_file("watch_dir/file1");
 
@@ -540,8 +616,8 @@ TEST_IMPL(fs_event_watch_dir_short_path) {
   }
 
   /* Cleanup */
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
 
@@ -562,9 +638,9 @@ TEST_IMPL(fs_event_watch_file) {
   int r;
 
   /* Setup */
-  remove("watch_dir/file2");
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file2");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
   create_file("watch_dir/file1");
   create_file("watch_dir/file2");
@@ -585,9 +661,9 @@ TEST_IMPL(fs_event_watch_file) {
   ASSERT_EQ(2, close_cb_called);
 
   /* Cleanup */
-  remove("watch_dir/file2");
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file2");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -609,9 +685,9 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
   loop = uv_default_loop();
 
   /* Setup */
-  remove("watch_dir/file.js");
-  remove("watch_dir/file.jsx");
-  remove("watch_dir/");
+  delete_file("watch_dir/file.js");
+  delete_file("watch_dir/file.jsx");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
   create_file("watch_dir/file.js");
   create_file("watch_dir/file.jsx");
@@ -638,9 +714,9 @@ TEST_IMPL(fs_event_watch_file_exact_path) {
   ASSERT_EQ(2, timer_cb_exact_called);
 
   /* Cleanup */
-  remove("watch_dir/file.js");
-  remove("watch_dir/file.jsx");
-  remove("watch_dir/");
+  delete_file("watch_dir/file.js");
+  delete_file("watch_dir/file.jsx");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -681,7 +757,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   loop = uv_default_loop();
 
   /* Setup */
-  remove("watch_file");
+  delete_file("watch_file");
   create_file("watch_file");
 #if defined(__APPLE__) && !defined(MAC_OS_X_VERSION_10_12)
   /* Empirically, kevent seems to (sometimes) report the preceding
@@ -719,7 +795,7 @@ TEST_IMPL(fs_event_watch_file_current_dir) {
   ASSERT_EQ(1, close_cb_called);
 
   /* Cleanup */
-  remove("watch_file");
+  delete_file("watch_file");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -761,8 +837,8 @@ TEST_IMPL(fs_event_no_callback_after_close) {
   int r;
 
   /* Setup */
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
   create_file("watch_dir/file1");
 
@@ -783,8 +859,8 @@ TEST_IMPL(fs_event_no_callback_after_close) {
   ASSERT_EQ(1, close_cb_called);
 
   /* Cleanup */
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -799,8 +875,8 @@ TEST_IMPL(fs_event_no_callback_on_close) {
   int r;
 
   /* Setup */
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
   create_file("watch_dir/file1");
 
@@ -820,8 +896,8 @@ TEST_IMPL(fs_event_no_callback_on_close) {
   ASSERT_EQ(1, close_cb_called);
 
   /* Cleanup */
-  remove("watch_dir/file1");
-  remove("watch_dir/");
+  delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -893,8 +969,8 @@ TEST_IMPL(fs_event_close_with_pending_event) {
   ASSERT_EQ(1, close_cb_called);
 
   /* Clean up */
-  remove("watch_dir/file");
-  remove("watch_dir/");
+  delete_file("watch_dir/file");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -918,7 +994,7 @@ TEST_IMPL(fs_event_close_with_pending_delete_event) {
   ASSERT_OK(r);
 
   /* Generate an fs event. */
-  remove("watch_dir/file");
+  delete_file("watch_dir/file");
 
   /* Allow time for the remove event to propagate to the pending list. */
   /* XXX - perhaps just for __sun? */
@@ -932,7 +1008,7 @@ TEST_IMPL(fs_event_close_with_pending_delete_event) {
   ASSERT_EQ(1, close_cb_called);
 
   /* Clean up */
-  remove("watch_dir/");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -975,7 +1051,7 @@ TEST_IMPL(fs_event_close_in_callback) {
 
   /* Clean up */
   fs_event_unlink_files(NULL);
-  remove("watch_dir/");
+  delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
@@ -1011,7 +1087,7 @@ TEST_IMPL(fs_event_start_and_close) {
 
   ASSERT_EQ(2, close_cb_called);
 
-  remove("watch_dir/");
+  delete_dir("watch_dir/");
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
@@ -1064,7 +1140,7 @@ TEST_IMPL(fs_event_getpath) {
     close_cb_called = 0;
   }
 
-  remove("watch_dir/");
+  delete_dir("watch_dir/");
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
@@ -1103,7 +1179,7 @@ TEST_IMPL(fs_event_error_reporting) {
 
   TEST_FILE_LIMIT(ARRAY_SIZE(loops) * 3);
 
-  remove("watch_dir/");
+  delete_dir("watch_dir/");
   create_dir("watch_dir");
 
   /* Create a lot of loops, and start FSEventStream in each of them.
@@ -1153,7 +1229,7 @@ TEST_IMPL(fs_event_error_reporting) {
     uv_loop_close(loop);
   } while (i-- != 0);
 
-  remove("watch_dir/");
+  delete_dir("watch_dir/");
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
@@ -1207,7 +1283,7 @@ TEST_IMPL(fs_event_stop_in_cb) {
   RETURN_SKIP(NO_FS_EVENTS);
 #endif
 
-  remove(path);
+  delete_file(path);
   create_file(path);
 
   ASSERT_OK(uv_fs_event_init(uv_default_loop(), &fs));
@@ -1230,7 +1306,7 @@ TEST_IMPL(fs_event_stop_in_cb) {
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(1, fs_event_cb_stop_calls);
 
-  remove(path);
+  delete_file(path);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
