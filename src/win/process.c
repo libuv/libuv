@@ -1036,7 +1036,7 @@ int uv_spawn(uv_loop_t* loop,
     /* Use SW_HIDE to avoid any potential process window. */
     startup.wShowWindow = SW_HIDE;
   } else {
-    startup.wShowWindow = SW_SHOWDEFAULT;
+    startup.wShowWindow = SW_SHOWNORMAL;
   }
 
   if (options->flags & UV_PROCESS_DETACHED) {
