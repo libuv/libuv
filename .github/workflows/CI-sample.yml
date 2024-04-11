@@ -6,6 +6,7 @@ on:
       - '**'
       - '!docs/**'
       - '!.**'
+      - 'docs/code/**'
       - '.github/workflows/CI-sample.yml'
   push:
     branches:

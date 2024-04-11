@@ -1259,6 +1259,9 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
     SetLastError(ERROR_SUCCESS);
     len = GetEnvironmentVariableW(name_w, var, varlen);
 
+    if (len == 0)
+      r = uv_translate_sys_error(GetLastError());
+
     if (len < varlen)
       break;
 
@@ -1280,15 +1283,8 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
   uv__free(name_w);
   name_w = NULL;
 
-  if (len == 0) {
-    r = GetLastError();
-    if (r != ERROR_SUCCESS) {
-      r = uv_translate_sys_error(r);
-      goto fail;
-    }
-  }
-
-  r = uv__copy_utf16_to_utf8(var, len, buffer, size);
+  if (r == 0)
+    r = uv__copy_utf16_to_utf8(var, len, buffer, size);
 
 fail:
 
