@@ -29,7 +29,7 @@
 #define CHECK_HANDLE(handle) \
   ASSERT_NE((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client, 0)
 
-#define MULTICAST_ADDR "239.255.0.1"
+#define MULTICAST_ADDR "224.0.0.9"
 
 static uv_udp_t server;
 static uv_udp_t client;
