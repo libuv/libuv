@@ -333,7 +333,7 @@ to hand off their I/O to other processes. Applications include load-balancing
 servers, worker processes and other ways to make optimum use of CPU. libuv only
 supports sending **TCP sockets or other pipes** over pipes for now.
 
-To demonstrate, we will look at a echo server implementation that hands of
+To demonstrate, we will look at an echo server implementation that hands off
 clients to worker processes in a round-robin fashion. This program is a bit
 involved, and while only snippets are included in the book, it is recommended
 to read the full code to really understand it.
