@@ -1233,6 +1233,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_file dstfd;
   struct stat src_statsbuf;
   struct stat dst_statsbuf;
+  struct timespec times[2];
   int dst_flags;
   int result;
   int err;
@@ -1309,6 +1310,29 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
       err = 0;
     }
   }
+
+  /**
+   * Change the timestamps of the destination file to match the source file.
+   */
+#if defined(__APPLE__)
+  times[0] = src_statsbuf.st_atimespec;
+  times[1] = src_statsbuf.st_mtimespec;
+#else
+  times[0] = src_statsbuf.st_atim;
+  times[1] = src_statsbuf.st_mtim;
+#endif
+
+  if (futimens(dstfd, times) == -1) {
+    err = UV__ERR(errno);
+    goto out;
+  }
+
+  /*
+   * Change the ownership and permissions of the destination file to match the
+   * source file.
+   * `cp -p` does not care about errors here, so we don't either.
+   */
+  fchown(dstfd, src_statsbuf.st_uid, src_statsbuf.st_gid);
 
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
