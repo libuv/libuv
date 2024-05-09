@@ -31,8 +31,8 @@ jobs:
              mkdir libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\bin
              mkdir libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\lib
              move include libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\
-             move Release/uv.lib libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\lib\
-             move Release/uv.dll libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\bin\
+             move build/Release/uv.lib libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\lib\
+             move build/Release/uv.dll libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\bin\
              7z a libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}.zip libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\* -tzip -y
       - name: Upload the windows binary artifacts
         uses: svenstaro/upload-release-action@v2
