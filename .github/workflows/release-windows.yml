@@ -6,32 +6,40 @@ on:
 
 jobs:
   windows:
-    name: windows-build
+    name: windows-build (${{ matrix.arch }})
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, Win32]
     steps:
-      - uses: actions/checkout@v3
-      - name: CMake build
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.arch }}
+      - uses: actions/checkout@v4
+      - name: Configure
         run: |
-             cmake .
-      - name: Setup MSBuild.exe
-        uses: microsoft/setup-msbuild@v1.0.2
-      - name: CMake release
+            mkdir build
+            cd build
+            cmake .. -D BUILD_TESTING=OFF -A ${{ matrix.arch }}
+      - name: Build
         run: |
-             msbuild INSTALL.vcxproj /p:Configuration=Release
+            cd build
+            cmake --build . --config Release
       - name: Create binary archive from release
         run: |
-             mkdir libuv-${{ github.event.release.tag_name }}\bin
-             mkdir libuv-${{ github.event.release.tag_name }}\lib
-             move include libuv-${{ github.event.release.tag_name }}\
-             move Release/uv.lib libuv-${{ github.event.release.tag_name }}\lib\
-             move Release/uv.dll libuv-${{ github.event.release.tag_name }}\bin\
-             7z a libuv-${{ github.event.release.tag_name }}.zip libuv-${{ github.event.release.tag_name }}\* -tzip -y
+             mkdir libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\bin
+             mkdir libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\lib
+             move include libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\
+             move Release/uv.lib libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\lib\
+             move Release/uv.dll libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\bin\
+             7z a libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}.zip libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}\* -tzip -y
       - name: Upload the windows binary artifacts
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: libuv-${{ github.event.release.tag_name }}.zip
-          asset_name: libuv-${{ github.event.release.tag_name }}-windows
+          file: libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}.zip
+          asset_name: libuv-${{ github.event.release.tag_name }}-${{ matrix.arch }}-windows
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true

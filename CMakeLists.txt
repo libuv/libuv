@@ -17,6 +17,9 @@ include(CheckCCompilerFlag)
 include(GNUInstallDirs)
 include(CTest)
 
+message("Generated with config types: ${CMAKE_CONFIGURATION_TYPES}")
+set(CMAKE_CONFIGURATION_TYPES=Debug;Release)
+
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
