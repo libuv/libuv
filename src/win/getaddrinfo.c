@@ -20,7 +20,7 @@
  */
 
 #include <assert.h>
-
+#include <windns.h>
 #include "uv.h"
 #include "internal.h"
 #include "req-inl.h"
@@ -31,6 +31,13 @@
 
 /* Needed for ConvertInterfaceIndexToLuid and ConvertInterfaceLuidToNameA */
 #include <iphlpapi.h>
+#ifndef DNS_TYPE_A
+#define DNS_TYPE_A 1
+#endif
+
+#ifndef DNS_QUERY_STANDARD
+#define DNS_QUERY_STANDARD 0x00000001
+#endif
 
 int uv__getaddrinfo_translate_error(int sys_err) {
   switch (sys_err) {
@@ -88,7 +95,7 @@ static void uv__getaddrinfo_work(struct uv__work* w) {
   req = container_of(w, uv_getaddrinfo_t, work_req);
   hints = req->addrinfow;
   req->addrinfow = NULL;
-  err = GetAddrInfoW(req->node, req->service, hints, &req->addrinfow);
+  err = DnsQuery_W(req->node, DNS_TYPE_A, DNS_QUERY_STANDARD, NULL, &req->addrinfow, NULL);
   req->retcode = uv__getaddrinfo_translate_error(err);
 }
 
@@ -201,7 +208,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
 
   /* return memory to system */
   if (req->addrinfow != NULL) {
-    FreeAddrInfoW(req->addrinfow);
+    DnsRecordListFree(req->addrinfow, DnsFreeRecordList);
     req->addrinfow = NULL;
   }
 
