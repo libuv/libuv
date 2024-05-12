@@ -1233,7 +1233,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   uv_file dstfd;
   struct stat src_statsbuf;
   struct stat dst_statsbuf;
+#if defined(_AIX) && _XOPEN_SOURCE>=700 && defined(_ALL_SOURCE)
+  st_timespec_t times[2];
+#else
   struct timespec times[2];
+#endif
   int dst_flags;
   int result;
   int err;
