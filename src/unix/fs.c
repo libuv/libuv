@@ -57,6 +57,7 @@
 
 #if defined(__APPLE__)
 # include <sys/sysctl.h>
+# include <sys/mman.h>
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
 # define FICLONE _IOW(0x94, 9, int)
@@ -1241,6 +1242,10 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   off_t in_offset;
   off_t bytes_written;
   size_t bytes_chunk;
+  /* buffer for copy-on-write */
+#if defined(__APPLE__)
+  char* cow_buf;
+#endif
 
   dstfd = -1;
   err = 0;
@@ -1372,6 +1377,46 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     err = UV_ENOSYS;
     goto out;
   }
+#endif
+
+/* Try copy-on-write in macOS */
+#if defined(__APPLE__)
+  if (req->flags & UV_FS_COPYFILE_FICLONE ||
+      req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+    /* Map the source file into memory using MAP_PRIVATE for copy-on-write */
+    cow_buf = mmap(NULL,
+                   src_statsbuf.st_size,
+                   PROT_READ,
+                   MAP_PRIVATE,
+                   srcfd,
+                   0);
+    if (cow_buf == MAP_FAILED) {
+      /* If an error occurred and force was set, return the error to the caller;
+       * fall back to sendfile() when force was not set. */
+      if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+        err = UV__ERR(errno);
+        goto out;
+      } else {
+        goto fallback;
+      }
+    }
+
+    /* Write the mapped source file to the destination file */
+    if (write(dstfd, cow_buf, src_statsbuf.st_size) == src_statsbuf.st_size) {
+      /* Everything went fine now unmap the source file */
+      if (munmap(cow_buf, src_statsbuf.st_size) == 0) {
+        goto out;
+      }
+    }
+
+    /* If an error occurred and force was set, return the error to the caller;
+     * fall back to sendfile() when force was not set. */
+    if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+      err = UV__ERR(errno);
+      goto out;
+    }
+  }
+fallback:
 #endif
 
   bytes_to_send = src_statsbuf.st_size;
