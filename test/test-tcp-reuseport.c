@@ -26,7 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__sun) && !defined(_AIX73)
+#if !defined(__linux__) && !defined(__FreeBSD__) && \
+    !defined(__DragonFly__) && !defined(__sun) && !defined(_AIX73)
 
 TEST_IMPL(tcp_reuseport) {
   struct sockaddr_in addr;
@@ -97,7 +98,8 @@ static void ticktack(uv_timer_t* timer) {
 static void on_connection(uv_stream_t* server, int status)
 {
   ASSERT_OK(status);
-  ASSERT(server == (uv_stream_t*) &main_handle || server == (uv_stream_t*) &thread_handle);
+  ASSERT(server == (uv_stream_t*) &main_handle || \
+         server == (uv_stream_t*) &thread_handle);
 
   uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
   ASSERT_OK(uv_tcp_init(server->loop, client));
