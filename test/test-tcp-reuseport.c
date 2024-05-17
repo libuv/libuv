@@ -43,11 +43,7 @@ TEST_IMPL(tcp_reuseport) {
   ASSERT_OK(r);
 
   r = uv_tcp_bind(&handle, (const struct sockaddr*) &addr, UV_TCP_REUSEPORT);
-#ifdef _WIN32
   ASSERT_EQ(r, UV_ENOTSUP);
-#else
-  ASSERT_EQ(r, EOPNOTSUPP);
-#endif
 
   MAKE_VALGRIND_HAPPY(loop);
 

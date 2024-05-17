@@ -186,7 +186,7 @@ static int uv__tcp_reuseport(int fd) {
    * other than those mentioned above. The semantics are completely different,
    * therefore we shouldn't enable it, but fail this operation to indicate that
    * UV_TCP_REUSEPORT is not supported on these platforms. */
-  return EOPNOTSUPP;
+  return UV_ENOTSUP;
 #endif
 
   return 0;
