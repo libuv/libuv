@@ -150,8 +150,6 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
 
 static int uv__tcp_reuseport(int fd) {
   int on = 1;
-  (void) (fd);
-  (void) (on);
 #if defined(__FreeBSD__) && __FreeBSD__ >= 12 && defined(SO_REUSEPORT_LB)
   /* FreeBSD 12 introduced a new socket option named SO_REUSEPORT_LB
    * with the capability of load balancing, it's the substitution of
@@ -182,11 +180,13 @@ static int uv__tcp_reuseport(int fd) {
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)))
     return UV__ERR(errno);
 #else
+  (void) (fd);
+  (void) (on);
   /* SO_REUSEPORTs do not have the capability of load balancing on platforms
    * other than those mentioned above. The semantics are completely different,
    * therefore we shouldn't enable it, but fail this operation to indicate that
    * UV_TCP_REUSEPORT is not supported on these platforms. */
-  return UV__ERR(EOPNOTSUPP);
+  return EOPNOTSUPP;
 #endif
 
   return 0;

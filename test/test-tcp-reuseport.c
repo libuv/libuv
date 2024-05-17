@@ -173,7 +173,11 @@ TEST_IMPL(tcp_reuseport) {
 
   uv_thread_join(&thread_loop_id);
 
-  /* Verify if each listener per event loop accepted connections. */
+  /* Verify if each listener per event loop accepted connections
+   * and the amount of accepted connections matches the one of
+   * connected connections.
+   */
+  ASSERT_EQ(accepted, MAX_TCP_CLIENTS);
   ASSERT_EQ(connected, MAX_TCP_CLIENTS);
   ASSERT_GT(main_loop_accepted, 0);
   ASSERT_GT(thread_loop_accepted, 0);
