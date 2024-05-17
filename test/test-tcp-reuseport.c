@@ -29,7 +29,29 @@
 #if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__sun) && !defined(_AIX73)
 
 TEST_IMPL(tcp_reuseport) {
-  RETURN_SKIP("Run this test only on Linux, FreeBSD, DragonFlyBSD, Solaris, and AIX for now.");
+  struct sockaddr_in addr;
+  uv_loop_t* loop;
+  uv_tcp_t handle;
+  int r;
+
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  loop = uv_default_loop();
+  ASSERT_NOT_NULL(loop);
+
+  r = uv_tcp_init(loop, &handle);
+  ASSERT_OK(r);
+
+  r = uv_tcp_bind(&handle, (const struct sockaddr*) &addr, UV_TCP_REUSEPORT);
+#ifdef _WIN32
+  ASSERT_EQ(r, UV_ENOTSUP);
+#else
+  ASSERT_EQ(r, EOPNOTSUPP);
+#endif
+
+  MAKE_VALGRIND_HAPPY(loop);
+
+  return 0;
 }
 
 #else
