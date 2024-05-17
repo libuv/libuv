@@ -436,10 +436,10 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
 /* On the BSDs, SO_REUSEPORT implies SO_REUSEADDR but with some additional
  * refinements for programs that use multicast.
  *
- * Linux as of 3.9 has a SO_REUSEPORT socket option but with semantics that
- * are different from the BSDs: it _shares_ the port rather than steal it
- * from the current listener.  While useful, it's not something we can emulate
- * on other platforms so we don't enable it.
+ * Linux as of 3.9 and DragonflyBSD 3.6 have the SO_REUSEPORT socket option but
+ * with semantics that are different from the BSDs: it _shares_ the port rather
+ * than steal it from the current listener. While useful, it's not something we
+ * can emulate on other platforms so we don't enable it.
  *
  * zOS does not support getsockname with SO_REUSEPORT option when using
  * AF_UNIX.
