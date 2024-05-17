@@ -57,7 +57,9 @@ static void on_close(uv_handle_t* handle) {
   free(handle);
 }
 
-static void ticktack(uv_timer_t* handle) {
+static void ticktack(uv_timer_t* timer) {
+  ASSERT(timer == &main_timer_handle || timer == &thread_timer_handle);
+
   int done = 0;
   uv_mutex_lock(&mutex);
   if (accepted == MAX_TCP_CLIENTS) {
@@ -66,10 +68,10 @@ static void ticktack(uv_timer_t* handle) {
   uv_mutex_unlock(&mutex);
 
   if (done) {
-    uv_close((uv_handle_t*) handle, NULL);
-    if (handle->loop == main_loop)
+    uv_close((uv_handle_t*) timer, NULL);
+    if (timer->loop == main_loop)
       uv_close((uv_handle_t*) &main_handle, NULL);
-    if (handle->loop == thread_loop)
+    if (timer->loop == thread_loop)
       uv_close((uv_handle_t*) &thread_handle, NULL);
   }
 }
@@ -77,6 +79,7 @@ static void ticktack(uv_timer_t* handle) {
 static void on_connection(uv_stream_t* server, int status)
 {
   ASSERT_OK(status);
+  ASSERT(server == (uv_stream_t*) &main_handle || server == (uv_stream_t*) &thread_handle);
 
   uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
   ASSERT_OK(uv_tcp_init(server->loop, client));
@@ -97,6 +100,7 @@ static void on_connection(uv_stream_t* server, int status)
 static void on_connect(uv_connect_t* req, int status) {
   ASSERT_OK(status);
   ASSERT_NOT_NULL(req->handle);
+  ASSERT_PTR_EQ(req->handle->loop, main_loop);
 
   connected++;
   uv_close((uv_handle_t*) req->handle, NULL);
@@ -105,6 +109,7 @@ static void on_connect(uv_connect_t* req, int status) {
 static void run_event_loop(void* arg) {
   int r;
   uv_loop_t* loop = (uv_loop_t*) arg;
+  ASSERT_PTR_EQ(loop, thread_loop);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);
@@ -164,6 +169,7 @@ TEST_IMPL(tcp_reuseport) {
   uv_thread_create(&thread_loop_id, run_event_loop, thread_loop);
 
   r = uv_run(main_loop, UV_RUN_DEFAULT);
+  ASSERT_OK(r);
 
   uv_thread_join(&thread_loop_id);
 
