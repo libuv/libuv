@@ -293,8 +293,8 @@ static int uv__tcp_try_bind(uv_tcp_t* handle,
   int r;
 
   /* There is no SO_REUSEPORT on Windows, Windows only knows SO_REUSEADDR.
-  * so we just return an error directly when UV_TCP_REUSEPORT is requested
-  * for binding the socket. */
+   * so we just return an error directly when UV_TCP_REUSEPORT is requested
+   * for binding the socket. */
   if (flags & UV_TCP_REUSEPORT)
     return ERROR_NOT_SUPPORTED;
 
