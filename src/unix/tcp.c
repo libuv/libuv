@@ -150,6 +150,8 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
 
 static int uv__tcp_reuseport(int fd) {
   int on = 1;
+  (void) (fd);
+  (void) (on);
 #if defined(__FreeBSD__) && __FreeBSD__ >= 12 && defined(SO_REUSEPORT_LB)
   /* FreeBSD 12 introduced a new socket option named SO_REUSEPORT_LB
    * with the capability of load balancing, it's the substitution of
