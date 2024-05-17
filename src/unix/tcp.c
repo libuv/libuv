@@ -166,7 +166,7 @@ static int uv__tcp_reuseport(int fd) {
    * accept() on the same port.
    *
    * DragonFlyBSD 3.6.0 extended SO_REUSEPORT to distribute workload to
-   * available sockets, which make it the same as Linux's SO_REUSEPORT.
+   * available sockets, which made it the equivalent of Linux's SO_REUSEPORT.
    *
    * AIX 7.2.5 added the feature that would add the capability to distribute
    * incoming connections across all listening ports for SO_REUSEPORT.
