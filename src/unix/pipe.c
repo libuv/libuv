@@ -487,7 +487,11 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
   uv_os_fd_t temp[2];
   int err;
-#if defined(__FreeBSD__) || defined(__linux__)
+#if defined(__linux__) || \
+    defined(__FreeBSD__) || \
+    defined(__OpenBSD__) || \
+    defined(__DragonFly__) || \
+    defined(__NetBSD__)
   int flags = O_CLOEXEC;
 
   if ((read_flags & UV_NONBLOCK_PIPE) && (write_flags & UV_NONBLOCK_PIPE))
