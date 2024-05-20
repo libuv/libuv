@@ -1070,7 +1070,10 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
     return -1;
   }
-#elif defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__)
+/* sendfile() on iOS(arm64) will throw SIGSYS signal cause crash. */
+#elif (defined(__APPLE__) && !TARGET_OS_IPHONE)                               \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)
   {
     off_t len;
     ssize_t r;
