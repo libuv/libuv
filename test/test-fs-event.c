@@ -29,16 +29,6 @@
 # include <AvailabilityMacros.h>
 #endif
 
-#ifndef HAVE_KQUEUE
-# if defined(__APPLE__) ||                                                    \
-     defined(__DragonFly__) ||                                                \
-     defined(__FreeBSD__) ||                                                  \
-     defined(__OpenBSD__) ||                                                  \
-     defined(__NetBSD__)
-#  define HAVE_KQUEUE 1
-# endif
-#endif
-
 static uv_fs_event_t fs_event;
 static const char file_prefix[] = "fsevent-";
 static const int fs_event_file_count = 16;

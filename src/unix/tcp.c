@@ -610,7 +610,7 @@ void uv__tcp_close(uv_tcp_t* handle) {
 int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int flags1) {
   uv_os_sock_t temp[2];
   int err;
-#if defined(__FreeBSD__) || defined(__linux__)
+#if defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
   int flags;
 
   flags = type | SOCK_CLOEXEC;
