@@ -121,11 +121,15 @@ API
         support and only use IPv6. 
         ``UV_TCP_REUSEPORT`` can be contained in `flags` to enable the socket option
         `SO_REUSEPORT` with the capability of load balancing that distribute incoming
-        connections across all listening sockets in multiple processes or threads. This
-        flag is available only on Linux 3.9+, DragonFlyBSD 3.6+, FreeBSD 12.0+, Solaris 11.4,
-        and AIX 7.2.5+ for now.
+        connections across all listening sockets in multiple processes or threads. 
 
     :returns: 0 on success, or an error code < 0 on failure.
+
+    .. versionchanged:: 1.49.0 added the ``UV_TCP_REUSEPORT`` flag.
+
+    .. note::
+        ``UV_TCP_REUSEPORT`` flag is available only on Linux 3.9+, DragonFlyBSD 3.6+,
+        FreeBSD 12.0+, Solaris 11.4, and AIX 7.2.5+ at the moment.
 
 .. c:function:: int uv_tcp_getsockname(const uv_tcp_t* handle, struct sockaddr* name, int* namelen)
 
