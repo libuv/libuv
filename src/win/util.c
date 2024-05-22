@@ -429,6 +429,7 @@ int uv_get_process_title(char* buffer, size_t size) {
   return 0;
 }
 
+typedef void(_stdcall* GetSystemTimePreciseAsFileTimeType)(_Out_ LPFILETIME);
 
 /* https://github.com/libuv/libuv/issues/1674 */
 int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
@@ -446,7 +447,16 @@ int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
       ts->tv_nsec = t % 1000000000;
       return 0;
     case UV_CLOCK_REALTIME:
-      GetSystemTimePreciseAsFileTime(&ft);
+      HMODULE hModule = GetModuleHandleW(L"kernel32.dll");
+      GetSystemTimePreciseAsFileTimeType pGetSystemTimePreciseAsFileTime = (GetSystemTimePreciseAsFileTimeType)GetProcAddress(hModule, "GetSystemTimePreciseAsFileTime");
+      if (pGetSystemTimePreciseAsFileTime)
+      {
+          pGetSystemTimePreciseAsFileTime(&ft);
+      }
+      else
+      {
+          GetSystemTimeAsFileTime(&ft);
+      }
       /* In 100-nanosecond increments from 1601-01-01 UTC because why not? */
       t = (int64_t) ft.dwHighDateTime << 32 | ft.dwLowDateTime;
       /* Convert to UNIX epoch, 1970-01-01. Still in 100 ns increments. */
