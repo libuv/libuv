@@ -276,6 +276,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-flags.c \
                          test/test-tcp-open.c \
                          test/test-tcp-read-stop.c \
+                         test/test-tcp-reuseport.c \
                          test/test-tcp-read-stop-start.c \
                          test/test-tcp-rst.c \
                          test/test-tcp-shutdown-after-write.c \
