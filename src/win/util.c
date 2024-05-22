@@ -435,6 +435,7 @@ typedef void(_stdcall* GetSystemTimePreciseAsFileTimeType)(_Out_ LPFILETIME);
 int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
   FILETIME ft;
   int64_t t;
+  HMODULE hModule;
 
   if (ts == NULL)
     return UV_EFAULT;
@@ -447,7 +448,7 @@ int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
       ts->tv_nsec = t % 1000000000;
       return 0;
     case UV_CLOCK_REALTIME:
-      HMODULE hModule = GetModuleHandleW(L"kernel32.dll");
+      hModule = GetModuleHandleW(L"kernel32.dll");
       GetSystemTimePreciseAsFileTimeType pGetSystemTimePreciseAsFileTime = (GetSystemTimePreciseAsFileTimeType)GetProcAddress(hModule, "GetSystemTimePreciseAsFileTime");
       if (pGetSystemTimePreciseAsFileTime)
       {
