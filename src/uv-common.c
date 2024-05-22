@@ -1092,3 +1092,9 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
   uv__free(addresses);
 }
 #endif  /* !__MVS__ */
+
+void uv_credentials_changed(void) {
+#ifdef __linux__
+  uv__credentials_changed();
+#endif
+}

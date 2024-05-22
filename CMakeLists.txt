@@ -541,6 +541,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-condvar.c
        test/test-connect-unspecified.c
        test/test-connection-fail.c
+       test/test-credentials-changed.c
        test/test-cwd-and-chdir.c
        test/test-default-loop-close.c
        test/test-delayed-accept.c

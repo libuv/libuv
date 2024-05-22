@@ -606,6 +606,10 @@ TEST_DECLARE  (metrics_idle_time)
 TEST_DECLARE  (metrics_idle_time_thread)
 TEST_DECLARE  (metrics_idle_time_zero)
 
+#ifndef _WIN32
+TEST_FS_DECLARE  (credentials_changed)
+#endif
+
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
@@ -1290,6 +1294,10 @@ TASK_LIST_START
   TEST_ENTRY  (metrics_idle_time)
   TEST_ENTRY  (metrics_idle_time_thread)
   TEST_ENTRY  (metrics_idle_time_zero)
+
+#ifndef _WIN32
+  TEST_FS_ENTRY  (credentials_changed)
+#endif
 
 #if 0
   /* These are for testing the test runner. */
