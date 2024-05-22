@@ -615,6 +615,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-run-nowait.c
        test/test-run-once.c
        test/test-semaphore.c
+       test/test-setxid.c
        test/test-shutdown-close.c
        test/test-shutdown-eof.c
        test/test-shutdown-simultaneous.c

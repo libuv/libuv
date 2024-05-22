@@ -1144,6 +1144,11 @@ UV_EXTERN int uv_process_kill(uv_process_t*, int signum);
 UV_EXTERN int uv_kill(int pid, int signum);
 UV_EXTERN uv_pid_t uv_process_get_pid(const uv_process_t*);
 
+UV_EXTERN int uv_setuid(uv_uid_t uid);
+UV_EXTERN int uv_seteuid(uv_uid_t uid);
+UV_EXTERN int uv_setgid(uv_gid_t uid);
+UV_EXTERN int uv_setegid(uv_gid_t uid);
+
 
 /*
  * uv_work_t is a subclass of uv_req_t.

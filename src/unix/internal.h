@@ -207,6 +207,7 @@ struct uv__statx {
   uint32_t stx_dev_minor;
   uint64_t unused1[14];
 };
+
 #endif /* __linux__ */
 
 #if defined(_AIX) || \
