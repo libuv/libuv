@@ -53,10 +53,13 @@ TEST_IMPL(tcp_reuseport) {
 
 #else
 
+#define NUM_LISTENING_THREADS 2
 #define MAX_TCP_CLIENTS 10
 
 static uv_tcp_t tcp_connect_handles[MAX_TCP_CLIENTS];
 static uv_connect_t tcp_connect_requests[MAX_TCP_CLIENTS];
+
+static uv_sem_t semaphore;
 
 static uv_mutex_t mutex;
 static unsigned int accepted;
@@ -132,6 +135,8 @@ static void run_event_loop(void* arg) {
   uv_loop_t* loop = (uv_loop_t*) arg;
   ASSERT(loop == thread_loop1 || loop == thread_loop2);
 
+  /* Notify the main thread to start connecting. */
+  uv_sem_post(&semaphore);
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);
 }
@@ -155,8 +160,12 @@ static void create_listener(uv_loop_t* loop, uv_tcp_t* handle) {
 TEST_IMPL(tcp_reuseport) {
   struct sockaddr_in addr;
   int r;
+  int i;
 
   r = uv_mutex_init(&mutex);
+
+  r = uv_sem_init(&semaphore, 0);
+  ASSERT_OK(r);
 
   main_loop = uv_default_loop();
   ASSERT_NOT_NULL(main_loop);
@@ -181,14 +190,17 @@ TEST_IMPL(tcp_reuseport) {
   uv_thread_create(&thread_loop_id1, run_event_loop, thread_loop1);
   uv_thread_create(&thread_loop_id2, run_event_loop, thread_loop2);
 
-  /* Sleep to ensure all threads to poll for accepting connections
+  /* Wait until all threads to poll for accepting connections
    * before we start to connect. Otherwise the incoming connections
    * might not be distributed across all listening threads. */
+  for (i = 0; i < NUM_LISTENING_THREADS; i++)
+    uv_sem_wait(&semaphore);
+  /* Now we know all threads are up and entering the uv_run(),
+   * but we still sleep a little bit just for dual fail-safe. */
   uv_sleep(100);
 
   /* Start connecting to the peers. */
   ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-  int i;
   for (i = 0; i < MAX_TCP_CLIENTS; i++) {
     r = uv_tcp_init(main_loop, &tcp_connect_handles[i]);
     ASSERT_OK(r);
@@ -218,6 +230,8 @@ TEST_IMPL(tcp_reuseport) {
 
   /* Clean up. */
   uv_mutex_destroy(&mutex);
+
+  uv_sem_destroy(&semaphore);
 
   uv_loop_delete(thread_loop1);
   uv_loop_delete(thread_loop2);
