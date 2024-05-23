@@ -604,7 +604,18 @@ UV_EXTERN int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable);
 
 enum uv_tcp_flags {
   /* Used with uv_tcp_bind, when an IPv6 address is used. */
-  UV_TCP_IPV6ONLY = 1
+  UV_TCP_IPV6ONLY = 1,
+
+  /* Enable SO_REUSEPORT socket option when binding the handle.
+   * This allows completely duplicate bindings by multiple processes
+   * or threads if they all set SO_REUSEPORT before binding the port.
+   * Incoming connections are distributed across the participating
+   * listener sockets.
+   *
+   * This flag is available only on Linux 3.9+, DragonFlyBSD 3.6+,
+   * FreeBSD 12.0+, Solaris 11.4, and AIX 7.2.5+ for now.
+   */
+  UV_TCP_REUSEPORT = 2,
 };
 
 UV_EXTERN int uv_tcp_bind(uv_tcp_t* handle,
