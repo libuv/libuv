@@ -434,17 +434,20 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
 }
 
 /* On the BSDs, SO_REUSEPORT implies SO_REUSEADDR but with some additional
- * refinements for programs that use multicast.
+ * refinements for programs that use multicast. Therefore we preferentially
+ * set SO_REUSEPORT over SO_REUSEADDR here, but we set SO_REUSEPORT only
+ * when that socket option doesn't have the capability of load balancing.
+ * Otherwise, we fall back to SO_REUSEADDR.
  *
- * Linux as of 3.9 and DragonflyBSD 3.6 have the SO_REUSEPORT socket option but
- * with semantics that are different from the BSDs: it _shares_ the port rather
- * than steals it from the current listener. While useful, it's not something we
- * can emulate on other platforms so we don't enable it.
+ * Linux as of 3.9, DragonflyBSD 3.6, AIX 7.2.5 have the SO_REUSEPORT socket
+ * option but with semantics that are different from the BSDs: it _shares_
+ * the port rather than steals it from the current listener. While useful,
+ * it's not something we can emulate on other platforms so we don't enable it.
  *
  * zOS does not support getsockname with SO_REUSEPORT option when using
  * AF_UNIX.
  */
-static int uv__set_reuse(int fd) {
+static int uv__sock_reuseaddr(int fd) {
   int yes;
   yes = 1;
 
@@ -461,7 +464,7 @@ static int uv__set_reuse(int fd) {
        return UV__ERR(errno);
   }
 #elif defined(SO_REUSEPORT) && !defined(__linux__) && !defined(__GNU__) && \
-	!defined(__sun__) && !defined(__DragonFly__)
+	!defined(__sun__) && !defined(__DragonFly__) && !defined(_AIX73)
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
     return UV__ERR(errno);
 #else
@@ -504,7 +507,8 @@ int uv__udp_bind(uv_udp_t* handle,
   int fd;
 
   /* Check for bad flags. */
-  if (flags & ~(UV_UDP_IPV6ONLY | UV_UDP_REUSEADDR | UV_UDP_LINUX_RECVERR))
+  if (flags & ~(UV_UDP_IPV6ONLY | UV_UDP_REUSEADDR |
+                UV_UDP_REUSEPORT | UV_UDP_LINUX_RECVERR))
     return UV_EINVAL;
 
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
@@ -527,7 +531,13 @@ int uv__udp_bind(uv_udp_t* handle,
   }
 
   if (flags & UV_UDP_REUSEADDR) {
-    err = uv__set_reuse(fd);
+    err = uv__sock_reuseaddr(fd);
+    if (err)
+      return err;
+  }
+
+  if (flags & UV_UDP_REUSEPORT) {
+    err = uv__sock_reuseport(fd);
     if (err)
       return err;
   }
@@ -1049,7 +1059,7 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
   if (err)
     return err;
 
-  err = uv__set_reuse(sock);
+  err = uv__sock_reuseaddr(sock);
   if (err)
     return err;
 
