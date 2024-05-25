@@ -533,6 +533,54 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 }
 
 
+static void uv__process_queued_fds(uv_stream_t* server) {
+  /* Process queued fds */
+  uv__stream_queued_fds_t* queued_fds;
+
+  queued_fds = server->queued_fds;
+
+  /* Read first */
+  server->accepted_fd = queued_fds->fds[0];
+
+  /* All read, free */
+  assert(queued_fds->offset > 0);
+  if (--queued_fds->offset == 0) {
+    uv__free(queued_fds);
+    server->queued_fds = NULL;
+  } else {
+    /* Shift rest */
+    memmove(queued_fds->fds,
+            queued_fds->fds + 1,
+            queued_fds->offset * sizeof(*queued_fds->fds));
+  }
+}
+
+
+int uv_reject(uv_stream_t* server) {
+  if (server->accepted_fd == -1)
+    return UV_EAGAIN;
+
+  switch (server->type) {
+    case UV_NAMED_PIPE:
+    case UV_UDP:
+    case UV_TCP:
+      uv__close(server->accepted_fd); /* Simply close the fd */
+      break;
+    default:
+      return UV_EINVAL;
+  }
+
+  /* Process queued fds if needed */
+  if (server->queued_fds != NULL) {
+    uv__process_queued_fds(server);
+  } else {
+    server->accepted_fd = -1;
+    uv__io_start(server->loop, &server->io_watcher, POLLIN);
+  }
+
+  return 0;
+}
+
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   int err;
 
@@ -569,30 +617,12 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   client->flags |= UV_HANDLE_BOUND;
 
 done:
-  /* Process queued fds */
+  /* Process queued fds if needed */
   if (server->queued_fds != NULL) {
-    uv__stream_queued_fds_t* queued_fds;
-
-    queued_fds = server->queued_fds;
-
-    /* Read first */
-    server->accepted_fd = queued_fds->fds[0];
-
-    /* All read, free */
-    assert(queued_fds->offset > 0);
-    if (--queued_fds->offset == 0) {
-      uv__free(queued_fds);
-      server->queued_fds = NULL;
-    } else {
-      /* Shift rest */
-      memmove(queued_fds->fds,
-              queued_fds->fds + 1,
-              queued_fds->offset * sizeof(*queued_fds->fds));
-    }
+    uv__process_queued_fds(server);
   } else {
     server->accepted_fd = -1;
-    if (err == 0)
-      uv__io_start(server->loop, &server->io_watcher, POLLIN);
+    uv__io_start(server->loop, &server->io_watcher, POLLIN);
   }
   return err;
 }

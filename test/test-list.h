@@ -146,6 +146,7 @@ TEST_DECLARE   (tcp_create_early_bad_domain)
 TEST_DECLARE   (tcp_create_early_accept)
 #ifndef _WIN32
 TEST_DECLARE   (tcp_close_accept)
+TEST_DECLARE   (tcp_reject)
 TEST_DECLARE   (tcp_oob)
 #endif
 TEST_DECLARE   (tcp_flags)
@@ -758,6 +759,7 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_create_early_accept)
 #ifndef _WIN32
   TEST_ENTRY  (tcp_close_accept)
+  TEST_ENTRY  (tcp_reject)
   TEST_ENTRY  (tcp_oob)
 #endif
   TEST_ENTRY  (tcp_flags)

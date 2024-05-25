@@ -133,6 +133,19 @@ API
     .. note::
         `server` and `client` must be handles running on the same loop.
 
+.. c:function:: int uv_reject(uv_stream_t* server)
+
+    This call is used in conjunction with :c:func:`uv_listen` to accept and
+    immediately discard incoming connections. Call this function after receiving
+    a :c:type:`uv_connection_cb`.
+
+    When the :c:type:`uv_connection_cb` callback is called it is guaranteed that
+    this function will complete successfully the first time. If you attempt to
+    use it more than once, it may fail. It is suggested to only call this
+    function once per :c:type:`uv_connection_cb` call. As :c:type:`uv_accept`.
+
+    .. versionadded:: REPLACEME
+
 .. c:function:: int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb, uv_read_cb read_cb)
 
     Read data from an incoming stream. The :c:type:`uv_read_cb` callback will

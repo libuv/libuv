@@ -67,6 +67,48 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
 }
 
 
+int uv_reject(uv_stream_t* client) {
+  int err = 0;
+  if (client == NULL) {
+      err = ERROR_INVALID_PARAMETER;
+  }
+  switch (client->type) {
+    case UV_NAMED_PIPE:
+      if (((uv_pipe_t*)client)->u.fd == -1) {
+        CloseHandle(((uv_pipe_t*)client)->handle);
+      }
+      else {
+        _close(((uv_pipe_t*)client)->u.fd);
+      }
+
+      ((uv_pipe_t*)client)->u.fd = -1;
+      ((uv_pipe_t*)client)->handle = INVALID_HANDLE_VALUE;
+      break;
+    case UV_TCP:
+      uv_tcp_accept_t* req = ((uv_tcp_t*)client)->tcp.serv.pending_accepts;
+
+      if (!req) {
+        err = WSAEWOULDBLOCK;
+      }
+
+      if (req->accept_socket == INVALID_SOCKET) {
+        err = WSAENOTCONN;
+      }
+
+      if (shutdown(req->accept_socket, SD_BOTH) == SOCKET_ERROR) {
+        err = WSAGetLastError();
+      }
+
+      closesocket(req->accept_socket);
+      req->accept_socket = INVALID_SOCKET;
+      break;
+    default:
+      err = ERROR_INVALID_PARAMETER;
+  }
+  return uv_translate_sys_error(err);
+}
+
+
 int uv__read_start(uv_stream_t* handle,
                    uv_alloc_cb alloc_cb,
                    uv_read_cb read_cb) {
