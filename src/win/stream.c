@@ -48,6 +48,48 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
 }
 
 
+int uv_reject(uv_stream_t* client) {
+  int err = 0;
+  uv_pipe_t* pipe_client;
+  uv_tcp_accept_t* req;
+
+  if (client == NULL) {
+    return uv_translate_sys_error(ERROR_INVALID_PARAMETER);
+  }
+
+  switch (client->type) {
+    case UV_NAMED_PIPE:
+      pipe_client = (uv_pipe_t*)client;
+      if (pipe_client->u.fd == -1) {
+        CloseHandle(pipe_client->handle);
+      } else {
+        _close(pipe_client->u.fd);
+      }
+
+      pipe_client->u.fd = -1;
+      pipe_client->handle = INVALID_HANDLE_VALUE;
+      break;
+    case UV_TCP:
+      req = ((uv_tcp_t*)client)->tcp.serv.pending_accepts;
+
+      if (!req) {
+        err = WSAEWOULDBLOCK;
+      }
+
+      if (req->accept_socket == INVALID_SOCKET) {
+        err = WSAENOTCONN;
+      }
+
+      closesocket(req->accept_socket);
+      req->accept_socket = INVALID_SOCKET;
+      break;
+    default:
+      err = ERROR_INVALID_PARAMETER;
+  }
+  return uv_translate_sys_error(err);
+}
+
+
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
   int err;
 
