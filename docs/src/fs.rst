@@ -228,6 +228,17 @@ API
 
     Equivalent to :man:`open(2)`.
 
+    The `req->result` field contains the opened file descriptor, of < 0 for error.
+
+    The `flags` argument has different semantics depending on the OS:
+
+        - On Unix, they are directly passed to :man:`open(2)`.
+        - On Windows, the following flags are implemented, emulating Unix semantics: `UV_FS_O_APPEND`,
+          `UV_FS_O_CREAT`, `UV_FS_O_EXCL`, `UV_FS_O_FILEMAP`, `UV_FS_O_RANDOM`, `UV_FS_O_RDONLY`,
+          `UV_FS_O_RDWR`, `UV_FS_O_SEQUENTIAL`, `UV_FS_O_SHORT_LIVED`, `UV_FS_O_TEMPORARY`,
+          `UV_FS_O_TRUNC`, `UV_FS_O_WRONLY`, `UV_FS_O_DIRECT`, `UV_FS_O_DSYNC`, `UV_FS_O_EXLOCK`,
+          `UV_FS_O_SYNC`.
+
     .. note::
         On Windows libuv uses `CreateFileW` and thus the file is always opened
         in binary mode. Because of this the O_BINARY and O_TEXT flags are not
