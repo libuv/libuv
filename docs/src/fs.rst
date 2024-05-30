@@ -215,8 +215,10 @@ API
 
 .. c:function:: void uv_fs_req_cleanup(uv_fs_t* req)
 
-    Cleanup request. Must be called after a request is finished to deallocate
-    any memory libuv might have allocated.
+    Cleanup request. Must be called after a request is finished to cleanup
+    any resources libuv might have allocated.
+
+    It must be called for all requests, regardless of success or failure.
 
 .. c:function:: int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 
