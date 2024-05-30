@@ -190,9 +190,13 @@ Public members
 
 .. c:member:: ssize_t uv_fs_t.result
 
-    Result of the request. < 0 means error, success otherwise. On requests such
-    as :c:func:`uv_fs_read` or :c:func:`uv_fs_write` it indicates the amount of
-    data that was read or written, respectively.
+    Result of the request. < 0 means error, success otherwise. This field is always set, regardless
+    of the request being sync or async.
+
+    For synchronous calls, the result of each operation is this field.
+
+    Check each function's documentation to check if the field has
+    an extended meaning.
 
 .. c:member:: uv_stat_t uv_fs_t.statbuf
 
@@ -232,6 +236,8 @@ API
     Equivalent to :man:`preadv(2)`. If the `offset` argument is `-1`, then
     the current file offset is used and updated.
 
+    The result in `req->result` indicates the amount of bytes read, if > 0.
+
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
         to build libuv), files opened using ``UV_FS_O_FILEMAP`` may cause a fatal
@@ -245,6 +251,8 @@ API
 
     Equivalent to :man:`pwritev(2)`. If the `offset` argument is `-1`, then
     the current file offset is used and updated.
+
+    The result in `req->result` indicates the amount of bytes written, if > 0.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
