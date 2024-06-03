@@ -483,4 +483,16 @@ typedef struct {
 int uv__get_constrained_cpu(uv__cpu_constraint* constraint);
 #endif
 
+#ifdef __sun
+#ifdef SO_FLOW_NAME
+/* Since it's impossible to detect the Solaris 11.4 version via OS macros,
+ * so we check the presence of the socket option SO_FLOW_NAME that was first
+ * introduced to Solaris 11.4 and define a custom macro for determining 11.4.
+ */
+#define UV__SOLARIS_11_4 (1)
+#else
+#define UV__SOLARIS_11_4 (0)
+#endif
+#endif
+
 #endif /* UV_UNIX_INTERNAL_H_ */
