@@ -1317,6 +1317,11 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
 #if defined(__APPLE__)
   times[0] = src_statsbuf.st_atimespec;
   times[1] = src_statsbuf.st_mtimespec;
+#elif defined(_AIX)
+  times[0].tv_sec = src_statsbuf.st_atime;
+  times[0].tv_nsec = src_statsbuf.st_atime_n;
+  times[1].tv_sec = src_statsbuf.st_mtime;
+  times[1].tv_nsec = src_statsbuf.st_mtime_n;
 #else
   times[0] = src_statsbuf.st_atim;
   times[1] = src_statsbuf.st_mtim;
