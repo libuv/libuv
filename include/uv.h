@@ -266,7 +266,8 @@ typedef enum {
 typedef enum {
   UV_RUN_DEFAULT = 0,
   UV_RUN_ONCE,
-  UV_RUN_NOWAIT
+  UV_RUN_NOWAIT,
+  UV_RUN_FORCE = 1024
 } uv_run_mode;
 
 

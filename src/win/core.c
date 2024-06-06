@@ -620,7 +620,13 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   DWORD timeout;
   int r;
   int can_sleep;
-
+  
+  if (mode & UV_RUN_FORCE) {
+    if (loop->stop_flag != 0)
+     loop->stop_flag = 0;
+    mode &= ~UV_RUN_FORCE;
+  }
+ 
   r = uv__loop_alive(loop);
   if (!r)
     uv_update_time(loop);
