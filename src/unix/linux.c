@@ -979,6 +979,28 @@ int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req) {
 }
 
 
+int uv__iou_fs_openat(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sqe* sqe;
+  struct uv__iou* iou;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+
+  sqe = uv__iou_get_sqe(iou, loop, req);
+  if (sqe == NULL)
+    return 0;
+
+  sqe->addr = (uintptr_t) req->path;
+  sqe->fd = req->file;
+  sqe->len = req->mode;
+  sqe->opcode = UV__IORING_OP_OPENAT;
+  sqe->open_flags = req->flags | O_CLOEXEC;
+
+  uv__iou_submit(iou);
+
+  return 1;
+}
+
+
 int uv__iou_fs_rename(uv_loop_t* loop, uv_fs_t* req) {
   struct uv__io_uring_sqe* sqe;
   struct uv__iou* iou;
