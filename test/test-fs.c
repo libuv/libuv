@@ -3006,6 +3006,60 @@ TEST_IMPL(fs_scandir_early_exit) {
 }
 
 
+TEST_IMPL(fs_openat) {
+  uv_fs_t req;
+  int r;
+  uv_os_fd_t fd;
+  uv_os_fd_t dirfd;
+
+  /* Setup. */
+  unlink("test/fixtures/test_dir/test_file");
+  rmdir("test/fixtures/test_dir");
+
+  loop = uv_default_loop();
+
+  r = uv_fs_mkdir(NULL, &req, "test/fixtures/test_dir", 0755, NULL);
+  ASSERT_OK(r);
+
+  r = uv_fs_open(NULL,
+                 &req,
+                 "test/fixtures/test_dir",
+                 UV_FS_O_RDONLY | UV_FS_O_DIRECTORY,
+                 0,
+                 NULL);
+  ASSERT_GE(r, 0);
+  uv_fs_req_cleanup(&req);
+
+  dirfd = (uv_os_fd_t) req.result;
+
+  r = uv_fs_openat(NULL,
+                   &req,
+                   dirfd,
+                   "test_file",
+                   UV_FS_O_RDWR | UV_FS_O_CREAT,
+                   S_IWUSR | S_IRUSR,
+                   NULL);
+  ASSERT_GE(r, 0);
+  uv_fs_req_cleanup(&req);
+
+  fd = (uv_os_fd_t) req.result;
+
+  r = uv_fs_close(NULL, &req, dirfd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_close(NULL, &req, fd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Cleanup */
+  unlink("test/fixtures/test_dir/test_file");
+  rmdir("test/fixtures/test_dir");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
 TEST_IMPL(fs_open_dir) {
   const char* path;
   uv_fs_t req;

@@ -504,6 +504,34 @@ static ssize_t uv__pwritev(int fd,
   return uv__preadv_or_pwritev(fd, bufs, nbufs, off, &cache, /*is_pread*/0);
 }
 
+static ssize_t uv__fs_openat(uv_fs_t* req) {
+#ifdef O_CLOEXEC
+  return openat(req->file, req->path, req->flags | O_CLOEXEC, req->mode);
+#else  /* O_CLOEXEC */
+  int r;
+
+  if (req->cb != NULL)
+    uv_rwlock_rdlock(&req->loop->cloexec_lock);
+
+  r = openat(req->file, req->path, req->flags, req->mode);
+
+  /* In case of failure `uv__cloexec` will leave error in `errno`,
+   * so it is enough to just set `r` to `-1`.
+   */
+  if (r >= 0 && uv__cloexec(r, 1) != 0) {
+    r = uv__close(r);
+    if (r != 0)
+      abort();
+    r = -1;
+  }
+
+  if (req->cb != NULL)
+    uv_rwlock_rdunlock(&req->loop->cloexec_lock);
+
+  return r;
+#endif  /* O_CLOEXEC */
+}
+
 
 static ssize_t uv__fs_read(uv_fs_t* req) {
   const struct iovec* bufs;
@@ -1718,6 +1746,7 @@ static void uv__fs_work(struct uv__work* w) {
     X(MKDTEMP, uv__fs_mkdtemp(req));
     X(MKSTEMP, uv__fs_mkstemp(req));
     X(OPEN, uv__fs_open(req));
+    X(OPENAT, uv__fs_openat(req));
     X(READ, uv__fs_read(req));
     X(SCANDIR, uv__fs_scandir(req));
     X(OPENDIR, uv__fs_opendir(req));
@@ -2009,6 +2038,24 @@ int uv_fs_open(uv_loop_t* loop,
   req->mode = mode;
   if (cb != NULL)
     if (uv__iou_fs_open(loop, req))
+      return 0;
+  POST;
+}
+
+int uv_fs_openat(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 uv_os_fd_t file,
+                 const char* path,
+                 int flags,
+                 int mode,
+                 uv_fs_cb cb) {
+  INIT(OPENAT);
+  PATH;
+  req->file = file;
+  req->flags = flags;
+  req->mode = mode;
+  if (cb != NULL)
+    if (uv__iou_fs_openat(loop, req))
       return 0;
   POST;
 }
