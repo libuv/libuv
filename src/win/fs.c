@@ -35,6 +35,7 @@
 /* <winioctl.h> requires <windows.h>, included via "uv.h" above, but needs to
    be included before our "winapi.h", included via "internal.h" below. */
 #include <winioctl.h>
+#include <ntdll.h>
 
 #include "internal.h"
 #include "req-inl.h"
@@ -629,6 +630,263 @@ void fs__open(uv_fs_t* req) {
  einval:
   SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
 }
+
+
+void fs__openat(uv_fs_t* req) {
+  DWORD access;
+  DWORD share;
+  DWORD disposition;
+  DWORD attributes = 0;
+  ULONG options = 0;
+  HANDLE file;
+  UNICODE_STRING str;
+  IO_STATUS_BLOCK isb;
+  OBJECT_ATTRIBUTES obj;
+  int current_umask;
+  int flags = req->fs.info.file_flags;
+  struct uv__fd_info_s fd_info;
+
+  /* Adjust flags to be compatible with the memory file mapping. Save the
+   * original flags to emulate the correct behavior. */
+  if (flags & UV_FS_O_FILEMAP) {
+    fd_info.flags = flags;
+    fd_info.current_pos.QuadPart = 0;
+
+    if ((flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) ==
+        UV_FS_O_WRONLY) {
+      /* CreateFileMapping always needs read access */
+      flags = (flags & ~UV_FS_O_WRONLY) | UV_FS_O_RDWR;
+    }
+
+    if (flags & UV_FS_O_APPEND) {
+      /* Clear the append flag and ensure RDRW mode */
+      flags &= ~UV_FS_O_APPEND;
+      flags &= ~(UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR);
+      flags |= UV_FS_O_RDWR;
+    }
+  }
+
+  /* Obtain the active umask. umask() never fails and returns the previous
+   * umask. */
+  current_umask = _umask(0);
+  _umask(current_umask);
+
+  /* convert flags and mode to CreateFile parameters */
+  switch (flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) {
+  case UV_FS_O_RDONLY:
+    access = FILE_GENERIC_READ;
+    break;
+  case UV_FS_O_WRONLY:
+    access = FILE_GENERIC_WRITE;
+    break;
+  case UV_FS_O_RDWR:
+    access = FILE_GENERIC_READ | FILE_GENERIC_WRITE;
+    break;
+  default:
+    goto einval;
+  }
+
+  if (flags & UV_FS_O_APPEND) {
+    access &= ~FILE_WRITE_DATA;
+    access |= FILE_APPEND_DATA;
+  }
+
+  /*
+   * Here is where we deviate significantly from what CRT's _open()
+   * does. We indiscriminately use all the sharing modes, to match
+   * UNIX semantics. In particular, this ensures that the file can
+   * be deleted even whilst it's open, fixing issue
+   * https://github.com/nodejs/node-v0.x-archive/issues/1449.
+   * We still support exclusive sharing mode, since it is necessary
+   * for opening raw block devices, otherwise Windows will prevent
+   * any attempt to write past the master boot record.
+   */
+  if (flags & UV_FS_O_EXLOCK) {
+    share = 0;
+  } else {
+    share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+  }
+
+  switch (flags & (UV_FS_O_CREAT | UV_FS_O_EXCL | UV_FS_O_TRUNC)) {
+  case 0:
+  case UV_FS_O_EXCL:
+    disposition = OPEN_EXISTING;
+    break;
+  case UV_FS_O_CREAT:
+    disposition = OPEN_ALWAYS;
+    break;
+  case UV_FS_O_CREAT | UV_FS_O_EXCL:
+  case UV_FS_O_CREAT | UV_FS_O_TRUNC | UV_FS_O_EXCL:
+    disposition = CREATE_NEW;
+    break;
+  case UV_FS_O_TRUNC:
+  case UV_FS_O_TRUNC | UV_FS_O_EXCL:
+    disposition = TRUNCATE_EXISTING;
+    break;
+  case UV_FS_O_CREAT | UV_FS_O_TRUNC:
+    disposition = CREATE_ALWAYS;
+    break;
+  default:
+    goto einval;
+  }
+
+  attributes |= FILE_ATTRIBUTE_NORMAL;
+  if (flags & UV_FS_O_CREAT) {
+    if (!((req->fs.info.mode & ~current_umask) & _S_IWRITE)) {
+      attributes |= FILE_ATTRIBUTE_READONLY;
+    }
+  }
+
+  if (flags & UV_FS_O_TEMPORARY ) {
+    attributes |= FILE_FLAG_DELETE_ON_CLOSE | FILE_ATTRIBUTE_TEMPORARY;
+    access |= DELETE;
+  }
+
+  if (flags & UV_FS_O_SHORT_LIVED) {
+    attributes |= FILE_ATTRIBUTE_TEMPORARY;
+  }
+
+  switch (flags & (UV_FS_O_SEQUENTIAL | UV_FS_O_RANDOM)) {
+  case 0:
+    break;
+  case UV_FS_O_SEQUENTIAL:
+    attributes |= FILE_FLAG_SEQUENTIAL_SCAN;
+    break;
+  case UV_FS_O_RANDOM:
+    attributes |= FILE_FLAG_RANDOM_ACCESS;
+    break;
+  default:
+    goto einval;
+  }
+
+  if (flags & UV_FS_O_DIRECT) {
+    /*
+     * FILE_APPEND_DATA and FILE_FLAG_NO_BUFFERING are mutually exclusive.
+     * Windows returns 87, ERROR_INVALID_PARAMETER if these are combined.
+     *
+     * FILE_APPEND_DATA is included in FILE_GENERIC_WRITE:
+     *
+     * FILE_GENERIC_WRITE = STANDARD_RIGHTS_WRITE |
+     *                      FILE_WRITE_DATA |
+     *                      FILE_WRITE_ATTRIBUTES |
+     *                      FILE_WRITE_EA |
+     *                      FILE_APPEND_DATA |
+     *                      SYNCHRONIZE
+     *
+     * Note: Appends are also permitted by FILE_WRITE_DATA.
+     *
+     * In order for direct writes and direct appends to succeed, we therefore
+     * exclude FILE_APPEND_DATA if FILE_WRITE_DATA is specified, and otherwise
+     * fail if the user's sole permission is a direct append, since this
+     * particular combination is invalid.
+     */
+    if (access & FILE_APPEND_DATA) {
+      if (access & FILE_WRITE_DATA) {
+        access &= ~FILE_APPEND_DATA;
+      } else {
+        goto einval;
+      }
+    }
+    attributes |= FILE_FLAG_NO_BUFFERING;
+  }
+
+  switch (flags & (UV_FS_O_DSYNC | UV_FS_O_SYNC)) {
+  case 0:
+    break;
+  case UV_FS_O_DSYNC:
+  case UV_FS_O_SYNC:
+    attributes |= FILE_FLAG_WRITE_THROUGH;
+    break;
+  default:
+    goto einval;
+  }
+
+  /* Setting this flag makes it possible to open a directory. */
+  attributes |= FILE_FLAG_BACKUP_SEMANTICS;
+
+  if (flags & UV_FS_O_DIRECTORY) {
+    options |= FILE_DIRECTORY_FILE;
+  }
+
+  RtlInitUnicodeString(&str, req->file.pathw);
+  InitializeObjectAttributes(&obj, &str, OBJ_CASE_INSENSITIVE, NULL, NULL);
+
+  NTSTATUS status = NtCreateFile(&file,
+                                 access,
+                                 &obj,
+                                 &isb,
+                                 0,
+                                 attributes,
+                                 share,
+                                 disposition,
+                                 options,
+                                 NULL,
+                                 0);
+  if (!NT_SUCCESS(status)) {
+  if (file == INVALID_HANDLE_VALUE) {
+    ULONG error = RtlNtStatusToDosError(status);
+    if ((isb.Information & FILE_EXISTS != 0) && (flags & UV_FS_O_CREAT) &&
+        !(flags & UV_FS_O_EXCL)) {
+      /* Special case: when FILE_EXISTS happens and UV_FS_O_CREAT was
+       * specified, it means the path referred to a directory. */
+      SET_REQ_UV_ERROR(req, UV_EISDIR, error);
+    } else {
+      SET_REQ_WIN32_ERROR(req, error);
+    }
+    return;
+  }
+
+  if (flags & UV_FS_O_FILEMAP) {
+    FILE_STANDARD_INFO file_info;
+    if (!GetFileInformationByHandleEx(file,
+                                      FileStandardInfo,
+                                      &file_info,
+                                      sizeof file_info)) {
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+      CloseHandle(file);
+      return;
+    }
+    fd_info.is_directory = file_info.Directory;
+
+    if (fd_info.is_directory) {
+      fd_info.size.QuadPart = 0;
+      fd_info.mapping = INVALID_HANDLE_VALUE;
+    } else {
+      if (!GetFileSizeEx(file, &fd_info.size)) {
+        SET_REQ_WIN32_ERROR(req, GetLastError());
+        CloseHandle(file);
+        return;
+      }
+
+      if (fd_info.size.QuadPart == 0) {
+        fd_info.mapping = INVALID_HANDLE_VALUE;
+      } else {
+        DWORD flProtect = (fd_info.flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY |
+          UV_FS_O_RDWR)) == UV_FS_O_RDONLY ? PAGE_READONLY : PAGE_READWRITE;
+        fd_info.mapping = CreateFileMapping(file,
+                                            NULL,
+                                            flProtect,
+                                            fd_info.size.HighPart,
+                                            fd_info.size.LowPart,
+                                            NULL);
+        if (fd_info.mapping == NULL) {
+          SET_REQ_WIN32_ERROR(req, GetLastError());
+          CloseHandle(file);
+          return;
+        }
+      }
+    }
+
+    uv__fd_hash_add(file, &fd_info);
+  }
+
+  SET_REQ_RESULT(req, (uintptr_t)file);
+  return;
+
+ einval:
+  SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+}
+
 
 void fs__close(uv_fs_t* req) {
   int fd = req->file.fd;
@@ -2887,6 +3145,29 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
   req->fs.info.file_flags = flags;
   req->fs.info.mode = mode;
   POST;
+}
+
+
+int uv_fs_openat(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 uv_os_fd_t handle,
+                 const char* path,
+                 int flags,
+                 int mode,
+                 uv_fs_cb cb) {
+  int err;
+
+  INIT(UV_FS_OPENAT);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
+  if (err) {
+    SET_REQ_WIN32_ERROR(req, err);
+    return req->result;
+  }
+
+  req->file.hFile = handle;
+  req->fs.info.file_flags = flags;
+  req->fs.info.mode = mode;
+  POST0;
 }
 
 
