@@ -640,6 +640,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-connect-timeout.c
        test/test-tcp-connect6-error.c
        test/test-tcp-create-socket-early.c
+       test/test-tcp-exportimport.c
        test/test-tcp-flags.c
        test/test-tcp-oob.c
        test/test-tcp-open.c
