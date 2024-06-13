@@ -483,7 +483,6 @@ endif()
 target_link_libraries(uv_a ${uv_libraries})
 set_target_properties(uv_a PROPERTIES OUTPUT_NAME "uv")
 if(WIN32)
-  target_link_libraries(uv_a ntdll)
   set_target_properties(uv_a PROPERTIES PREFIX "lib")
 endif()
 

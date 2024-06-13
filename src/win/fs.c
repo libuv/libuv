@@ -35,7 +35,6 @@
 /* <winioctl.h> requires <windows.h>, included via "uv.h" above, but needs to
    be included before our "winapi.h", included via "internal.h" below. */
 #include <winioctl.h>
-#include <ntdll.h>
 
 #include "internal.h"
 #include "req-inl.h"
@@ -674,13 +673,13 @@ void fs__openat(uv_fs_t* req) {
   /* convert flags and mode to CreateFile parameters */
   switch (flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) {
   case UV_FS_O_RDONLY:
-    access = FILE_GENERIC_READ;
+    access = GENERIC_READ;
     break;
   case UV_FS_O_WRONLY:
-    access = FILE_GENERIC_WRITE;
+    access = GENERIC_WRITE;
     break;
   case UV_FS_O_RDWR:
-    access = FILE_GENERIC_READ | FILE_GENERIC_WRITE;
+    access = GENERIC_READ | GENERIC_WRITE;
     break;
   default:
     goto einval;
@@ -710,21 +709,21 @@ void fs__openat(uv_fs_t* req) {
   switch (flags & (UV_FS_O_CREAT | UV_FS_O_EXCL | UV_FS_O_TRUNC)) {
   case 0:
   case UV_FS_O_EXCL:
-    disposition = OPEN_EXISTING;
+    disposition = FILE_OPEN;
     break;
   case UV_FS_O_CREAT:
-    disposition = OPEN_ALWAYS;
+    disposition = FILE_OPEN_IF;
     break;
   case UV_FS_O_CREAT | UV_FS_O_EXCL:
   case UV_FS_O_CREAT | UV_FS_O_TRUNC | UV_FS_O_EXCL:
-    disposition = CREATE_NEW;
+    disposition = FILE_CREATE;
     break;
   case UV_FS_O_TRUNC:
   case UV_FS_O_TRUNC | UV_FS_O_EXCL:
-    disposition = TRUNCATE_EXISTING;
+    disposition = FILE_OVERWRITE;
     break;
   case UV_FS_O_CREAT | UV_FS_O_TRUNC:
-    disposition = CREATE_ALWAYS;
+    disposition = FILE_SUPERSEDE;
     break;
   default:
     goto einval;
@@ -738,7 +737,8 @@ void fs__openat(uv_fs_t* req) {
   }
 
   if (flags & UV_FS_O_TEMPORARY ) {
-    attributes |= FILE_FLAG_DELETE_ON_CLOSE | FILE_ATTRIBUTE_TEMPORARY;
+    options |= FILE_DELETE_ON_CLOSE;
+    attributes |= FILE_ATTRIBUTE_TEMPORARY;
     access |= DELETE;
   }
 
@@ -750,10 +750,10 @@ void fs__openat(uv_fs_t* req) {
   case 0:
     break;
   case UV_FS_O_SEQUENTIAL:
-    attributes |= FILE_FLAG_SEQUENTIAL_SCAN;
+    options |= FILE_SEQUENTIAL_ONLY;
     break;
   case UV_FS_O_RANDOM:
-    attributes |= FILE_FLAG_RANDOM_ACCESS;
+    options |= FILE_RANDOM_ACCESS;
     break;
   default:
     goto einval;
@@ -787,7 +787,7 @@ void fs__openat(uv_fs_t* req) {
         goto einval;
       }
     }
-    attributes |= FILE_FLAG_NO_BUFFERING;
+    options |= FILE_NO_INTERMEDIATE_BUFFERING;
   }
 
   switch (flags & (UV_FS_O_DSYNC | UV_FS_O_SYNC)) {
@@ -795,36 +795,46 @@ void fs__openat(uv_fs_t* req) {
     break;
   case UV_FS_O_DSYNC:
   case UV_FS_O_SYNC:
-    attributes |= FILE_FLAG_WRITE_THROUGH;
+    options |= FILE_WRITE_THROUGH;
     break;
   default:
     goto einval;
   }
 
-  /* Setting this flag makes it possible to open a directory. */
-  attributes |= FILE_FLAG_BACKUP_SEMANTICS;
 
   if (flags & UV_FS_O_DIRECTORY) {
+    /* Setting this flag makes it possible to open a directory. */
+    options |= FILE_OPEN_FOR_BACKUP_INTENT;
     options |= FILE_DIRECTORY_FILE;
   }
 
-  RtlInitUnicodeString(&str, req->file.pathw);
-  InitializeObjectAttributes(&obj, &str, OBJ_CASE_INSENSITIVE, NULL, NULL);
+  HMODULE ntdll = GetModuleHandle("ntdll.dll");
+  RtlInitUnicodeString _RtlInitUnicodeString =
+    (RtlInitUnicodeString) GetProcAddress(ntdll, "RtlInitUnicodeString");
+  NtCreateFile _NtCreateFile =
+    (NtCreateFile) GetProcAddress(ntdll, "NtCreateFile");
 
-  NTSTATUS status = NtCreateFile(&file,
-                                 access,
-                                 &obj,
-                                 &isb,
-                                 0,
-                                 attributes,
-                                 share,
-                                 disposition,
-                                 options,
-                                 NULL,
-                                 0);
+  _RtlInitUnicodeString(&str, req->file.pathw);
+  InitializeObjectAttributes(&obj,
+                             &str,
+                             OBJ_CASE_INSENSITIVE,
+                             req->fs.info.hFile_out,
+                             NULL);
+
+  NTSTATUS status = _NtCreateFile(&file,
+                                  access,
+                                  &obj,
+                                  &isb,
+                                  0,
+                                  attributes,
+                                  share,
+                                  disposition,
+                                  options,
+                                  NULL,
+                                  0);
   if (!NT_SUCCESS(status)) {
-  if (file == INVALID_HANDLE_VALUE) {
-    ULONG error = RtlNtStatusToDosError(status);
+    ULONG error = pRtlNtStatusToDosError(status);
+
     if ((isb.Information & FILE_EXISTS != 0) && (flags & UV_FS_O_CREAT) &&
         !(flags & UV_FS_O_EXCL)) {
       /* Special case: when FILE_EXISTS happens and UV_FS_O_CREAT was
@@ -3043,6 +3053,7 @@ static void uv__fs_work(struct uv__work* w) {
 #define XX(uc, lc)  case UV_FS_##uc: fs__##lc(req); break;
   switch (req->fs_type) {
     XX(OPEN, open)
+    XX(OPENAT, openat)
     XX(CLOSE, close)
     XX(READ, read)
     XX(WRITE, write)
@@ -3164,7 +3175,7 @@ int uv_fs_openat(uv_loop_t* loop,
     return req->result;
   }
 
-  req->file.hFile = handle;
+  req->fs.info.hFile_out = handle;
   req->fs.info.file_flags = flags;
   req->fs.info.mode = mode;
   POST0;
