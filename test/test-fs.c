@@ -3248,8 +3248,8 @@ TEST_IMPL(fs_scandir_early_exit) {
 TEST_IMPL(fs_openat) {
   int r;
   uv_fs_t req;
-  uv_os_fd_t fd;
-  uv_os_fd_t dirfd;
+  uv_file fd;
+  uv_file dirfd;
 
   /* Setup. */
   unlink("test/fixtures/test_dir/test_file_not_exist");
@@ -3275,7 +3275,7 @@ TEST_IMPL(fs_openat) {
   ASSERT_GE(r, 0);
   uv_fs_req_cleanup(&req);
 
-  dirfd = (uv_os_fd_t) req.result;
+  dirfd = (uv_file) r;
 
   r = uv_fs_open(NULL,
                  &req,
@@ -3283,9 +3283,9 @@ TEST_IMPL(fs_openat) {
                  UV_FS_O_RDWR | UV_FS_O_CREAT,
                  S_IWUSR | S_IRUSR,
                  NULL);
-  ASSERT_OK(r);
+  ASSERT_GE(r, 0);
   uv_fs_req_cleanup(&req);
-  fd = (uv_os_fd_t) req.result;
+  fd = r;
   r = uv_fs_close(NULL, &req, fd, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
@@ -3299,9 +3299,9 @@ TEST_IMPL(fs_openat) {
                      UV_FS_O_RDWR | UV_FS_O_CREAT,
                      S_IWUSR | S_IRUSR,
                      NULL);
-    ASSERT_OK(r);
+    ASSERT_GE(r, 0);
     uv_fs_req_cleanup(&req);
-    fd = (uv_os_fd_t) req.result;
+    fd = (uv_file) r;
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&req);
@@ -3316,14 +3316,14 @@ TEST_IMPL(fs_openat) {
                      UV_FS_O_RDWR | UV_FS_O_CREAT,
                      S_IWUSR | S_IRUSR,
                      openat_cb_simple);
-    ASSERT_OK(r);
+    ASSERT_GE(r, 0);
 
     ASSERT_OK(openat_cb_count);
     uv_run(loop, UV_RUN_DEFAULT);
     ASSERT_EQ(1, openat_cb_count);
     uv_fs_req_cleanup(&req);
 
-    fd = (uv_os_fd_t) req.result;
+    fd = (uv_file) req.result;
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&req);
@@ -3338,9 +3338,9 @@ TEST_IMPL(fs_openat) {
                      UV_FS_O_RDONLY | UV_FS_O_DIRECTORY,
                      S_IWUSR | S_IRUSR,
                      NULL);
-    ASSERT_OK(r);
+    ASSERT_GE(r, 0);
     uv_fs_req_cleanup(&req);
-    fd = (uv_os_fd_t) req.result;
+    fd = (uv_file) req.result;
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&req);
@@ -3355,9 +3355,9 @@ TEST_IMPL(fs_openat) {
                      UV_FS_O_RDWR | UV_FS_O_CREAT,
                      S_IWUSR | S_IRUSR,
                      NULL);
-    ASSERT_OK(r);
+    ASSERT_GE(r, 0);
     uv_fs_req_cleanup(&req);
-    fd = (uv_os_fd_t) req.result;
+    fd = (uv_file) req.result;
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&req);
@@ -3385,10 +3385,10 @@ TEST_IMPL(fs_openat) {
                      UV_FS_O_RDONLY,
                      0,
                      NULL);
-    ASSERT_OK(r);
+    ASSERT_GE(r, 0);
     uv_fs_req_cleanup(&req);
 
-    fd = (uv_os_fd_t) req.result;
+    fd = (uv_file) req.result;
 
     iov = uv_buf_init(test_buf, sizeof(test_buf));
     r = uv_fs_write(NULL,
