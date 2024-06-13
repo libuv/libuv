@@ -4108,7 +4108,11 @@
 # define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x00000002
 #endif
 
-/* from ntdef.h */
+/* from winternl.h */
+#if !defined(__UNICODE_STRING_DEFINED) && defined(__MINGW32__)
+#define __UNICODE_STRING_DEFINED
+#endif
+
 typedef struct _UNICODE_STRING {
   USHORT Length;
   USHORT MaximumLength;
@@ -4157,10 +4161,6 @@ typedef struct _OBJECT_ATTRIBUTES {
 
 #ifndef FILE_EXISTS
 #define FILE_EXISTS 0x00000004
-#endif
-
-#if !defined(__UNICODE_STRING_DEFINED) && defined(__MINGW32__)
-#define __UNICODE_STRING_DEFINED
 #endif
 
 /* from ntifs.h */
@@ -4230,7 +4230,6 @@ typedef struct _IO_STATUS_BLOCK {
   };
   ULONG_PTR Information;
 } IO_STATUS_BLOCK, *PIO_STATUS_BLOCK;
-
 
 typedef enum _FILE_INFORMATION_CLASS {
   FileDirectoryInformation = 1,
