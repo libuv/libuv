@@ -641,7 +641,7 @@ void fs__openat(uv_fs_t* req) {
   UNICODE_STRING str;
   IO_STATUS_BLOCK isb;
   OBJECT_ATTRIBUTES obj;
-  int current_umask;
+  int fd, current_umask;
   int flags = req->fs.info.file_flags;
   struct uv__fd_info_s fd_info;
 
@@ -808,11 +808,19 @@ void fs__openat(uv_fs_t* req) {
     options |= FILE_DIRECTORY_FILE;
   }
 
+  HANDLE dir = (HANDLE) _get_osfhandle(req->fs.info.fd_out);
+  if (dir == INVALID_HANDLE_VALUE) {
+    fprintf(stderr, "get_osfhandle\n");
+    SET_REQ_WIN32_ERROR(req, (DWORD) UV_EBADF);
+    return;
+  }
+
+
   pRtlInitUnicodeString(&str, req->file.pathw);
   InitializeObjectAttributes(&obj,
                              &str,
                              OBJ_CASE_INSENSITIVE,
-                             req->fs.info.hFile_out,
+                             dir,
                              NULL);
 
   NTSTATUS status = pNtCreateFile(&file,
@@ -829,7 +837,7 @@ void fs__openat(uv_fs_t* req) {
   if (!NT_SUCCESS(status)) {
     ULONG error = pRtlNtStatusToDosError(status);
 
-    if ((isb.Information & FILE_EXISTS != 0) && (flags & UV_FS_O_CREAT) &&
+    if (((isb.Information & FILE_EXISTS) != 0) && (flags & UV_FS_O_CREAT) &&
         !(flags & UV_FS_O_EXCL)) {
       /* Special case: when FILE_EXISTS happens and UV_FS_O_CREAT was
        * specified, it means the path referred to a directory. */
@@ -837,6 +845,22 @@ void fs__openat(uv_fs_t* req) {
     } else {
       SET_REQ_WIN32_ERROR(req, error);
     }
+    return;
+  }
+
+  fd = _open_osfhandle((intptr_t) file, flags);
+  if (fd < 0) {
+    /* The only known failure mode for _open_osfhandle() is EMFILE, in which
+     * case GetLastError() will return zero. However we'll try to handle other
+     * errors as well, should they ever occur.
+     */
+    if (errno == EMFILE)
+      SET_REQ_UV_ERROR(req, UV_EMFILE, ERROR_TOO_MANY_OPEN_FILES);
+    else if (GetLastError() != ERROR_SUCCESS)
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+    else
+      SET_REQ_WIN32_ERROR(req, (DWORD) UV_UNKNOWN);
+    CloseHandle(file);
     return;
   }
 
@@ -881,10 +905,10 @@ void fs__openat(uv_fs_t* req) {
       }
     }
 
-    uv__fd_hash_add(file, &fd_info);
+    uv__fd_hash_add(fd, &fd_info);
   }
 
-  SET_REQ_RESULT(req, (uintptr_t)file);
+  SET_REQ_RESULT(req, fd);
   return;
 
  einval:
@@ -3155,7 +3179,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
 
 int uv_fs_openat(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_os_fd_t handle,
+                 uv_file handle,
                  const char* path,
                  int flags,
                  int mode,
@@ -3169,10 +3193,10 @@ int uv_fs_openat(uv_loop_t* loop,
     return req->result;
   }
 
-  req->fs.info.hFile_out = handle;
+  req->fs.info.fd_out = handle;
   req->fs.info.file_flags = flags;
   req->fs.info.mode = mode;
-  POST0;
+  POST;
 }
 
 

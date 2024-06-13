@@ -108,7 +108,8 @@ Data types
             UV_FS_READDIR,
             UV_FS_CLOSEDIR,
             UV_FS_MKSTEMP,
-            UV_FS_LUTIME
+            UV_FS_LUTIME,
+            UV_FS_OPENAT
         } uv_fs_type;
 
 .. c:type:: uv_statfs_t
@@ -224,6 +225,15 @@ API
 
     .. note::
         On Windows libuv uses `CreateFileW` and thus the file is always opened
+        in binary mode. Because of this the O_BINARY and O_TEXT flags are not
+        supported.
+
+.. c:function:: int uv_fs_openat(uv_loop_t* loop, uv_fs_t* req, uv_file file, const char* path, int flags, int mode, uv_fs_cb cb)
+
+    Equivalent to :man:`openat(2)`.
+
+    .. note::
+        On Windows libuv uses `NtCreateFile` and thus the file is always opened
         in binary mode. Because of this the O_BINARY and O_TEXT flags are not
         supported.
 

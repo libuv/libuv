@@ -2044,7 +2044,7 @@ int uv_fs_open(uv_loop_t* loop,
 
 int uv_fs_openat(uv_loop_t* loop,
                  uv_fs_t* req,
-                 uv_os_fd_t file,
+                 uv_file file,
                  const char* path,
                  int flags,
                  int mode,
