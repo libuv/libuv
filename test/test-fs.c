@@ -70,6 +70,7 @@ static int dummy_cb_count;
 static int close_cb_count;
 static int create_cb_count;
 static int open_cb_count;
+static int openat_cb_count;
 static int read_cb_count;
 static int write_cb_count;
 static int unlink_cb_count;
@@ -442,6 +443,18 @@ static void open_cb_simple(uv_fs_t* req) {
     ASSERT(0);
   }
   open_cb_count++;
+  ASSERT(req->path);
+  uv_fs_req_cleanup(req);
+}
+
+
+static void openat_cb_simple(uv_fs_t* req) {
+  ASSERT_EQ(req->fs_type, UV_FS_OPENAT);
+  if (req->result < 0) {
+    fprintf(stderr, "async openat error: %d\n", (int) req->result);
+    ASSERT(0);
+  }
+  openat_cb_count++;
   ASSERT(req->path);
   uv_fs_req_cleanup(req);
 }
@@ -3007,12 +3020,13 @@ TEST_IMPL(fs_scandir_early_exit) {
 
 
 TEST_IMPL(fs_openat) {
-  uv_fs_t req;
   int r;
+  uv_fs_t req;
   uv_os_fd_t fd;
   uv_os_fd_t dirfd;
 
   /* Setup. */
+  unlink("test/fixtures/test_dir/test_file_not_exist");
   unlink("test/fixtures/test_dir/test_file");
   rmdir("test/fixtures/test_dir");
 
@@ -3032,26 +3046,123 @@ TEST_IMPL(fs_openat) {
 
   dirfd = (uv_os_fd_t) req.result;
 
-  r = uv_fs_openat(NULL,
-                   &req,
-                   dirfd,
-                   "test_file",
-                   UV_FS_O_RDWR | UV_FS_O_CREAT,
-                   S_IWUSR | S_IRUSR,
-                   NULL);
-  ASSERT_GE(r, 0);
-  uv_fs_req_cleanup(&req);
-
-  fd = (uv_os_fd_t) req.result;
-
-  r = uv_fs_close(NULL, &req, dirfd, NULL);
+  r = uv_fs_open(NULL,
+                 &req,
+                 "test/fixtures/test_dir/test_file",
+                 UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
+  fd = (uv_os_fd_t) req.result;
   r = uv_fs_close(NULL, &req, fd, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
 
+  // Open an existing file
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dirfd,
+                     "test_file",
+                     UV_FS_O_RDWR | UV_FS_O_CREAT,
+                     S_IWUSR | S_IRUSR,
+                     NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+    fd = (uv_os_fd_t) req.result;
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Open an existing file async
+  {
+    r = uv_fs_openat(loop,
+                     &req,
+                     dirfd,
+                     "test_file",
+                     UV_FS_O_RDWR | UV_FS_O_CREAT,
+                     S_IWUSR | S_IRUSR,
+                     openat_cb_simple);
+    ASSERT_OK(r);
+
+    ASSERT_OK(openat_cb_count);
+    uv_run(loop, UV_RUN_DEFAULT);
+    ASSERT_EQ(1, openat_cb_count);
+    uv_fs_req_cleanup(&req);
+
+    fd = (uv_os_fd_t) req.result;
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Create a new file
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dirfd,
+                     "test_file_not_exist",
+                     UV_FS_O_RDWR | UV_FS_O_CREAT,
+                     S_IWUSR | S_IRUSR,
+                     NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+    fd = (uv_os_fd_t) req.result;
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Exclusively create an existing file.
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dirfd,
+                     "test_file",
+                     UV_FS_O_RDWR | UV_FS_O_CREAT | UV_FS_O_EXCL,
+                     S_IWUSR | S_IRUSR,
+                     NULL);
+    ASSERT_EQ(r, UV_EEXIST);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Open a file read-only and try to write to it
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dirfd,
+                     "test_file",
+                     UV_FS_O_RDONLY,
+                     0,
+                     NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+
+    fd = (uv_os_fd_t) req.result;
+
+    iov = uv_buf_init(test_buf, sizeof(test_buf));
+    r = uv_fs_write(NULL,
+                    &req,
+                    fd,
+                    &iov,
+                    1,
+                    -1,
+                    NULL);
+    ASSERT_EQ(r, UV_EBADF);
+
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  r = uv_fs_close(NULL, &req, dirfd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
   /* Cleanup */
+  unlink("test/fixtures/test_dir/test_file_not_exist");
   unlink("test/fixtures/test_dir/test_file");
   rmdir("test/fixtures/test_dir");
 
