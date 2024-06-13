@@ -808,20 +808,14 @@ void fs__openat(uv_fs_t* req) {
     options |= FILE_DIRECTORY_FILE;
   }
 
-  HMODULE ntdll = GetModuleHandle("ntdll.dll");
-  RtlInitUnicodeString _RtlInitUnicodeString =
-    (RtlInitUnicodeString) GetProcAddress(ntdll, "RtlInitUnicodeString");
-  NtCreateFile _NtCreateFile =
-    (NtCreateFile) GetProcAddress(ntdll, "NtCreateFile");
-
-  _RtlInitUnicodeString(&str, req->file.pathw);
+  pRtlInitUnicodeString(&str, req->file.pathw);
   InitializeObjectAttributes(&obj,
                              &str,
                              OBJ_CASE_INSENSITIVE,
                              req->fs.info.hFile_out,
                              NULL);
 
-  NTSTATUS status = _NtCreateFile(&file,
+  NTSTATUS status = pNtCreateFile(&file,
                                   access,
                                   &obj,
                                   &isb,

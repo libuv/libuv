@@ -3028,12 +3028,17 @@ TEST_IMPL(fs_openat) {
   /* Setup. */
   unlink("test/fixtures/test_dir/test_file_not_exist");
   unlink("test/fixtures/test_dir/test_file");
+  rmdir("test/fixtures/test_dir/nested_dir");
   rmdir("test/fixtures/test_dir");
 
   loop = uv_default_loop();
 
   r = uv_fs_mkdir(NULL, &req, "test/fixtures/test_dir", 0755, NULL);
   ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_mkdir(NULL, &req, "test/fixtures/test_dir/nested_dir", 0755, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
 
   r = uv_fs_open(NULL,
                  &req,
@@ -3092,6 +3097,23 @@ TEST_IMPL(fs_openat) {
     ASSERT_EQ(1, openat_cb_count);
     uv_fs_req_cleanup(&req);
 
+    fd = (uv_os_fd_t) req.result;
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Open a nested dir
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dirfd,
+                     "nested_dir",
+                     UV_FS_O_RDONLY | UV_FS_O_DIRECTORY,
+                     S_IWUSR | S_IRUSR,
+                     NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
     fd = (uv_os_fd_t) req.result;
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
@@ -3164,6 +3186,7 @@ TEST_IMPL(fs_openat) {
   /* Cleanup */
   unlink("test/fixtures/test_dir/test_file_not_exist");
   unlink("test/fixtures/test_dir/test_file");
+  rmdir("test/fixtures/test_dir/nested_dir");
   rmdir("test/fixtures/test_dir");
 
   MAKE_VALGRIND_HAPPY(loop);
