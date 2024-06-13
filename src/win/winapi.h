@@ -4637,8 +4637,26 @@ typedef VOID (NTAPI *PIO_APC_ROUTINE)
 typedef NTSTATUS (NTAPI *sRtlGetVersion)
                  (PRTL_OSVERSIONINFOW lpVersionInformation);
 
+typedef VOID (NTAPI *sRtlInitUnicodeString)(
+  PUNICODE_STRING         DestinationString,
+  __drv_aliasesMem PCWSTR SourceString
+);
+
 typedef ULONG (NTAPI *sRtlNtStatusToDosError)
               (NTSTATUS Status);
+
+typedef NTSTATUS (NTAPI *sNtCreateFile)
+                 (PHANDLE FileHandle,
+                  ACCESS_MASK DesiredAccess,
+                  POBJECT_ATTRIBUTES ObjectAttributes,
+                  PIO_STATUS_BLOCK IoStatusBlock,
+                  PLARGE_INTEGER AllocationSize,
+                  ULONG FileAttributes,
+                  ULONG ShareAccess,
+                  ULONG CreateDisposition,
+                  ULONG CreateOptions,
+                  PVOID EaBuffer,
+                  ULONG EaLength);
 
 typedef NTSTATUS (NTAPI *sNtDeviceIoControlFile)
                  (HANDLE FileHandle,
@@ -4795,13 +4813,6 @@ typedef DWORD (WINAPI *sPowerRegisterSuspendResumeNotification)
                _PHPOWERNOTIFY RegistrationHandle);
 
 
-/* from wdm.h */
-typedef VOID (NTAPI *RtlInitUnicodeString)(
-  PUNICODE_STRING         DestinationString,
-  __drv_aliasesMem PCWSTR SourceString
-);
-
-
 /* from Winuser.h */
 typedef VOID (CALLBACK* WINEVENTPROC)
              (HWINEVENTHOOK hWinEventHook,
@@ -4854,7 +4865,9 @@ typedef BOOL(WINAPI* sGetFileInformationByName)(
 
 /* Ntdll function pointers */
 extern sRtlGetVersion pRtlGetVersion;
+extern sRtlInitUnicodeString pRtlInitUnicodeString;
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
+extern sNtCreateFile pNtCreateFile;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
 extern sNtSetInformationFile pNtSetInformationFile;
@@ -4879,21 +4892,6 @@ typedef int (WINAPI *uv_sGetHostNameW)
              int);
 extern uv_sGetHostNameW pGetHostNameW;
 
-
-/* from winternl.h */
-typedef NTSTATUS (__stdcall *NtCreateFile)(
-  OUT PHANDLE FileHandle,
-  IN ACCESS_MASK DesiredAccess,
-  IN POBJECT_ATTRIBUTES ObjectAttributes,
-  OUT PIO_STATUS_BLOCK IoStatusBlock,
-  IN PLARGE_INTEGER AllocationSize OPTIONAL,
-  IN ULONG FileAttributes,
-  IN ULONG ShareAccess,
-  IN ULONG CreateDisposition,
-  IN ULONG CreateOptions,
-  IN PVOID EaBuffer OPTIONAL,
-  IN ULONG EaLength
-);
 
 /* from ntdef.h */
 #ifndef InitializeObjectAttributes
