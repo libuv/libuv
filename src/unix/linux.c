@@ -789,7 +789,7 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
   req->work_req.done = NULL;
   uv__queue_init(&req->work_req.wq);
 
-  uv__req_register(loop, req);
+  uv__req_register(loop);
   iou->in_flight++;
 
   return sqe;
@@ -1157,7 +1157,7 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
     req = (uv_fs_t*) (uintptr_t) e->user_data;
     assert(req->type == UV_FS);
 
-    uv__req_unregister(loop, req);
+    uv__req_unregister(loop);
     iou->in_flight--;
 
     /* If the op is not supported by the kernel retry using the thread pool */
