@@ -139,7 +139,7 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 #define POST                                                                  \
   do {                                                                        \
     if (cb != NULL) {                                                         \
-      uv__req_register(loop);                                            \
+      uv__req_register(loop);                                                 \
       uv__work_submit(loop,                                                   \
                       &req->work_req,                                         \
                       UV__WORK_FAST_IO,                                       \
