@@ -3483,6 +3483,32 @@ TEST_IMPL(fs_openat) {
     uv_fs_req_cleanup(&req);
   }
 
+  {
+    r = uv_fs_realpath(NULL, &req, "test/fixtures/file", NULL);
+    ASSERT_OK(r);
+
+    size_t len = strlen(req.ptr);
+    char * abs_path = malloc(len + 1);
+    memcpy(abs_path, req.ptr, len + 1);
+    uv_fs_req_cleanup(&req);
+
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dir,
+                     abs_path,
+                     UV_FS_O_RDONLY,
+                     0,
+                     NULL);
+    ASSERT_GE(r, 0);
+    free(abs_path);
+    fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
+
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
   r = uv_fs_close(NULL, &req, dir, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
