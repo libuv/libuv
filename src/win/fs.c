@@ -630,6 +630,91 @@ void fs__open(uv_fs_t* req) {
   SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
 }
 
+struct path {
+  WCHAR * buf;
+
+  // Capacity of the path buffer minus the terminating null in WCHARs.
+  size_t cap;
+
+  // Length of the path string without the terminating null in WCHARs.
+  size_t len;
+};
+
+// Must be freed by `uv__path_free`.
+int uv__path_init(struct path * p) {
+  WCHAR * buf = uv__malloc(1);
+  if (buf == NULL) return UV_ENOMEM;
+
+  p->buf = buf;
+  p->buf[0] = L'\0';
+  p->cap = 0;
+  p->len = 0;
+
+  return 0;
+}
+
+void uv__path_free(struct path * p) {
+  uv__free(p->buf);
+}
+
+int uv__path_grow_until(struct path * p, size_t cap) {
+  if (cap <= p->cap) {
+    return 0;
+  }
+
+  WCHAR * buf = uv__realloc(p->buf, (cap + 1) * sizeof(WCHAR));
+  if (buf == NULL) return ENOMEM;
+
+  p->buf = buf;
+  p->cap = cap;
+
+  return 0;
+}
+
+int uv__path_set(struct path * p, WCHAR * source) {
+  size_t len = wcslen(source);
+
+  int err = uv__path_grow_until(p, len);
+  if (err) return err;
+
+  memcpy(p->buf, source, len * sizeof(WCHAR));
+  p->len = len;
+  p->buf[p->len] = L'\0';
+
+  return 0;
+}
+
+int uv__path_push(struct path * p, WCHAR * component) {
+  size_t len = wcslen(component);
+
+  int err = uv__path_grow_until(p, p->len + len + 1);
+  if (err) return err;
+
+  if (p->len > 0 && p->buf[p->len - 1] != L'\\') {
+    p->buf[p->len] = L'\\';
+    p->len += 1;
+  }
+
+  memcpy(p->buf + p->len, component, len * sizeof(WCHAR));
+  p->len += len;
+  p->buf[p->len] = L'\0';
+
+  return 0;
+}
+
+int uv__path_pop(struct path * p) {
+  if (p->len == 0) return 1;
+
+  for (int i = p->len - 1; i >= 0; i--) {
+    if (p->buf[i] == L'\\' || i == 0) {
+      p->buf[i] = L'\0';
+      p->len = i;
+      break;
+    }
+  }
+
+  return 0;
+}
 
 void fs__openat(uv_fs_t* req) {
   DWORD access;
@@ -644,6 +729,79 @@ void fs__openat(uv_fs_t* req) {
   int fd, current_umask;
   int flags = req->fs.info.file_flags;
   struct uv__fd_info_s fd_info;
+  WCHAR * path = req->file.pathw;
+  struct path rebuilt_path;
+  const size_t path_len = wcslen(path);
+
+  // NtCreateFile doesn't recognize forward slashes, only back slashes.
+  for (int i = 0; path[i] != 0; i++)
+    if (path[i] == L'/')
+      path[i] = L'\\';
+
+  HANDLE dir_handle = (HANDLE) _get_osfhandle(req->fs.info.fd_out);
+  HANDLE root_dir_handle = dir_handle;
+  if (dir_handle == INVALID_HANDLE_VALUE) {
+    SET_REQ_WIN32_ERROR(req, (DWORD) UV_EBADF);
+    return;
+  }
+
+  uv__path_init(&rebuilt_path);
+
+  WCHAR * next_token = NULL;
+  WCHAR * token = wcstok_s(path, L"\\", &next_token);
+
+  while (token != NULL) {
+    if (!wcscmp(L".", token) || wcslen(token) == 0) {
+      // Do nothing.
+    } else if (!wcscmp(L"..", token)) {
+      // If rebuilt_path is empty, set it to the path of the parent direcotry.
+      if (rebuilt_path.len == 0) {
+        DWORD dir_path_len = GetFinalPathNameByHandleW(dir_handle, NULL, 0, VOLUME_NAME_DOS);
+        if (dir_path_len == 0) {
+          SET_REQ_WIN32_ERROR(req, GetLastError());
+          return;
+        }
+
+        WCHAR * dir_path_buf = uv__malloc((dir_path_len + 1) * sizeof(WCHAR));
+        if (dir_path_buf == NULL) {
+          SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
+          return;
+        }
+
+        if (
+          GetFinalPathNameByHandleW(
+            dir_handle,
+            dir_path_buf,
+            dir_path_len,
+            VOLUME_NAME_DOS
+          ) == 0
+        ) {
+          uv__free(dir_path_buf);
+          SET_REQ_UV_ERROR(req, UV_EBADF, ERROR_INVALID_HANDLE);
+          return -1;
+        }
+
+        // We'll call `NtCreateFile` with an absolute path, set root dir handle
+        // to the null handle.
+        root_dir_handle = 0;
+
+        // The path we get has a prefix of `\\?\`.
+        // But we need an NT object directory prefix of `\??\`.
+        WCHAR * dir_path_without_extended_prefix = dir_path_buf + 4;
+
+        uv__path_set(&rebuilt_path, L"\\??");
+        uv__path_push(&rebuilt_path, dir_path_without_extended_prefix);
+        uv__free(dir_path_buf);
+      }
+
+      // Then pop the last component.
+      uv__path_pop(&rebuilt_path);
+    } else {
+      uv__path_push(&rebuilt_path, token);
+    }
+
+    token = wcstok_s(NULL, L"\\", &next_token);
+  }
 
   /* Adjust flags to be compatible with the memory file mapping. Save the
    * original flags to emulate the correct behavior. */
@@ -732,7 +890,7 @@ void fs__openat(uv_fs_t* req) {
   attributes |= FILE_ATTRIBUTE_NORMAL;
   if (flags & UV_FS_O_CREAT) {
     if (!((req->fs.info.mode & ~current_umask) & _S_IWRITE)) {
-      attributes |= FILE_ATTRIBUTE_READONLY;
+      // attributes |= FILE_ATTRIBUTE_READONLY;
     }
   }
 
@@ -801,26 +959,14 @@ void fs__openat(uv_fs_t* req) {
     goto einval;
   }
 
+  /* Setting this flag makes it possible to open a directory. */
+  options |= FILE_OPEN_FOR_BACKUP_INTENT;
 
-  if (flags & UV_FS_O_DIRECTORY) {
-    /* Setting this flag makes it possible to open a directory. */
-    options |= FILE_OPEN_FOR_BACKUP_INTENT;
-    options |= FILE_DIRECTORY_FILE;
-  }
-
-  HANDLE dir = (HANDLE) _get_osfhandle(req->fs.info.fd_out);
-  if (dir == INVALID_HANDLE_VALUE) {
-    fprintf(stderr, "get_osfhandle\n");
-    SET_REQ_WIN32_ERROR(req, (DWORD) UV_EBADF);
-    return;
-  }
-
-
-  pRtlInitUnicodeString(&str, req->file.pathw);
+  pRtlInitUnicodeString(&str, rebuilt_path.buf);
   InitializeObjectAttributes(&obj,
                              &str,
                              OBJ_CASE_INSENSITIVE,
-                             dir,
+                             root_dir_handle,
                              NULL);
 
   NTSTATUS status = pNtCreateFile(&file,
@@ -834,6 +980,7 @@ void fs__openat(uv_fs_t* req) {
                                   options,
                                   NULL,
                                   0);
+  uv__path_free(&rebuilt_path);
   if (!NT_SUCCESS(status)) {
     ULONG error = pRtlNtStatusToDosError(status);
 
@@ -846,6 +993,28 @@ void fs__openat(uv_fs_t* req) {
       SET_REQ_WIN32_ERROR(req, error);
     }
     return;
+  }
+
+  if (flags & UV_FS_O_NOFOLLOW) {
+    // Emulate O_NOFOLLOW.
+
+    IO_STATUS_BLOCK io_status;
+    FILE_BASIC_INFORMATION basic_info;
+
+    status = pNtQueryInformationFile(file,
+                                     &io_status,
+                                     &basic_info,
+                                     sizeof(basic_info),
+                                     FileBasicInformation);
+    if (!NT_SUCCESS(status)) {
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+      return;
+    }
+
+    if (basic_info.FileAttributes & FILE_ATTRIBUTE_ARCHIVE) {
+      SET_REQ_WIN32_ERROR(req, (DWORD) UV_ELOOP);
+      return;
+    }
   }
 
   fd = _open_osfhandle((intptr_t) file, flags);
@@ -912,6 +1081,7 @@ void fs__openat(uv_fs_t* req) {
   return;
 
  einval:
+  uv__path_free(&rebuilt_path);
   SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
 }
 
@@ -2831,12 +3001,11 @@ static void fs__symlink(uv_fs_t* req) {
     flags = SYMBOLIC_LINK_FLAG_DIRECTORY | uv__file_symlink_usermode_flag;
   else
     flags = uv__file_symlink_usermode_flag;
-
+  
   if (CreateSymbolicLinkW(new_pathw, pathw, flags)) {
     SET_REQ_RESULT(req, 0);
     return;
   }
-
   /* Something went wrong. We will test if it is because of user-mode
    * symlinks.
    */
