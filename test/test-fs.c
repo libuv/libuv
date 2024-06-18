@@ -3254,6 +3254,7 @@ TEST_IMPL(fs_openat) {
   unlink("test/fixtures/test_dir/test_file");
   unlink("test/fixtures/test_dir/link");
   unlink("test/fixtures/test_dir/nested_dir/file");
+  unlink("test/fixtures/file");
   rmdir("test/fixtures/test_dir/nested_dir");
   rmdir("test/fixtures/test_dir");
 
@@ -3381,7 +3382,7 @@ TEST_IMPL(fs_openat) {
     r = uv_fs_openat(NULL,
                      &req,
                      dir,
-                     "../empty_file",
+                     "../file",
                      UV_FS_O_RDWR | UV_FS_O_CREAT,
                      S_IWUSR | S_IRUSR,
                      NULL);
@@ -3398,7 +3399,7 @@ TEST_IMPL(fs_openat) {
     r = uv_fs_openat(NULL,
                      &req,
                      dir,
-                     "../test_dir/nested_dir/././../../empty_file",
+                     "../test_dir/nested_dir/././../../file",
                      UV_FS_O_RDWR | UV_FS_O_CREAT,
                      S_IWUSR | S_IRUSR,
                      NULL);
@@ -3495,6 +3496,7 @@ TEST_IMPL(fs_openat) {
   unlink("test/fixtures/test_dir/test_file");
   unlink("test/fixtures/test_dir/link");
   unlink("test/fixtures/test_dir/nested_dir/file");
+  unlink("test/fixtures/file");
   rmdir("test/fixtures/test_dir/nested_dir");
   rmdir("test/fixtures/test_dir");
 
