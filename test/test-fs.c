@@ -450,13 +450,10 @@ static void open_cb_simple(uv_fs_t* req) {
 
 static void openat_cb_simple(uv_fs_t* req) {
   ASSERT_EQ(req->fs_type, UV_FS_OPENAT);
-  if (req->result < 0) {
-    fprintf(stderr, "async openat error: %d\n", (int) req->result);
-    ASSERT(0);
-  }
-  openat_cb_count++;
+  ASSERT_GE(req->result, 0);
   ASSERT(req->path);
   uv_fs_req_cleanup(req);
+  openat_cb_count++;
 }
 
 
@@ -3023,11 +3020,15 @@ TEST_IMPL(fs_openat) {
   int r;
   uv_fs_t req;
   uv_file fd;
-  uv_file dirfd;
+  uv_file dir;
+  uv_file nested_dir;
 
   /* Setup. */
   unlink("test/fixtures/test_dir/test_file_not_exist");
   unlink("test/fixtures/test_dir/test_file");
+  unlink("test/fixtures/test_dir/link");
+  unlink("test/fixtures/test_dir/nested_dir/file");
+  unlink("test/fixtures/file");
   rmdir("test/fixtures/test_dir/nested_dir");
   rmdir("test/fixtures/test_dir");
 
@@ -3047,9 +3048,18 @@ TEST_IMPL(fs_openat) {
                  0,
                  NULL);
   ASSERT_GE(r, 0);
+  dir = (uv_file) req.result;
   uv_fs_req_cleanup(&req);
 
-  dirfd = (uv_file) r;
+  r = uv_fs_open(NULL,
+                 &req,
+                 "test/fixtures/test_dir/nested_dir",
+                 UV_FS_O_RDONLY | UV_FS_O_DIRECTORY,
+                 0,
+                 NULL);
+  ASSERT_GE(r, 0);
+  nested_dir = (uv_file) req.result;
+  uv_fs_req_cleanup(&req);
 
   r = uv_fs_open(NULL,
                  &req,
@@ -3058,9 +3068,13 @@ TEST_IMPL(fs_openat) {
                  S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT_GE(r, 0);
+  fd = (uv_file) req.result;
   uv_fs_req_cleanup(&req);
-  fd = r;
   r = uv_fs_close(NULL, &req, fd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_symlink(NULL, &req, "test_file", "test/fixtures/test_dir/link", 0, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
 
@@ -3068,14 +3082,14 @@ TEST_IMPL(fs_openat) {
   {
     r = uv_fs_openat(NULL,
                      &req,
-                     dirfd,
+                     dir,
                      "test_file",
-                     UV_FS_O_RDWR | UV_FS_O_CREAT,
+                     UV_FS_O_RDWR,
                      S_IWUSR | S_IRUSR,
                      NULL);
     ASSERT_GE(r, 0);
+    fd = (uv_file) req.result;
     uv_fs_req_cleanup(&req);
-    fd = (uv_file) r;
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&req);
@@ -3085,9 +3099,9 @@ TEST_IMPL(fs_openat) {
   {
     r = uv_fs_openat(loop,
                      &req,
-                     dirfd,
+                     dir,
                      "test_file",
-                     UV_FS_O_RDWR | UV_FS_O_CREAT,
+                     UV_FS_O_RDWR,
                      S_IWUSR | S_IRUSR,
                      openat_cb_simple);
     ASSERT_GE(r, 0);
@@ -3107,14 +3121,65 @@ TEST_IMPL(fs_openat) {
   {
     r = uv_fs_openat(NULL,
                      &req,
-                     dirfd,
+                     dir,
                      "nested_dir",
                      UV_FS_O_RDONLY | UV_FS_O_DIRECTORY,
                      S_IWUSR | S_IRUSR,
                      NULL);
     ASSERT_GE(r, 0);
-    uv_fs_req_cleanup(&req);
     fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Open a file in a nested dir
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dir,
+                     "nested_dir/file",
+                     UV_FS_O_RDWR | UV_FS_O_CREAT | UV_FS_O_EXCL,
+                     S_IWUSR | S_IRUSR,
+                     NULL);
+    ASSERT_GE(r, 0);
+    fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Open a file in the parent dir
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dir,
+                     "../file",
+                     UV_FS_O_RDWR | UV_FS_O_CREAT,
+                     S_IWUSR | S_IRUSR,
+                     NULL);
+    ASSERT_GE(r, 0);
+    fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
+    r = uv_fs_close(NULL, &req, fd, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&req);
+  }
+
+  // Resolve multiple dot dots
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dir,
+                     "../test_dir/nested_dir/././../../file",
+                     UV_FS_O_RDWR | UV_FS_O_CREAT,
+                     S_IWUSR | S_IRUSR,
+                     NULL);
+    ASSERT_GE(r, 0);
+    fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&req);
@@ -3124,14 +3189,14 @@ TEST_IMPL(fs_openat) {
   {
     r = uv_fs_openat(NULL,
                      &req,
-                     dirfd,
+                     dir,
                      "test_file_not_exist",
                      UV_FS_O_RDWR | UV_FS_O_CREAT,
                      S_IWUSR | S_IRUSR,
                      NULL);
     ASSERT_GE(r, 0);
-    uv_fs_req_cleanup(&req);
     fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
     r = uv_fs_close(NULL, &req, fd, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&req);
@@ -3141,7 +3206,7 @@ TEST_IMPL(fs_openat) {
   {
     r = uv_fs_openat(NULL,
                      &req,
-                     dirfd,
+                     dir,
                      "test_file",
                      UV_FS_O_RDWR | UV_FS_O_CREAT | UV_FS_O_EXCL,
                      S_IWUSR | S_IRUSR,
@@ -3154,15 +3219,14 @@ TEST_IMPL(fs_openat) {
   {
     r = uv_fs_openat(NULL,
                      &req,
-                     dirfd,
+                     dir,
                      "test_file",
                      UV_FS_O_RDONLY,
                      0,
                      NULL);
     ASSERT_GE(r, 0);
-    uv_fs_req_cleanup(&req);
-
     fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
 
     iov = uv_buf_init(test_buf, sizeof(test_buf));
     r = uv_fs_write(NULL,
@@ -3179,13 +3243,34 @@ TEST_IMPL(fs_openat) {
     uv_fs_req_cleanup(&req);
   }
 
-  r = uv_fs_close(NULL, &req, dirfd, NULL);
+  // Open a symlink without following
+  {
+    r = uv_fs_openat(NULL,
+                     &req,
+                     dir,
+                     "link",
+                     UV_FS_O_RDONLY | UV_FS_O_NOFOLLOW,
+                     0,
+                     NULL);
+    ASSERT_EQ(r, UV_ELOOP);
+    fd = (uv_file) req.result;
+    uv_fs_req_cleanup(&req);
+  }
+
+  r = uv_fs_close(NULL, &req, dir, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, nested_dir, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
 
   /* Cleanup */
   unlink("test/fixtures/test_dir/test_file_not_exist");
   unlink("test/fixtures/test_dir/test_file");
+  unlink("test/fixtures/test_dir/link");
+  unlink("test/fixtures/test_dir/nested_dir/file");
+  unlink("test/fixtures/file");
   rmdir("test/fixtures/test_dir/nested_dir");
   rmdir("test/fixtures/test_dir");
 
