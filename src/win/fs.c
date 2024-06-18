@@ -35,6 +35,7 @@
 /* <winioctl.h> requires <windows.h>, included via "uv.h" above, but needs to
    be included before our "winapi.h", included via "internal.h" below. */
 #include <winioctl.h>
+#include <shlwapi.h>
 
 #include "internal.h"
 #include "req-inl.h"
@@ -732,6 +733,7 @@ void fs__openat(uv_fs_t* req) {
   int flags = req->fs.info.file_flags;
   struct uv__fd_info_s fd_info;
   WCHAR * path = req->file.pathw;
+  size_t path_len = wcslen(path);
   struct path rebuilt_path;
   int i;
 
@@ -740,11 +742,23 @@ void fs__openat(uv_fs_t* req) {
     if (path[i] == L'/')
       path[i] = L'\\';
 
-  HANDLE dir_handle = (HANDLE) _get_osfhandle(req->fs.info.fd_out);
-  HANDLE root_dir_handle = dir_handle;
-  if (dir_handle == INVALID_HANDLE_VALUE) {
-    SET_REQ_WIN32_ERROR(req, (DWORD) UV_EBADF);
-    return;
+  HANDLE root_dir_handle = 0;
+  HANDLE dir_handle;
+  BOOL is_absolute = FALSE;
+
+  if (
+    (path_len > 0 && path[0] == L'\\') || 
+    (path_len > 2 && path[1] == L':' && path[2] == L'\\')
+  ) is_absolute = TRUE;
+
+  if (!is_absolute) {
+    dir_handle = (HANDLE) _get_osfhandle(req->fs.info.fd_out);
+    if (dir_handle == INVALID_HANDLE_VALUE) {
+      SET_REQ_WIN32_ERROR(req, (DWORD) UV_EBADF);
+      return;
+    }
+
+    root_dir_handle = dir_handle;
   }
 
   uv__path_init(&rebuilt_path);
@@ -757,7 +771,7 @@ void fs__openat(uv_fs_t* req) {
       // Do nothing.
     } else if (!wcscmp(L"..", token)) {
       // If rebuilt_path is empty, set it to the path of the parent direcotry.
-      if (rebuilt_path.len == 0) {
+      if (rebuilt_path.len == 0 && !is_absolute) {
         DWORD dir_path_len = GetFinalPathNameByHandleW(dir_handle, NULL, 0, VOLUME_NAME_DOS);
         if (dir_path_len == 0) {
           SET_REQ_WIN32_ERROR(req, GetLastError());
@@ -797,13 +811,25 @@ void fs__openat(uv_fs_t* req) {
       }
 
       // Then pop the last component.
-      uv__path_pop(&rebuilt_path);
+      if (rebuilt_path.len > 0) uv__path_pop(&rebuilt_path);
     } else {
       uv__path_push(&rebuilt_path, token);
     }
 
     token = wcstok_s(NULL, L"\\", &next_token);
   }
+
+  if (is_absolute) {
+    // Prepend the path with the NT object directory prefix.
+
+    WCHAR * buf = uv__malloc((rebuilt_path.len + 1) * sizeof(WCHAR));
+    memcpy(buf, rebuilt_path.buf, (rebuilt_path.len + 1) * sizeof(WCHAR));
+    uv__path_set(&rebuilt_path, L"\\??");
+    uv__path_push(&rebuilt_path, buf);
+    uv__free(buf);
+  }
+
+  wprintf(L"%d %s\n", root_dir_handle, rebuilt_path.buf);
 
   /* Adjust flags to be compatible with the memory file mapping. Save the
    * original flags to emulate the correct behavior. */
