@@ -642,7 +642,7 @@ struct path {
 
 // Must be freed by `uv__path_free`.
 int uv__path_init(struct path * p) {
-  WCHAR * buf = uv__malloc(1);
+  WCHAR * buf = uv__malloc(sizeof(WCHAR));
   if (buf == NULL) return UV_ENOMEM;
 
   p->buf = buf;
@@ -703,9 +703,11 @@ int uv__path_push(struct path * p, WCHAR * component) {
 }
 
 int uv__path_pop(struct path * p) {
+  int i;
+
   if (p->len == 0) return 1;
 
-  for (int i = p->len - 1; i >= 0; i--) {
+  for (i = p->len - 1; i >= 0; i--) {
     if (p->buf[i] == L'\\' || i == 0) {
       p->buf[i] = L'\0';
       p->len = i;
@@ -726,15 +728,15 @@ void fs__openat(uv_fs_t* req) {
   UNICODE_STRING str;
   IO_STATUS_BLOCK isb;
   OBJECT_ATTRIBUTES obj;
-  int fd, current_umask;
+  int fd, current_umask, temp_umask = 0;
   int flags = req->fs.info.file_flags;
   struct uv__fd_info_s fd_info;
   WCHAR * path = req->file.pathw;
   struct path rebuilt_path;
-  const size_t path_len = wcslen(path);
+  int i;
 
   // NtCreateFile doesn't recognize forward slashes, only back slashes.
-  for (int i = 0; path[i] != 0; i++)
+  for (i = 0; path[i] != L'\0'; i++)
     if (path[i] == L'/')
       path[i] = L'\\';
 
@@ -778,7 +780,7 @@ void fs__openat(uv_fs_t* req) {
         ) {
           uv__free(dir_path_buf);
           SET_REQ_UV_ERROR(req, UV_EBADF, ERROR_INVALID_HANDLE);
-          return -1;
+          return;
         }
 
         // We'll call `NtCreateFile` with an absolute path, set root dir handle
@@ -825,8 +827,8 @@ void fs__openat(uv_fs_t* req) {
 
   /* Obtain the active umask. umask() never fails and returns the previous
    * umask. */
-  current_umask = _umask(0);
-  _umask(current_umask);
+  _umask_s(temp_umask, &current_umask);
+  _umask_s(current_umask, &temp_umask);
 
   /* convert flags and mode to CreateFile parameters */
   switch (flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) {
