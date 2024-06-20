@@ -693,6 +693,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-send-unreachable.c
        test/test-udp-try-send.c
        test/test-udp-recv-in-a-row.c
+       test/test-udp-reuseport.c
        test/test-uname.c
        test/test-walk-handles.c
        test/test-watcher-cross-stop.c)

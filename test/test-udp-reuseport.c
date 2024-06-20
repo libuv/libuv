@@ -29,21 +29,39 @@
 #if !defined(__linux__) && !defined(__FreeBSD__) && \
     !defined(__DragonFly__) && !defined(__sun) && !defined(_AIX73)
 
-TEST_IMPL(tcp_reuseport) {
-  struct sockaddr_in addr;
+TEST_IMPL(udp_reuseport) {
+  struct sockaddr_in addr1, addr2, addr3;
   uv_loop_t* loop;
-  uv_tcp_t handle;
+  uv_udp_t handle1, handle2, handle3;
   int r;
 
-  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr1));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT_2, &addr2));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT_3, &addr3));
 
   loop = uv_default_loop();
   ASSERT_NOT_NULL(loop);
 
-  r = uv_tcp_init(loop, &handle);
+  r = uv_udp_init(loop, &handle1);
   ASSERT_OK(r);
 
-  r = uv_tcp_bind(&handle, (const struct sockaddr*) &addr, UV_TCP_REUSEPORT);
+  r = uv_udp_bind(&handle1, (const struct sockaddr*) &addr1, UV_UDP_REUSEADDR);
+  ASSERT_OK(r);
+
+  r = uv_udp_init(loop, &handle2);
+  ASSERT_OK(r);
+
+  r = uv_udp_bind(&handle2, (const struct sockaddr*) &addr2, UV_UDP_REUSEPORT);
+  ASSERT_EQ(r, UV_ENOTSUP);
+
+  r = uv_udp_init(loop, &handle3);
+  ASSERT_OK(r);
+
+  /* For platforms where SO_REUSEPORTs don't have the capability of
+   * load balancing, specifying both UV_UDP_REUSEADDR and UV_UDP_REUSEPORT
+   * in flags will fail, returning an UV_ENOTSUP error. */
+  r = uv_udp_bind(&handle3, (const struct sockaddr*) &addr3,
+                  UV_UDP_REUSEADDR | UV_UDP_REUSEPORT);
   ASSERT_EQ(r, UV_ENOTSUP);
 
   MAKE_VALGRIND_HAPPY(loop);
@@ -53,39 +71,43 @@ TEST_IMPL(tcp_reuseport) {
 
 #else
 
-#define NUM_LISTENING_THREADS 2
-#define MAX_TCP_CLIENTS 10
+#define NUM_RECEIVING_THREADS 2
+#define MAX_UDP_DATAGRAMS 10
 
-static uv_tcp_t tcp_connect_handles[MAX_TCP_CLIENTS];
-static uv_connect_t tcp_connect_requests[MAX_TCP_CLIENTS];
+static uv_udp_t udp_send_handles[MAX_UDP_DATAGRAMS];
+static uv_udp_send_t udp_send_requests[MAX_UDP_DATAGRAMS];
 
 static uv_sem_t semaphore;
 
 static uv_mutex_t mutex;
-static unsigned int accepted;
+static unsigned int received;
 
-static unsigned int thread_loop1_accepted;
-static unsigned int thread_loop2_accepted;
-static unsigned int connected;
+static unsigned int thread_loop1_recv;
+static unsigned int thread_loop2_recv;
+static unsigned int sent;
 
 static uv_loop_t* main_loop;
 static uv_loop_t thread_loop1;
 static uv_loop_t thread_loop2;
-static uv_tcp_t thread_handle1;
-static uv_tcp_t thread_handle2;
+static uv_udp_t thread_handle1;
+static uv_udp_t thread_handle2;
 static uv_timer_t thread_timer_handle1;
 static uv_timer_t thread_timer_handle2;
 
-static void on_close(uv_handle_t* handle) {
-  free(handle);
+static void alloc_cb(uv_handle_t* handle,
+                     size_t suggested_size,
+                     uv_buf_t* buf) {
+  buf->base = malloc(suggested_size);
+  buf->len = (int) suggested_size;
 }
 
 static void ticktack(uv_timer_t* timer) {
+  int done = 0;
+
   ASSERT(timer == &thread_timer_handle1 || timer == &thread_timer_handle2);
 
-  int done = 0;
   uv_mutex_lock(&mutex);
-  if (accepted == MAX_TCP_CLIENTS) {
+  if (received == MAX_UDP_DATAGRAMS) {
     done = 1;
   }
   uv_mutex_unlock(&mutex);
@@ -99,56 +121,70 @@ static void ticktack(uv_timer_t* timer) {
   }
 }
 
-static void on_connection(uv_stream_t* server, int status)
-{
-  ASSERT_OK(status);
-  ASSERT(server == (uv_stream_t*) &thread_handle1 || \
-         server == (uv_stream_t*) &thread_handle2);
+static void on_recv(uv_udp_t* handle,
+                    ssize_t nr,
+                    const uv_buf_t* buf,
+                    const struct sockaddr* addr,
+                    unsigned flags) {
+  ASSERT_OK(flags);
+  ASSERT(handle == &thread_handle1 || handle == &thread_handle2);
 
-  uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
-  ASSERT_OK(uv_tcp_init(server->loop, client));
-  ASSERT_OK(uv_accept(server, (uv_stream_t*) client));
-  uv_close((uv_handle_t*) client, on_close);
+  ASSERT_GE(nr, 0);
 
-  if (server->loop == &thread_loop1)
-    thread_loop1_accepted++;
+  if (nr == 0) {
+    ASSERT_NULL(addr);
+    free(buf->base);
+    return;
+  }
 
-  if (server->loop == &thread_loop2)
-    thread_loop2_accepted++;
+  ASSERT_NOT_NULL(addr);
+  ASSERT_EQ(5, nr);
+  ASSERT(!memcmp("Hello", buf->base, nr));
+  free(buf->base);
+
+  if (handle->loop == &thread_loop1)
+    thread_loop1_recv++;
+
+  if (handle->loop == &thread_loop2)
+    thread_loop2_recv++;
 
   uv_mutex_lock(&mutex);
-  accepted++;
+  received++;
   uv_mutex_unlock(&mutex);
 }
 
-static void on_connect(uv_connect_t* req, int status) {
+static void on_send(uv_udp_send_t* req, int status) {
   ASSERT_OK(status);
-  ASSERT_NOT_NULL(req->handle);
   ASSERT_PTR_EQ(req->handle->loop, main_loop);
 
-  connected++;
-  uv_close((uv_handle_t*) req->handle, NULL);
+  if (++sent == MAX_UDP_DATAGRAMS)
+    uv_close((uv_handle_t*) req->handle, NULL);
 }
 
-static void create_listener(uv_loop_t* loop, uv_tcp_t* handle) {
+static void bind_socket_and_prepare_recv(uv_loop_t* loop, uv_udp_t* handle) {
   struct sockaddr_in addr;
   int r;
 
   ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-  r = uv_tcp_init(loop, handle);
+  r = uv_udp_init(loop, handle);
   ASSERT_OK(r);
 
-  r = uv_tcp_bind(handle, (const struct sockaddr*) &addr, UV_TCP_REUSEPORT);
+  /* For platforms where SO_REUSEPORTs have the capability of
+   * load balancing, specifying both UV_UDP_REUSEADDR and
+   * UV_UDP_REUSEPORT in flags is allowed and SO_REUSEPORT will
+   * always override the behavior of SO_REUSEADDR. */
+  r = uv_udp_bind(handle, (const struct sockaddr*) &addr,
+                  UV_UDP_REUSEADDR | UV_UDP_REUSEPORT);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*) handle, 128, on_connection);
+  r = uv_udp_recv_start(handle, alloc_cb, on_recv);
   ASSERT_OK(r);
 }
 
 static void run_event_loop(void* arg) {
   int r;
-  uv_tcp_t* handle;
+  uv_udp_t* handle;
   uv_timer_t* timer;
   uv_loop_t* loop = (uv_loop_t*) arg;
   ASSERT(loop == &thread_loop1 || loop == &thread_loop2);
@@ -161,20 +197,21 @@ static void run_event_loop(void* arg) {
     timer = &thread_timer_handle2;
   }
 
-  create_listener(loop, handle);
+  bind_socket_and_prepare_recv(loop, handle);
   r = uv_timer_init(loop, timer);
   ASSERT_OK(r);
   r = uv_timer_start(timer, ticktack, 0, 10);
   ASSERT_OK(r);
 
-  /* Notify the main thread to start connecting. */
+  /* Notify the main thread to start sending data. */
   uv_sem_post(&semaphore);
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);
 }
 
-TEST_IMPL(tcp_reuseport) {
+TEST_IMPL(udp_reuseport) {
   struct sockaddr_in addr;
+  uv_buf_t buf;
   int r;
   int i;
 
@@ -187,7 +224,7 @@ TEST_IMPL(tcp_reuseport) {
   main_loop = uv_default_loop();
   ASSERT_NOT_NULL(main_loop);
 
-  /* Run event loops of listeners in separate threads. */
+  /* Run event loops of receiving sockets in separate threads. */
   uv_loop_init(&thread_loop1);
   uv_loop_init(&thread_loop2);
   uv_thread_t thread_loop_id1;
@@ -195,24 +232,27 @@ TEST_IMPL(tcp_reuseport) {
   uv_thread_create(&thread_loop_id1, run_event_loop, &thread_loop1);
   uv_thread_create(&thread_loop_id2, run_event_loop, &thread_loop2);
 
-  /* Wait until all threads to poll for accepting connections
-   * before we start to connect. Otherwise the incoming connections
-   * might not be distributed across all listening threads. */
-  for (i = 0; i < NUM_LISTENING_THREADS; i++)
+  /* Wait until all threads to poll for receiving datagrams
+   * before we start to sending. Otherwise the incoming datagrams
+   * might not be distributed across all receiving threads. */
+  for (i = 0; i < NUM_RECEIVING_THREADS; i++)
     uv_sem_wait(&semaphore);
   /* Now we know all threads are up and entering the uv_run(),
    * but we still sleep a little bit just for dual fail-safe. */
   uv_sleep(100);
 
-  /* Start connecting to the peers. */
+  /* Start sending datagrams to the peers. */
+  buf = uv_buf_init("Hello", 5);
   ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-  for (i = 0; i < MAX_TCP_CLIENTS; i++) {
-    r = uv_tcp_init(main_loop, &tcp_connect_handles[i]);
+  for (i = 0; i < MAX_UDP_DATAGRAMS; i++) {
+    r = uv_udp_init(main_loop, &udp_send_handles[i]);
     ASSERT_OK(r);
-    r = uv_tcp_connect(&tcp_connect_requests[i],
-                       &tcp_connect_handles[i],
-                       (const struct sockaddr*) &addr,
-                       on_connect);
+    r = uv_udp_send(&udp_send_requests[i],
+                    &udp_send_handles[i],
+                    &buf,
+                    1,
+                    (const struct sockaddr*) &addr,
+                    on_send);
     ASSERT_OK(r);
   }
 
@@ -223,15 +263,14 @@ TEST_IMPL(tcp_reuseport) {
   uv_thread_join(&thread_loop_id1);
   uv_thread_join(&thread_loop_id2);
 
-  /* Verify if each listener per event loop accepted connections
-   * and the amount of accepted connections matches the one of
-   * connected connections.
+  /* Verify if each receiving socket per event loop received datagrams
+   * and the amount of received datagrams matches the one of sent datagrams.
    */
-  ASSERT_EQ(accepted, MAX_TCP_CLIENTS);
-  ASSERT_EQ(connected, MAX_TCP_CLIENTS);
-  ASSERT_GT(thread_loop1_accepted, 0);
-  ASSERT_GT(thread_loop2_accepted, 0);
-  ASSERT_EQ(thread_loop1_accepted + thread_loop2_accepted, connected);
+  ASSERT_EQ(received, MAX_UDP_DATAGRAMS);
+  ASSERT_EQ(sent, MAX_UDP_DATAGRAMS);
+  ASSERT_GT(thread_loop1_recv, 0);
+  ASSERT_GT(thread_loop2_recv, 0);
+  ASSERT_EQ(thread_loop1_recv + thread_loop2_recv, sent);
 
   /* Clean up. */
   uv_mutex_destroy(&mutex);

@@ -190,6 +190,7 @@ TEST_DECLARE   (udp_open_twice)
 TEST_DECLARE   (udp_open_bound)
 TEST_DECLARE   (udp_open_connect)
 TEST_DECLARE   (udp_recv_in_a_row)
+TEST_DECLARE   (udp_reuseport)
 #ifndef _WIN32
 TEST_DECLARE   (udp_send_unix)
 #endif
@@ -804,6 +805,7 @@ TASK_LIST_START
   TEST_ENTRY  (udp_sendmmsg_error)
   TEST_ENTRY  (udp_try_send)
   TEST_ENTRY  (udp_recv_in_a_row)
+  TEST_ENTRY  (udp_reuseport)
 
   TEST_ENTRY  (udp_open)
   TEST_ENTRY  (udp_open_twice)
