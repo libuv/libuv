@@ -1882,13 +1882,13 @@ unsigned int uv_available_parallelism(void) {
     rc = CPU_COUNT(&set);
   else
     rc = sysconf(_SC_NPROCESSORS_ONLN);
-
+    
   if (uv__get_constrained_cpu(&c) == 0 && c.period_length > 0) {
     rc_with_cgroup = (double)c.quota_per_period / c.period_length * c.proportions;
     if (rc_with_cgroup < rc)
       rc = (long)rc_with_cgroup; /* Casting is safe since rc_with_cgroup < rc < LONG_MAX */
   }
-  if (rc < 1)
+  if (rc < 1) 
     rc = 1;
 
   return (unsigned) rc;
