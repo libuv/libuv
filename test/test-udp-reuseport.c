@@ -87,8 +87,8 @@ static unsigned int thread_loop2_recv;
 static unsigned int sent;
 
 static uv_loop_t* main_loop;
-static uv_loop_t* thread_loop1;
-static uv_loop_t* thread_loop2;
+static uv_loop_t thread_loop1;
+static uv_loop_t thread_loop2;
 static uv_udp_t thread_handle1;
 static uv_udp_t thread_handle2;
 static uv_timer_t thread_timer_handle1;
@@ -114,9 +114,9 @@ static void ticktack(uv_timer_t* timer) {
 
   if (done) {
     uv_close((uv_handle_t*) timer, NULL);
-    if (timer->loop == thread_loop1)
+    if (timer->loop == &thread_loop1)
       uv_close((uv_handle_t*) &thread_handle1, NULL);
-    if (timer->loop == thread_loop2)
+    if (timer->loop == &thread_loop2)
       uv_close((uv_handle_t*) &thread_handle2, NULL);
   }
 }
@@ -142,10 +142,10 @@ static void on_recv(uv_udp_t* handle,
   ASSERT(!memcmp("Hello", buf->base, nr));
   free(buf->base);
 
-  if (handle->loop == thread_loop1)
+  if (handle->loop == &thread_loop1)
     thread_loop1_recv++;
 
-  if (handle->loop == thread_loop2)
+  if (handle->loop == &thread_loop2)
     thread_loop2_recv++;
 
   uv_mutex_lock(&mutex);
@@ -187,9 +187,9 @@ static void run_event_loop(void* arg) {
   uv_udp_t* handle;
   uv_timer_t* timer;
   uv_loop_t* loop = (uv_loop_t*) arg;
-  ASSERT(loop == thread_loop1 || loop == thread_loop2);
+  ASSERT(loop == &thread_loop1 || loop == &thread_loop2);
 
-  if (loop == thread_loop1) {
+  if (loop == &thread_loop1) {
     handle = &thread_handle1;
     timer = &thread_timer_handle1;
   } else {
@@ -224,20 +224,13 @@ TEST_IMPL(udp_reuseport) {
   main_loop = uv_default_loop();
   ASSERT_NOT_NULL(main_loop);
 
-  /* Create receiving socket per event loop. */
-  thread_loop1 = malloc(sizeof *thread_loop1);
-  ASSERT_NOT_NULL(thread_loop1);
-  uv_loop_init(thread_loop1);
-
-  thread_loop2 = malloc(sizeof *thread_loop2);
-  ASSERT_NOT_NULL(thread_loop2);
-  uv_loop_init(thread_loop2);
-
   /* Run event loops of receiving sockets in separate threads. */
+  uv_loop_init(&thread_loop1);
+  uv_loop_init(&thread_loop2);
   uv_thread_t thread_loop_id1;
   uv_thread_t thread_loop_id2;
-  uv_thread_create(&thread_loop_id1, run_event_loop, thread_loop1);
-  uv_thread_create(&thread_loop_id2, run_event_loop, thread_loop2);
+  uv_thread_create(&thread_loop_id1, run_event_loop, &thread_loop1);
+  uv_thread_create(&thread_loop_id2, run_event_loop, &thread_loop2);
 
   /* Wait until all threads to poll for receiving datagrams
    * before we start to sending. Otherwise the incoming datagrams
@@ -284,10 +277,8 @@ TEST_IMPL(udp_reuseport) {
 
   uv_sem_destroy(&semaphore);
 
-  uv_loop_close(thread_loop1);
-  free(thread_loop1);
-  uv_loop_close(thread_loop2);
-  free(thread_loop2);
+  uv_loop_close(&thread_loop1);
+  uv_loop_close(&thread_loop2);
   MAKE_VALGRIND_HAPPY(main_loop);
 
   return 0;
