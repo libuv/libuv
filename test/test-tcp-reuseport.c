@@ -69,8 +69,8 @@ static unsigned int thread_loop2_accepted;
 static unsigned int connected;
 
 static uv_loop_t* main_loop;
-static uv_loop_t* thread_loop1;
-static uv_loop_t* thread_loop2;
+static uv_loop_t thread_loop1;
+static uv_loop_t thread_loop2;
 static uv_tcp_t thread_handle1;
 static uv_tcp_t thread_handle2;
 static uv_timer_t thread_timer_handle1;
@@ -92,9 +92,9 @@ static void ticktack(uv_timer_t* timer) {
 
   if (done) {
     uv_close((uv_handle_t*) timer, NULL);
-    if (timer->loop == thread_loop1)
+    if (timer->loop == &thread_loop1)
       uv_close((uv_handle_t*) &thread_handle1, NULL);
-    if (timer->loop == thread_loop2)
+    if (timer->loop == &thread_loop2)
       uv_close((uv_handle_t*) &thread_handle2, NULL);
   }
 }
@@ -110,10 +110,10 @@ static void on_connection(uv_stream_t* server, int status)
   ASSERT_OK(uv_accept(server, (uv_stream_t*) client));
   uv_close((uv_handle_t*) client, on_close);
 
-  if (server->loop == thread_loop1)
+  if (server->loop == &thread_loop1)
     thread_loop1_accepted++;
 
-  if (server->loop == thread_loop2)
+  if (server->loop == &thread_loop2)
     thread_loop2_accepted++;
 
   uv_mutex_lock(&mutex);
@@ -151,9 +151,9 @@ static void run_event_loop(void* arg) {
   uv_tcp_t* handle;
   uv_timer_t* timer;
   uv_loop_t* loop = (uv_loop_t*) arg;
-  ASSERT(loop == thread_loop1 || loop == thread_loop2);
+  ASSERT(loop == &thread_loop1 || loop == &thread_loop2);
 
-  if (loop == thread_loop1) {
+  if (loop == &thread_loop1) {
     handle = &thread_handle1;
     timer = &thread_timer_handle1;
   } else {
@@ -187,21 +187,13 @@ TEST_IMPL(tcp_reuseport) {
   main_loop = uv_default_loop();
   ASSERT_NOT_NULL(main_loop);
 
-  /* Create listener per event loop. */
-
-  thread_loop1 = malloc(sizeof *thread_loop1);
-  ASSERT_NOT_NULL(thread_loop1);
-  uv_loop_init(thread_loop1);
-
-  thread_loop2 = malloc(sizeof *thread_loop2);
-  ASSERT_NOT_NULL(thread_loop2);
-  uv_loop_init(thread_loop2);
-
   /* Run event loops of listeners in separate threads. */
+  uv_loop_init(&thread_loop1);
+  uv_loop_init(&thread_loop2);
   uv_thread_t thread_loop_id1;
   uv_thread_t thread_loop_id2;
-  uv_thread_create(&thread_loop_id1, run_event_loop, thread_loop1);
-  uv_thread_create(&thread_loop_id2, run_event_loop, thread_loop2);
+  uv_thread_create(&thread_loop_id1, run_event_loop, &thread_loop1);
+  uv_thread_create(&thread_loop_id2, run_event_loop, &thread_loop2);
 
   /* Wait until all threads to poll for accepting connections
    * before we start to connect. Otherwise the incoming connections
@@ -246,10 +238,8 @@ TEST_IMPL(tcp_reuseport) {
 
   uv_sem_destroy(&semaphore);
 
-  uv_loop_close(thread_loop1);
-  free(thread_loop1);
-  uv_loop_close(thread_loop2);
-  free(thread_loop2);
+  uv_loop_close(&thread_loop1);
+  uv_loop_close(&thread_loop2);
   MAKE_VALGRIND_HAPPY(main_loop);
 
   return 0;
