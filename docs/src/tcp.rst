@@ -129,7 +129,8 @@ API
 
     .. note::
         ``UV_TCP_REUSEPORT`` flag is available only on Linux 3.9+, DragonFlyBSD 3.6+,
-        FreeBSD 12.0+, Solaris 11.4, and AIX 7.2.5+ at the moment.
+        FreeBSD 12.0+, Solaris 11.4, and AIX 7.2.5+ at the moment. On other platforms
+        this function will return an UV_ENOTSUP error.
 
 .. c:function:: int uv_tcp_getsockname(const uv_tcp_t* handle, struct sockaddr* name, int* namelen)
 
