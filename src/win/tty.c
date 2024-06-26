@@ -1051,7 +1051,7 @@ int uv__tty_read_stop(uv_tty_t* handle) {
     return 0;
 
   if (handle->flags & UV_HANDLE_TTY_RAW) {
-    /* Cancel raw read. Write some bullshit event to force the console wait to
+    /* Cancel raw read. Write some event to force the console wait to
      * return. */
     memset(&record, 0, sizeof record);
     record.EventType = FOCUS_EVENT;
