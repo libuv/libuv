@@ -1161,9 +1161,9 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
     err = uv__tcp_xfer_import(
         (uv_tcp_t*) client, item->xfer_type, &item->xfer_info);
-    
+
     uv__free(item);
-    
+
     if (err != 0)
       return err;
 
@@ -1409,6 +1409,10 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
                       0,
                       NULL,
                       &req->u.io.overlapped);
+
+    /* Skip 0-read if there is no (read) access. */
+    if (!result && GetLastError() == ERROR_ACCESS_DENIED)
+      return;
 
     if (!result && GetLastError() != ERROR_IO_PENDING) {
       /* Make this req pending reporting an error. */
@@ -1739,7 +1743,7 @@ static DWORD uv__pipe_get_ipc_remote_pid(uv_pipe_t* handle) {
       GetNamedPipeServerProcessId(handle->handle, pid);
     }
   }
-  
+
   return *pid;
 }
 
@@ -2077,8 +2081,9 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
 
     /* If the read was cancelled by uv__pipe_interrupt_read(), the request may
      * indicate an ERROR_OPERATION_ABORTED error. This error isn't relevant to
-     * the user; we'll start a new zero-read at the end of this function. */
-    if (err != ERROR_OPERATION_ABORTED)
+     * the user; we'll start a new zero-read at the end of this function.
+     * Also ignore error when we have no access. */
+    if (err != ERROR_OPERATION_ABORTED && err != ERROR_ACCESS_DENIED)
       uv__pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
 
   } else {
