@@ -85,13 +85,6 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (flags & UV_PIPE_NO_TRUNCATE)
     if (namelen > sizeof(saddr.sun_path))
       return UV_EINVAL;
-  /*
-   * _PC_NAME_MAX returns the maximum length of a filename in the directory
-   * path that the process is allowed to create
-   * https://linux.die.net/man/3/pathconf
-   */
-  if (namelen > (size_t) pathconf(".", _PC_NAME_MAX))
-    return UV_EINVAL;
 
   /* Truncate long paths. Documented behavior. */
   if (namelen > sizeof(saddr.sun_path))
@@ -279,13 +272,6 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (flags & UV_PIPE_NO_TRUNCATE)
     if (namelen > sizeof(saddr.sun_path))
       return UV_EINVAL;
-  /*
-   * _PC_NAME_MAX returns the maximum length of a filename in the directory
-   * path that the process is allowed to create
-   * https://linux.die.net/man/3/pathconf
-   */
-  if (namelen > (size_t) pathconf(".", _PC_NAME_MAX))
-    return UV_EINVAL;
 
   /* Truncate long paths. Documented behavior. */
   if (namelen > sizeof(saddr.sun_path))
