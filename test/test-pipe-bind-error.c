@@ -23,6 +23,7 @@
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/un.h>
 
 
 #ifdef _WIN32
@@ -172,18 +173,37 @@ TEST_IMPL(pipe_overlong_path) {
 #ifndef _WIN32
   char path[512];
   memset(path, '@', sizeof(path));
-  ASSERT_EQ(UV_EINVAL,
+  struct sockaddr_un addr;
+
+  /* On most platforms sun_path is smaller than the NAME_MAX
+   * Though there is nothing in the POSIX spec that says it needs to be.
+   * POSIX allows PATH_MAX length paths in saddr.sun_path BUT individual
+   * components of the path can only be NAME_MAX long.
+   * So in this case we end up with UV_ENAMETOOLONG error rather than
+   * UV_EINVAL.
+   * ref: https://github.com/libuv/libuv/issues/4231#issuecomment-2194612711
+   */
+  if (sizeof(addr.sun_path) > (size_t) pathconf(".", _PC_NAME_MAX)) {
+    ASSERT_EQ(UV_ENAMETOOLONG,
             uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
-  ASSERT_EQ(UV_EINVAL,
+    /* UV_ENAMETOOLONG is delayed in uv_pipe_connect2 won't propgate until
+     * uv_run is called and causes timeouts
+     ^ therefore in this case we skipp calling uv_pipe_connect2
+     */
+  } else {
+    ASSERT_EQ(UV_EINVAL,
+            uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
+    ASSERT_EQ(UV_EINVAL,
             uv_pipe_connect2(&req,
                              &pipe,
                              path,
                              sizeof(path),
                              UV_PIPE_NO_TRUNCATE,
                              (uv_connect_cb) abort));
-  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-#endif
+    ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  }
 
+#endif
   ASSERT_EQ(UV_EINVAL, uv_pipe_bind(&pipe, ""));
   uv_pipe_connect(&req,
                   &pipe,
