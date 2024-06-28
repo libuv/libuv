@@ -168,6 +168,7 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_INVALID_FUNCTION:            return UV_EISDIR;
     case ERROR_META_EXPANSION_TOO_LONG:     return UV_E2BIG;
     case WSAESOCKTNOSUPPORT:                return UV_ESOCKTNOSUPPORT;
+    case ERROR_BAD_EXE_FORMAT:              return UV_EFTYPE;
     default:                                return UV_UNKNOWN;
   }
 }
