@@ -156,6 +156,10 @@ API
     `close_cb` can be `NULL` in cases where no cleanup or deallocation is
     necessary.
 
+    .. warning::
+        Calling this function multiple times is not supported and will produce
+        a crash.
+
 .. c:function:: void uv_ref(uv_handle_t* handle)
 
     Reference the given handle. References are idempotent, that is, if a handle
