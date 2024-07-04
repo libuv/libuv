@@ -458,6 +458,14 @@ int uv__tcp_nodelay(int fd, int on) {
 }
 
 
+#if (defined(UV__SOLARIS_11_4) && !UV__SOLARIS_11_4) || \
+    (defined(__DragonFly__) && __DragonFly_version < 500702)
+/* DragonFlyBSD <500702 and Solaris <11.4 require millisecond units
+ * for TCP keepalive options. */
+#define UV_KEEPALIVE_FACTOR(x) (x *= 1000)
+#else
+#define UV_KEEPALIVE_FACTOR(x)
+#endif
 int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   int idle;
   int intvl;
@@ -507,6 +515,8 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   if (idle > 10*24*60*60)
     idle = 10*24*60*60;
 
+  UV_KEEPALIVE_FACTOR(idle);
+
   /* `TCP_KEEPIDLE`, `TCP_KEEPINTVL`, and `TCP_KEEPCNT` were not available on Solaris
    * until version 11.4, but let's take a chance here. */
 #if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
@@ -514,6 +524,7 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
     return UV__ERR(errno);
 
   intvl = 10; /* required at least 10 seconds */
+  UV_KEEPALIVE_FACTOR(intvl);
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
     return UV__ERR(errno);
 
@@ -524,30 +535,33 @@ int uv__tcp_keepalive(int fd, int on, unsigned int delay) {
   /* Fall back to the first implementation of tcp-alive mechanism for older Solaris,
    * simulate the tcp-alive mechanism on other platforms via `TCP_KEEPALIVE_THRESHOLD` + `TCP_KEEPALIVE_ABORT_THRESHOLD`.
    */
-  idle *= 1000; /* kernel expects milliseconds */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, &idle, sizeof(idle)))
     return UV__ERR(errno);
 
   /* Note that the consequent probes will not be sent at equal intervals on Solaris,
    * but will be sent using the exponential backoff algorithm. */
-  int time_to_abort = 10*1000; /* 10 seconds, kernel expects milliseconds */
+  int time_to_abort = 10; /* 10 seconds */
+  UV_KEEPALIVE_FACTOR(time_to_abort);
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, &time_to_abort, sizeof(time_to_abort)))
     return UV__ERR(errno);
 #endif
 
 #else  /* !defined(__sun) */
 
+  idle = delay;
+  UV_KEEPALIVE_FACTOR(idle);
 #ifdef TCP_KEEPIDLE
-  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &delay, sizeof(delay)))
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)))
     return UV__ERR(errno);
 #elif defined(TCP_KEEPALIVE)
   /* Darwin/macOS uses TCP_KEEPALIVE in place of TCP_KEEPIDLE. */
-  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &delay, sizeof(delay)))
+  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle)))
     return UV__ERR(errno);
 #endif
 
 #ifdef TCP_KEEPINTVL
   intvl = 1;  /* 1 second; same as default on Win32 */
+  UV_KEEPALIVE_FACTOR(intvl);
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
     return UV__ERR(errno);
 #endif
