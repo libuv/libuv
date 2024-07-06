@@ -32,6 +32,10 @@
 #endif
 #include <sys/un.h>
 
+#if defined(__linux__)
+#include <linux/errqueue.h>
+#endif
+
 #if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
 # define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
 #endif
@@ -42,7 +46,7 @@
 
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
-static void uv__udp_recvmsg(uv_udp_t* handle);
+static void uv__udp_recvmsg(uv_udp_t* handle, int flag);
 static void uv__udp_sendmsg(uv_udp_t* handle);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
                                        int domain,
@@ -138,20 +142,47 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   handle = container_of(w, uv_udp_t, io_watcher);
   assert(handle->type == UV_UDP);
 
-  if (revents & POLLIN)
-    uv__udp_recvmsg(handle);
+  if (revents & POLLIN) {
+    int flag = 0;
+#if defined(__linux__)
+  if ((handle->flags & UV_HANDLE_UDP_RECVERR) && (revents & POLLERR)) {
+    flag = MSG_ERRQUEUE;
+  }
+#endif
+    uv__udp_recvmsg(handle, flag);
+  }
 
   if (revents & POLLOUT && !uv__is_closing(handle)) {
+#if defined(__linux__)
+    // If the handle does not watch POLLIN event, we should consume the error queue here
+    if ((handle->flags & UV_HANDLE_UDP_RECVERR) &&
+        (revents & POLLERR) &&
+        !(revents & POLLIN)) {
+      struct msghdr h;
+      char buf[UV__UDP_DGRAM_MAXSIZE];
+      struct sockaddr_storage peer;
+      memset(&h, 0, sizeof(h));
+      memset(&peer, 0, sizeof(peer));
+      h.msg_name = &peer;
+      h.msg_namelen = sizeof(peer);
+      h.msg_iov = (void*) &buf;
+      h.msg_iovlen = 1;
+      recvmsg(handle->io_watcher.fd, &h, MSG_ERRQUEUE);
+    }
+#endif
     uv__udp_sendmsg(handle);
     uv__udp_run_completed(handle);
   }
 }
 
-static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
+static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf, int flag) {
 #if defined(__linux__) || defined(__FreeBSD__)
   struct sockaddr_in6 peers[20];
   struct iovec iov[ARRAY_SIZE(peers)];
   struct mmsghdr msgs[ARRAY_SIZE(peers)];
+#if defined(__linux__)  
+  char control_buffer[ARRAY_SIZE(peers)][256];
+#endif
   ssize_t nread;
   uv_buf_t chunk_buf;
   size_t chunks;
@@ -173,10 +204,16 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
     msgs[k].msg_hdr.msg_control = NULL;
     msgs[k].msg_hdr.msg_controllen = 0;
     msgs[k].msg_hdr.msg_flags = 0;
+#if defined(__linux__)  
+    if (flag & MSG_ERRQUEUE) {
+      msgs[k].msg_hdr.msg_control = control_buffer[k];
+      msgs[k].msg_hdr.msg_controllen = 256;
+    }
+#endif
   }
 
   do
-    nread = recvmmsg(handle->io_watcher.fd, msgs, chunks, 0, NULL);
+    nread = recvmmsg(handle->io_watcher.fd, msgs, chunks, flag, NULL);
   while (nread == -1 && errno == EINTR);
 
   if (nread < 1) {
@@ -190,8 +227,21 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
       flags = UV_UDP_MMSG_CHUNK;
       if (msgs[k].msg_hdr.msg_flags & MSG_TRUNC)
         flags |= UV_UDP_PARTIAL;
-
       chunk_buf = uv_buf_init(iov[k].iov_base, iov[k].iov_len);
+#if defined(__linux__)
+      if ((flag & MSG_ERRQUEUE) && (msgs[k].msg_hdr.msg_flags & MSG_ERRQUEUE)) {
+        flags |= UV_UDP_LINUX_RECVERR;
+        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&msgs[k].msg_hdr);
+        if (cmsg && cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
+          struct sock_extended_err *e = (struct sock_extended_err *)CMSG_DATA(cmsg);
+          handle->recv_cb(handle,
+                          UV__ERR(e->ee_errno),
+                          &chunk_buf,
+                          msgs[k].msg_hdr.msg_name,
+                          flags);
+        }
+      } else
+#endif
       handle->recv_cb(handle,
                       msgs[k].msg_len,
                       &chunk_buf,
@@ -209,14 +259,16 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
 #endif  /* __linux__ || ____FreeBSD__ */
 }
 
-static void uv__udp_recvmsg(uv_udp_t* handle) {
+static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
   struct sockaddr_storage peer;
   struct msghdr h;
   ssize_t nread;
   uv_buf_t buf;
   int flags;
   int count;
-
+#if defined(__linux__)  
+  char control_buffer[256];
+#endif
   assert(handle->recv_cb != NULL);
   assert(handle->alloc_cb != NULL);
 
@@ -235,7 +287,7 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
     assert(buf.base != NULL);
 
     if (uv_udp_using_recvmmsg(handle)) {
-      nread = uv__udp_recvmmsg(handle, &buf);
+      nread = uv__udp_recvmmsg(handle, &buf, flag);
       if (nread > 0)
         count -= nread;
       continue;
@@ -247,9 +299,14 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
     h.msg_namelen = sizeof(peer);
     h.msg_iov = (void*) &buf;
     h.msg_iovlen = 1;
-
+#if defined(__linux__)  
+    if (flag & MSG_ERRQUEUE) {
+      h.msg_control = control_buffer;
+      h.msg_controllen = 256;
+    }
+#endif
     do {
-      nread = recvmsg(handle->io_watcher.fd, &h, 0);
+      nread = recvmsg(handle->io_watcher.fd, &h, flag);
     }
     while (nread == -1 && errno == EINTR);
 
@@ -257,13 +314,26 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
       if (errno == EAGAIN || errno == EWOULDBLOCK)
         handle->recv_cb(handle, 0, &buf, NULL, 0);
       else
-        handle->recv_cb(handle, UV__ERR(errno), &buf, NULL, 0);
+        handle->recv_cb(handle, UV__ERR(errno), &buf, NULL, 0);      
     }
     else {
       flags = 0;
       if (h.msg_flags & MSG_TRUNC)
         flags |= UV_UDP_PARTIAL;
-
+#if defined(__linux__)
+      if ((flag & MSG_ERRQUEUE) && (h.msg_flags & MSG_ERRQUEUE)) {
+        flags |= UV_UDP_LINUX_RECVERR;
+        struct cmsghdr *cmsg = CMSG_FIRSTHDR(&h);
+        if (cmsg && cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) {
+          struct sock_extended_err *e = (struct sock_extended_err *)CMSG_DATA(cmsg);
+          handle->recv_cb(handle,
+                          UV__ERR(e->ee_errno),
+                          &buf,
+                          (const struct sockaddr*) &peer,
+                          flags);
+        }
+      } else
+#endif
       handle->recv_cb(handle, nread, &buf, (const struct sockaddr*) &peer, flags);
     }
     count--;
@@ -528,6 +598,7 @@ int uv__udp_bind(uv_udp_t* handle,
     err = uv__set_recverr(fd, addr->sa_family);
     if (err)
       return err;
+    handle->flags |= UV_HANDLE_UDP_RECVERR;
   }
 
   if (flags & UV_UDP_REUSEADDR) {
