@@ -200,6 +200,12 @@ static int uv__udp_maybe_bind(uv_udp_t* handle,
   if (handle->flags & UV_HANDLE_BOUND)
     return 0;
 
+  /* There is no SO_REUSEPORT on Windows, Windows only knows SO_REUSEADDR.
+   * so we just return an error directly when UV_UDP_REUSEPORT is requested
+   * for binding the socket. */
+  if (flags & UV_UDP_REUSEPORT)
+    return ERROR_NOT_SUPPORTED;
+
   if ((flags & UV_UDP_IPV6ONLY) && addr->sa_family != AF_INET6) {
     /* UV_UDP_IPV6ONLY is supported only for IPV6 sockets */
     return ERROR_INVALID_PARAMETER;

@@ -23,6 +23,11 @@ jobs:
       - name: Envinfo
         run: npx envinfo
 
+      # [AM]SAN fail on newer kernels due to a bigger PIE slide
+      - name: Disable ASLR
+        run: |
+          sudo sysctl -w kernel.randomize_va_space=0
+
       - name: ASAN Build
         run: |
           mkdir build-asan

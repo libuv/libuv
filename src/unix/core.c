@@ -1869,6 +1869,8 @@ unsigned int uv_available_parallelism(void) {
 #ifdef __linux__
   cpu_set_t set;
   long rc;
+  double rc_with_cgroup;
+  uv__cpu_constraint c = {0, 0, 0.0};
 
   memset(&set, 0, sizeof(set));
 
@@ -1880,8 +1882,13 @@ unsigned int uv_available_parallelism(void) {
     rc = CPU_COUNT(&set);
   else
     rc = sysconf(_SC_NPROCESSORS_ONLN);
-
-  if (rc < 1)
+    
+  if (uv__get_constrained_cpu(&c) == 0 && c.period_length > 0) {
+    rc_with_cgroup = (double)c.quota_per_period / c.period_length * c.proportions;
+    if (rc_with_cgroup < rc)
+      rc = (long)rc_with_cgroup; /* Casting is safe since rc_with_cgroup < rc < LONG_MAX */
+  }
+  if (rc < 1) 
     rc = 1;
 
   return (unsigned) rc;
@@ -1902,4 +1909,47 @@ unsigned int uv_available_parallelism(void) {
 
   return (unsigned) rc;
 #endif  /* __linux__ */
+}
+
+int uv__sock_reuseport(int fd) {
+  int on = 1;
+#if defined(__FreeBSD__) && __FreeBSD__ >= 12 && defined(SO_REUSEPORT_LB)
+  /* FreeBSD 12 introduced a new socket option named SO_REUSEPORT_LB
+   * with the capability of load balancing, it's the substitution of
+   * the SO_REUSEPORTs on Linux and DragonFlyBSD. */
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT_LB, &on, sizeof(on)))
+    return UV__ERR(errno);
+#elif (defined(__linux__) || \
+      defined(_AIX73) || \
+      (defined(__DragonFly__) && __DragonFly_version >= 300600) || \
+      (defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4)) && \
+      defined(SO_REUSEPORT)
+  /* On Linux 3.9+, the SO_REUSEPORT implementation distributes connections
+   * evenly across all of the threads (or processes) that are blocked in
+   * accept() on the same port. As with TCP, SO_REUSEPORT distributes datagrams
+   * evenly across all of the receiving threads (or process).
+   *
+   * DragonFlyBSD 3.6.0 extended SO_REUSEPORT to distribute workload to
+   * available sockets, which made it the equivalent of Linux's SO_REUSEPORT.
+   *
+   * AIX 7.2.5 added the feature that would add the capability to distribute
+   * incoming connections or datagrams across all listening ports for SO_REUSEPORT.
+   *
+   * Solaris 11 supported SO_REUSEPORT, but it's implemented only for
+   * binding to the same address and port, without load balancing.
+   * Solaris 11.4 extended SO_REUSEPORT with the capability of load balancing.
+   */
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &on, sizeof(on)))
+    return UV__ERR(errno);
+#else
+  (void) (fd);
+  (void) (on);
+  /* SO_REUSEPORTs do not have the capability of load balancing on platforms
+   * other than those mentioned above. The semantics are completely different,
+   * therefore we shouldn't enable it, but fail this operation to indicate that
+   * UV_[TCP/UDP]_REUSEPORT is not supported on these platforms. */
+  return UV_ENOTSUP;
+#endif
+
+  return 0;
 }
