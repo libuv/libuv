@@ -253,8 +253,8 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
     }
     while (nread == -1 && errno == EINTR);
 
-    if (nread == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK)
+    if (nread < 1) {
+      if (nread == 0 || errno == EAGAIN || errno == EWOULDBLOCK)
         handle->recv_cb(handle, 0, &buf, NULL, 0);
       else
         handle->recv_cb(handle, UV__ERR(errno), &buf, NULL, 0);
