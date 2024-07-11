@@ -457,7 +457,7 @@ void uv__stream_destroy(uv_stream_t* stream) {
   assert(stream->flags & UV_HANDLE_CLOSED);
 
   if (stream->connect_req) {
-    uv__req_unregister(stream->loop, stream->connect_req);
+    uv__req_unregister(stream->loop);
     stream->connect_req->cb(stream->connect_req, UV_ECANCELED);
     stream->connect_req = NULL;
   }
@@ -642,7 +642,7 @@ static void uv__drain(uv_stream_t* stream) {
   if ((stream->flags & UV_HANDLE_CLOSING) ||
       !(stream->flags & UV_HANDLE_SHUT)) {
     stream->shutdown_req = NULL;
-    uv__req_unregister(stream->loop, req);
+    uv__req_unregister(stream->loop);
 
     err = 0;
     if (stream->flags & UV_HANDLE_CLOSING)
@@ -912,7 +912,7 @@ static void uv__write_callbacks(uv_stream_t* stream) {
     q = uv__queue_head(&pq);
     req = uv__queue_data(q, uv_write_t, queue);
     uv__queue_remove(q);
-    uv__req_unregister(stream->loop, req);
+    uv__req_unregister(stream->loop);
 
     if (req->bufs != NULL) {
       stream->write_queue_size -= uv__write_req_size(req);
@@ -1272,7 +1272,7 @@ static void uv__stream_connect(uv_stream_t* stream) {
     return;
 
   stream->connect_req = NULL;
-  uv__req_unregister(stream->loop, req);
+  uv__req_unregister(stream->loop);
 
   if (error < 0 || uv__queue_empty(&stream->write_queue)) {
     uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);

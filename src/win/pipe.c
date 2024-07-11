@@ -868,7 +868,7 @@ void uv_pipe_connect(uv_connect_t* req,
     SET_REQ_ERROR(req, err);
     uv__insert_pending_req(loop, (uv_req_t*) req);
     handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
   }
 }
 
@@ -959,7 +959,7 @@ int uv_pipe_connect2(uv_connect_t* req,
         goto error;
       }
 
-      REGISTER_HANDLE_REQ(loop, handle, req);
+      REGISTER_HANDLE_REQ(loop, handle);
       handle->reqs_pending++;
 
       return 0;
@@ -974,7 +974,7 @@ int uv_pipe_connect2(uv_connect_t* req,
   SET_REQ_SUCCESS(req);
   uv__insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
-  REGISTER_HANDLE_REQ(loop, handle, req);
+  REGISTER_HANDLE_REQ(loop, handle);
   return 0;
 
 error:
@@ -992,7 +992,7 @@ error:
   SET_REQ_ERROR(req, err);
   uv__insert_pending_req(loop, (uv_req_t*) req);
   handle->reqs_pending++;
-  REGISTER_HANDLE_REQ(loop, handle, req);
+  REGISTER_HANDLE_REQ(loop, handle);
   return 0;
 }
 
@@ -1638,7 +1638,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
       req->u.io.queued_bytes = 0;
     }
 
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
     handle->reqs_pending++;
     handle->stream.conn.write_reqs_pending++;
     POST_COMPLETION_FOR_REQ(loop, req);
@@ -1686,7 +1686,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
     CloseHandle(req->event_handle);
     req->event_handle = NULL;
 
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
     handle->reqs_pending++;
     handle->stream.conn.write_reqs_pending++;
     return 0;
@@ -1719,7 +1719,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
     }
   }
 
-  REGISTER_HANDLE_REQ(loop, handle, req);
+  REGISTER_HANDLE_REQ(loop, handle);
   handle->reqs_pending++;
   handle->stream.conn.write_reqs_pending++;
 
@@ -2132,7 +2132,7 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
 
-  UNREGISTER_HANDLE_REQ(loop, handle, req);
+  UNREGISTER_HANDLE_REQ(loop, handle);
 
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     if (req->wait_handle != INVALID_HANDLE_VALUE) {
@@ -2219,7 +2219,7 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   assert(handle->type == UV_NAMED_PIPE);
 
-  UNREGISTER_HANDLE_REQ(loop, handle, req);
+  UNREGISTER_HANDLE_REQ(loop, handle);
 
   err = 0;
   if (REQ_SUCCESS(req)) {
@@ -2251,7 +2251,7 @@ void uv__process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   /* Clear the shutdown_req field so we don't go here again. */
   handle->stream.conn.shutdown_req = NULL;
-  UNREGISTER_HANDLE_REQ(loop, handle, req);
+  UNREGISTER_HANDLE_REQ(loop, handle);
 
   if (handle->flags & UV_HANDLE_CLOSING) {
     /* Already closing. Cancel the shutdown. */
