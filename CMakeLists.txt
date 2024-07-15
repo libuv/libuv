@@ -307,6 +307,7 @@ if(APPLE)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "GNU")
+  list(APPEND uv_defines _GNU_SOURCE _POSIX_C_SOURCE=200112 _XOPEN_SOURCE=500)
   list(APPEND uv_libraries dl)
   list(APPEND uv_sources
        src/unix/bsd-ifaddrs.c
