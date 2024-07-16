@@ -67,7 +67,7 @@ jobs:
           ./build-ubsan/uv_run_tests_a
 
   sanitizers-macos:
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
 

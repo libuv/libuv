@@ -77,7 +77,11 @@ jobs:
           adb shell "cd /data/local/tmp/build ; env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
 
   build-macos:
-    runs-on: macos-12
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14]
     steps:
       - uses: actions/checkout@v4
       - name: Envinfo
@@ -112,7 +116,11 @@ jobs:
           make -C build-auto -j4
 
   build-ios:
-    runs-on: macos-12
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14]
     steps:
       - uses: actions/checkout@v4
       - name: Configure
