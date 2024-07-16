@@ -67,9 +67,9 @@ jobs:
           ./build-ubsan/uv_run_tests_a
 
   sanitizers-macos:
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Envinfo
         run: npx envinfo
