@@ -146,7 +146,7 @@ int uv__next_timeout(const uv_loop_t* loop) {
   const uv_timer_t* handle;
   uint64_t diff;
 
-  heap_node = heap_min(timer_heap(loop));
+  heap_node = heap_root(timer_heap(loop));
   if (heap_node == NULL)
     return -1; /* block indefinitely */
 
@@ -171,7 +171,7 @@ void uv__run_timers(uv_loop_t* loop) {
   uv__queue_init(&ready_queue);
 
   for (;;) {
-    heap_node = heap_min(timer_heap(loop));
+    heap_node = heap_root(timer_heap(loop));
     if (heap_node == NULL)
       break;
 
