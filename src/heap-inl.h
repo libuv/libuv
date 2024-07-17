@@ -30,7 +30,7 @@ struct heap_node {
   struct heap_node* parent;
 };
 
-/* The heap is used as binary min heap.  The usual properties hold: the root is the lowest
+/* The heap is used as a binary min heap.  The usual properties hold: the root is the lowest
  * element in the set, the height of the tree is at most log2(nodes) and
  * it's always a complete binary tree.
  *
