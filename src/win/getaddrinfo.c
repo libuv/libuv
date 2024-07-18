@@ -206,7 +206,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   }
 
 complete:
-  uv__req_unregister(req->loop, req);
+  uv__req_unregister(req->loop);
 
   /* finally do callback with converted result */
   if (req->getaddrinfo_cb)
@@ -325,7 +325,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
     req->addrinfow = NULL;
   }
 
-  uv__req_register(loop, req);
+  uv__req_register(loop);
 
   if (getaddrinfo_cb) {
     uv__work_submit(loop,

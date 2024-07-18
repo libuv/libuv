@@ -100,7 +100,7 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
     uv__queue_remove(q);
 
     req = uv__queue_data(q, uv_udp_send_t, queue);
-    uv__req_unregister(handle->loop, req);
+    uv__req_unregister(handle->loop);
 
     handle->send_queue_size -= uv__count_bufs(req->bufs, req->nbufs);
     handle->send_queue_count--;
@@ -744,7 +744,7 @@ int uv__udp_send(uv_udp_send_t* req,
     req->bufs = uv__malloc(nbufs * sizeof(bufs[0]));
 
   if (req->bufs == NULL) {
-    uv__req_unregister(handle->loop, req);
+    uv__req_unregister(handle->loop);
     return UV_ENOMEM;
   }
 
