@@ -1682,14 +1682,10 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
   }
 
   return 0;
-
-#else /* !defined(__GNU__) */
-/*
- * Simulate a success on systems where thread priority is not implemented.
- */
+#else  /* !defined(__GNU__) */
+  /* Simulate success on systems where thread priority is not implemented. */
   return 0;
-
-#endif /* !defined(__GNU__) */
+#endif  /* !defined(__GNU__) */
 }
 
 int uv_os_uname(uv_utsname_t* buffer) {
