@@ -186,9 +186,9 @@ TEST_IMPL(pipe_overlong_path) {
   if (sizeof(addr.sun_path) > (size_t) pathconf(".", _PC_NAME_MAX)) {
     ASSERT_EQ(UV_ENAMETOOLONG,
             uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
-    /* UV_ENAMETOOLONG is delayed in uv_pipe_connect2 won't propgate until
-     * uv_run is called and causes timeouts
-     ^ therefore in this case we skipp calling uv_pipe_connect2
+    /* UV_ENAMETOOLONG is delayed in uv_pipe_connect2 and won't propagate until
+     * uv_run is called and causes timeouts, therefore in this case we skip calling
+     * uv_pipe_connect2
      */
   } else {
     ASSERT_EQ(UV_EINVAL,
