@@ -988,7 +988,7 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
 
   /* tmp path is empty or invalid */
   if (len < 3) {
-      return UV_ENOENT;
+    return UV_ENOENT;
   }
 
   /* Include space for terminating null char. */
