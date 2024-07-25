@@ -667,15 +667,13 @@ void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
     }
     handle->pipe.conn.ipc_xfer_queue_length = 0;
 
-    if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
-      if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
-        UnregisterWait(handle->read_req.wait_handle);
-        handle->read_req.wait_handle = INVALID_HANDLE_VALUE;
-      }
-      if (handle->read_req.event_handle != NULL) {
-        CloseHandle(handle->read_req.event_handle);
-        handle->read_req.event_handle = NULL;
-      }
+    if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
+      UnregisterWait(handle->read_req.wait_handle);
+      handle->read_req.wait_handle = INVALID_HANDLE_VALUE;
+    }
+    if (handle->read_req.event_handle != NULL) {
+      CloseHandle(handle->read_req.event_handle);
+      handle->read_req.event_handle = NULL;
     }
 
     if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE)
@@ -1451,16 +1449,16 @@ int uv__pipe_read_start(uv_pipe_t* handle,
   handle->read_cb = read_cb;
   handle->alloc_cb = alloc_cb;
 
+  if (handle->read_req.event_handle == NULL) {
+    handle->read_req.event_handle = CreateEvent(NULL, 0, 0, NULL);
+    if (handle->read_req.event_handle == NULL) {
+      uv_fatal_error(GetLastError(), "CreateEvent");
+    }
+  }
+
   /* If reading was stopped and then started again, there could still be a read
    * request pending. */
   if (!(handle->flags & UV_HANDLE_READ_PENDING)) {
-    if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
-        handle->read_req.event_handle == NULL) {
-      handle->read_req.event_handle = CreateEvent(NULL, 0, 0, NULL);
-      if (handle->read_req.event_handle == NULL) {
-        uv_fatal_error(GetLastError(), "CreateEvent");
-      }
-    }
     uv__pipe_queue_read(loop, handle);
   }
 
@@ -1948,6 +1946,7 @@ static DWORD uv__pipe_read_data(uv_loop_t* loop,
   uv_buf_t buf;
 
   /* Ask the user for a buffer to read data into. */
+  suggested_bytes *= 2;
   buf = uv_buf_init(NULL, 0);
   handle->alloc_cb((uv_handle_t*) handle, suggested_bytes, &buf);
   if (buf.base == NULL || buf.len == 0) {
@@ -1963,9 +1962,22 @@ static DWORD uv__pipe_read_data(uv_loop_t* loop,
     max_bytes = buf.len;
 
   /* Read into the user buffer. */
-  if (!ReadFile(handle->handle, buf.base, max_bytes, &bytes_read, NULL)) {
-    uv__pipe_read_error_or_eof(loop, handle, GetLastError(), buf);
-    return 0; /* Break out of read loop. */
+  uv_read_t *req = &handle->read_req;
+  memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+  req->u.io.overlapped.hEvent = (HANDLE) ((uintptr_t) req->event_handle | 1);
+  if (!ReadFile(handle->handle, buf.base, max_bytes, &bytes_read, &req->u.io.overlapped)) {
+    if (GetLastError() == ERROR_IO_PENDING) {
+      CancelIoEx(handle->handle, &req->u.io.overlapped);
+      if (!GetOverlappedResult(handle->handle, &req->u.io.overlapped, &bytes_read, TRUE)) {
+        if (GetLastError() != ERROR_OPERATION_ABORTED)
+          uv__pipe_read_error_or_eof(loop, handle, GetLastError(), buf);
+        return 0; /* Break out of read loop. */
+      }
+    }
+    else {
+      uv__pipe_read_error_or_eof(loop, handle, GetLastError(), buf);
+      return 0; /* Break out of read loop. */
+    }
   }
 
   /* Call the read callback. */
@@ -2090,6 +2102,7 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
     avail = 0;
     if (!PeekNamedPipe(handle->handle, NULL, 0, NULL, &avail, NULL))
       uv__pipe_read_error_or_eof(loop, handle, GetLastError(), uv_null_buf_);
+    avail *= 2;
 
     /* Read until we've either read all the bytes available, or the 'reading'
      * flag is cleared. */
@@ -2134,15 +2147,13 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   UNREGISTER_HANDLE_REQ(loop, handle);
 
-  if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
-    if (req->wait_handle != INVALID_HANDLE_VALUE) {
-      UnregisterWait(req->wait_handle);
-      req->wait_handle = INVALID_HANDLE_VALUE;
-    }
-    if (req->event_handle) {
-      CloseHandle(req->event_handle);
-      req->event_handle = NULL;
-    }
+  if (req->wait_handle != INVALID_HANDLE_VALUE) {
+    UnregisterWait(req->wait_handle);
+    req->wait_handle = INVALID_HANDLE_VALUE;
+  }
+  if (req->event_handle) {
+    CloseHandle(req->event_handle);
+    req->event_handle = NULL;
   }
 
   err = GET_REQ_ERROR(req);
