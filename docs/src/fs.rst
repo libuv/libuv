@@ -454,7 +454,7 @@ API
 
 .. c:function:: int uv_fs_realpath(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
-    Equivalent to :man:`realpath(3)` on Unix. Windows uses `GetFinalPathNameByHandle <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlea>`_.
+    Equivalent to :man:`realpath(3)` on Unix. Windows uses `GetFinalPathNameByHandleW <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-getfinalpathnamebyhandlew>`_.
     The resulting string is stored in `req->ptr`.
 
     .. warning::
@@ -653,7 +653,7 @@ File open constants
 
     .. note::
         `UV_FS_O_RANDOM` is only supported on Windows via
-        `FILE_FLAG_RANDOM_ACCESS <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
+        `FILE_FLAG_RANDOM_ACCESS <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew>`_.
 
 .. c:macro:: UV_FS_O_RDONLY
 
@@ -670,7 +670,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SEQUENTIAL` is only supported on Windows via
-        `FILE_FLAG_SEQUENTIAL_SCAN <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
+        `FILE_FLAG_SEQUENTIAL_SCAN <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew>`_.
 
 .. c:macro:: UV_FS_O_SHORT_LIVED
 
@@ -678,7 +678,7 @@ File open constants
 
     .. note::
         `UV_FS_O_SHORT_LIVED` is only supported on Windows via
-        `FILE_ATTRIBUTE_TEMPORARY <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
+        `FILE_ATTRIBUTE_TEMPORARY <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew>`_.
 
 .. c:macro:: UV_FS_O_SYMLINK
 
@@ -699,7 +699,7 @@ File open constants
 
     .. note::
         `UV_FS_O_TEMPORARY` is only supported on Windows via
-        `FILE_ATTRIBUTE_TEMPORARY <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilea>`_.
+        `FILE_ATTRIBUTE_TEMPORARY <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew>`_.
 
 .. c:macro:: UV_FS_O_TRUNC
 
