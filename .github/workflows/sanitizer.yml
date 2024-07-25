@@ -111,7 +111,7 @@ jobs:
 
       # Note: clang shipped with VS2022 has an issue where the UBSAN runtime doesn't link.
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@v2
         with:
           version: "17"
 
