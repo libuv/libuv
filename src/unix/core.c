@@ -1616,6 +1616,7 @@ static int set_nice_for_calling_thread(int priority) {
  * If the function fails, the return value is non-zero.
 */
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
+#if !defined(__GNU__)
   int r;
   int min;
   int max;
@@ -1681,6 +1682,10 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
   }
 
   return 0;
+#else  /* !defined(__GNU__) */
+  /* Simulate success on systems where thread priority is not implemented. */
+  return 0;
+#endif  /* !defined(__GNU__) */
 }
 
 int uv_os_uname(uv_utsname_t* buffer) {

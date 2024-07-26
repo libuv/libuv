@@ -51,9 +51,9 @@ jobs:
           ls -lh build
 
   build-macos:
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Envinfo
         run: npx envinfo
       - name: Setup
@@ -86,9 +86,9 @@ jobs:
           make -C build-auto -j4
 
   build-ios:
-    runs-on: macos-11
+    runs-on: macos-12
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Configure
         run: |
           mkdir build-ios
