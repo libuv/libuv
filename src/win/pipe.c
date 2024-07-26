@@ -1161,9 +1161,9 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
     err = uv__tcp_xfer_import(
         (uv_tcp_t*) client, item->xfer_type, &item->xfer_info);
-
+    
     uv__free(item);
-
+    
     if (err != 0)
       return err;
 
@@ -1739,7 +1739,7 @@ static DWORD uv__pipe_get_ipc_remote_pid(uv_pipe_t* handle) {
       GetNamedPipeServerProcessId(handle->handle, pid);
     }
   }
-
+  
   return *pid;
 }
 
