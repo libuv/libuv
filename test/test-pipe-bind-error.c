@@ -23,8 +23,9 @@
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
+#ifndef _WIN32
 #include <sys/un.h>
-
+#endif
 
 #ifdef _WIN32
 # define BAD_PIPENAME "bad-pipe"
