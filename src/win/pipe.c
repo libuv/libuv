@@ -1410,10 +1410,6 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
                       NULL,
                       &req->u.io.overlapped);
 
-    /* Skip 0-read if there is no (read) access. */
-    if (!result && GetLastError() == ERROR_ACCESS_DENIED)
-      return;
-
     if (!result && GetLastError() != ERROR_IO_PENDING) {
       /* Make this req pending reporting an error. */
       SET_REQ_ERROR(req, GetLastError());
