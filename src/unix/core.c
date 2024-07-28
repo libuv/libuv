@@ -430,17 +430,18 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__run_timers(loop);
   }
 
-  while (r != 0 && loop->stop_flag == 0) {
-    can_sleep =
-        uv__queue_empty(&loop->pending_queue) &&
-        uv__queue_empty(&loop->idle_handles);
+  can_sleep =
+    mode == UV_RUN_ONCE &&
+    uv__queue_empty(&loop->pending_queue) &&
+    uv__queue_empty(&loop->idle_handles);
 
+  while (r != 0 && loop->stop_flag == 0) {
     uv__run_pending(loop);
     uv__run_idle(loop);
     uv__run_prepare(loop);
 
     timeout = 0;
-    if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
+    if (can_sleep || mode == UV_RUN_DEFAULT)
       timeout = uv__backend_timeout(loop);
 
     uv__metrics_inc_loop_count(loop);
