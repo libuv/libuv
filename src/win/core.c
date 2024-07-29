@@ -619,7 +619,6 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
 int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   DWORD timeout;
   int r;
-  int can_sleep;
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -634,19 +633,20 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv__run_timers(loop);
   }
 
-  can_sleep = 
-    mode == UV_RUN_DEFAULT || (
-      mode == UV_RUN_ONCE && 
-      loop->pending_reqs_tail == NULL && 
-      loop->idle_handles == NULL
-    );
+  timeout = 0;
 
   while (r != 0 && loop->stop_flag == 0) {
+    if (mode == UV_RUN_ONCE) {
+      timeout = uv_backend_timeout(loop);
+    }
+
     uv__process_reqs(loop);
     uv__idle_invoke(loop);
     uv__prepare_invoke(loop);
 
-    timeout = can_sleep ? uv_backend_timeout(loop) : 0;
+    if (mode == UV_RUN_DEFAULT) {
+      timeout = uv_backend_timeout(loop);
+    }
 
     uv__metrics_inc_loop_count(loop);
 
