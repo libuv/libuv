@@ -17,7 +17,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: configure
         run: |
           ./autogen.sh
@@ -36,7 +36,7 @@ jobs:
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Envinfo
         run: npx envinfo
       - name: Configure android arm64
@@ -125,7 +125,7 @@ jobs:
           - {target: ppc64 (u64 slots),   toolchain: gcc-powerpc64-linux-gnu,   cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64-static}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Install QEMU
         # this ensure install latest qemu on ubuntu, apt get version is old
         env:
