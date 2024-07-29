@@ -23,9 +23,6 @@
 #include "task.h"
 #include <stdio.h>
 #include <stdlib.h>
-#ifndef _WIN32
-#include <sys/un.h>
-#endif
 
 #ifdef _WIN32
 # define BAD_PIPENAME "bad-pipe"
@@ -174,7 +171,6 @@ TEST_IMPL(pipe_overlong_path) {
 #ifndef _WIN32
   char path[512];
   memset(path, '@', sizeof(path));
-  struct sockaddr_un addr;
 
   /* On most platforms sun_path is smaller than the NAME_MAX
    * Though there is nothing in the POSIX spec that says it needs to be.
