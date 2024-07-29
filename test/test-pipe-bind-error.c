@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+
 #ifdef _WIN32
 # define BAD_PIPENAME "bad-pipe"
 #else
