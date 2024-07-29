@@ -183,28 +183,28 @@ TEST_IMPL(pipe_overlong_path) {
    * So in this case we end up with UV_ENAMETOOLONG error rather than
    * UV_EINVAL.
    * ref: https://github.com/libuv/libuv/issues/4231#issuecomment-2194612711
+   * On AIX the sun_path is larger than the NAME_MAX
    */
-  if (sizeof(addr.sun_path) > (size_t) pathconf(".", _PC_NAME_MAX)) {
-    ASSERT_EQ(UV_ENAMETOOLONG,
-            uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
-    /* UV_ENAMETOOLONG is delayed in uv_pipe_connect2 and won't propagate until
-     * uv_run is called and causes timeouts, therefore in this case we skip calling
-     * uv_pipe_connect2
-     */
-  } else {
-    ASSERT_EQ(UV_EINVAL,
-            uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
-    ASSERT_EQ(UV_EINVAL,
-            uv_pipe_connect2(&req,
-                             &pipe,
-                             path,
-                             sizeof(path),
-                             UV_PIPE_NO_TRUNCATE,
-                             (uv_connect_cb) abort));
-    ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-  }
-
-#endif
+#if defined(_AIX) && !defined(__PASE__)
+  ASSERT_EQ(UV_ENAMETOOLONG,
+          uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
+  /* UV_ENAMETOOLONG is delayed in uv_pipe_connect2 and won't propagate until
+   * uv_run is called and causes timeouts, therefore in this case we skip calling
+   * uv_pipe_connect2
+   */
+#else
+  ASSERT_EQ(UV_EINVAL,
+          uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
+  ASSERT_EQ(UV_EINVAL,
+          uv_pipe_connect2(&req,
+                           &pipe,
+                           path,
+                           sizeof(path),
+                           UV_PIPE_NO_TRUNCATE,
+                           (uv_connect_cb) abort));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+#endif /*if defined(_AIX) && !defined(__PASE__)*/
+#endif /* ifndef _WIN32 */
   ASSERT_EQ(UV_EINVAL, uv_pipe_bind(&pipe, ""));
   uv_pipe_connect(&req,
                   &pipe,
