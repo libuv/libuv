@@ -942,8 +942,13 @@ int uv_os_homedir(char* buffer, size_t* size) {
   r = uv_os_getenv("USERPROFILE", buffer, size);
 
   /* Don't return an error if USERPROFILE was not found. */
-  if (r != UV_ENOENT)
+  if (r != UV_ENOENT) {
+    /* USERPROFILE is empty or invalid */
+    if (r == 0 && *size < 3) {
+      return UV_ENOENT;
+    }
     return r;
+  }
 
   /* USERPROFILE is not set, so call uv_os_get_passwd() */
   r = uv_os_get_passwd(&pwd);
@@ -980,6 +985,12 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
   if (len == 0) {
     return uv_translate_sys_error(GetLastError());
   }
+
+  /* tmp path is empty or invalid */
+  if (len < 3) {
+    return UV_ENOENT;
+  }
+
   /* Include space for terminating null char. */
   len += 1;
   path = uv__malloc(len * sizeof(wchar_t));
