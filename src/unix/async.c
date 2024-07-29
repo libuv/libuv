@@ -100,8 +100,10 @@ void uv__async_close(uv_async_t* handle) {
 
 
 void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+#ifndef __linux__
   char buf[1024];
   ssize_t r;
+#endif
   struct uv__queue queue;
   struct uv__queue* q;
   uv_async_t* h;
@@ -109,6 +111,7 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(w == &loop->async_io_watcher);
 
+#ifndef __linux__
 #if UV__KQUEUE_EVFILT_USER
   for (;!kqueue_evfilt_user_support;) {
 #else
@@ -130,6 +133,7 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     abort();
   }
+#endif /* !__linux__ */
 
   uv__queue_move(&loop->async_handles, &queue);
   while (!uv__queue_empty(&queue)) {
@@ -157,22 +161,33 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 static void uv__async_send(uv_loop_t* loop) {
-  const void* buf;
-  ssize_t len;
   int fd;
   int r;
 
-  buf = "";
-  len = 1;
-  fd = loop->async_wfd;
-
 #if defined(__linux__)
-  if (fd == -1) {
-    static const uint64_t val = 1;
-    buf = &val;
-    len = sizeof(val);
-    fd = loop->async_io_watcher.fd;  /* eventfd */
+  uint64_t val;
+
+  fd = loop->async_io_watcher.fd;  /* eventfd */
+  for (val = 1; /* empty */; val = 1) {
+    r = write(fd, &val, sizeof(uint64_t));
+    if (r < 0) {
+      /* When EAGAIN occurs, the eventfd counter hits the maximum value of the unsigned 64-bit.
+       * We need to first drain the eventfd and then write again.
+       *
+       * Check out https://man7.org/linux/man-pages/man2/eventfd.2.html for details.
+       */
+      if (errno == EAGAIN) {
+        /* It's ready to retry. */
+        if (read(fd, &val, sizeof(uint64_t)) > 0 || errno == EAGAIN) {
+          continue;
+        }
+      }
+      /* Unknown error occurs. */
+      break;
+    }
+    return;
   }
+
 #elif UV__KQUEUE_EVFILT_USER
   struct kevent ev;
 
@@ -184,18 +199,21 @@ static void uv__async_send(uv_loop_t* loop) {
       return;
     abort();
   }
-#endif
 
+#else
+  fd = loop->async_wfd;
   do
-    r = write(fd, buf, len);
+    static char buf = '\0';
+    r = write(fd, &buf, 1);
   while (r == -1 && errno == EINTR);
 
-  if (r == len)
+  if (r == 1)
     return;
 
   if (r == -1)
     if (errno == EAGAIN || errno == EWOULDBLOCK)
       return;
+#endif
 
   abort();
 }
