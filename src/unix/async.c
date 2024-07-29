@@ -130,8 +130,10 @@ void uv__async_close(uv_async_t* handle) {
 
 
 static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+#ifndef __linux__
   char buf[1024];
   ssize_t r;
+#endif
   struct uv__queue queue;
   struct uv__queue* q;
   uv_async_t* h;
@@ -139,6 +141,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(w == &loop->async_io_watcher);
 
+#ifndef __linux__
   for (;;) {
     r = read(w->fd, buf, sizeof(buf));
 
@@ -156,6 +159,7 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     abort();
   }
+#endif /* !__linux__ */
 
   uv__queue_move(&loop->async_handles, &queue);
   while (!uv__queue_empty(&queue)) {
@@ -179,34 +183,45 @@ static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 static void uv__async_send(uv_loop_t* loop) {
-  const void* buf;
-  ssize_t len;
   int fd;
-  int r;
+  ssize_t r;
+#ifdef __linux__
+  uint64_t val;
 
-  buf = "";
-  len = 1;
-  fd = loop->async_wfd;
-
-#if defined(__linux__)
-  if (fd == -1) {
-    static const uint64_t val = 1;
-    buf = &val;
-    len = sizeof(val);
-    fd = loop->async_io_watcher.fd;  /* eventfd */
+  fd = loop->async_io_watcher.fd;  /* eventfd */
+  for (val = 1; /* empty */; val = 1) {
+    r = write(fd, &val, sizeof(uint64_t));
+    if (r < 0) {
+      /* When EAGAIN occurs, the eventfd counter hits the maximum value of the unsigned 64-bit.
+       * We need to first drain the eventfd and then write again.
+       *
+       * Check out https://man7.org/linux/man-pages/man2/eventfd.2.html for details.
+       */
+      if (errno == EAGAIN) {
+        /* It's ready to retry. */
+        if (read(fd, &val, sizeof(uint64_t)) > 0 || errno == EAGAIN) {
+          continue;
+        }
+      }
+      /* Unknown error occurs. */
+      break;
+    }
+    return;
   }
-#endif
+#else
 
+  fd = loop->async_wfd; /* write end of the pipe */
   do
-    r = write(fd, buf, len);
+    r = write(fd, "x", 1);
   while (r == -1 && errno == EINTR);
 
-  if (r == len)
+  if (r == 1)
     return;
 
   if (r == -1)
     if (errno == EAGAIN || errno == EWOULDBLOCK)
       return;
+#endif
 
   abort();
 }
