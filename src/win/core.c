@@ -633,13 +633,9 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv__run_timers(loop);
   }
 
-  timeout = 0;
+  timeout = mode == UV_RUN_ONCE ? uv_backend_timeout(loop) : 0;
 
   while (r != 0 && loop->stop_flag == 0) {
-    if (mode == UV_RUN_ONCE) {
-      timeout = uv_backend_timeout(loop);
-    }
-
     uv__process_reqs(loop);
     uv__idle_invoke(loop);
     uv__prepare_invoke(loop);
