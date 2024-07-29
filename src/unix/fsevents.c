@@ -276,10 +276,6 @@ static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
         path += handle->realpath_len;
         len -= handle->realpath_len;
 
-        /* Ignore events with path equal to directory itself */
-        if (len <= 1 && (flags & kFSEventStreamEventFlagItemIsDir))
-          continue;
-
         if (len == 0) {
           /* Since we're using fsevents to watch the file itself,
            * realpath == path, and we now need to get the basename of the file back
