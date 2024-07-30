@@ -422,6 +422,9 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   return 0;
 }
 
+static int uv__backend_timeout_zero(const uv_loop_t* loop) {
+  return 0;
+}
 
 static void uv__poll_wine(uv_loop_t* loop, DWORD timeout) {
   uv__loop_internal_fields_t* lfields;
@@ -619,6 +622,7 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
 int uv_run(uv_loop_t *loop, uv_run_mode mode) {
   DWORD timeout;
   int r;
+  int (*backend_timeout_fn)(const uv_loop_t* loop);
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -633,16 +637,23 @@ int uv_run(uv_loop_t *loop, uv_run_mode mode) {
     uv__run_timers(loop);
   }
 
-  timeout = mode == UV_RUN_ONCE ? uv_backend_timeout(loop) : 0;
+  backend_timeout_fn = uv__backend_timeout_zero;
+
+  if (
+    mode == UV_RUN_DEFAULT || (
+      mode == UV_RUN_ONCE && 
+      loop->pending_reqs_tail == NULL && 
+      loop->idle_handles == NULL
+  )) {
+    backend_timeout_fn = uv_backend_timeout;
+  }
 
   while (r != 0 && loop->stop_flag == 0) {
     uv__process_reqs(loop);
     uv__idle_invoke(loop);
     uv__prepare_invoke(loop);
 
-    if (mode == UV_RUN_DEFAULT) {
-      timeout = uv_backend_timeout(loop);
-    }
+    timeout = backend_timeout_fn(loop);
 
     uv__metrics_inc_loop_count(loop);
 

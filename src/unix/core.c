@@ -399,6 +399,11 @@ static int uv__backend_timeout(const uv_loop_t* loop) {
 }
 
 
+static int uv__backend_timeout_zero(const uv_loop_t* loop) {
+  return 0;
+}
+
+
 int uv_backend_timeout(const uv_loop_t* loop) {
   if (uv__queue_empty(&loop->watcher_queue))
     return uv__backend_timeout(loop);
@@ -415,6 +420,7 @@ int uv_loop_alive(const uv_loop_t* loop) {
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   int timeout;
   int r;
+  int (*backend_timeout_fn)(const uv_loop_t* loop);
 
   r = uv__loop_alive(loop);
   if (!r)
@@ -429,16 +435,23 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     uv__run_timers(loop);
   }
 
-  timeout = mode == UV_RUN_ONCE ? uv__backend_timeout(loop) : 0;
+  backend_timeout_fn = uv__backend_timeout_zero;
+
+  if (
+    mode == UV_RUN_DEFAULT || (
+      mode == UV_RUN_ONCE && 
+      uv__queue_empty(&loop->pending_queue) && 
+      uv__queue_empty(&loop->idle_handles)
+  )) {
+    backend_timeout_fn = uv__backend_timeout;
+  }
 
   while (r != 0 && loop->stop_flag == 0) {
     uv__run_pending(loop);
     uv__run_idle(loop);
     uv__run_prepare(loop);
 
-    if (mode == UV_RUN_DEFAULT) {
-      timeout = uv__backend_timeout(loop);
-    }
+    timeout = backend_timeout_fn(loop);
 
     uv__metrics_inc_loop_count(loop);
 
