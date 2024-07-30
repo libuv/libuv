@@ -13,7 +13,7 @@ rm -f $OUT/test_file*
 
 sh autogen.sh
 ./configure
-make
+make -j2
 make install
 find . -name "*.a"
 
