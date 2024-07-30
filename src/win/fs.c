@@ -1700,8 +1700,8 @@ INLINE static fs__stat_path_return_t fs__stat_path(WCHAR* path,
       case ERROR_PATH_NOT_FOUND:
       case ERROR_NOT_READY:
       case ERROR_BAD_NET_NAME:
-          /* These errors aren't worth retrying with the slow path. */
-          return FS__STAT_PATH_ERROR;
+        /* These errors aren't worth retrying with the slow path. */
+        return FS__STAT_PATH_ERROR;
     }
     return FS__STAT_PATH_TRY_SLOW;
   }
