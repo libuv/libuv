@@ -31,20 +31,11 @@ static uv_loop_t* loop;
 
 static void dummy_cb(uv_fs_t* req) { (void)req; }
 
-void test_idna(const uint8_t* data, size_t size) {
-  char* new_str = malloc(size + 1);
-  if (new_str == NULL)
-    return;
-
-  memcpy(new_str, data, size);
-  new_str[size] = '\0';
-
+void test_idna(char *payload, size_t size) {
   char de[256];
-  uv__idna_toascii(new_str, new_str + size, de, de + 256);
+  uv__idna_toascii(payload, payload + size, de, de + 256);
 
-  uv_wtf8_length_as_utf16(new_str);
-
-  free(new_str);
+  uv_wtf8_length_as_utf16(payload);
 }
 
 void test_file_ops_1(const uint8_t* data, size_t size) {
@@ -144,7 +135,7 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   } else if (decider == 4) {
     test_file_ops_2(data, size);
   } else if (decider == 5) {
-    test_idna(data, size);
+    test_idna(new_str, size);
   } else {
     uv_fs_t req;
     loop = uv_default_loop();
