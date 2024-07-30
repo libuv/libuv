@@ -33,9 +33,9 @@ static void dummy_cb(uv_fs_t* req) { (void)req; }
 
 void test_idna(const uint8_t* data, size_t size) {
   char* new_str = malloc(size + 1);
-  if (new_str == NULL) {
+  if (new_str == NULL)
     return;
-  }
+
   memcpy(new_str, data, size);
   new_str[size] = '\0';
 
@@ -107,9 +107,9 @@ void test_file_ops_2(const uint8_t* data, size_t size) {
 }
 
 int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  if (size == 0) {
+  if (size == 0)
     return 0;
-  }
+
   uint8_t decider = data[0] % 7;
   data++;
   size--;
@@ -118,9 +118,9 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
    * operations.
    */
   char* new_str = malloc(size + 1);
-  if (new_str == NULL) {
+  if (new_str == NULL)
     return 0;
-  }
+
   memcpy(new_str, data, size);
   new_str[size] = '\0';
 
