@@ -1535,20 +1535,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
   os_info.dwOSVersionInfoSize = sizeof(os_info);
   os_info.szCSDVersion[0] = L'\0';
 
-  /* Try calling RtlGetVersion(), and fall back to the deprecated GetVersionEx()
-     if RtlGetVersion() is not available. */
-  if (pRtlGetVersion) {
-    pRtlGetVersion(&os_info);
-  } else {
-    /* Silence GetVersionEx() deprecation warning. */
-    #ifdef _MSC_VER
-    #pragma warning(suppress : 4996)
-    #endif
-    if (GetVersionExW(&os_info) == 0) {
-      r = uv_translate_sys_error(GetLastError());
-      goto error;
-    }
-  }
+  pRtlGetVersion(&os_info);
 
   /* Populate the version field. */
   version_size = 0;
