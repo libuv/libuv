@@ -1914,7 +1914,7 @@ static void uv__pipe_queue_ipc_xfer_info(
  * encountered before the requested number of bytes are read, an error is
  * returned. */
 static DWORD uv__pipe_read_exactly(uv_pipe_t* handle, void* buffer, DWORD count) {
-  uv_read_t *req;
+  uv_read_t* req;
   DWORD bytes_read;
   DWORD bytes_read_now;
 
@@ -1947,7 +1947,7 @@ static int uv__pipe_read_data(uv_loop_t* loop,
                               DWORD* bytes_read,
                               DWORD max_bytes) {
   uv_buf_t buf;
-  uv_read_t *req;
+  uv_read_t* req;
   DWORD r;
 
   /* Ask the user for a buffer to read data into. */
