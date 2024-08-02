@@ -1,0 +1,210 @@
+name: CI-release_package
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build-windows:
+    name: Windows (${{ matrix.config.target }})
+    permissions:
+        contents: write
+        packages: write
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {target: x64,     build: win64 }
+          - {target: Win32,   build: win32 }
+    steps:
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.config.target }}
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: |
+            mkdir build
+            cd build
+            cmake .. -D LIBUV_BUILD_TESTS=OFF -A ${{ matrix.config.target }}
+      - name: Build
+        run: |
+            cd build
+            cmake --build . --config Release
+      - name: Create NSIS Installer from Release
+        run: |
+            cd build
+            cpack -G NSIS
+      - name: Upload NSIS binary artifacts
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: built/Package/libuv-${{ github.event.release.tag_name }}-${{ matrix.config.build }}.exe
+          asset_name: libuv-${{ github.event.release.tag_name }}-${{ matrix.config.build }}.exe
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+          body: "Various platform library/package installers, includes libraries and needed header *.h files."
+
+  build-linux:
+    name: Linux ${{ matrix.config.target }}
+    permissions:
+        contents: write
+        packages: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+            - {target: amd64, flags: -m64 }
+        #    - {target: i386, flags: -m32 }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update -q -y
+          sudo apt-get install -y gcc-multilib g++-multilib valgrind libc6-dbg libc6-dbg:i386
+      - name: Configure & build
+        run: |
+            mkdir build
+            cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release -D LIBUV_BUILD_TESTS=OFF -DCMAKE_C_FLAGS=${{ matrix.config.flags }}
+            cmake --build .
+      - name: Create DEB Installer from Release
+        run: |
+            cd build
+            cpack -G DEB
+      - name: Upload DEB binary artifacts
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: built/Package/libuv_${{ github.event.release.tag_name }}_${{ matrix.config.target }}.deb
+          asset_name: libuv_${{ github.event.release.tag_name }}_${{ matrix.config.target }}.deb
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+          body: "Various platform library/package installers, includes libraries and needed header *.h files."
+
+  build-centos:
+    name: CentOS
+    permissions:
+        contents: write
+        packages: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    container: quay.io/centos/centos:stream9
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Prepare
+        run: |
+          dnf install git make cmake gcc gcc-c++ binutils glibc-devel valgrind autoconf libtool bison automake libxml2-devel sudo which rpmdevtools rpmlint -y
+      - name: Configure & build
+        run: |
+            mkdir build
+            cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release -D LIBUV_BUILD_TESTS=OFF
+            cmake --build .
+      - name: Create RPM Installer from Release
+        run: |
+            cd build
+            cpack -G RPM
+      - name: Upload RPM binary artifacts
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: built/Package/libuv-${{ github.event.release.tag_name }}-Linux.rpm
+          asset_name: libuv-${{ github.event.release.tag_name }}-Linux.rpm
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+          body: "Various platform library/package installers, includes libraries and needed header *.h files."
+
+  build-macos:
+    name: macOS
+    permissions:
+        contents: write
+        packages: write
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Envinfo
+        run: npx envinfo
+      - name: Setup
+        run: |
+          brew install ninja automake libtool
+      - name: Configure & build
+        run: |
+            mkdir build
+            cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release -D LIBUV_BUILD_TESTS=OFF -G Ninja
+            cmake --build .
+      - name: Create DMG Installer from Release
+        run: |
+            cd build
+            cpack -G DragNDrop
+      - name: Upload DMG binary artifacts
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: built/Package/libuv-${{ github.event.release.tag_name }}-Darwin.dmg
+          asset_name: libuv-${{ github.event.release.tag_name }}-Darwin.dmg
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+          body: "Various platform library/package installers, includes libraries and needed header *.h files."
+
+  build-qemu:
+    name: ${{ matrix.target }}
+    permissions:
+        contents: write
+        packages: write
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: armhf
+            arch: armv7
+          - target: arm64
+            arch: aarch64
+          - target: ppc64el
+            arch: ppc64le
+          - target: riscv64
+            arch: riscv64
+          - target: s390x
+            arch: s390x
+    steps:
+      - uses: actions/checkout@v4
+      - uses: uraimo/run-on-arch-action@v2
+        with:
+          arch: ${{ matrix.arch }}
+          distro:  ubuntu_latest
+          githubToken: ${{ github.token }}
+          setup: |
+            mkdir -p built/Package
+          install: |
+            apt-get update -q -y
+            apt-get install -q -y --no-install-recommends cmake build-essential
+          env: |
+            # Valgrind on arm will fail if the stack size is larger than 8MB.
+            # Set QEMUs stack size to 8MB since Github runners use 16MB default.
+            QEMU_STACK_SIZE: 8388608
+          run: |
+            mkdir build
+            cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release -D LIBUV_BUILD_TESTS=OFF
+            cmake --build .
+            cpack -G DEB
+      - name: Upload ${{ matrix.arch }} DEB binary artifacts
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: built/Package/libuv_${{ github.event.release.tag_name }}_${{ matrix.target }}.deb
+          asset_name: libuv_${{ github.event.release.tag_name }}_${{ matrix.target }}.deb
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
+          body: "Various platform library/package installers, includes libraries and needed header `*.h` files."
