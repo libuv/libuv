@@ -2380,8 +2380,8 @@ static DWORD WINAPI uv__tty_console_resize_watcher_thread(void* param) {
     /* Make sure to not overwhelm the system with resize events */
     Sleep(33);
     WaitForSingleObject(uv__tty_console_resized, INFINITE);
-    uv__tty_console_signal_resize();
     ResetEvent(uv__tty_console_resized);
+    uv__tty_console_signal_resize();
   }
   return 0;
 }
