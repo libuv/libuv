@@ -63,7 +63,7 @@ static void fail_cb2(void) {
 }
 
 
-static void req_cb(uv_udp_send_t *req, int status) {
+static void req_cb(uv_udp_send_t* req, int status) {
   req_cb_called++;
 }
 

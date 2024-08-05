@@ -102,7 +102,7 @@ static void uv__getaddrinfo_work(struct uv__work* w) {
  * Each size calculation is adjusted to avoid unaligned pointers.
  */
 static void uv__getaddrinfo_done(struct uv__work* w, int status) {
-  uv_getaddrinfo_t *req = container_of(w, uv_getaddrinfo_t, work_req);
+  uv_getaddrinfo_t* req = container_of(w, uv_getaddrinfo_t, work_req);
 
   /* release input parameter memory */
   uv__free(req->alloc);
@@ -115,11 +115,11 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   }
 
   if (req->retcode == 0) {
-    char *alloc_ptr = NULL;
+    char* alloc_ptr = NULL;
     size_t cur_off = 0;
     size_t addrinfo_len;
     /* Convert addrinfoW to addrinfo. First calculate required length. */
-    struct addrinfoW *addrinfow_ptr = req->addrinfow;
+    struct addrinfoW* addrinfow_ptr = req->addrinfow;
     while (addrinfow_ptr != NULL) {
       cur_off = align_offset(cur_off, sizeof(void*));
       cur_off += sizeof(struct addrinfo);
@@ -299,7 +299,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   /* Convert node string to UTF16 into allocated memory and save pointer in the
    * request. The node here has been converted to ascii. */
   if (node != NULL) {
-    req->node = (WCHAR *)req->alloc;
+    req->node = (WCHAR*) req->alloc;
     uv_wtf8_to_utf16(node, req->node, nodesize);
   } else {
     req->node = NULL;
@@ -316,7 +316,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
 
   /* copy hints to allocated memory and save pointer in req */
   if (hints != NULL) {
-    req->addrinfow = (struct addrinfoW *)((char *)req->alloc + hintoff);
+    req->addrinfow = (struct addrinfoW*) ((char*) req->alloc + hintoff);
     req->addrinfow->ai_family = hints->ai_family;
     req->addrinfow->ai_socktype = hints->ai_socktype;
     req->addrinfow->ai_protocol = hints->ai_protocol;
