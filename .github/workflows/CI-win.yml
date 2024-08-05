@@ -34,8 +34,7 @@ jobs:
         run:
           cmake -S . -B build -DBUILD_TESTING=ON
             -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
-            ${{ matrix.config.config == 'ASAN' && '-DASAN=on -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded' ||
-                matrix.config.config == 'UBSAN' && '-DUBSAN=on' || '' }}
+            ${{ matrix.config.config == 'ASAN' && '-DASAN=on -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded' || '' }}
 
           cmake --build build --config RelWithDebInfo
 
