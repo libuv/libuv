@@ -109,7 +109,7 @@
   }
 
 #define NSEC_PER_TICK 100
-#define TICKS_PER_SEC ((long)1e9 / NSEC_PER_TICK)
+#define TICKS_PER_SEC ((int64_t) 1e9 / NSEC_PER_TICK)
 static const int64_t WIN_TO_UNIX_TICK_OFFSET = 11644473600 * TICKS_PER_SEC;
 
 static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
