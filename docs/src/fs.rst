@@ -16,7 +16,10 @@ Starting with libuv v1.45.0, some file operations on Linux are handed off to
 `io_uring <https://en.wikipedia.org/wiki/Io_uring>` when possible. Apart from
 a (sometimes significant) increase in throughput there should be no change in
 observable behavior. Libuv reverts to using its threadpool when the necessary
-kernel features are unavailable or unsuitable.
+kernel features are unavailable or unsuitable. Starting with libuv v1.49.0 this
+behavior was reverted and Libuv on Linux by default will be using the threadpool
+again. In order to enable io_uring the :c:type:`uv_loop_t` instance must be
+configured with the :c:type:`UV_LOOP_ENABLE_IO_URING_SQPOLL` option.
 
 .. note::
      On Windows `uv_fs_*` functions use utf-8 encoding.

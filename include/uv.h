@@ -260,7 +260,9 @@ typedef struct uv_metrics_s uv_metrics_t;
 
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL = 0,
-  UV_METRICS_IDLE_TIME
+  UV_METRICS_IDLE_TIME,
+  UV_LOOP_USE_IO_URING_SQPOLL
+#define UV_LOOP_USE_IO_URING_SQPOLL UV_LOOP_USE_IO_URING_SQPOLL
 } uv_loop_option;
 
 typedef enum {
