@@ -761,6 +761,14 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
    * initialization failed. Anything else is a valid ring file descriptor.
    */
   if (iou->ringfd == -2) {
+    /* By default, the SQPOLL is not created. Enable only if the loop is
+     * configured with UV_LOOP_USE_IO_URING_SQPOLL.
+     */
+    if ((loop->flags & UV_LOOP_ENABLE_IO_URING_SQPOLL) == 0) {
+      iou->ringfd = -1;
+      return NULL;
+    }
+
     uv__iou_init(loop->backend_fd, iou, 64, UV__IORING_SETUP_SQPOLL);
     if (iou->ringfd == -2)
       iou->ringfd = -1;  /* "failed" */
