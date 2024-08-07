@@ -108,13 +108,14 @@
     return;                                                                 \
   }
 
-#define MILLION ((int64_t) 1000 * 1000)
-#define BILLION ((int64_t) 1000 * 1000 * 1000)
+#define NSEC_PER_TICK 100
+#define TICKS_PER_SEC ((int64_t) 1e9 / NSEC_PER_TICK)
+static const int64_t WIN_TO_UNIX_TICK_OFFSET = 11644473600 * TICKS_PER_SEC;
 
 static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
-  filetime -= 116444736 * BILLION;
-  ts->tv_sec = (long) (filetime / (10 * MILLION));
-  ts->tv_nsec = (long) ((filetime - ts->tv_sec * 10 * MILLION) * 100U);
+  filetime -= WIN_TO_UNIX_TICK_OFFSET;
+  ts->tv_sec = filetime / TICKS_PER_SEC;
+  ts->tv_nsec = (filetime % TICKS_PER_SEC) * NSEC_PER_TICK;
   if (ts->tv_nsec < 0) {
     ts->tv_sec -= 1;
     ts->tv_nsec += 1e9;
@@ -123,7 +124,7 @@ static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    int64_t bigtime = ((time) * 10 * MILLION + 116444736 * BILLION);        \
+    int64_t bigtime = ((time) * TICKS_PER_SEC + WIN_TO_UNIX_TICK_OFFSET);   \
     (filetime_ptr)->dwLowDateTime = (uint64_t) bigtime & 0xFFFFFFFF;        \
     (filetime_ptr)->dwHighDateTime = (uint64_t) bigtime >> 32;              \
   } while(0)
