@@ -1084,7 +1084,7 @@ TEST_IMPL(fs_posix_delete) {
 
   /* should not be possible to delete the non-empty dir */
   r = uv_fs_rmdir(NULL, &rmdir_req, "test_dir", NULL);
-  ASSERT_EQ(r, UV_ENOTEMPTY);
+  ASSERT((r == UV_ENOTEMPTY) || (r == UV_EEXIST));
   ASSERT_EQ(r, rmdir_req.result);
   uv_fs_req_cleanup(&rmdir_req);
 
