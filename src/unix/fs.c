@@ -1338,9 +1338,10 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   /*
    * Change the ownership and permissions of the destination file to match the
    * source file.
-   * `cp -p` does not care about errors here, so we don't either.
+   * `cp -p` does not care about errors here, so we don't either. Reuse the
+   * `result` variable to silence a -Wunused-result warning.
    */
-  fchown(dstfd, src_statsbuf.st_uid, src_statsbuf.st_gid);
+  result = fchown(dstfd, src_statsbuf.st_uid, src_statsbuf.st_gid);
 
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
