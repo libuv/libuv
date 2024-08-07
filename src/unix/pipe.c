@@ -385,6 +385,22 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
 
 
 int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
+  if (handle->pipe_fname) {
+    size_t result_size = strlen(handle->pipe_fname) + 1;
+    size_t buffer_size = *size;
+
+    *size = result_size;
+
+    if (buffer == NULL)
+      return UV_ENOBUFS;
+
+    if (result_size > buffer_size)
+      result_size = buffer_size;
+
+    memcpy(buffer, handle->pipe_fname, result_size);
+
+    return 0;
+  }
   return uv__pipe_getsockpeername(handle, getsockname, buffer, size);
 }
 
