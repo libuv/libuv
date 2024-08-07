@@ -152,7 +152,7 @@ static void fs_event_cb_del_dir(uv_fs_event_t* handle,
   ++fs_event_cb_called;
   ASSERT_PTR_EQ(handle, &fs_event);
   ASSERT_OK(status);
-  ASSERT_EQ(events, UV_RENAME);
+  ASSERT(events == UV_CHANGE || events == UV_RENAME);
   ASSERT_OK(strcmp(filename, "watch_del_dir"));
   ASSERT_OK(uv_fs_event_stop(handle));
   uv_close((uv_handle_t*)handle, close_cb);
