@@ -447,6 +447,8 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   if (r != UV_ENOBUFS)
     return r;
 
+  name_len++;
+
   name_buffer = uv__malloc(name_len);
   if (name_buffer == NULL)
     return UV_ENOMEM;
