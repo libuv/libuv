@@ -389,7 +389,7 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
     size_t result_size = strlen(handle->pipe_fname) + 1;
     size_t buffer_size = *size;
 
-    *size = result_size;
+    *size = result_size - 1;
 
     if (buffer == NULL)
       return UV_ENOBUFS;
