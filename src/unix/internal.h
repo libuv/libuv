@@ -396,35 +396,18 @@ UV_UNUSED(static char* uv__basename_r(const char* path)) {
   return s + 1;
 }
 
-UV_UNUSED(static int uv__fstat(int fd, struct stat* s)) {
-  int rc;
-
-  rc = fstat(fd, s);
-  if (rc >= 0)
-    uv__msan_unpoison(s, sizeof(*s));
-
-  return rc;
+#define UV_STAT_DEFINE(syscall, type)                                          \
+UV_UNUSED(static int uv__##syscall(type arg, struct stat* s)) {                \
+  int rc;                                                                      \
+  rc = syscall(arg, s);                                                        \
+  if (rc >= 0)                                                                 \
+    uv__msan_unpoison(s, sizeof(*s));                                          \
+  return rc;                                                                   \
 }
 
-UV_UNUSED(static int uv__lstat(const char* path, struct stat* s)) {
-  int rc;
-
-  rc = lstat(path, s);
-  if (rc >= 0)
-    uv__msan_unpoison(s, sizeof(*s));
-
-  return rc;
-}
-
-UV_UNUSED(static int uv__stat(const char* path, struct stat* s)) {
-  int rc;
-
-  rc = stat(path, s);
-  if (rc >= 0)
-    uv__msan_unpoison(s, sizeof(*s));
-
-  return rc;
-}
+UV_STAT_DEFINE(fstat, int);
+UV_STAT_DEFINE(lstat, const char*);
+UV_STAT_DEFINE(stat, const char*);
 
 #if defined(__linux__)
 void uv__fs_post(uv_loop_t* loop, uv_fs_t* req);
