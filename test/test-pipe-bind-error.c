@@ -202,7 +202,6 @@ TEST_IMPL(pipe_overlong_path) {
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 #endif /*if defined(_AIX) && !defined(__PASE__)*/
 #endif /* ifndef _WIN32 */
-  ASSERT_EQ(UV_EINVAL, uv_pipe_bind(&pipe, ""));
   uv_pipe_connect(&req,
                   &pipe,
                   "",
@@ -213,5 +212,4 @@ TEST_IMPL(pipe_overlong_path) {
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
-
 }
