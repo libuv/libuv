@@ -199,7 +199,7 @@ Data types
             char* homedir;
         } uv_passwd_t;
 
-.. c:type:: uv_group_s
+.. c:type:: uv_group_t
 
     Data type for group file information.
 
@@ -209,7 +209,7 @@ Data types
           char* groupname;
           unsigned long gid;
           char** members;
-        };
+        } uv_group_t;
 
 .. c:type:: uv_utsname_t
 
@@ -590,7 +590,7 @@ API
 
     .. versionadded:: 1.45.0
 
-.. c:function:: int uv_os_get_group(uv_group_s* group, uv_uid_t gid)
+.. c:function:: int uv_os_get_group(uv_group_t* group, uv_uid_t gid)
 
     Gets a subset of the group file entry for the provided uid.
     The populated data includes the group name, gid, and members. On non-Windows

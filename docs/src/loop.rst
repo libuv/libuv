@@ -16,6 +16,19 @@ Data types
 
     Loop data type.
 
+.. c:enum:: uv_loop_option
+
+    Additional loop options.
+    See :c:func:`uv_loop_configure`.
+
+    ::
+
+        typedef enum {
+            UV_LOOP_BLOCK_SIGNAL = 0,
+            UV_METRICS_IDLE_TIME,
+            UV_LOOP_USE_IO_URING_SQPOLL
+        } uv_loop_option;
+
 .. c:enum:: uv_run_mode
 
     Mode used to run the loop with :c:func:`uv_run`.
