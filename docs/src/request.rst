@@ -51,7 +51,7 @@ Public members
 
 .. c:member:: uv_req_type uv_req_t.type
 
-    The :c:type:`uv_req_type`, indicating the type of the request. Readonly.
+    The :c:enum:`uv_req_type`, indicating the type of the request. Readonly.
 
 
 API

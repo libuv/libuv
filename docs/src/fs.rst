@@ -132,10 +132,9 @@ Data types
             uint64_t f_spare[4];
         } uv_statfs_t;
 
-.. c:enum:: uv_dirent_t
+.. c:enum:: uv_dirent_type_t
 
-    Cross platform (reduced) equivalent of ``struct dirent``.
-    Used in :c:func:`uv_fs_scandir_next`.
+    Type of dirent.
 
     ::
 
@@ -149,6 +148,14 @@ Data types
             UV_DIRENT_CHAR,
             UV_DIRENT_BLOCK
         } uv_dirent_type_t;
+
+
+.. c:type:: uv_dirent_t
+
+    Cross platform (reduced) equivalent of ``struct dirent``.
+    Used in :c:func:`uv_fs_scandir_next`.
+
+    ::
 
         typedef struct uv_dirent_s {
             const char* name;

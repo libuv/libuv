@@ -16,7 +16,7 @@ Data types
 
     TCP handle type.
 
-.. c:type:: uv_tcp_flags
+.. c:enum:: uv_tcp_flags
 
     Flags used in :c:func:`uv_tcp_bind`.
 

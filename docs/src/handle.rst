@@ -94,7 +94,7 @@ Public members
 
 .. c:member:: uv_handle_type uv_handle_t.type
 
-    The :c:type:`uv_handle_type`, indicating the type of the underlying handle. Readonly.
+    The :c:enum:`uv_handle_type`, indicating the type of the underlying handle. Readonly.
 
 .. c:member:: void* uv_handle_t.data
 
