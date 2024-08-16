@@ -18,7 +18,7 @@ Data types
 
     UDP send request type.
 
-.. c:type:: uv_udp_flags
+.. c:enum:: uv_udp_flags
 
     Flags used in :c:func:`uv_udp_bind` and :c:type:`uv_udp_recv_cb`..
 
