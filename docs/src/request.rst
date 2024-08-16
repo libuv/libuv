@@ -99,7 +99,7 @@ API
 
     .. versionadded:: 1.19.0
 
-.. c:function:: void* uv_req_set_data(uv_req_t* req, void* data)
+.. c:function:: void uv_req_set_data(uv_req_t* req, void* data)
 
     Sets `req->data` to `data`.
 
