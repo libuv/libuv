@@ -86,9 +86,9 @@ TEST_IMPL(platform_output) {
   printf("  maximum resident set size: %llu\n",
          (unsigned long long) rusage.ru_maxrss);
 
-  par = uv_available_parallelism();
+  par = uv_available_cores();
   ASSERT_GE(par, 1);
-  printf("uv_available_parallelism: %u\n", par);
+  printf("uv_available_cores: %u\n", par);
 
 #ifdef __linux__
   FILE* file;

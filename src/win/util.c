@@ -510,21 +510,71 @@ int uv_uptime(double* uptime) {
   return 0;
 }
 
+/// defines the GetLogicalProcessorInformationEx function
+typedef BOOL (*WINAPI glpie_t)(
+	LOGICAL_PROCESSOR_RELATIONSHIP,
+	PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX,
+	PDWORD);
 
-unsigned int uv_available_parallelism(void) {
-  SYSTEM_INFO info;
-  unsigned rc;
+// Classic way to get number of cores in windows.
+static unsigned int uv_get_compatible_n_cores(void) {
+	SYSTEM_INFO info;
+	GetSystemInfo(&info);
+	return info.dwNumberOfProcessors;
+}
 
-  /* TODO(bnoordhuis) Use GetLogicalProcessorInformationEx() to support systems
-   * with > 64 CPUs? See https://github.com/libuv/libuv/pull/3458
-   */
-  GetSystemInfo(&info);
+/*
+ * Windows NUMA support is particular
+ * https://learn.microsoft.com/en-us/windows/win32/api/sysinfoapi/nf-sysinfoapi-getlogicalprocessorinformationex#remarks
+ *
+ * New api here:
+ * https://learn.microsoft.com/en-us/windows/win32/procthread/numa-support
+ */
+static unsigned int uv_get_numa_n_cores(void) {
+  uint8_t *buffer = NULL;
+	unsigned int n_cores = 0;
+	DWORD length = 0;
+	HMODULE kernel32 = GetModuleHandleW(L"kernel32.dll");
 
-  rc = info.dwNumberOfProcessors;
-  if (rc < 1)
-    rc = 1;
+	glpie_t GetLogicalProcessorInformationEx = (glpie_t)GetProcAddress(kernel32, "GetLogicalProcessorInformationEx");
 
-  return rc;
+	if (!GetLogicalProcessorInformationEx) {
+		return 0;
+	}
+
+	GetLogicalProcessorInformationEx(RelationAll, NULL, &length);
+	if (length < 1 || GetLastError() != ERROR_INSUFFICIENT_BUFFER) {
+		return 0;
+	}
+
+	buffer = malloc(length);
+	if (!buffer || !GetLogicalProcessorInformationEx(RelationAll, (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX)buffer, &length)) {
+		free(buffer);
+		return 0;
+	}
+
+	for (DWORD offset = 0; offset < length;) {
+		PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX info = (PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX)(buffer + offset);
+		offset += info->Size;
+		if (info->Relationship != RelationProcessorCore) {
+			continue;
+		}
+		for (WORD group = 0; group < info->Processor.GroupCount; ++group) {
+			for (KAFFINITY mask = info->Processor.GroupMask[group].Mask; mask != 0; mask >>= 1) {
+				n_cores += mask & 1;
+			}
+		}
+	}
+	free(buffer);
+	return n_cores;
+}
+
+unsigned int uv_available_cores(void) {
+  unsigned int n_cores = uv_get_numa_n_cores();
+	if (n_cores > 0) {
+		return n_cores;
+	}
+	return uv_get_compatible_n_cores();
 }
 
 
@@ -532,7 +582,6 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
   uv_cpu_info_t* cpu_infos;
   SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION* sppi;
   DWORD sppi_size;
-  SYSTEM_INFO system_info;
   DWORD cpu_count, i;
   NTSTATUS status;
   ULONG result_size;
@@ -545,8 +594,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
   uv__once_init();
 
-  GetSystemInfo(&system_info);
-  cpu_count = system_info.dwNumberOfProcessors;
+  cpu_count = uv_available_cores();
 
   cpu_infos = uv__calloc(cpu_count, sizeof *cpu_infos);
   if (cpu_infos == NULL) {
