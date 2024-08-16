@@ -248,7 +248,7 @@ just for some handle types.
 
     .. versionadded:: 1.19.0
 
-.. c:function:: void* uv_handle_set_data(uv_handle_t* handle, void* data)
+.. c:function:: void uv_handle_set_data(uv_handle_t* handle, void* data)
 
     Sets `handle->data` to `data`.
 
