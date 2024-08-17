@@ -113,6 +113,9 @@ API
 
     .. note:: Currently the only supported flag is ``UV_FS_EVENT_RECURSIVE`` and
               only on OSX and Windows.
+    .. note:: On macOS, events collected by the OS immediately before calling
+              ``uv_fs_event_start`` might be reported to the `uv_fs_event_cb`
+              callback.
 
 .. c:function:: int uv_fs_event_stop(uv_fs_event_t* handle)
 
