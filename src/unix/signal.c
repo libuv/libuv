@@ -32,11 +32,6 @@
 # define SA_RESTART 0
 #endif
 
-typedef struct {
-  uv_signal_t* handle;
-  int signum;
-} uv__signal_msg_t;
-
 RB_HEAD(uv__signal_tree_s, uv_signal_s);
 
 
@@ -181,12 +176,10 @@ static uv_signal_t* uv__signal_first_handle(int signum) {
 
 
 static void uv__signal_handler(int signum) {
-  uv__signal_msg_t msg;
   uv_signal_t* handle;
   int saved_errno;
 
   saved_errno = errno;
-  memset(&msg, 0, sizeof msg);
 
   if (uv__signal_lock()) {
     errno = saved_errno;
@@ -198,18 +191,15 @@ static void uv__signal_handler(int signum) {
        handle = RB_NEXT(uv__signal_tree_s, &uv__signal_tree, handle)) {
     int r;
 
-    msg.signum = signum;
-    msg.handle = handle;
-
     /* write() should be atomic for small data chunks, so the entire message
      * should be written at once. In theory the pipe could become full, in
      * which case the user is out of luck.
      */
     do {
-      r = write(handle->loop->signal_pipefd[1], &msg, sizeof msg);
+      r = write(handle->loop->signal_pipefd[1], &handle, sizeof handle);
     } while (r == -1 && errno == EINTR);
 
-    assert(r == sizeof msg ||
+    assert(r == sizeof handle ||
            (r == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)));
 
     if (r != -1)
@@ -433,9 +423,8 @@ static int uv__signal_start(uv_signal_t* handle,
 static void uv__signal_event(uv_loop_t* loop,
                              uv__io_t* w,
                              unsigned int events) {
-  uv__signal_msg_t* msg;
   uv_signal_t* handle;
-  char buf[sizeof(uv__signal_msg_t) * 32];
+  char buf[sizeof(uv_signal_t*) * 32];
   size_t bytes, end, i;
   int r;
 
@@ -466,14 +455,13 @@ static void uv__signal_event(uv_loop_t* loop,
 
     bytes += r;
 
-    /* `end` is rounded down to a multiple of sizeof(uv__signal_msg_t). */
-    end = (bytes / sizeof(uv__signal_msg_t)) * sizeof(uv__signal_msg_t);
+    /* `end` is rounded down to a multiple of sizeof(uv_signal_t*). */
+    end = (bytes / sizeof(uv_signal_t*)) * sizeof(uv_signal_t*);
 
-    for (i = 0; i < end; i += sizeof(uv__signal_msg_t)) {
-      msg = (uv__signal_msg_t*) (buf + i);
-      handle = msg->handle;
+    for (i = 0; i < end; i += sizeof(uv_signal_t*)) {
+      handle = *(uv_signal_t**) (buf + i);
 
-      if (msg->signum == handle->signum) {
+      if (handle->signum) {
         assert(!(handle->flags & UV_HANDLE_CLOSING));
         handle->signal_cb(handle, handle->signum);
       }
