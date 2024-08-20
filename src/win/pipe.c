@@ -1988,7 +1988,7 @@ static int uv__pipe_read_data(uv_loop_t* loop,
       else
         r = GetLastError();
     }
-    more = *bytes_read == bytes_available;
+    more = max_bytes < bytes_available;
   } else {
     /* Read into the user buffer.
      * Prepare an Event so that we can cancel if it doesn't complete immediately.
