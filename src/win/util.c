@@ -75,10 +75,6 @@ static CRITICAL_SECTION process_title_lock;
 /* Frequency of the high-resolution clock. */
 static uint64_t hrtime_frequency_ = 0;
 
-/* Cache parent pid to optimize performance */
-static uv_once_t parent_pid_init_guard = UV_ONCE_INIT;
-static int parent_pid = -1;
-
 
 /*
  * One-time initialization code for functionality defined in util.c.
@@ -321,7 +317,8 @@ uv_pid_t uv_os_getpid(void) {
 }
 
 
-static void uv__init_ppid(void) {
+uv_pid_t uv_os_getppid(void) {
+  int parent_pid = -1;
   HANDLE handle;
   PROCESSENTRY32 pe;
   DWORD current_pid = GetCurrentProcessId();
@@ -339,11 +336,6 @@ static void uv__init_ppid(void) {
   }
 
   CloseHandle(handle);
-}
-
-
-uv_pid_t uv_os_getppid(void) {
-  uv_once(&parent_pid_init_guard, uv__init_ppid);
   return parent_pid;
 }
 
