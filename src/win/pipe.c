@@ -1949,11 +1949,13 @@ static DWORD uv__pipe_read_exactly(uv_pipe_t* handle, void* buffer, DWORD count)
 
 static int uv__pipe_read_data(uv_loop_t* loop,
                               uv_pipe_t* handle,
-                              DWORD* bytes_read,
+                              DWORD* bytes_read, /* inout argument */
                               DWORD max_bytes) {
   uv_buf_t buf;
   uv_read_t* req;
   DWORD r;
+  DWORD bytes_available;
+  int more;
 
   /* Ask the user for a buffer to read data into. */
   buf = uv_buf_init(NULL, 0);
@@ -1966,29 +1968,49 @@ static int uv__pipe_read_data(uv_loop_t* loop,
   /* Ensure we read at most the smaller of:
    *   (a) the length of the user-allocated buffer.
    *   (b) the maximum data length as specified by the `max_bytes` argument.
+   *   (c) the amount of data that can be read non-blocking
    */
   if (max_bytes > buf.len)
     max_bytes = buf.len;
 
-  /* Read into the user buffer.
-   * Prepare an Event so that we can cancel if it doesn't complete immediately.
-   */
-  req = &handle->read_req;
-  memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
-  req->u.io.overlapped.hEvent = (HANDLE) ((uintptr_t) req->event_handle | 1);
-  if (ReadFile(handle->handle, buf.base, max_bytes, bytes_read, &req->u.io.overlapped)) {
-    r = ERROR_SUCCESS;
-  } else {
-    r = GetLastError();
-    *bytes_read = 0;
-    if (r == ERROR_IO_PENDING) {
-      r = CancelIoEx(handle->handle, &req->u.io.overlapped);
-      assert(r || GetLastError() == ERROR_NOT_FOUND);
-      if (!GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE)) {
+  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    /* The user failed to supply a pipe that can be used non-blocking or with
+     * threads. Try to estimate the amount of data that is safe to read without
+     * blocking, in a race-y way however. */
+    bytes_available = 0;
+    if (!PeekNamedPipe(handle->handle, NULL, 0, NULL, &bytes_available, NULL)) {
+      r = GetLastError();
+    } else {
+      if (max_bytes > bytes_available)
+        max_bytes = bytes_available;
+      if (max_bytes == 0 || ReadFile(handle->handle, buf.base, max_bytes, bytes_read, NULL))
+        r = ERROR_SUCCESS;
+      else
         r = GetLastError();
-        *bytes_read = 0;
+    }
+    more = max_bytes < bytes_available;
+  } else {
+    /* Read into the user buffer.
+     * Prepare an Event so that we can cancel if it doesn't complete immediately.
+     */
+    req = &handle->read_req;
+    memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+    req->u.io.overlapped.hEvent = (HANDLE) ((uintptr_t) req->event_handle | 1);
+    if (ReadFile(handle->handle, buf.base, max_bytes, bytes_read, &req->u.io.overlapped)) {
+      r = ERROR_SUCCESS;
+    } else {
+      r = GetLastError();
+      *bytes_read = 0;
+      if (r == ERROR_IO_PENDING) {
+        r = CancelIoEx(handle->handle, &req->u.io.overlapped);
+        assert(r || GetLastError() == ERROR_NOT_FOUND);
+        if (!GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE)) {
+          r = GetLastError();
+          *bytes_read = 0;
+        }
       }
     }
+    more = *bytes_read == max_bytes;
   }
 
   /* Call the read callback. */
@@ -1997,7 +2019,7 @@ static int uv__pipe_read_data(uv_loop_t* loop,
   else
     uv__pipe_read_error_or_eof(loop, handle, r, buf);
 
-  return *bytes_read == max_bytes;
+  return more;
 }
 
 
