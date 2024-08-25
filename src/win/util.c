@@ -512,19 +512,22 @@ int uv_uptime(double* uptime) {
 
 
 unsigned int uv_available_parallelism(void) {
-  SYSTEM_INFO info;
-  unsigned rc;
+  DWORD_PTR procmask;
+  int count;
+  int i;
 
   /* TODO(bnoordhuis) Use GetLogicalProcessorInformationEx() to support systems
    * with > 64 CPUs? See https://github.com/libuv/libuv/pull/3458
    */
-  GetSystemInfo(&info);
+  count = 0;
+  if (GetProcessAffinityMask(GetCurrentProcess(), &procmask, NULL))
+    for (i = 0; i < 64; i++)  /* a.k.a. count = popcount(procmask); */
+      count += 1 & (procmask >> i);
 
-  rc = info.dwNumberOfProcessors;
-  if (rc < 1)
-    rc = 1;
+  if (count > 0)
+    return count;
 
-  return rc;
+  return 1;
 }
 
 
