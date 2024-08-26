@@ -513,6 +513,7 @@ int uv_uptime(double* uptime) {
 
 unsigned int uv_available_parallelism(void) {
   DWORD_PTR procmask;
+  DWORD_PTR sysmask;
   int count;
   int i;
 
@@ -520,7 +521,7 @@ unsigned int uv_available_parallelism(void) {
    * with > 64 CPUs? See https://github.com/libuv/libuv/pull/3458
    */
   count = 0;
-  if (GetProcessAffinityMask(GetCurrentProcess(), &procmask, NULL))
+  if (GetProcessAffinityMask(GetCurrentProcess(), &procmask, &sysmask))
     for (i = 0; i < 64; i++)  /* a.k.a. count = popcount(procmask); */
       count += 1 & (procmask >> i);
 
