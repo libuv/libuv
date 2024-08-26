@@ -4458,6 +4458,14 @@ typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION {
   ULONG ByteOffsetForPartitionAlignment;
 } FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;
 
+typedef struct _PROCESS_BASIC_INFORMATION {
+  PVOID Reserved1;
+  PVOID PebBaseAddress;
+  PVOID Reserved2[2];
+  ULONG_PTR UniqueProcessId;
+  ULONG_PTR InheritedFromUniqueProcessId;
+} PROCESS_BASIC_INFORMATION, *PPROCESS_BASIC_INFORMATION;
+
 typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
     LARGE_INTEGER IdleTime;
     LARGE_INTEGER KernelTime;
@@ -4469,6 +4477,10 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 
 #ifndef SystemProcessorPerformanceInformation
 # define SystemProcessorPerformanceInformation 8
+#endif
+
+#ifndef ProcessBasicInformation
+# define ProcessBasicInformation 0
 #endif
 
 #ifndef ProcessConsoleHostProcess
