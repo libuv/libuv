@@ -2004,7 +2004,9 @@ static int uv__pipe_read_data(uv_loop_t* loop,
       if (r == ERROR_IO_PENDING) {
         r = CancelIoEx(handle->handle, &req->u.io.overlapped);
         assert(r || GetLastError() == ERROR_NOT_FOUND);
-        if (!GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE)) {
+        if (GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE)) {
+          r = ERROR_SUCCESS;
+        } else {
           r = GetLastError();
           *bytes_read = 0;
         }
