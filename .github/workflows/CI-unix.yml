@@ -36,7 +36,6 @@ jobs:
     # image.
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
-      # TODO: Set ANDROID_AVD_HOME to ~/.android/avd
       ANDROID_AVD_HOME: /root/.android/avd
     steps:
       - uses: actions/checkout@v3
@@ -60,20 +59,18 @@ jobs:
       - name: Start emulator
         run: |
           echo no | avdmanager create avd -n test -k "system-images;android-24;google_apis;arm64-v8a"
-          avdmanager list avd
+
           adb start-server
 
-          # emulator @test -no-audio -no-window -gpu off -no-snapshot -no-boot-anim -no-accel -no-snapshot-save -no-snapshot-load -writable-system  &
           emulator @test -memory 2048 -no-audio -no-window -gpu off -no-snapshot -no-boot-anim -netdelay none -netspeed full -no-snapshot-save -no-snapshot-load -writable-system  &
 
           adb wait-for-device
 
           adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
 
+          # Push the build and test fixtures to the device
           adb push build /data/local/tmp
-
           adb shell mkdir /data/local/tmp/build/test
-
           adb push test/fixtures /data/local/tmp/build/test
 
       - name: Test
