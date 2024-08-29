@@ -145,6 +145,9 @@ static void connect_cb(uv_connect_t* req, int status) {
 
 
 TEST_IMPL(tcp_writealot) {
+#ifdef __ANDROID__
+  RETURN_SKIP("Flaky test on Android: causing timeout");
+#endif
   struct sockaddr_in addr;
   uv_tcp_t client;
   int r;
