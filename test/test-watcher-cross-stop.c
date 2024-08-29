@@ -65,9 +65,6 @@ static void close_cb(uv_handle_t* handle) {
 
 
 TEST_IMPL(watcher_cross_stop) {
-#ifdef __ANDROID__
-  RETURN_SKIP("Flaky test on Android: causing timeout");
-#endif
 #if defined(__MVS__)
   RETURN_SKIP("zOS does not allow address or port reuse when using UDP sockets");
 #endif
