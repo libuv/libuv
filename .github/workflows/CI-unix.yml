@@ -78,7 +78,7 @@ jobs:
 
       - name: Test
         run: |
-          adb shell "cd /data/local/tmp/build ; ./uv_run_tests_a"
+          adb shell "cd /data/local/tmp/build ; env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
   # build-macos:
   #   if: false
   #   runs-on: macos-12
