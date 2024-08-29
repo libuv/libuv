@@ -104,10 +104,8 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   char path[MAXPATHLEN];
 #endif
 
-  if(uv__fstat(fd, &sb)) {
-    rc = UV__ERR(errno);
-    return rc;
-  }
+  if (uv__fstat(fd, &sb))
+    return UV__ERR(errno);
 
   /* On FreeBSD, kqueue only supports EVFILT_READ notification for regular files
    * and always reports ready events for writing, resulting in busy-looping.
@@ -119,6 +117,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
    */
   if (S_ISREG(sb.st_mode) || S_ISDIR(sb.st_mode))
     return UV_EINVAL;
+
 #ifdef __APPLE__
   /* On Darwin (both macOS and iOS), in addition to regular files, FIFOs also don't
    * work properly with kqueue: the disconnection from the last writer won't trigger
@@ -129,8 +128,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
      * therefore there is no way to tell them apart via stat.st_mode&S_IFMT.
      * Fortunately, FIFO is the only one that has a persisted file on filesystem,
      * from which we're able to make the distinction for it. */
-    rc = fcntl(fd, F_GETPATH, path);
-    if (!rc)
+    if (!fcntl(fd, F_GETPATH, path))
       return UV_EINVAL;
   }
 #endif
