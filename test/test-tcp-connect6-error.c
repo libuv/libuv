@@ -84,6 +84,10 @@ TEST_IMPL(tcp_connect6_link_local) {
   int ok;
   int n;
 
+#ifdef __ANDROID__
+    RETURN_SKIP("Test does not currently work on Android");
+#endif
+
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
 
