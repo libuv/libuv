@@ -404,9 +404,6 @@ TEST_IMPL(tcp_ping_pong_vec) {
 
 
 TEST_IMPL(tcp6_ping_pong) {
-#ifdef __ANDROID__
-  RETURN_SKIP("Flaky test on Android: causing timeout");
-#endif
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
   tcp_pinger_v6_new(0);
@@ -415,9 +412,6 @@ TEST_IMPL(tcp6_ping_pong) {
 
 
 TEST_IMPL(tcp6_ping_pong_vec) {
-#ifdef __ANDROID__
-  RETURN_SKIP("Flaky test on Android: causing timeout");
-#endif
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
   tcp_pinger_v6_new(1);
@@ -426,9 +420,6 @@ TEST_IMPL(tcp6_ping_pong_vec) {
 
 
 TEST_IMPL(pipe_ping_pong) {
-#ifdef __ANDROID__
-  RETURN_SKIP("Flaky test on Android: causing timeout");
-#endif
   pipe_pinger_new(0);
   run_ping_pong_test();
 
@@ -439,9 +430,6 @@ TEST_IMPL(pipe_ping_pong) {
 
 
 TEST_IMPL(pipe_ping_pong_vec) {
-#ifdef __ANDROID__
-  RETURN_SKIP("Flaky test on Android: causing timeout");
-#endif
   pipe_pinger_new(1);
   run_ping_pong_test();
 
