@@ -516,7 +516,7 @@ unsigned int uv_available_parallelism(void) {
    */
   count = 0;
   if (GetProcessAffinityMask(GetCurrentProcess(), &procmask, &sysmask))
-    for (i = 0; i < 64; i++)  /* a.k.a. count = popcount(procmask); */
+    for (i = 0; i < 8 * sizeof(procmask); i++)
       count += 1 & (procmask >> i);
 
   if (count > 0)
