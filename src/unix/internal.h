@@ -75,8 +75,11 @@
 # include <poll.h>
 #endif /* _AIX */
 
-#if defined(__APPLE__) && !TARGET_OS_IPHONE
-# include <AvailabilityMacros.h>
+#if defined(__APPLE__)
+# include "darwin-syscalls.h"
+# if !TARGET_OS_IPHONE
+#  include <AvailabilityMacros.h>
+# endif
 #endif
 
 /*

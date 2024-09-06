@@ -148,7 +148,7 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
 }
 
 static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
   struct sockaddr_in6 peers[20];
   struct iovec iov[ARRAY_SIZE(peers)];
   struct mmsghdr msgs[ARRAY_SIZE(peers)];
@@ -173,11 +173,18 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
     msgs[k].msg_hdr.msg_control = NULL;
     msgs[k].msg_hdr.msg_controllen = 0;
     msgs[k].msg_hdr.msg_flags = 0;
+    msgs[k].msg_len = 0;
   }
 
+#if defined(__APPLE__)
+  do
+    nread = recvmsg_x(handle->io_watcher.fd, msgs, chunks, MSG_DONTWAIT);
+  while (nread == -1 && errno == EINTR);
+#else
   do
     nread = recvmmsg(handle->io_watcher.fd, msgs, chunks, 0, NULL);
   while (nread == -1 && errno == EINTR);
+#endif
 
   if (nread < 1) {
     if (nread == 0 || errno == EAGAIN || errno == EWOULDBLOCK)
@@ -204,9 +211,9 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
       handle->recv_cb(handle, 0, buf, NULL, UV_UDP_MMSG_FREE);
   }
   return nread;
-#else  /* __linux__ || ____FreeBSD__ */
+#else  /* __linux__ || ____FreeBSD__ || __APPLE__ */
   return UV_ENOSYS;
-#endif  /* __linux__ || ____FreeBSD__ */
+#endif  /* __linux__ || ____FreeBSD__ || __APPLE__ */
 }
 
 static void uv__udp_recvmsg(uv_udp_t* handle) {
@@ -328,7 +335,7 @@ static void uv__udp_sendmsg_one(uv_udp_t* handle, uv_udp_send_t* req) {
   }
 }
 
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
 static void uv__udp_sendmsg_many(uv_udp_t* handle) {
   uv_udp_send_t* req;
   struct mmsghdr h[20];
@@ -366,9 +373,15 @@ write_queue_drain:
     h[pkts].msg_hdr.msg_iovlen = req->nbufs;
   }
 
+#if defined(__APPLE__)
+  do
+    npkts = sendmsg_x(handle->io_watcher.fd, h, pkts, MSG_DONTWAIT);
+  while (npkts == -1 && errno == EINTR);
+#else
   do
     npkts = sendmmsg(handle->io_watcher.fd, h, pkts, 0);
   while (npkts == -1 && errno == EINTR);
+#endif
 
   if (npkts < 1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
@@ -409,7 +422,7 @@ write_queue_drain:
 
   uv__io_feed(handle->loop, &handle->io_watcher);
 }
-#endif  /* __linux__ || ____FreeBSD__ */
+#endif  /* __linux__ || ____FreeBSD__ || __APPLE__ */
 
 static void uv__udp_sendmsg(uv_udp_t* handle) {
   struct uv__queue* q;
@@ -421,7 +434,7 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   q = uv__queue_head(&handle->write_queue);
   req = uv__queue_data(q, uv_udp_send_t, queue);
 
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
   /* Use sendmmsg() if this send request contains more than one datagram OR
    * there is more than one send request (because that automatically implies
    * there is more than one datagram.)
@@ -1037,7 +1050,7 @@ int uv__udp_init_ex(uv_loop_t* loop,
 
 
 int uv_udp_using_recvmmsg(const uv_udp_t* handle) {
-#if defined(__linux__) || defined(__FreeBSD__)
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
   if (handle->flags & UV_HANDLE_UDP_RECVMMSG)
     return 1;
 #endif
