@@ -362,7 +362,7 @@ void uv__tty_close(uv_tty_t* handle) {
   atomic_store(&termios_spinlock, 0);
 
 done:
-  uv__stream_close((uv_stream_t*)handle);
+  uv__stream_close((uv_stream_t*) handle);
 }
 
 
