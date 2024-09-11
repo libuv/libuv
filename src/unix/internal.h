@@ -293,6 +293,9 @@ int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
 int uv__tcp_nodelay(int fd, int on);
 int uv__tcp_keepalive(int fd, int on, unsigned int delay);
 
+/* tty */
+void uv__tty_close(uv_tty_t* handle);
+
 /* pipe */
 int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb);
 

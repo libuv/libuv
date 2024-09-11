@@ -156,7 +156,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     break;
 
   case UV_TTY:
-    uv__stream_close((uv_stream_t*)handle);
+    uv__tty_close((uv_tty_t*)handle);
     break;
 
   case UV_TCP:
