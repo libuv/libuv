@@ -201,7 +201,7 @@ API
 
     :param flags: Indicate how the socket will be bound,
         ``UV_UDP_IPV6ONLY``, ``UV_UDP_REUSEADDR``, ``UV_UDP_REUSEPORT``,
-        and ``UV_UDP_RECVERR`` are supported.
+        and ``UV_UDP_LINUX_RECVERR`` are supported.
 
     :returns: 0 on success, or an error code < 0 on failure.
 
