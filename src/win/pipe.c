@@ -1983,6 +1983,7 @@ static int uv__pipe_read_data(uv_loop_t* loop,
     } else {
       if (max_bytes > bytes_available)
         max_bytes = bytes_available;
+      *bytes_read = 0;
       if (max_bytes == 0 || ReadFile(handle->handle, buf.base, max_bytes, bytes_read, NULL))
         r = ERROR_SUCCESS;
       else
