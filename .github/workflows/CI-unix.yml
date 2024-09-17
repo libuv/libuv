@@ -35,6 +35,7 @@ jobs:
     # image.
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+      ANDROID_AVD_HOME: /root/.android/avd
     steps:
       - uses: actions/checkout@v3
       - name: Envinfo
@@ -49,6 +50,31 @@ jobs:
         run: |
           $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build build
           ls -lh build
+      - name: Install Android ABI arm64-v8a
+        run: |
+          # TODO: This can be in a pre-built docker image
+          sdkmanager "build-tools;24.0.3" "platforms;android-24" "system-images;android-24;google_apis;arm64-v8a"
+
+      - name: Start emulator
+        run: |
+          echo no | avdmanager create avd -n test -k "system-images;android-24;google_apis;arm64-v8a"
+
+          adb start-server
+
+          emulator @test -memory 2048 -no-audio -no-window -gpu off -no-snapshot -no-boot-anim -netdelay none -netspeed full -no-snapshot-save -no-snapshot-load -writable-system  &
+
+          adb wait-for-device
+
+          adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
+
+          # Push the build and test fixtures to the device
+          adb push build /data/local/tmp
+          adb shell mkdir /data/local/tmp/build/test
+          adb push test/fixtures /data/local/tmp/build/test
+
+      - name: Test
+        run: |
+          adb shell "cd /data/local/tmp/build ; env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
 
   build-macos:
     runs-on: macos-12
