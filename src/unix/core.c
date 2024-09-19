@@ -53,7 +53,8 @@
 
 #if defined(__APPLE__)
 # include <sys/filio.h>
-# endif /* defined(__APPLE__) */
+# include <sys/sysctl.h>
+#endif /* defined(__APPLE__) */
 
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
@@ -92,6 +93,15 @@ extern char** environ;
 # include <sys/syscall.h>
 # define gettid() syscall(SYS_gettid)
 # define uv__accept4 accept4
+#endif
+
+#if defined(__FreeBSD__)
+# include <sys/param.h>
+# include <sys/cpuset.h>
+#endif
+
+#if defined(__NetBSD__)
+# include <sched.h>
 #endif
 
 #if defined(__linux__) && defined(__SANITIZE_THREAD__) && defined(__clang__)
@@ -1869,13 +1879,31 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   return UV_EINVAL;
 }
 
+#if defined(__linux__) || defined (__FreeBSD__)
+# define uv__cpu_count(cpuset) CPU_COUNT(cpuset)
+#elif defined(__NetBSD__)
+static int uv__cpu_count(cpuset_t *cpuset) {
+  int rc;
+  cpuid_t i;
+
+  rc = 0;
+  for (i = 0;; i++) {
+    int r = cpuset_isset(cpu, set);
+    if (r < 0)
+      break;
+    if (r)
+      rc++;
+  }
+
+  return rc;
+}
+#endif /* __NetBSD__ */
 
 unsigned int uv_available_parallelism(void) {
+  long rc = -1;
+
 #ifdef __linux__
   cpu_set_t set;
-  long rc;
-  double rc_with_cgroup;
-  uv__cpu_constraint c = {0, 0, 0.0};
 
   memset(&set, 0, sizeof(set));
 
@@ -1884,36 +1912,86 @@ unsigned int uv_available_parallelism(void) {
    * before falling back to sysconf(_SC_NPROCESSORS_ONLN).
    */
   if (0 == sched_getaffinity(0, sizeof(set), &set))
-    rc = CPU_COUNT(&set);
-  else
-    rc = sysconf(_SC_NPROCESSORS_ONLN);
-    
-  if (uv__get_constrained_cpu(&c) == 0 && c.period_length > 0) {
-    rc_with_cgroup = (double)c.quota_per_period / c.period_length * c.proportions;
-    if (rc_with_cgroup < rc)
-      rc = (long)rc_with_cgroup; /* Casting is safe since rc_with_cgroup < rc < LONG_MAX */
-  }
-  if (rc < 1) 
-    rc = 1;
-
-  return (unsigned) rc;
+    rc = uv__cpu_count(&set);
 #elif defined(__MVS__)
-  int rc;
-
   rc = __get_num_online_cpus();
   if (rc < 1)
     rc = 1;
 
   return (unsigned) rc;
-#else  /* __linux__ */
-  long rc;
+#elif defined(__FreeBSD__)
+  cpuset_t set;
 
-  rc = sysconf(_SC_NPROCESSORS_ONLN);
+  memset(&set, 0, sizeof(set));
+
+  if (0 == cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, -1, sizeof(set), &set))
+    rc = uv__cpu_count(&set);
+#elif defined(__NetBSD__)
+  cpuset_t* set = cpuset_create();
+  if (set != NULL) {
+    if (0 == sched_getaffinity_np(getpid(), sizeof(set), &set))
+      rc = uv__cpu_count(&set);
+    cpuset_destroy(set);
+  }
+#elif defined(__APPLE__)
+  int nprocs;
+  size_t i;
+  size_t len = sizeof(nprocs);
+  static const char *mib[] = {
+    "hw.activecpu",
+    "hw.logicalcpu",
+    "hw.ncpu"
+  };
+
+  for (i = 0; i < ARRAY_SIZE(mib); i++) {
+    if (0 == sysctlbyname(mib[i], &nprocs, &len, NULL, 0) &&
+	      len == sizeof(nprocs) &&
+	      nprocs > 0) {
+      rc = nprocs;
+      break;
+    }
+  }
+#elif defined(__OpenBSD__)
+  int nprocs;
+  size_t i;
+  size_t len = sizeof(nprocs);
+  static int mib[][2] = {
+# ifdef HW_NCPUONLINE
+    { CTL_HW, HW_NCPUONLINE },
+# endif
+    { CTL_HW, HW_NCPU }
+  };
+
+  for (i = 0; i < ARRAY_SIZE(mib); i++) {
+    if (0 == sysctl(mib[i], ARRAY_SIZE(mib[i]), &nprocs, &len, NULL, 0) &&
+	len == sizeof(nprocs) &&
+        nprocs > 0) {
+      rc = nprocs;
+      break;
+    }
+  }
+#endif /* __linux__ */
+
+  if (rc < 0)
+    rc = sysconf(_SC_NPROCESSORS_ONLN);
+
+#ifdef __linux__
+  {
+    double rc_with_cgroup;
+    uv__cpu_constraint c = {0, 0, 0.0};
+
+    if (uv__get_constrained_cpu(&c) == 0 && c.period_length > 0) {
+      rc_with_cgroup = (double)c.quota_per_period / c.period_length * c.proportions;
+      if (rc_with_cgroup < rc)
+        rc = (long)rc_with_cgroup; /* Casting is safe since rc_with_cgroup < rc < LONG_MAX */
+    }
+  }
+#endif  /* __linux__ */
+
   if (rc < 1)
     rc = 1;
 
   return (unsigned) rc;
-#endif  /* __linux__ */
 }
 
 int uv__sock_reuseport(int fd) {
