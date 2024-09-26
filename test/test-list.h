@@ -580,6 +580,14 @@ TEST_DECLARE  (metrics_idle_time)
 TEST_DECLARE  (metrics_idle_time_thread)
 TEST_DECLARE  (metrics_idle_time_zero)
 
+TEST_DECLARE  (setuid)
+TEST_DECLARE  (seteuid)
+TEST_DECLARE  (setgid)
+TEST_DECLARE  (setegid)
+#ifndef _WIN32
+TEST_DECLARE  (setxid_privilege_drop)
+#endif
+
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
@@ -1238,6 +1246,14 @@ TASK_LIST_START
   TEST_ENTRY  (metrics_idle_time)
   TEST_ENTRY  (metrics_idle_time_thread)
   TEST_ENTRY  (metrics_idle_time_zero)
+
+  TEST_ENTRY  (setuid)
+  TEST_ENTRY  (seteuid)
+  TEST_ENTRY  (setgid)
+  TEST_ENTRY  (setegid)
+#ifndef _WIN32
+  TEST_ENTRY  (setxid_privilege_drop)
+#endif
 
 #if 0
   /* These are for testing the test runner. */

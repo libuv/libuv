@@ -416,6 +416,8 @@ struct uv__iou {
   int ringfd;
   uint32_t in_flight;
   uint32_t flags;
+  uint16_t personality;
+  unsigned personality_index;
 };
 #endif  /* __linux__ */
 

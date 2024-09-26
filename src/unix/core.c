@@ -2036,3 +2036,23 @@ int uv__sock_reuseport(int fd) {
 
   return 0;
 }
+
+#ifndef __linux__
+int uv_setuid(uv_uid_t uid) {
+  return setuid(uid);
+}
+
+
+int uv_seteuid(uv_uid_t uid) {
+  return seteuid(uid);
+}
+
+int uv_setgid(uv_gid_t gid) {
+  return setgid(gid);
+}
+
+
+int uv_setegid(uv_gid_t gid) {
+  return setegid(gid);
+}
+#endif  /* !__linux__ */

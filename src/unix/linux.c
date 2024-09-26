@@ -160,6 +160,10 @@ enum {
 };
 
 enum {
+  UV__IORING_REGISTER_PERSONALITY = 9u,
+};
+
+enum {
   UV__MKDIRAT_SYMLINKAT_LINKAT = 1u,
 };
 
@@ -220,8 +224,11 @@ struct uv__io_uring_sqe {
   uint64_t user_data;
   union {
     uint16_t buf_index;
-    uint64_t pad[3];
+    uint16_t buf_group;
   };
+  uint16_t personality;
+  uint32_t pad1;
+  uint64_t pad2[2];
 };
 
 STATIC_ASSERT(64 == sizeof(struct uv__io_uring_sqe));
@@ -290,6 +297,10 @@ static void uv__epoll_ctl_prep(int epollfd,
 
 RB_GENERATE_STATIC(watcher_root, watcher_list, entry, compare_watchers)
 
+/* personality_index will be increased every time a new setxid operation
+ * is performed, allowing us to know whether to register the current
+ * credentials in the ring. */
+static _Atomic unsigned personality_index = 0;
 
 static struct watcher_root* uv__inotify_watchers(uv_loop_t* loop) {
   /* This cast works because watcher_root is a struct with a pointer as its
@@ -601,6 +612,9 @@ static void uv__iou_init(int epollfd,
   iou->ringfd = ringfd;
   iou->in_flight = 0;
   iou->flags = 0;
+  iou->personality = 0;
+  iou->personality_index = atomic_load_explicit(&personality_index,
+                                                memory_order_relaxed);
 
   if (uv__kernel_version() >= /* 5.15.0 */ 0x050F00)
     iou->flags |= UV__MKDIRAT_SYMLINKAT_LINKAT;
@@ -777,6 +791,15 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
   if (iou->ringfd == -1)
     return NULL;
 
+  unsigned cur = atomic_load_explicit(&personality_index, memory_order_relaxed);
+  if (cur != iou->personality_index) {
+    iou->personality_index = cur;
+    iou->personality = uv__io_uring_register(iou->ringfd,
+                                             UV__IORING_REGISTER_PERSONALITY,
+                                             NULL,
+                                             0);
+  }
+
   head = atomic_load_explicit((_Atomic uint32_t*) iou->sqhead,
                               memory_order_acquire);
   tail = *iou->sqtail;
@@ -790,6 +813,7 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
   sqe = &sqe[slot];
   memset(sqe, 0, sizeof(*sqe));
   sqe->user_data = (uintptr_t) req;
+  sqe->personality = iou->personality;
 
   /* Pacify uv_cancel(). */
   req->work_req.loop = loop;
@@ -2690,4 +2714,28 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
 
 void uv__fs_event_close(uv_fs_event_t* handle) {
   uv_fs_event_stop(handle);
+}
+
+
+int uv_setuid(uv_uid_t uid) {
+  atomic_fetch_add_explicit(&personality_index, 1, memory_order_relaxed);
+  return setuid(uid);
+}
+
+
+int uv_seteuid(uv_uid_t uid) {
+  atomic_fetch_add_explicit(&personality_index, 1, memory_order_relaxed);
+  return seteuid(uid);
+}
+
+
+int uv_setgid(uv_gid_t gid) {
+  atomic_fetch_add_explicit(&personality_index, 1, memory_order_relaxed);
+  return setgid(gid);
+}
+
+
+int uv_setegid(uv_gid_t gid) {
+  atomic_fetch_add_explicit(&personality_index, 1, memory_order_relaxed);
+  return setgid(gid);
 }

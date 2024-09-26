@@ -775,3 +775,21 @@ int uv__getsockpeername(const uv_handle_t* handle,
 
   return 0;
 }
+
+int uv_setuid(uv_uid_t uid) {
+  return UV_ENOTSUP;
+}
+
+
+int uv_seteuid(uv_uid_t uid) {
+  return UV_ENOTSUP;
+}
+
+int uv_setgid(uv_gid_t gid) {
+  return UV_ENOTSUP;
+}
+
+
+int uv_setegid(uv_gid_t gid) {
+  return UV_ENOTSUP;
+}
