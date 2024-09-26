@@ -199,6 +199,7 @@ if(WIN32)
        shell32)
   list(APPEND uv_sources
        src/win/async.c
+       src/win/battery.c
        src/win/core.c
        src/win/detect-wakeup.c
        src/win/dl.c
@@ -307,6 +308,7 @@ if(APPLE)
   list(APPEND uv_defines _DARWIN_UNLIMITED_SELECT=1 _DARWIN_USE_64_BIT_INODE=1)
   list(APPEND uv_sources
        src/unix/darwin-proctitle.c
+       src/unix/darwin-battery.c
        src/unix/darwin.c
        src/unix/fsevents.c)
 endif()
