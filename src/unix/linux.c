@@ -266,6 +266,8 @@ struct watcher_root {
   struct watcher_list* rbh_root;
 };
 
+int uv__low_fd_flag = 0;
+
 static int uv__inotify_fork(uv_loop_t* loop, struct watcher_list* root);
 static void uv__inotify_read(uv_loop_t* loop,
                              uv__io_t* w,
@@ -648,6 +650,9 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 
   if (loop->backend_fd == -1)
     return UV__ERR(errno);
+
+  if (loop->backend_fd <= STDERR_FILENO)
+    uv__low_fd_flag = 1;
 
   uv__iou_init(loop->backend_fd, &lfields->ctl, 256, 0);
 

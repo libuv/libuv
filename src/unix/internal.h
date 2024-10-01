@@ -243,6 +243,8 @@ struct uv__statx {
 #define uv__nonblock uv__nonblock_fcntl
 #endif
 
+extern int uv__low_fd_flag;
+
 /* core */
 int uv__cloexec(int fd, int set);
 int uv__nonblock_ioctl(int fd, int set);

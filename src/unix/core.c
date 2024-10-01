@@ -641,7 +641,8 @@ int uv__close_nocheckstdio(int fd) {
 
 
 int uv__close(int fd) {
-  assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
+  if (!uv__low_fd_flag)
+    assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
 #if defined(__MVS__)
   SAVE_ERRNO(epoll_file_close(fd));
 #endif
