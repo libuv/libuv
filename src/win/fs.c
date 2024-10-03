@@ -1078,7 +1078,7 @@ void fs__write(uv_fs_t* req) {
       error = ERROR_INVALID_FLAGS;
     }
 
-    SET_REQ_WIN32_ERROR(req, error);
+    SET_REQ_UV_ERROR(req, uv_translate_write_sys_error(error), error);
   }
 }
 
