@@ -157,6 +157,7 @@ struct uv__queue {
   XX(ESOCKTNOSUPPORT, "socket type not supported")                            \
   XX(ENODATA, "no data available")                                            \
   XX(EUNATCH, "protocol driver not attached")                                 \
+  XX(ENOEXEC, "exec format error")                                            \
 
 #define UV_HANDLE_TYPE_MAP(XX)                                                \
   XX(ASYNC, async)                                                            \
