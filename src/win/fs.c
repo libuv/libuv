@@ -565,6 +565,7 @@ void fs__open(uv_fs_t* req) {
   /* Setting this flag makes it possible to open a directory. */
   attributes |= FILE_FLAG_BACKUP_SEMANTICS;
 
+open_file:
   file = CreateFileW(req->file.pathw,
                      access,
                      share,
@@ -579,6 +580,13 @@ void fs__open(uv_fs_t* req) {
       /* Special case: when ERROR_FILE_EXISTS happens and UV_FS_O_CREAT was
        * specified, it means the path referred to a directory. */
       SET_REQ_UV_ERROR(req, UV_EISDIR, error);
+    } else if (error == ERROR_ACCESS_DENIED && (disposition & CREATE_ALWAYS) &&
+        ((attributes & (FILE_ATTRIBUTE_NORMAL | FILE_ATTRIBUTE_HIDDEN))
+            == FILE_ATTRIBUTE_NORMAL)) {
+        /* Possibly attempted to open a hidden file. Try again, but this time
+         * with the corresponding attribute. */
+        attributes |= FILE_ATTRIBUTE_HIDDEN;
+        goto open_file;
     } else {
       SET_REQ_WIN32_ERROR(req, GetLastError());
     }
