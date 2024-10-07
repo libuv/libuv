@@ -80,62 +80,6 @@ static void uv__relative_path(const WCHAR* filename,
   (*relpath)[relpathlen] = L'\0';
 }
 
-static int uv__split_path(const WCHAR* filename, WCHAR** dir,
-    WCHAR** file) {
-  size_t len, i;
-  DWORD dir_len;
-
-  if (filename == NULL) {
-    if (dir != NULL)
-      *dir = NULL;
-    *file = NULL;
-    return 0;
-  }
-
-  len = wcslen(filename);
-  i = len;
-  while (i > 0 && filename[--i] != '\\' && filename[i] != '/');
-
-  if (i == 0) {
-    if (dir) {
-      dir_len = GetCurrentDirectoryW(0, NULL);
-      if (dir_len == 0) {
-        return -1;
-      }
-      *dir = (WCHAR*)uv__malloc(dir_len * sizeof(WCHAR));
-      if (!*dir) {
-        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-      }
-
-      if (!GetCurrentDirectoryW(dir_len, *dir)) {
-        uv__free(*dir);
-        *dir = NULL;
-        return -1;
-      }
-    }
-
-    *file = _wcsdup(filename);
-  } else {
-    if (dir) {
-      *dir = (WCHAR*)uv__malloc((i + 2) * sizeof(WCHAR));
-      if (!*dir) {
-        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-      }
-      wcsncpy(*dir, filename, i + 1);
-      (*dir)[i + 1] = L'\0';
-    }
-
-    *file = (WCHAR*)uv__malloc((len - i) * sizeof(WCHAR));
-    if (!*file) {
-      uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
-    }
-    wcsncpy(*file, filename + i + 1, len - i - 1);
-    (*file)[len - i - 1] = L'\0';
-  }
-
-  return 0;
-}
-
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
   uv__handle_init(loop, (uv_handle_t*) handle, UV_FS_EVENT);
@@ -242,12 +186,12 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 short_path_done:
     short_path = short_path_buffer;
 
-    if (uv__split_path(pathw, &dir, &handle->filew) != 0) {
+    if (uv__fs_split_path(pathw, &dir, &handle->filew) != 0) {
       last_error = GetLastError();
       goto error;
     }
 
-    if (uv__split_path(short_path, NULL, &handle->short_filew) != 0) {
+    if (uv__fs_split_path(short_path, NULL, &handle->short_filew) != 0) {
       last_error = GetLastError();
       goto error;
     }
