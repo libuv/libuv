@@ -4518,8 +4518,7 @@ TEST_IMPL(fs_stat_no_permission) {
     loop = uv_default_loop();
     r = uv_os_get_passwd(&pwd);
     ASSERT_OK(r);
-    call_icacls("icacls %s /remove \"%s\" /inheritance:e",
-                filename, pwd.username);
+    call_icacls("icacls %s /remove *S-1-1-0:(F)", filename);
     unlink(filename);
 
     /* Create the file */
