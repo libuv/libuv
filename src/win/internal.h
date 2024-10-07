@@ -233,7 +233,6 @@ void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle);
  * FS
  */
 void uv__fs_init(void);
-int uv__fs_split_path(const WCHAR* filename, WCHAR** dir, WCHAR** file);
 
 
 /*
