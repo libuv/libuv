@@ -1941,6 +1941,113 @@ INLINE static void fs__stat_prepare_path(WCHAR* pathw) {
   }
 }
 
+INLINE static int fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
+    int do_lstat) {
+
+  HANDLE handle = INVALID_HANDLE_VALUE;
+  FILE_STAT_BASIC_INFORMATION stat_info;
+  FILE_FULL_DIR_INFORMATION* pdir_info;
+  IO_STATUS_BLOCK ioStatusBlock;
+  NTSTATUS status;
+  WCHAR buf[32 * 1024];
+  WCHAR* path_dirpath = NULL;
+  WCHAR* path_filename = NULL;
+  BOOL ret_val = FALSE;
+  DWORD ret_error = 0;
+
+  if (uv__fs_split_path(path, &path_dirpath, &path_filename) != 0) {
+    ret_error = GetLastError();
+    goto cleanup;
+  }
+
+  /* Get directory handle */
+  handle = CreateFileW(path_dirpath,
+                       FILE_LIST_DIRECTORY,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_FLAG_BACKUP_SEMANTICS,
+                       NULL);
+
+  if (handle == INVALID_HANDLE_VALUE) {
+    ret_error = GetLastError();
+    goto cleanup;
+  }
+
+  do {
+    /* Get files in the directory */
+    status = pNtQueryDirectoryFile(handle,
+                                   NULL,
+                                   0,
+                                   0,
+                                   &ioStatusBlock,
+                                   buf,
+                                   sizeof(buf),
+                                   FileFullDirectoryInformation,
+                                   FALSE,
+                                   NULL,
+                                   FALSE);
+
+    if (!NT_SUCCESS(status)) {
+      if (status == STATUS_NO_MORE_FILES) {
+        break;
+      }
+      SetLastError(pRtlNtStatusToDosError(status));
+      ret_error = GetLastError();
+      goto cleanup;
+    }
+
+    pdir_info = buf;
+
+    /* Check files one by one */
+    for (;;)
+    {
+      if (wcscmp(&pdir_info->FileName[0], path_filename) == 0) {
+        ret_val = TRUE;
+        break;
+      }
+
+      if (pdir_info->NextEntryOffset == 0) {
+        break;
+      }
+
+      pdir_info = (FILE_FULL_DIR_INFORMATION*)((unsigned char*)pdir_info +
+                                               pdir_info->NextEntryOffset);
+    }
+
+  } while (TRUE && !ret_val);
+
+  if (!ret_val) {
+    ret_error = ERROR_PATH_NOT_FOUND;
+    goto cleanup;
+  }
+
+  /* Assign values to stat_info */
+  memset(&stat_info, 0, sizeof(FILE_STAT_BASIC_INFORMATION));
+  stat_info.FileAttributes = pdir_info->FileAttributes;
+  stat_info.CreationTime.QuadPart = pdir_info->CreationTime.QuadPart;
+  stat_info.LastAccessTime.QuadPart = pdir_info->LastAccessTime.QuadPart;
+  stat_info.LastWriteTime.QuadPart = pdir_info->LastWriteTime.QuadPart;
+  stat_info.EndOfFile.QuadPart = pdir_info->EndOfFile.QuadPart;
+  stat_info.ChangeTime.QuadPart = pdir_info->ChangeTime.QuadPart;
+  stat_info.AllocationSize.QuadPart = pdir_info->AllocationSize.QuadPart;
+
+  fs__stat_assign_statbuf(statbuf, stat_info, do_lstat);
+
+cleanup:
+  if (path_filename) {
+    uv__free(path_filename);
+    path_filename = NULL;
+  }
+  if (path_dirpath) {
+    uv__free(path_dirpath);
+    path_dirpath = NULL;
+  }
+  if (handle != INVALID_HANDLE_VALUE) {
+    CloseHandle(handle);
+  }
+  return ret_error;
+}
 
 INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                                             int do_lstat,
@@ -1972,8 +2079,16 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                        flags,
                        NULL);
 
-  if (handle == INVALID_HANDLE_VALUE)
-    return GetLastError();
+  if (handle == INVALID_HANDLE_VALUE) {
+    DWORD error = GetLastError();
+    int sys_error = uv_translate_sys_error(error);
+
+    if (sys_error != UV_EBUSY && sys_error != UV_EPERM) {
+      return error;
+    }
+
+    return fs__stat_directory(path, statbuf, do_lstat);
+  }
 
   if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
     ret = GetLastError();
@@ -3563,6 +3678,64 @@ int uv_fs_statfs(uv_loop_t* loop,
 
   POST;
 }
+
+
+int uv__fs_split_path(const WCHAR* filename, WCHAR** dir,
+    WCHAR** file) {
+  size_t len, i;
+  DWORD dir_len;
+
+  if (filename == NULL) {
+    if (dir != NULL)
+      *dir = NULL;
+    *file = NULL;
+    return 0;
+  }
+
+  len = wcslen(filename);
+  i = len;
+  while (i > 0 && filename[--i] != '\\' && filename[i] != '/');
+
+  if (i == 0) {
+    if (dir) {
+      dir_len = GetCurrentDirectoryW(0, NULL);
+      if (dir_len == 0) {
+        return -1;
+      }
+      *dir = (WCHAR*)uv__malloc(dir_len * sizeof(WCHAR));
+      if (!*dir) {
+        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+      }
+
+      if (!GetCurrentDirectoryW(dir_len, *dir)) {
+        uv__free(*dir);
+        *dir = NULL;
+        return -1;
+      }
+    }
+
+    *file = _wcsdup(filename);
+  } else {
+    if (dir) {
+      *dir = (WCHAR*)uv__malloc((i + 2) * sizeof(WCHAR));
+      if (!*dir) {
+        uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+      }
+      wcsncpy(*dir, filename, i + 1);
+      (*dir)[i + 1] = L'\0';
+    }
+
+    *file = (WCHAR*)uv__malloc((len - i) * sizeof(WCHAR));
+    if (!*file) {
+      uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
+    }
+    wcsncpy(*file, filename + i + 1, len - i - 1);
+    (*file)[len - i - 1] = L'\0';
+  }
+
+  return 0;
+}
+
 
 int uv_fs_get_system_error(const uv_fs_t* req) {
   return req->sys_errno_;
