@@ -62,7 +62,7 @@ static HANDLE uv_global_job_handle_;
 static uv_once_t uv_global_job_handle_init_guard_ = UV_ONCE_INIT;
 
 
-static void uv__init_global_job_handle(void) {
+static void uv__init_global_job_handle(BOOL catchExceptions) {
   /* Create a job object and set it up to kill all contained processes when
    * it's closed. Since this handle is made non-inheritable and we're not
    * giving it to anyone, we're the only process holding a reference to it.
@@ -89,6 +89,10 @@ static void uv__init_global_job_handle(void) {
       JOB_OBJECT_LIMIT_BREAKAWAY_OK |
       JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK |
       JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+  
+  if (catchExceptions) {
+    info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION;
+  }
 
   uv_global_job_handle_ = CreateJobObjectW(&attr, NULL);
   if (uv_global_job_handle_ == NULL)
@@ -114,6 +118,14 @@ static void uv__init_global_job_handle(void) {
     if (err != ERROR_ACCESS_DENIED)
       uv_fatal_error(err, "AssignProcessToJobObject");
   }
+}
+
+static void uv__init_global_job_handle_default(void) {
+  uv__init_global_job_handle(FALSE);
+}
+
+static void uv__init_global_job_handle_catch_exceptions(void) {
+  uv__init_global_job_handle(TRUE);
 }
 
 
@@ -941,7 +953,8 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
                               UV_PROCESS_WINDOWS_HIDE_GUI |
-                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
+                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                              UV_PROCESS_WINDOWS_CATCH_EXCEPTIONS)));
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);
   if (err)
@@ -1039,6 +1052,10 @@ int uv_spawn(uv_loop_t* loop,
   startup.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
 
   process_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_DEFAULT_ERROR_MODE;
+
+  if (options->flags & UV_PROCESS_WINDOWS_CATCH_EXCEPTIONS) {
+    process_flags &= ~(CREATE_DEFAULT_ERROR_MODE);
+  }
 
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_CONSOLE) ||
       (options->flags & UV_PROCESS_WINDOWS_HIDE)) {
@@ -1142,6 +1159,13 @@ int uv_spawn(uv_loop_t* loop,
    * so windows will kill it when the parent process dies. */
   if (!(options->flags & UV_PROCESS_DETACHED)) {
     uv_once(&uv_global_job_handle_init_guard_, uv__init_global_job_handle);
+    // workaround uv_once taking only a zero-arity function.
+    uv_once(
+      &uv_global_job_handle_init_guard_,
+      (options->flags & UV_PROCESS_WINDOWS_CATCH_EXCEPTIONS) ?
+        uv__init_global_job_handle_catch_exceptions :
+        uv__init_global_job_handle_default
+    );
 
     if (!AssignProcessToJobObject(uv_global_job_handle_, info.hProcess)) {
       /* AssignProcessToJobObject might fail if this process is under job

@@ -1170,7 +1170,14 @@ enum uv_process_flags {
    * search for the exact file name before trying variants with
    * extensions like '.exe' or '.cmd'.
    */
-  UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
+  UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7),
+  /*
+   * Suppress Windows Error Reporting. Windows Error Reporting may display
+   * interactive popups when a fatal error occurs. Setting this flag disables
+   * that popup. This option is only meaningful on Windows systems. On Unix
+   * it is silently ignored.
+   */
+  UV_PROCESS_WINDOWS_CATCH_EXCEPTIONS = (1 << 8)
 };
 
 /*
