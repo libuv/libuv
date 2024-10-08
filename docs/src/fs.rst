@@ -200,9 +200,13 @@ Public members
 
 .. c:member:: ssize_t uv_fs_t.result
 
-    Result of the request. < 0 means error, success otherwise. On requests such
-    as :c:func:`uv_fs_read` or :c:func:`uv_fs_write` it indicates the amount of
-    data that was read or written, respectively.
+    Result of the request. < 0 means error, success otherwise. This field is always set, regardless
+    of the request being sync or async.
+
+    For synchronous calls, the result of each operation is this field.
+
+    Check each function's documentation to check if the field has
+    an extended meaning.
 
 .. c:member:: uv_stat_t uv_fs_t.statbuf
 
@@ -221,8 +225,10 @@ API
 
 .. c:function:: void uv_fs_req_cleanup(uv_fs_t* req)
 
-    Cleanup request. Must be called after a request is finished to deallocate
-    any memory libuv might have allocated.
+    Cleanup request. Must be called after a request is finished to cleanup
+    any resources libuv might have allocated.
+
+    It must be called for all requests, regardless of success or failure.
 
 .. c:function:: int uv_fs_close(uv_loop_t* loop, uv_fs_t* req, uv_file file, uv_fs_cb cb)
 
@@ -231,6 +237,17 @@ API
 .. c:function:: int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags, int mode, uv_fs_cb cb)
 
     Equivalent to :man:`open(2)`.
+
+    The `req->result` field contains the opened file descriptor, of < 0 for error.
+
+    The `flags` argument has different semantics depending on the OS:
+
+        - On Unix, they are directly passed to :man:`open(2)`.
+        - On Windows, the following flags are implemented, emulating Unix semantics: `UV_FS_O_APPEND`,
+          `UV_FS_O_CREAT`, `UV_FS_O_EXCL`, `UV_FS_O_FILEMAP`, `UV_FS_O_RANDOM`, `UV_FS_O_RDONLY`,
+          `UV_FS_O_RDWR`, `UV_FS_O_SEQUENTIAL`, `UV_FS_O_SHORT_LIVED`, `UV_FS_O_TEMPORARY`,
+          `UV_FS_O_TRUNC`, `UV_FS_O_WRONLY`, `UV_FS_O_DIRECT`, `UV_FS_O_DSYNC`, `UV_FS_O_EXLOCK`,
+          `UV_FS_O_SYNC`.
 
     .. note::
         On Windows libuv uses `CreateFileW` and thus the file is always opened
@@ -241,6 +258,8 @@ API
 
     Equivalent to :man:`preadv(2)`. If the `offset` argument is `-1`, then
     the current file offset is used and updated.
+
+    The result in `req->result` indicates the amount of bytes read, if > 0.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
@@ -255,6 +274,8 @@ API
 
     Equivalent to :man:`pwritev(2)`. If the `offset` argument is `-1`, then
     the current file offset is used and updated.
+
+    The result in `req->result` indicates the amount of bytes written, if > 0.
 
     .. warning::
         On Windows, under non-MSVC environments (e.g. when GCC or Clang is used
