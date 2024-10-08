@@ -262,3 +262,8 @@ int uv__random_sysctl(void* buf, size_t len) {
 
   return 0;
 }
+
+
+void uv_battery_info(uv_battery_info_t* battery) {
+  return UV_ENOSYS;
+}

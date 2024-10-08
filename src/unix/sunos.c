@@ -905,3 +905,8 @@ size_t strnlen(const char* s, size_t maxlen) {
   return end - s;
 }
 #endif
+
+
+int uv_battery_info(uv_battery_info_t* info) {
+  return UV_ENOSYS;
+}

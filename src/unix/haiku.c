@@ -170,3 +170,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   return 0;
 }
+
+
+void uv_battery_info(uv_battery_info_t* battery) {
+  return UV_ENOSYS;
+}
