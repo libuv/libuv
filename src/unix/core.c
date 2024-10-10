@@ -1034,7 +1034,7 @@ int uv_getrusage(uv_rusage_t* rusage) {
 #if defined(__APPLE__)
   rusage->ru_maxrss /= 1024;                  /* macOS and iOS report bytes. */
 #elif defined(__sun)
-  rusage->ru_maxrss /= getpagesize() / 1024;  /* Solaris reports pages. */
+  rusage->ru_maxrss *= getpagesize() / 1024;  /* Solaris reports pages. */
 #endif
 
   return 0;
