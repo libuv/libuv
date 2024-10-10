@@ -2566,7 +2566,6 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
 
     path_buf[path_buf_len++] = path[i];
   }
-  path_buf[path_buf_len++] = L'\\';
   len = path_buf_len - start;
 
   /* Set the info about the substitute name */
