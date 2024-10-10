@@ -941,7 +941,8 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
                               UV_PROCESS_WINDOWS_HIDE_GUI |
-                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
+                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                              UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE)));
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);
   if (err)
@@ -1039,6 +1040,10 @@ int uv_spawn(uv_loop_t* loop,
   startup.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
 
   process_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_DEFAULT_ERROR_MODE;
+
+  if (options->flags & UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE) {
+    process_flags &= ~(CREATE_DEFAULT_ERROR_MODE);
+  }
 
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_CONSOLE) ||
       (options->flags & UV_PROCESS_WINDOWS_HIDE)) {
