@@ -58,6 +58,19 @@
 #define FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE  0x0010
 #endif  /* FILE_DISPOSITION_IGNORE_READONLY_ATTRIBUTE */
 
+NTSTATUS uv__RtlUnicodeStringInit(
+  PUNICODE_STRING DestinationString,
+  PWSTR SourceString,
+  size_t SourceStringLen
+) {
+  if (SourceStringLen > 0x7FFF)
+    return STATUS_INVALID_PARAMETER;
+  DestinationString->MaximumLength = DestinationString->Length =
+    SourceStringLen * sizeof(SourceString[0]);
+  DestinationString->Buffer = SourceString;
+  return STATUS_SUCCESS;
+}
+
 #define INIT(subtype)                                                         \
   do {                                                                        \
     if (req == NULL)                                                          \
@@ -1941,6 +1954,145 @@ INLINE static void fs__stat_prepare_path(WCHAR* pathw) {
   }
 }
 
+INLINE static int fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
+    int do_lstat) {
+  HANDLE handle = INVALID_HANDLE_VALUE;
+  FILE_STAT_BASIC_INFORMATION stat_info;
+  FILE_ID_FULL_DIR_INFORMATION dir_info;
+  FILE_FS_VOLUME_INFORMATION volume_info;
+  FILE_FS_DEVICE_INFORMATION device_info;
+  IO_STATUS_BLOCK io_status;
+  NTSTATUS nt_status;
+  WCHAR* path_dirpath = NULL;
+  WCHAR* path_filename = NULL;
+  UNICODE_STRING FileMask;
+  DWORD ret_error = 0;
+  size_t len;
+  size_t split;
+  WCHAR splitchar;
+
+  /* aka strtok or wcscspn, in reverse */
+  len = wcslen(path);
+  split = len;
+  while (split > 0 && path[split - 1] != L'\\' && path[split - 1] != L'/')
+    split--;
+  if (split == 0) {
+    path_dirpath = L".";
+  } else {
+    path_dirpath = path;
+    splitchar = path[split - 1];
+    path[split - 1] = L'\0';
+  }
+  path_filename = &path[split];
+
+  len = 0;
+  while (1) {
+    if (path_filename[len] == L'\0')
+      break;
+    if (path_filename[len] == L'*' || path_filename[len] == L'?' ||
+        path_filename[len] == L'>' || path_filename[len] == L'<' ||
+        path_filename[len] == L'"') {
+      ret_error = ERROR_INVALID_NAME;
+      goto cleanup;
+    }
+    len++;
+  }
+
+  /* Get directory handle */
+  handle = CreateFileW(path_dirpath,
+                       FILE_LIST_DIRECTORY,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_FLAG_BACKUP_SEMANTICS,
+                       NULL);
+
+  if (handle == INVALID_HANDLE_VALUE) {
+    ret_error = GetLastError();
+    goto cleanup;
+  }
+
+  /* Get files in the directory */
+  nt_status = uv__RtlUnicodeStringInit(&FileMask, path_filename, len);
+  if (!NT_SUCCESS(nt_status)) {
+    ret_error = pRtlNtStatusToDosError(nt_status);
+    goto cleanup;
+  }
+  nt_status = pNtQueryDirectoryFile(handle,
+                                 NULL,
+                                 NULL,
+                                 NULL,
+                                 &io_status,
+                                 &dir_info,
+                                 sizeof(dir_info),
+                                 FileIdFullDirectoryInformation,
+                                 TRUE,
+                                 &FileMask,
+                                 TRUE);
+
+  /* Buffer overflow (a warning status code) is expected here since there isn't
+   * enough space to store the FileName, and actually indicates success. */
+  if (!NT_SUCCESS(nt_status) && nt_status != STATUS_BUFFER_OVERFLOW) {
+    if (nt_status == STATUS_NO_MORE_FILES)
+      ret_error = ERROR_PATH_NOT_FOUND;
+    else
+      ret_error = pRtlNtStatusToDosError(nt_status);
+    goto cleanup;
+  }
+
+  /* Assign values to stat_info */
+  memset(&stat_info, 0, sizeof(FILE_STAT_BASIC_INFORMATION));
+  stat_info.FileAttributes = dir_info.FileAttributes;
+  stat_info.CreationTime.QuadPart = dir_info.CreationTime.QuadPart;
+  stat_info.LastAccessTime.QuadPart = dir_info.LastAccessTime.QuadPart;
+  stat_info.LastWriteTime.QuadPart = dir_info.LastWriteTime.QuadPart;
+  stat_info.EndOfFile.QuadPart = dir_info.EndOfFile.QuadPart;
+  stat_info.ChangeTime.QuadPart = dir_info.ChangeTime.QuadPart;
+  stat_info.AllocationSize.QuadPart = dir_info.AllocationSize.QuadPart;
+  stat_info.FileId.QuadPart = dir_info.FileId.QuadPart;
+
+  /* Finish up by getting device info from the directory handle,
+   * since files presumably must live on their device. */
+  nt_status = pNtQueryVolumeInformationFile(handle,
+                                            &io_status,
+                                            &volume_info,
+                                            sizeof volume_info,
+                                            FileFsVolumeInformation);
+
+  /* Buffer overflow (a warning status code) is expected here. */
+  if (io_status.Status == STATUS_NOT_IMPLEMENTED) {
+    stat_info.VolumeSerialNumber.QuadPart = 0;
+  } else if (NT_ERROR(nt_status)) {
+    ret_error = pRtlNtStatusToDosError(nt_status);
+    goto cleanup;
+  } else {
+    stat_info.VolumeSerialNumber.QuadPart = volume_info.VolumeSerialNumber;
+  }
+
+  nt_status = pNtQueryVolumeInformationFile(handle,
+                                            &io_status,
+                                            &device_info,
+                                            sizeof device_info,
+                                            FileFsDeviceInformation);
+
+  /* Buffer overflow (a warning status code) is expected here. */
+  if (NT_ERROR(nt_status)) {
+    ret_error = pRtlNtStatusToDosError(nt_status);
+    goto cleanup;
+  }
+
+  stat_info.DeviceType = device_info.DeviceType;
+  stat_info.NumberOfLinks = 1; /* No way to recover this info. */
+
+  fs__stat_assign_statbuf(statbuf, stat_info, do_lstat);
+
+cleanup:
+  if (split != 0)
+    path[split - 1] = splitchar;
+  if (handle != INVALID_HANDLE_VALUE)
+    CloseHandle(handle);
+  return ret_error;
+}
 
 INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                                             int do_lstat,
@@ -1972,8 +2124,16 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
                        flags,
                        NULL);
 
-  if (handle == INVALID_HANDLE_VALUE)
-    return GetLastError();
+  if (handle == INVALID_HANDLE_VALUE) {
+    DWORD error = GetLastError();
+    int sys_error = uv_translate_sys_error(error);
+
+    if (sys_error != UV_EBUSY && sys_error != UV_EPERM) {
+      return error;
+    }
+
+    return fs__stat_directory(path, statbuf, do_lstat);
+  }
 
   if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
     ret = GetLastError();
