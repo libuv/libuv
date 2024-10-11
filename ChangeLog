@@ -1,3 +1,34 @@
+2024.10.11, Version 1.49.1 (Stable)
+
+Changes since version 1.49.0:
+
+* build: add darwin-syscalls.h to release tarball (Ben Noordhuis)
+
+* linux: use IORING_SETUP_NO_SQARRAY when available (Ben Noordhuis)
+
+* linux: use IORING_OP_FTRUNCATE when available (Ben Noordhuis)
+
+* win: fix pNtQueryDirectoryFile check (Rialbat)
+
+* win: fix WriteFile() error translation (Santiago Gimeno)
+
+* win,fs: uv_fs_rmdir() to return ENOENT on file (Santiago Gimeno)
+
+* win,pipe: ipc code does not support async read (Jameson Nash)
+
+* netbsd: fix build (Adam)
+
+* win,fs: fix bug in fs__readdir (Hüseyin Açacak)
+
+* unix: workaround gcc bug on armv7 (Santiago Gimeno)
+
+* unix: work around arm-linux-gnueabihf-gcc bug (Ben Noordhuis)
+
+* unix: fix uv_tcp_keepalive in smartOS (Santiago Gimeno)
+
+* unix: fix uv_getrusage ru_maxrss on solaris (Poul T Lomholt)
+
+
 2024.09.25, Version 1.49.0 (Stable), d2e56a5e8d3e39947b78405ca6e4727c70f5568a
 
 Changes since version 1.48.0:
