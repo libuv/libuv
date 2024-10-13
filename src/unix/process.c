@@ -386,19 +386,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
   if ((options->flags & UV_PROCESS_SETUID) && setuid(options->uid))
     uv__write_errno(error_fd);
 
-  if (options->env != NULL)
-    environ = options->env;
-
   /* Reset signal mask just before exec. */
   sigemptyset(&signewset);
   if (sigprocmask(SIG_SETMASK, &signewset, NULL) != 0)
     abort();
 
-#ifdef __MVS__
-  execvpe(options->file, options->args, environ);
-#else
-  execvp(options->file, options->args);
-#endif
+  execvpe(options->file, options->args, options->env ? options->env : environ);
 
   uv__write_errno(error_fd);
 }
