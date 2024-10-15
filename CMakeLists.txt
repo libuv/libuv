@@ -637,6 +637,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-bind-error.c
        test/test-tcp-bind6-error.c
        test/test-tcp-close-accept.c
+       test/test-tcp-reject.c
        test/test-tcp-close-after-read-timeout.c
        test/test-tcp-close-while-connecting.c
        test/test-tcp-close.c
