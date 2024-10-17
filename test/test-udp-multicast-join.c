@@ -160,6 +160,8 @@ TEST_IMPL(udp_multicast_join) {
   r = uv_udp_set_membership(&server, MULTICAST_ADDR, NULL, UV_JOIN_GROUP);
   if (r == UV_ENODEV)
     RETURN_SKIP("No multicast support.");
+  if (r == UV_ENOEXEC)
+    RETURN_SKIP("No multicast support (likely a firewall issue).");
   ASSERT_OK(r);
 
   r = uv_udp_recv_start(&server, alloc_cb, cl_recv_cb);
