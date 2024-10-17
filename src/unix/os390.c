@@ -1068,3 +1068,8 @@ int uv__io_fork(uv_loop_t* loop) {
 
   return uv__platform_loop_init(loop);
 }
+
+
+void uv_battery_info(uv_battery_info_t* battery) {
+  return UV_ENOSYS;
+}
