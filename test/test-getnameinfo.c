@@ -28,7 +28,7 @@
 
 static const char* address_ip4 = "127.0.0.1";
 static const char* address_ip6 = "::1";
-static const int port = 80;
+static const unsigned short port = 80;
 
 static struct sockaddr_in addr4;
 static struct sockaddr_in6 addr6;
