@@ -223,7 +223,7 @@ int uv__stdio_create(uv_loop_t* loop,
           if (err)
             goto error;
 
-		  memcpy(CHILD_STDIO_HANDLE(buffer, i), &nul, sizeof(HANDLE));
+          memcpy(CHILD_STDIO_HANDLE(buffer, i), &nul, sizeof(HANDLE));
           CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FDEV;
         }
         break;
@@ -248,7 +248,7 @@ int uv__stdio_create(uv_loop_t* loop,
         if (err)
           goto error;
 
-		memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_pipe, sizeof(HANDLE));
+        memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_pipe, sizeof(HANDLE));
         CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FPIPE;
         break;
       }
@@ -299,7 +299,7 @@ int uv__stdio_create(uv_loop_t* loop,
             return -1;
         }
 
-		memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
+        memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
         break;
       }
 
@@ -335,7 +335,7 @@ int uv__stdio_create(uv_loop_t* loop,
         if (err)
           goto error;
 
-		memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
+        memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
         CHILD_STDIO_CRT_FLAGS(buffer, i) = crt_flags;
         break;
       }
