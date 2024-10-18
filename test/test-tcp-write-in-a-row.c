@@ -26,6 +26,7 @@
 #include "task.h"
 #include "uv.h"
 
+#if !defined(_WIN32) && !defined(__PASE__)
 static uv_tcp_t server;
 static uv_tcp_t client;
 static uv_tcp_t incoming;
@@ -110,6 +111,7 @@ static void start_server(void) {
   ASSERT_OK(uv_tcp_bind(&server, (struct sockaddr*) &addr, 0));
   ASSERT_OK(uv_listen((uv_stream_t*) &server, 128, connection_cb));
 }
+#endif
 
 TEST_IMPL(tcp_write_in_a_row) {
 #if defined(_WIN32)

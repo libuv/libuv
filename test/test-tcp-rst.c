@@ -22,6 +22,7 @@
 #include "uv.h"
 #include "task.h"
 
+#if !defined(__OpenBSD__) && !defined(_WIN32)
 static uv_tcp_t tcp;
 static uv_connect_t connect_req;
 static uv_buf_t qbuf;
@@ -69,6 +70,7 @@ static void connect_cb(uv_connect_t *req, int status) {
 
   called_connect_cb++;
 }
+#endif
 
 
 /*
