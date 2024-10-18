@@ -215,7 +215,8 @@ int uv__stdio_create(uv_loop_t* loop,
          * handles in the stdio buffer are initialized with.
          * INVALID_HANDLE_VALUE, which should be okay. */
         if (i <= 2) {
-          HANDLE nul;
+          /* Redundantly initialize to make the compiler happy. */
+          HANDLE nul = INVALID_HANDLE_VALUE;
           DWORD access = (i == 0) ? FILE_GENERIC_READ :
                                     FILE_GENERIC_WRITE | FILE_READ_ATTRIBUTES;
 
