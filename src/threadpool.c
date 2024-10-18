@@ -190,11 +190,30 @@ void uv__threadpool_cleanup(void) {
 }
 
 
-static void init_threads(void) {
+static void spin_threads(unsigned int from, unsigned int to) {
   uv_thread_options_t config;
   unsigned int i;
-  const char* val;
   uv_sem_t sem;
+
+  if (uv_sem_init(&sem, 0))
+    abort();
+
+  config.flags = UV_THREAD_HAS_STACK_SIZE;
+  config.stack_size = 8u << 20;  /* 8 MB */
+
+  for (i = from; i < to; i++)
+    if (uv_thread_create_ex(threads + i, &config, worker, &sem))
+      abort();
+
+  for (i = from; i < to; i++)
+    uv_sem_wait(&sem);
+
+  uv_sem_destroy(&sem);
+}
+
+
+static void init_threads(void) {
+  const char* val;
 
   nthreads = ARRAY_SIZE(default_threads);
   val = getenv("UV_THREADPOOL_SIZE");
@@ -224,20 +243,8 @@ static void init_threads(void) {
   uv__queue_init(&slow_io_pending_wq);
   uv__queue_init(&run_slow_work_message);
 
-  if (uv_sem_init(&sem, 0))
-    abort();
-
-  config.flags = UV_THREAD_HAS_STACK_SIZE;
-  config.stack_size = 8u << 20;  /* 8 MB */
-
-  for (i = 0; i < nthreads; i++)
-    if (uv_thread_create_ex(threads + i, &config, worker, &sem))
-      abort();
-
-  for (i = 0; i < nthreads; i++)
-    uv_sem_wait(&sem);
-
-  uv_sem_destroy(&sem);
+  /* Spin up the default number of threads */
+  spin_threads(0 /* from */, nthreads /* to */);
 }
 
 
@@ -259,6 +266,73 @@ static void init_once(void) {
     abort();
 #endif
   init_threads();
+}
+
+int uv_set_threadpool_size(unsigned int number) {
+  unsigned int spin_nthreads;
+
+  /* Ensure the threadpool and mutex is initialized */
+  uv_once(&once, init_once);
+
+  uv_mutex_lock(&mutex);
+
+  /* no-op if the threadpool size is already set */
+  if (number == nthreads) {
+    uv_mutex_unlock(&mutex);
+    return 0;
+  }
+
+  if (nthreads < number) {
+    /* Just spin up the difference and respect the MAX_THREADPOOL_SIZE */
+    spin_nthreads = number - nthreads;
+    if (spin_nthreads > MAX_THREADPOOL_SIZE)
+      spin_nthreads = MAX_THREADPOOL_SIZE - nthreads;
+  } else {
+    uv_mutex_unlock(&mutex);
+    return UV_EINVAL; /* Cannot shrink the threadpool */
+  }
+
+  /* Alloc -with the expected size- if was not alloc(ed) before */
+  if (threads == default_threads) {
+    uv_thread_t* tmp = uv__malloc((nthreads + spin_nthreads) *
+                                   sizeof(threads[0]));
+    if (tmp == NULL) {
+      uv_mutex_unlock(&mutex);
+      return UV_ENOMEM;
+    }
+    memcpy(tmp, threads, nthreads * sizeof(threads[0]));
+    threads = tmp;
+  } else {
+    /* Re-alloc more memory for the new threads. */
+    threads = uv__realloc(threads,
+                          (nthreads + spin_nthreads) * sizeof(threads[0]));
+    if (threads == NULL) {
+      uv_mutex_unlock(&mutex);
+      return UV_ENOMEM;
+    }
+
+  }
+
+  /* Spin up the new threads */
+  spin_threads(nthreads /* from */, nthreads + spin_nthreads  /* to */);
+
+  /* Update the thread count */
+  nthreads += spin_nthreads;
+
+  uv_mutex_unlock(&mutex);
+
+  return 0;
+}
+
+unsigned int uv_get_threadpool_size(void) {
+  unsigned int nthreads_val;
+
+  uv_once(&once, init_once);
+  uv_mutex_lock(&mutex);
+  nthreads_val = nthreads;
+  uv_mutex_unlock(&mutex);
+
+  return nthreads_val;
 }
 
 

@@ -927,3 +927,23 @@ is not complete.
     for the NUL terminator.
 
     .. versionadded:: 1.47.0
+
+.. c:function:: int uv_set_threadpool_size(unsingned int number)
+
+    If this function is called before any other libuv call that requires the
+    threadpool will set the value of `UV_THREADPOOL_SIZE` if provided, in that;
+    case, if `number` is less than `UV_THREADPOOL_SIZE` it returns `UV_EINVAL`
+    as the threadpool can't be shrank. If `UV_THREADPOOL_SIZE` is not provided
+    it will spawn `number` of threads for the threadpool.
+
+    On success, it returns 0, if the threadpool is already spining and `number`
+    is smaller than the provided `number` it returns `UV_EINVAL`.
+
+.. c:function:: unsingned int uv_get_threadpool_size(void)
+
+    If this function is called before any other libuv call that uses the
+    threadpool, the value will be 4 by default or `UV_THREADPOOL_SIZE` and will
+    spawn the threadpool as a side effect.
+
+    It always returns the number of threads in the thread pool (unless something
+    really bad happens).
