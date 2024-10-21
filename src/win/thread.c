@@ -278,6 +278,79 @@ int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
 }
 
 
+int uv_thread_setname(const char* name) {
+#ifdef __MINGW32__
+  return UV_ENOSYS;
+#else
+  HRESULT hr;
+  WCHAR* namew;
+  int err;
+  char namebuf[UV_PTHREAD_MAX_NAMELEN_NP];
+
+  if (name == NULL)
+    return UV_EINVAL;
+
+  strncpy(namebuf, name, sizeof(namebuf) - 1);
+  namebuf[sizeof(namebuf) - 1] = '\0';
+
+  namew = NULL;
+  err = uv__convert_utf8_to_utf16(namebuf, &namew);
+  if (err)
+    return err;
+
+  hr = SetThreadDescription(GetCurrentThread(), namew);
+  uv__free(namew);
+  if (FAILED(hr))
+    return uv_translate_sys_error(HRESULT_CODE(hr));
+
+  return 0;
+#endif /* __MINGW32__ */
+}
+
+
+int uv_thread_getname(uv_thread_t* tid, char* name, size_t size) {
+#ifdef __MINGW32__
+  return UV_ENOSYS;
+#else
+  HRESULT hr;
+  WCHAR* namew;
+  char* thread_name;
+  size_t buf_size;
+  int r;
+  DWORD exit_code;
+
+  if (name == NULL || size == 0)
+    return UV_EINVAL;
+
+  if (tid == NULL || *tid == NULL)
+    return UV_EINVAL;
+
+  /* Check if the thread handle is valid */
+  if (!GetExitCodeThread(*tid, &exit_code) || exit_code != STILL_ACTIVE)
+    return UV_ENOENT;
+
+  namew = NULL;
+  thread_name = NULL;
+  hr = GetThreadDescription(*tid, &namew);
+  if (FAILED(hr))
+    return uv_translate_sys_error(HRESULT_CODE(hr));
+
+  buf_size = size;
+  r = uv__copy_utf16_to_utf8(namew, -1, name, &buf_size);
+  if (r == UV_ENOBUFS) {
+    r = uv__convert_utf16_to_utf8(namew, wcslen(namew), &thread_name);
+    if (r == 0) {
+      uv__strscpy(name, thread_name, size);
+      uv__free(thread_name);
+    }
+  }
+
+  LocalFree(namew);
+  return r;
+#endif /* __MINGW32__ */
+}
+
+
 int uv_mutex_init(uv_mutex_t* mutex) {
   InitializeCriticalSection(mutex);
   return 0;
