@@ -86,6 +86,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Envinfo
         run: npx envinfo
+      - name: Disable Firewall
+        run: |
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+          sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 0
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
       - name: Setup
         run: |
           brew install ninja automake libtool
