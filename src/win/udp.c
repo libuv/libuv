@@ -1033,7 +1033,7 @@ int uv__udp_connect(uv_udp_t* handle,
   }
 
   err = connect(handle->socket, addr, addrlen);
-  if (err)
+  if (err && WSAGetLastError() != WSAEWOULDBLOCK)
     return uv_translate_sys_error(WSAGetLastError());
 
   handle->flags |= UV_HANDLE_UDP_CONNECTED;
