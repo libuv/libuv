@@ -147,7 +147,7 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   }
 }
 
-static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
+static ssize_t uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf) {
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
   struct sockaddr_in6 peers[20];
   struct iovec iov[ARRAY_SIZE(peers)];
