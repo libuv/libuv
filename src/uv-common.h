@@ -414,6 +414,7 @@ struct uv__iou {
   size_t sqelen;
   int ringfd;
   uint32_t in_flight;
+  uint32_t max_in_flight;
 };
 #endif  /* __linux__ */
 

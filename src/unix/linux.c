@@ -158,7 +158,6 @@ enum {
 
 enum {
   UV__IORING_SQ_NEED_WAKEUP = 1u,
-  UV__IORING_SQ_CQ_OVERFLOW = 2u,
 };
 
 struct uv__io_cqring_offsets {
@@ -604,6 +603,7 @@ static void uv__iou_init(int epollfd,
   iou->sqelen = sqelen;
   iou->ringfd = ringfd;
   iou->in_flight = 0;
+  iou->max_in_flight = params.cq_entries;
 
   if (no_sqarray)
     return;
@@ -779,6 +779,9 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
   }
 
   if (iou->ringfd == -1)
+    return NULL;
+
+  if (iou->in_flight >= iou->max_in_flight)
     return NULL;
 
   head = atomic_load_explicit((_Atomic uint32_t*) iou->sqhead,
@@ -1169,9 +1172,7 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
   uint32_t tail;
   uint32_t mask;
   uint32_t i;
-  uint32_t flags;
   int nevents;
-  int rc;
 
   head = *iou->cqhead;
   tail = atomic_load_explicit((_Atomic uint32_t*) iou->cqtail,
@@ -1216,21 +1217,6 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
   atomic_store_explicit((_Atomic uint32_t*) iou->cqhead,
                         tail,
                         memory_order_release);
-
-  /* Check whether CQE's overflowed, if so enter the kernel to make them
-   * available. Don't grab them immediately but in the next loop iteration to
-   * avoid loop starvation. */
-  flags = atomic_load_explicit((_Atomic uint32_t*) iou->sqflags,
-                               memory_order_acquire);
-
-  if (flags & UV__IORING_SQ_CQ_OVERFLOW) {
-    do
-      rc = uv__io_uring_enter(iou->ringfd, 0, 0, UV__IORING_ENTER_GETEVENTS);
-    while (rc == -1 && errno == EINTR);
-
-    if (rc < 0)
-      perror("libuv: io_uring_enter(getevents)");  /* Can't happen. */
-  }
 
   uv__metrics_inc_events(loop, nevents);
   if (uv__get_internal_fields(loop)->current_timeout == 0)

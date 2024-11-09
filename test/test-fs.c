@@ -4621,6 +4621,7 @@ TEST_IMPL(fs_stat_batch_multiple) {
   ASSERT_OK(r);
 
   loop = uv_default_loop();
+  uv_loop_configure(loop, UV_LOOP_USE_IO_URING_SQPOLL);
 
   for (i = 0; i < (int) ARRAY_SIZE(req); ++i) {
     r = uv_fs_stat(loop, &req[i], "test_dir", stat_batch_cb);
