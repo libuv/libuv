@@ -132,7 +132,6 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAENETUNREACH:                    return UV_ENETUNREACH;
     case WSAENOBUFS:                        return UV_ENOBUFS;
     case ERROR_BAD_PATHNAME:                return UV_ENOENT;
-    case ERROR_DIRECTORY:                   return UV_ENOENT;
     case ERROR_ENVVAR_NOT_FOUND:            return UV_ENOENT;
     case ERROR_FILE_NOT_FOUND:              return UV_ENOENT;
     case ERROR_INVALID_NAME:                return UV_ENOENT;
@@ -151,6 +150,7 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_HANDLE_DISK_FULL:            return UV_ENOSPC;
     case ERROR_NOT_CONNECTED:               return UV_ENOTCONN;
     case WSAENOTCONN:                       return UV_ENOTCONN;
+    case ERROR_DIRECTORY:                   return UV_ENOTDIR;
     case ERROR_DIR_NOT_EMPTY:               return UV_ENOTEMPTY;
     case WSAENOTSOCK:                       return UV_ENOTSOCK;
     case ERROR_NOT_SUPPORTED:               return UV_ENOTSUP;

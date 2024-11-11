@@ -4685,3 +4685,32 @@ TEST_IMPL(fs_wtf) {
   return 0;
 }
 #endif
+
+TEST_IMPL(fs_open_enotdir) {
+  int r;
+
+  unlink("test_file.txt");
+
+  loop = uv_default_loop();
+
+  r = uv_fs_open(loop, &open_req1, "test_file.txt",
+                 UV_FS_O_WRONLY | UV_FS_O_CREAT, S_IRUSR | S_IWUSR, NULL);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(open_req1.result, 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(close_req.result);
+  uv_fs_req_cleanup(&close_req);
+
+  r = uv_fs_open(loop, &open_req1, "test_file.txt/", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT(r == UV_ENOTDIR);
+  uv_run(loop, UV_RUN_DEFAULT);
+  uv_fs_req_cleanup(&open_req1);
+
+  unlink("test_file.txt");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
