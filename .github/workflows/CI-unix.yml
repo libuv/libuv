@@ -37,19 +37,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Envinfo
         run: npx envinfo
-      - name: Configure android arm64
-        # see build options you can use in https://developer.android.com/ndk/guides/cmake
-        run: |
-          echo "NDK version: $ANDROID_NDK_HOME"
-          $CMAKE_BIN_PATH/cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-$MIN_ADK ..
-      - name: Build android arm64
-        run: |
-          $CMAKE_BIN_PATH/cmake --build build
-          ls -lh build
       - name: Install Android ABI arm64-v8a
         run: |
           # TODO: This can be in a pre-built docker image
           # Android-30 is the first to support running Arm64 binaries after Emulator 28 removed support for Arm64 systems
+          sudo apt-get install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
 
       - name: Start emulator
