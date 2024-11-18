@@ -49,7 +49,8 @@ jobs:
       - name: Install Android ABI arm64-v8a
         run: |
           # TODO: This can be in a pre-built docker image
-          sdkmanager "platform-tools" "emulator" "platforms;android-$MIN_ADK" "system-images;android-$MIN_ADK;google_apis;arm64-v8a"
+          # Android-27 is the last supported emulator: https://stackoverflow.com/questions/74760054/panic-avds-cpu-architecture-arm64-is-not-supported-by-the-qemu2-emulator-on
+          sdkmanager "emulator;android-27" "platforms;android-$MIN_ADK" "system-images;android-$MIN_ADK;google_apis;arm64-v8a"
 
       - name: Start emulator
         run: |
