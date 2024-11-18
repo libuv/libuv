@@ -41,7 +41,8 @@ jobs:
         run: |
           # TODO: This can be in a pre-built docker image
           # Android-30 is the first to support running Arm64 binaries after Emulator 28 removed support for Arm64 systems
-          sudo apt-get install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+          sudo apt update
+          sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
           sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
 
       - name: Start emulator
