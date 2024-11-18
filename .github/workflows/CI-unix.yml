@@ -50,7 +50,7 @@ jobs:
         run: |
           # TODO: This can be in a pre-built docker image
           # Android-27 is the last supported emulator: https://stackoverflow.com/questions/74760054/panic-avds-cpu-architecture-arm64-is-not-supported-by-the-qemu2-emulator-on
-          sdkmanager "emulator;android-27" "platforms;android-$MIN_ADK" "system-images;android-$MIN_ADK;google_apis;arm64-v8a"
+          sdkmanager "emulator;27" "platforms;android-$MIN_ADK" "system-images;android-$MIN_ADK;google_apis;arm64-v8a"
 
       - name: Start emulator
         run: |
