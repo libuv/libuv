@@ -29,12 +29,7 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
-    container: reactnativecommunity/react-native-android:2020-5-20
-    # Work around an issue where the node from actions/checkout is too new
-    # to run inside the long-in-the-tooth react-nactive-android container
-    # image.
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+    container: reactnativecommunity/react-native-android:v15.0
     steps:
       - uses: actions/checkout@v4
       - name: Envinfo
