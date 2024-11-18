@@ -32,6 +32,7 @@ jobs:
     container: reactnativecommunity/react-native-android:v15.0
     env:
       ANDROID_AVD_HOME: /root/.android/avd
+      MIN_ADK: 24
     steps:
       - uses: actions/checkout@v4
       - name: Envinfo
@@ -39,21 +40,21 @@ jobs:
       - name: Configure android arm64
         # see build options you can use in https://developer.android.com/ndk/guides/cmake
         run: |
-          mkdir build
-          cd build
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/20.0.5594570/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-24 ..
+          echo "NDK version: $ANDROID_NDK_HOME"
+          $CMAKE_BIN_PATH/cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-$MIN_ADK ..
       - name: Build android arm64
         run: |
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build build
+          $CMAKE_BIN_PATH/cmake --build build
           ls -lh build
       - name: Install Android ABI arm64-v8a
         run: |
           # TODO: This can be in a pre-built docker image
-          sdkmanager "build-tools;24.0.3" "platforms;android-24" "system-images;android-24;google_apis;arm64-v8a"
+          echo "ANDROID_TOOLS_VERSION: $ANDROID_TOOLS_VERSION"
+          sdkmanager "build-tools;$ANDROID_TOOLS_VERSION" "platforms;android-$MIN_ADK" "system-images;android-$MIN_ADK;google_apis;arm64-v8a"
 
       - name: Start emulator
         run: |
-          echo no | avdmanager create avd -n test -k "system-images;android-24;google_apis;arm64-v8a"
+          echo no | avdmanager create avd -n test -k "system-images;android-$MIN_ADK;google_apis;arm64-v8a"
 
           adb start-server
 
