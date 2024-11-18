@@ -50,11 +50,11 @@ jobs:
         run: |
           # TODO: This can be in a pre-built docker image
           # Android-30 is the first to support running Arm64 binaries after Emulator 28 removed support for Arm64 systems
-          sdkmanager "emulator" "system-images;android-30;google_apis"
+          sdkmanager "emulator" "system-images;android-30;google_apis;x86_64"
 
       - name: Start emulator
         run: |
-          echo no | avdmanager create avd -n test -k "system-images;android-30;google_apis"
+          echo no | avdmanager create avd -n test -k "system-images;android-30;google_apis;x86_64"
 
           adb start-server
 
