@@ -4125,6 +4125,12 @@ typedef const UNICODE_STRING *PCUNICODE_STRING;
 # define DEVICE_TYPE DWORD
 #endif
 
+#ifndef NTDDI_WIN11_ZN
+# define NTDDI_WIN11_ZN  0x0A00000E
+#endif
+
+/* API is defined in newer SDKS */
+#if (NTDDI_VERSION < NTDDI_WIN11_ZN)
 typedef struct _FILE_STAT_BASIC_INFORMATION {
   LARGE_INTEGER FileId;
   LARGE_INTEGER CreationTime;
@@ -4142,6 +4148,7 @@ typedef struct _FILE_STAT_BASIC_INFORMATION {
   FILE_ID_128 FileId128;
   LARGE_INTEGER VolumeSerialNumber;
 } FILE_STAT_BASIC_INFORMATION;
+#endif
 
 /* MinGW already has a definition for REPARSE_DATA_BUFFER, but mingw-w64 does
  * not.
@@ -4458,6 +4465,14 @@ typedef struct _FILE_FS_SECTOR_SIZE_INFORMATION {
   ULONG ByteOffsetForPartitionAlignment;
 } FILE_FS_SECTOR_SIZE_INFORMATION, *PFILE_FS_SECTOR_SIZE_INFORMATION;
 
+typedef struct _PROCESS_BASIC_INFORMATION {
+  PVOID Reserved1;
+  PVOID PebBaseAddress;
+  PVOID Reserved2[2];
+  ULONG_PTR UniqueProcessId;
+  ULONG_PTR InheritedFromUniqueProcessId;
+} PROCESS_BASIC_INFORMATION, *PPROCESS_BASIC_INFORMATION;
+
 typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
     LARGE_INTEGER IdleTime;
     LARGE_INTEGER KernelTime;
@@ -4469,6 +4484,10 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 
 #ifndef SystemProcessorPerformanceInformation
 # define SystemProcessorPerformanceInformation 8
+#endif
+
+#ifndef ProcessBasicInformation
+# define ProcessBasicInformation 0
 #endif
 
 #ifndef ProcessConsoleHostProcess
@@ -4771,6 +4790,8 @@ typedef struct _TCP_INITIAL_RTO_PARAMETERS {
 #endif
 
 /* from winnt.h */
+/* API is defined in newer SDKS */
+#if (NTDDI_VERSION < NTDDI_WIN11_ZN)
 typedef enum _FILE_INFO_BY_NAME_CLASS {
   FileStatByNameInfo,
   FileStatLxByNameInfo,
@@ -4778,6 +4799,7 @@ typedef enum _FILE_INFO_BY_NAME_CLASS {
   FileStatBasicByNameInfo,
   MaximumFileInfoByNameClass
 } FILE_INFO_BY_NAME_CLASS;
+#endif
 
 typedef BOOL(WINAPI* sGetFileInformationByName)(
     PCWSTR FileName,

@@ -106,8 +106,8 @@ static int includes_nul(const char *s, size_t n) {
 }
 
 
-static void uv__unique_pipe_name(char* ptr, char* name, size_t size) {
-  snprintf(name, size, "\\\\?\\pipe\\uv\\%p-%lu", ptr, GetCurrentProcessId());
+static void uv__unique_pipe_name(unsigned long long ptr, char* name, size_t size) {
+  snprintf(name, size, "\\\\?\\pipe\\uv\\%llu-%lu", ptr, GetCurrentProcessId());
 }
 
 
@@ -208,7 +208,7 @@ static void close_pipe(uv_pipe_t* pipe) {
 
 static int uv__pipe_server(
     HANDLE* pipeHandle_ptr, DWORD access,
-    char* name, size_t nameSize, char* random) {
+    char* name, size_t nameSize, unsigned long long random) {
   HANDLE pipeHandle;
   int err;
 
@@ -249,7 +249,7 @@ static int uv__pipe_server(
 static int uv__create_pipe_pair(
     HANDLE* server_pipe_ptr, HANDLE* client_pipe_ptr,
     unsigned int server_flags, unsigned int client_flags,
-    int inherit_client, char* random) {
+    int inherit_client, unsigned long long random) {
   /* allowed flags are: UV_READABLE_PIPE | UV_WRITABLE_PIPE | UV_NONBLOCK_PIPE */
   char pipe_name[64];
   SECURITY_ATTRIBUTES sa;
@@ -357,7 +357,12 @@ int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
   /* TODO: better source of local randomness than &fds? */
   read_flags |= UV_READABLE_PIPE;
   write_flags |= UV_WRITABLE_PIPE;
-  err = uv__create_pipe_pair(&readh, &writeh, read_flags, write_flags, 0, (char*) &fds[0]);
+  err = uv__create_pipe_pair(&readh,
+                             &writeh,
+                             read_flags,
+                             write_flags,
+                             0,
+                             (uintptr_t) &fds[0]);
   if (err != 0)
     return err;
   temp[0] = _open_osfhandle((intptr_t) readh, 0);
@@ -421,7 +426,7 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
   }
 
   err = uv__create_pipe_pair(&server_pipe, &client_pipe,
-          server_flags, client_flags, 1, (char*) server_pipe);
+          server_flags, client_flags, 1, (uintptr_t) server_pipe);
   if (err)
     goto error;
 
@@ -1944,11 +1949,13 @@ static DWORD uv__pipe_read_exactly(uv_pipe_t* handle, void* buffer, DWORD count)
 
 static int uv__pipe_read_data(uv_loop_t* loop,
                               uv_pipe_t* handle,
-                              DWORD* bytes_read,
+                              DWORD* bytes_read, /* inout argument */
                               DWORD max_bytes) {
   uv_buf_t buf;
   uv_read_t* req;
   DWORD r;
+  DWORD bytes_available;
+  int more;
 
   /* Ask the user for a buffer to read data into. */
   buf = uv_buf_init(NULL, 0);
@@ -1961,29 +1968,52 @@ static int uv__pipe_read_data(uv_loop_t* loop,
   /* Ensure we read at most the smaller of:
    *   (a) the length of the user-allocated buffer.
    *   (b) the maximum data length as specified by the `max_bytes` argument.
+   *   (c) the amount of data that can be read non-blocking
    */
   if (max_bytes > buf.len)
     max_bytes = buf.len;
 
-  /* Read into the user buffer.
-   * Prepare an Event so that we can cancel if it doesn't complete immediately.
-   */
-  req = &handle->read_req;
-  memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
-  req->u.io.overlapped.hEvent = (HANDLE) ((uintptr_t) req->event_handle | 1);
-  if (ReadFile(handle->handle, buf.base, max_bytes, bytes_read, &req->u.io.overlapped)) {
-    r = ERROR_SUCCESS;
-  } else {
-    r = GetLastError();
-    *bytes_read = 0;
-    if (r == ERROR_IO_PENDING) {
-      r = CancelIoEx(handle->handle, &req->u.io.overlapped);
-      assert(r || GetLastError() == ERROR_NOT_FOUND);
-      if (!GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE)) {
+  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    /* The user failed to supply a pipe that can be used non-blocking or with
+     * threads. Try to estimate the amount of data that is safe to read without
+     * blocking, in a race-y way however. */
+    bytes_available = 0;
+    if (!PeekNamedPipe(handle->handle, NULL, 0, NULL, &bytes_available, NULL)) {
+      r = GetLastError();
+    } else {
+      if (max_bytes > bytes_available)
+        max_bytes = bytes_available;
+      *bytes_read = 0;
+      if (max_bytes == 0 || ReadFile(handle->handle, buf.base, max_bytes, bytes_read, NULL))
+        r = ERROR_SUCCESS;
+      else
         r = GetLastError();
-        *bytes_read = 0;
+    }
+    more = max_bytes < bytes_available;
+  } else {
+    /* Read into the user buffer.
+     * Prepare an Event so that we can cancel if it doesn't complete immediately.
+     */
+    req = &handle->read_req;
+    memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+    req->u.io.overlapped.hEvent = (HANDLE) ((uintptr_t) req->event_handle | 1);
+    if (ReadFile(handle->handle, buf.base, max_bytes, bytes_read, &req->u.io.overlapped)) {
+      r = ERROR_SUCCESS;
+    } else {
+      r = GetLastError();
+      *bytes_read = 0;
+      if (r == ERROR_IO_PENDING) {
+        r = CancelIoEx(handle->handle, &req->u.io.overlapped);
+        assert(r || GetLastError() == ERROR_NOT_FOUND);
+        if (GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE)) {
+          r = ERROR_SUCCESS;
+        } else {
+          r = GetLastError();
+          *bytes_read = 0;
+        }
       }
     }
+    more = *bytes_read == max_bytes;
   }
 
   /* Call the read callback. */
@@ -1992,7 +2022,7 @@ static int uv__pipe_read_data(uv_loop_t* loop,
   else
     uv__pipe_read_error_or_eof(loop, handle, r, buf);
 
-  return *bytes_read == max_bytes;
+  return more;
 }
 
 
@@ -2064,17 +2094,13 @@ static int uv__pipe_read_ipc(uv_loop_t* loop, uv_pipe_t* handle) {
       /* Store the pending socket info. */
       uv__pipe_queue_ipc_xfer_info(handle, xfer_type, &xfer_info);
     }
-
-    more = 1;
   }
 
   /* Return whether the caller should immediately try another read call to get
-   * more data. */
-  if (more && *data_remaining == 0) {
-    /* TODO: use PeekNamedPipe to see if it is really worth trying to do
-     * another ReadFile call. */
-  }
-
+   * more data. Calling uv__pipe_read_exactly will hang if there isn't data
+   * available, so we cannot do this unless we are guaranteed not to reach that.
+   */
+  more = *data_remaining > 0;
   return more;
 
 invalid:

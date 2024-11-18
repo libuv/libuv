@@ -483,8 +483,8 @@ name##_RB_MINMAX(struct name *head, int val)                                  \
 #define RB_REMOVE(name, x, y)   name##_RB_REMOVE(x, y)
 #define RB_FIND(name, x, y)     name##_RB_FIND(x, y)
 #define RB_NFIND(name, x, y)    name##_RB_NFIND(x, y)
-#define RB_NEXT(name, x, y)     name##_RB_NEXT(y)
-#define RB_PREV(name, x, y)     name##_RB_PREV(y)
+#define RB_NEXT(name, x)        name##_RB_NEXT(x)
+#define RB_PREV(name, x)        name##_RB_PREV(x)
 #define RB_MIN(name, x)         name##_RB_MINMAX(x, RB_NEGINF)
 #define RB_MAX(name, x)         name##_RB_MINMAX(x, RB_INF)
 

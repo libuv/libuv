@@ -316,25 +316,19 @@ uv_pid_t uv_os_getpid(void) {
 
 
 uv_pid_t uv_os_getppid(void) {
-  int parent_pid = -1;
-  HANDLE handle;
-  PROCESSENTRY32 pe;
-  DWORD current_pid = GetCurrentProcessId();
+  NTSTATUS nt_status;
+  PROCESS_BASIC_INFORMATION basic_info;
 
-  pe.dwSize = sizeof(PROCESSENTRY32);
-  handle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-
-  if (Process32First(handle, &pe)) {
-    do {
-      if (pe.th32ProcessID == current_pid) {
-        parent_pid = pe.th32ParentProcessID;
-        break;
-      }
-    } while( Process32Next(handle, &pe));
+  nt_status = pNtQueryInformationProcess(GetCurrentProcess(),
+    ProcessBasicInformation,
+    &basic_info,
+    sizeof(basic_info),
+    NULL);
+  if (NT_SUCCESS(nt_status)) {
+    return basic_info.InheritedFromUniqueProcessId;
+  } else {
+    return -1;
   }
-
-  CloseHandle(handle);
-  return parent_pid;
 }
 
 
@@ -512,19 +506,23 @@ int uv_uptime(double* uptime) {
 
 
 unsigned int uv_available_parallelism(void) {
-  SYSTEM_INFO info;
-  unsigned rc;
+  DWORD_PTR procmask;
+  DWORD_PTR sysmask;
+  int count;
+  int i;
 
   /* TODO(bnoordhuis) Use GetLogicalProcessorInformationEx() to support systems
    * with > 64 CPUs? See https://github.com/libuv/libuv/pull/3458
    */
-  GetSystemInfo(&info);
+  count = 0;
+  if (GetProcessAffinityMask(GetCurrentProcess(), &procmask, &sysmask))
+    for (i = 0; i < 8 * sizeof(procmask); i++)
+      count += 1 & (procmask >> i);
 
-  rc = info.dwNumberOfProcessors;
-  if (rc < 1)
-    rc = 1;
+  if (count > 0)
+    return count;
 
-  return rc;
+  return 1;
 }
 
 
@@ -1535,20 +1533,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
   os_info.dwOSVersionInfoSize = sizeof(os_info);
   os_info.szCSDVersion[0] = L'\0';
 
-  /* Try calling RtlGetVersion(), and fall back to the deprecated GetVersionEx()
-     if RtlGetVersion() is not available. */
-  if (pRtlGetVersion) {
-    pRtlGetVersion(&os_info);
-  } else {
-    /* Silence GetVersionEx() deprecation warning. */
-    #ifdef _MSC_VER
-    #pragma warning(suppress : 4996)
-    #endif
-    if (GetVersionExW(&os_info) == 0) {
-      r = uv_translate_sys_error(GetLastError());
-      goto error;
-    }
-  }
+  pRtlGetVersion(&os_info);
 
   /* Populate the version field. */
   version_size = 0;

@@ -461,7 +461,12 @@ static ssize_t uv__pwritev_emul(int fd,
 
 /* The function pointer cache is an uintptr_t because _Atomic void*
  * doesn't work on macos/ios/etc...
+ * Disable optimization on armv7 to work around the bug described in
+ * https://github.com/libuv/libuv/issues/4532
  */
+#if defined(__arm__) && (__ARM_ARCH == 7)
+__attribute__((optimize("O0")))
+#endif
 static ssize_t uv__preadv_or_pwritev(int fd,
                                      const struct iovec* bufs,
                                      size_t nbufs,
@@ -482,7 +487,10 @@ static ssize_t uv__preadv_or_pwritev(int fd,
     atomic_store_explicit(cache, (uintptr_t) p, memory_order_relaxed);
   }
 
-  f = p;
+  /* Use memcpy instead of `f = p` to work around a compiler bug,
+   * see https://github.com/libuv/libuv/issues/4532
+   */
+  memcpy(&f, &p, sizeof(p));
   return f(fd, bufs, nbufs, off);
 }
 
@@ -1338,9 +1346,10 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
   /*
    * Change the ownership and permissions of the destination file to match the
    * source file.
-   * `cp -p` does not care about errors here, so we don't either.
+   * `cp -p` does not care about errors here, so we don't either. Reuse the
+   * `result` variable to silence a -Wunused-result warning.
    */
-  fchown(dstfd, src_statsbuf.st_uid, src_statsbuf.st_gid);
+  result = fchown(dstfd, src_statsbuf.st_uid, src_statsbuf.st_gid);
 
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
@@ -1906,6 +1915,9 @@ int uv_fs_ftruncate(uv_loop_t* loop,
   INIT(FTRUNCATE);
   req->file = file;
   req->off = off;
+  if (cb != NULL)
+    if (uv__iou_fs_ftruncate(loop, req))
+      return 0;
   POST;
 }
 

@@ -108,13 +108,14 @@
     return;                                                                 \
   }
 
-#define MILLION ((int64_t) 1000 * 1000)
-#define BILLION ((int64_t) 1000 * 1000 * 1000)
+#define NSEC_PER_TICK 100
+#define TICKS_PER_SEC ((int64_t) 1e9 / NSEC_PER_TICK)
+static const int64_t WIN_TO_UNIX_TICK_OFFSET = 11644473600 * TICKS_PER_SEC;
 
 static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
-  filetime -= 116444736 * BILLION;
-  ts->tv_sec = (long) (filetime / (10 * MILLION));
-  ts->tv_nsec = (long) ((filetime - ts->tv_sec * 10 * MILLION) * 100U);
+  filetime -= WIN_TO_UNIX_TICK_OFFSET;
+  ts->tv_sec = filetime / TICKS_PER_SEC;
+  ts->tv_nsec = (filetime % TICKS_PER_SEC) * NSEC_PER_TICK;
   if (ts->tv_nsec < 0) {
     ts->tv_sec -= 1;
     ts->tv_nsec += 1e9;
@@ -123,7 +124,7 @@ static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
 
 #define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
   do {                                                                      \
-    int64_t bigtime = ((time) * 10 * MILLION + 116444736 * BILLION);        \
+    int64_t bigtime = ((time) * TICKS_PER_SEC + WIN_TO_UNIX_TICK_OFFSET);   \
     (filetime_ptr)->dwLowDateTime = (uint64_t) bigtime & 0xFFFFFFFF;        \
     (filetime_ptr)->dwHighDateTime = (uint64_t) bigtime >> 32;              \
   } while(0)
@@ -1077,7 +1078,7 @@ void fs__write(uv_fs_t* req) {
       error = ERROR_INVALID_FLAGS;
     }
 
-    SET_REQ_WIN32_ERROR(req, error);
+    SET_REQ_UV_ERROR(req, uv_translate_write_sys_error(error), error);
   }
 }
 
@@ -1112,8 +1113,9 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   }
 
   if (isrmdir && !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-    /* Error if we're in rmdir mode but it is not a dir */
-    SET_REQ_UV_ERROR(req, UV_ENOTDIR, ERROR_DIRECTORY);
+    /* Error if we're in rmdir mode but it is not a dir.
+     * TODO: change it to UV_NOTDIR in v2. */
+    SET_REQ_UV_ERROR(req, UV_ENOENT, ERROR_DIRECTORY);
     CloseHandle(handle);
     return;
   }
@@ -1649,12 +1651,12 @@ void fs__readdir(uv_fs_t* req) {
       goto error;
 
     /* Copy file type. */
-    if ((find_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
-      dent.d_type = UV__DT_DIR;
+    if ((find_data->dwFileAttributes & FILE_ATTRIBUTE_DEVICE) != 0)
+      dent.d_type = UV__DT_CHAR;
     else if ((find_data->dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0)
       dent.d_type = UV__DT_LINK;
-    else if ((find_data->dwFileAttributes & FILE_ATTRIBUTE_DEVICE) != 0)
-      dent.d_type = UV__DT_CHAR;
+    else if ((find_data->dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+      dent.d_type = UV__DT_DIR;
     else
       dent.d_type = UV__DT_FILE;
 
@@ -2564,15 +2566,16 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
 
     path_buf[path_buf_len++] = path[i];
   }
-  path_buf[path_buf_len++] = L'\\';
+  if (add_slash)
+    path_buf[path_buf_len++] = L'\\';
   len = path_buf_len - start;
+
+  /* Insert null terminator */
+  path_buf[path_buf_len++] = L'\0';
 
   /* Set the info about the substitute name */
   buffer->MountPointReparseBuffer.SubstituteNameOffset = start * sizeof(WCHAR);
   buffer->MountPointReparseBuffer.SubstituteNameLength = len * sizeof(WCHAR);
-
-  /* Insert null terminator */
-  path_buf[path_buf_len++] = L'\0';
 
   /* Copy the print name of the target path */
   start = path_buf_len;
@@ -2591,17 +2594,17 @@ static void fs__create_junction(uv_fs_t* req, const WCHAR* path,
     path_buf[path_buf_len++] = path[i];
   }
   len = path_buf_len - start;
-  if (len == 2) {
+  if (len == 2 || add_slash) {
     path_buf[path_buf_len++] = L'\\';
     len++;
   }
 
+  /* Insert another null terminator */
+  path_buf[path_buf_len++] = L'\0';
+
   /* Set the info about the print name */
   buffer->MountPointReparseBuffer.PrintNameOffset = start * sizeof(WCHAR);
   buffer->MountPointReparseBuffer.PrintNameLength = len * sizeof(WCHAR);
-
-  /* Insert another null terminator */
-  path_buf[path_buf_len++] = L'\0';
 
   /* Calculate how much buffer space was actually used */
   used_buf_size = FIELD_OFFSET(REPARSE_DATA_BUFFER, MountPointReparseBuffer.PathBuffer) +
