@@ -50,8 +50,18 @@ jobs:
           emulator-options: -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system -no-snapshot-save -no-snapshot-load -no-snapshot
           disable-animations: true
           script: |
+            echo "##[group]Configure"
             cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-24
+            echo "##[endgroup]"
+
+            echo "##[group]Build"
             cmake --build build
+
+            ## Correct some ld bugs that cause problems with libuv tests
+            wget "https://github.com/termux/termux-elf-cleaner/releases/download/v2.2.1/termux-elf-cleaner" -P build
+            chmod a+x build/termux-elf-cleaner
+            build/termux-elf-cleaner --api-level 24 ./build/uv_run_tests
+            build/termux-elf-cleaner --api-level 24 ./build/uv_run_tests_a
 
             adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
 
@@ -59,6 +69,7 @@ jobs:
             adb push build /data/local/tmp
             adb shell mkdir /data/local/tmp/build/test
             adb push test/fixtures /data/local/tmp/build/test
+            echo "##[endgroup]"
 
             ## Run the tests
             file build/uv_run_tests_a
