@@ -40,21 +40,40 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: AVD cache
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}
+      - name: create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 24
+          force-avd-creation: false
+          emulator-options: -memory 2048 -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
       - name: Setup Android
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 24
-          emulator-options:  -memory 2048 -no-audio -no-window -gpu off -no-snapshot -no-boot-anim -netdelay none -netspeed full -no-snapshot-save -no-snapshot-load -writable-system
+          emulator-options: -memory 2048 -no-audio -no-window -gpu off -no-snapshot -no-boot-anim -netdelay none -netspeed full -no-snapshot-save -no-snapshot-load -writable-system
+          force-avd-creation: false
+          disable-animations: true
           script: |
-            cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-24 ..
-            cmake -B build --build
-  
+            cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-24
+            cmake --build build
+
             adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
-  
+
             ## Push the build and test fixtures to the device
             adb push build /data/local/tmp
             adb shell mkdir /data/local/tmp/build/test
             adb push test/fixtures /data/local/tmp/build/test
-  
+
             ## Run the tests
             adb shell "cd /data/local/tmp/build; env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
