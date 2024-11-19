@@ -61,7 +61,7 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 24
-          emulator-options: -memory 2048 -no-audio -no-window -gpu off -no-snapshot -no-boot-anim -netdelay none -netspeed full -no-snapshot-save -no-snapshot-load -writable-system
+          emulator-options: -memory 2048 -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system -no-snapshot-save
           force-avd-creation: false
           disable-animations: true
           script: |
