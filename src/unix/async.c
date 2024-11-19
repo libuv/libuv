@@ -44,6 +44,11 @@ static int kqueue_evfilt_user_support = 1;
 
 
 static void uv__kqueue_runtime_detection(void) {
+  /* Magic number of identifier used for EVFILT_USER during runtime detection.
+   * There are no Google hits for this number when I create it. That way,
+   * people will be directed here if this number gets printed due to some
+   * kqueue error and they google for help. */
+  static const int kUserIdent = 0x1e7e7711;
   int kq;
   struct kevent ev[2];
   struct timespec timeout = {0, 0};
@@ -51,17 +56,16 @@ static void uv__kqueue_runtime_detection(void) {
   /* Perform the runtime detection to ensure that kqueue with
    * EVFILT_USER actually works. */
   kq = kqueue();
-  EV_SET(ev, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
-         EV_ADD | EV_CLEAR, 0, 0, 0);
-  EV_SET(ev + 1, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
-         0, NOTE_TRIGGER, 0, 0);
+  EV_SET(ev, kUserIdent, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, 0);
+  EV_SET(ev + 1, kUserIdent, EVFILT_USER, 0, NOTE_TRIGGER, 0, 0);
   if (kevent(kq, ev, 2, ev, 1, &timeout) < 1 ||
       ev[0].filter != EVFILT_USER ||
-      ev[0].ident != UV__KQUEUE_EVFILT_USER_IDENT ||
-      ev[0].flags & EV_ERROR)
+      ev[0].ident != kUserIdent ||
+      ev[0].flags & EV_ERROR) {
     /* If we wind up here, we can assume that EVFILT_USER is defined but
      * broken on the current system. */
     kqueue_evfilt_user_support = 0;
+  }
   uv__close(kq);
 }
 #endif
