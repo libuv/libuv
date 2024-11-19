@@ -29,10 +29,8 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
-    container: reactnativecommunity/react-native-android:v15.0
     env:
       ANDROID_AVD_HOME: /root/.android/avd
-      MIN_ADK: 24
     steps:
       - uses: actions/checkout@v4
       - name: Envinfo
