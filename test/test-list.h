@@ -572,6 +572,7 @@ TEST_DECLARE  (fork_threadpool_queue_work_simple)
 
 TEST_DECLARE  (iouring_pollhup)
 
+TEST_DECLARE  (wtf8)
 TEST_DECLARE  (idna_toascii)
 TEST_DECLARE  (utf8_decode1)
 TEST_DECLARE  (utf8_decode1_overrun)
@@ -1223,6 +1224,7 @@ TASK_LIST_START
 
   TEST_ENTRY  (iouring_pollhup)
 
+  TEST_ENTRY  (wtf8)
   TEST_ENTRY  (utf8_decode1)
   TEST_ENTRY  (utf8_decode1_overrun)
   TEST_ENTRY  (uname)

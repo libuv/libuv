@@ -218,3 +218,15 @@ TEST_IMPL(idna_toascii) {
 #undef T
 
 #endif  /* __MVS__ */
+
+TEST_IMPL(wtf8) {
+  static const char input[] = "ᜄȺy𐞲:𞢢𘴇𐀀'¥3̞[<i$";
+  uint16_t buf[32];
+  ssize_t len;
+
+  len = uv_wtf8_length_as_utf16(input);
+  ASSERT_GT(len, 0);
+  ASSERT_LT(len, ARRAY_SIZE(buf));
+  uv_wtf8_to_utf16(input, buf, len);
+  return 0;
+}
