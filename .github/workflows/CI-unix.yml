@@ -44,7 +44,10 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 24
-          emulator-options: -memory 2048 -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system -no-snapshot-save -no-snapshot-load -no-snapshot
+          arch: x86_64
+          target: google_apis
+          ram-size: 2048M
+          emulator-options: -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system -no-snapshot-save -no-snapshot-load -no-snapshot
           disable-animations: true
           script: |
             cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-24
