@@ -87,6 +87,10 @@ TEST_IMPL(tcp_connect6_link_local) {
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
 
+#if defined(__ANDROID__)
+  RETURN_SKIP("Fails with ENETUNREACH on Android");
+#endif
+
 #if defined(__QEMU__)
   /* qemu's sockaddr_in6 translation is broken pre-qemu 8.0.0
    * when host endianness != guest endiannes.
