@@ -169,6 +169,10 @@ TEST_IMPL(udp_multicast_join) {
   if (r == UV_ENOEXEC)
     RETURN_SKIP("No multicast support (likely a firewall issue).");
   ASSERT_OK(r);
+#if defined(__ANDROID__)
+  /* It returns an ENOSYS error */
+  RETURN_SKIP("Test does not currently work in ANDROID");
+#endif
 
   r = uv_udp_recv_start(&server, alloc_cb, cl_recv_cb);
   ASSERT_OK(r);
