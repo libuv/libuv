@@ -227,7 +227,7 @@ static void uv__async_send(uv_loop_t* loop) {
     len = sizeof(val);
     fd = loop->async_io_watcher.fd;  /* eventfd */
   }
-#elif defined(UV__KQUEUE_EVFILT_USER)
+#elif UV__KQUEUE_EVFILT_USER
   struct kevent ev;
 
   if (kqueue_evfilt_user_support) {
