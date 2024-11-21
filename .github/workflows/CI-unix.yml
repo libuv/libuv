@@ -29,52 +29,51 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
-    container: reactnativecommunity/react-native-android:2020-5-20
-    # Work around an issue where the node from actions/checkout is too new
-    # to run inside the long-in-the-tooth react-nactive-android container
-    # image.
     env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
       ANDROID_AVD_HOME: /root/.android/avd
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Envinfo
         run: npx envinfo
-      - name: Configure android arm64
-        # see build options you can use in https://developer.android.com/ndk/guides/cmake
+      - name: Enable KVM
         run: |
-          mkdir build
-          cd build
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/20.0.5594570/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-24 ..
-      - name: Build android arm64
-        run: |
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build build
-          ls -lh build
-      - name: Install Android ABI arm64-v8a
-        run: |
-          # TODO: This can be in a pre-built docker image
-          sdkmanager "build-tools;24.0.3" "platforms;android-24" "system-images;android-24;google_apis;arm64-v8a"
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build and Test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 24
+          arch: x86_64
+          target: google_apis
+          ram-size: 2048M
+          emulator-options: -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system -no-snapshot-save -no-snapshot-load -no-snapshot
+          disable-animations: true
+          script: |
+            echo "::group::Configure"
+            cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-24
+            echo "::endgroup::"
 
-      - name: Start emulator
-        run: |
-          echo no | avdmanager create avd -n test -k "system-images;android-24;google_apis;arm64-v8a"
+            echo "::group::Build"
+            cmake --build build
 
-          adb start-server
+            ## Correct some ld bugs that cause problems with libuv tests
+            wget "https://github.com/termux/termux-elf-cleaner/releases/download/v2.2.1/termux-elf-cleaner" -P build
+            chmod a+x build/termux-elf-cleaner
+            build/termux-elf-cleaner --api-level 24 ./build/uv_run_tests
+            build/termux-elf-cleaner --api-level 24 ./build/uv_run_tests_a
 
-          emulator @test -memory 2048 -no-audio -no-window -gpu off -no-snapshot -no-boot-anim -netdelay none -netspeed full -no-snapshot-save -no-snapshot-load -writable-system  &
+            adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
 
-          adb wait-for-device
+            ## Push the build and test fixtures to the device
+            adb push build /data/local/tmp
+            adb shell mkdir /data/local/tmp/build/test
+            adb push test/fixtures /data/local/tmp/build/test
+            echo "::endgroup::"
 
-          adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
-
-          # Push the build and test fixtures to the device
-          adb push build /data/local/tmp
-          adb shell mkdir /data/local/tmp/build/test
-          adb push test/fixtures /data/local/tmp/build/test
-
-      - name: Test
-        run: |
-          adb shell "cd /data/local/tmp/build ; env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
+            ## Run the tests
+            file build/uv_run_tests_a
+            adb shell "cd /data/local/tmp/build && env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
 
   build-macos:
     runs-on: ${{ matrix.os }}
