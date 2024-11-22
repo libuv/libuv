@@ -1121,7 +1121,7 @@ TEST_IMPL(fs_event_getpath) {
     ASSERT_EQ(r, UV_EINVAL);
     r = uv_fs_event_start(&fs_event, fail_cb, watch_dir[i], 0);
     ASSERT_OK(r);
-    len = 0;
+    len = 1;
     r = uv_fs_event_getpath(&fs_event, buf, &len);
     ASSERT_EQ(r, UV_ENOBUFS);
     ASSERT_LT(len, sizeof buf); /* sanity check */
