@@ -644,6 +644,9 @@ int uv_send_buffer_size(uv_handle_t* handle, int *value) {
 int uv_fs_event_getpath(uv_fs_event_t* handle, char* buffer, size_t* size) {
   size_t required_len;
 
+  if (buffer == NULL || size == NULL || *size == 0)
+    return UV_EINVAL;
+
   if (!uv__is_active(handle)) {
     *size = 0;
     return UV_EINVAL;

@@ -751,7 +751,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
 int uv_cwd(char* buffer, size_t* size) {
   char scratch[1 + UV__PATH_MAX];
 
-  if (buffer == NULL || size == NULL)
+  if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
   /* Try to read directly into the user's buffer first... */

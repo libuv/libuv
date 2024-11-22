@@ -191,7 +191,7 @@ int uv_cwd(char* buffer, size_t* size) {
   WCHAR *utf16_buffer;
   int r;
 
-  if (buffer == NULL || size == NULL) {
+  if (buffer == NULL || size == NULL || *size == 0) {
     return UV_EINVAL;
   }
 
@@ -1589,7 +1589,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
     version_size = sizeof(buffer->version) - version_size;
     r = uv__copy_utf16_to_utf8(os_info.szCSDVersion,
                                -1,
-                               buffer->version + 
+                               buffer->version +
                                  sizeof(buffer->version) - version_size,
                                &version_size);
     if (r)
