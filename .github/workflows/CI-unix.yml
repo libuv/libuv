@@ -43,7 +43,7 @@ jobs:
       - name: Build and Test
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 24
+          api-level: 30
           arch: x86_64
           target: google_apis
           ram-size: 2048M
@@ -51,7 +51,7 @@ jobs:
           disable-animations: true
           script: |
             echo "::group::Configure"
-            cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-24
+            cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-30
             echo "::endgroup::"
 
             echo "::group::Build"
@@ -60,8 +60,8 @@ jobs:
             ## Correct some ld bugs that cause problems with libuv tests
             wget "https://github.com/termux/termux-elf-cleaner/releases/download/v2.2.1/termux-elf-cleaner" -P build
             chmod a+x build/termux-elf-cleaner
-            build/termux-elf-cleaner --api-level 24 ./build/uv_run_tests
-            build/termux-elf-cleaner --api-level 24 ./build/uv_run_tests_a
+            build/termux-elf-cleaner --api-level 30 ./build/uv_run_tests
+            build/termux-elf-cleaner --api-level 30 ./build/uv_run_tests_a
 
             adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
 
