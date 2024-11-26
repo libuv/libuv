@@ -95,6 +95,15 @@ int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   return uv_thread_create_ex(tid, &params, entry, arg);
 }
 
+
+int uv_thread_detach(uv_thread_t *tid) {
+  if (CloseHandle(*tid) == 0)
+    return uv_translate_sys_error(GetLastError());
+
+  return 0;
+}
+
+
 int uv_thread_create_ex(uv_thread_t* tid,
                         const uv_thread_options_t* params,
                         void (*entry)(void *arg),

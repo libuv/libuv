@@ -78,6 +78,14 @@ Threads
 
     .. versionchanged:: 1.4.1 returns a UV_E* error code on failure
 
+.. c:function:: int uv_thread_detach(uv_thread_t* tid)
+
+    Detaches a thread. Detached threads automatically release their
+    resources upon termination, eliminating the need for the application to
+    call `uv_thread_join`.
+
+    .. versionadded:: 1.50.0
+
 .. c:function:: int uv_thread_create_ex(uv_thread_t* tid, const uv_thread_options_t* params, uv_thread_cb entry, void* arg)
 
     Like :c:func:`uv_thread_create`, but additionally specifies options for creating a new thread.
