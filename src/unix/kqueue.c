@@ -37,6 +37,17 @@
 #include <fcntl.h>
 #include <time.h>
 
+/*
+ * Required on
+ * - Until at least FreeBSD 11.0
+ * - Older versions of Mac OS X
+ *
+ * http://www.boost.org/doc/libs/1_61_0/boost/asio/detail/kqueue_reactor.hpp
+ */
+#ifndef EV_OOBAND
+#define EV_OOBAND  EV_FLAG1
+#endif
+
 static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags);
 
 
@@ -220,7 +231,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
    if ((w->events & UV__POLLPRI) == 0 && (w->pevents & UV__POLLPRI) != 0) {
-      EV_SET(events + nevents, w->fd, EVFILT_EXCEPT, EV_ADD, NOTE_OOB, 0, 0);
+      EV_SET(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0, 0, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
         if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
@@ -382,7 +393,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
           revents |= UV__POLLRDHUP;
       }
 
-      if (ev->filter == EVFILT_EXCEPT) {
+      if (ev->filter == EV_OOBAND) {
         if (w->pevents & UV__POLLPRI)
           revents |= UV__POLLPRI;
         else
