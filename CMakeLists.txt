@@ -667,6 +667,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-thread-affinity.c
        test/test-thread-equal.c
        test/test-thread.c
+       test/test-thread-name.c
        test/test-thread-priority.c
        test/test-threadpool-cancel.c
        test/test-threadpool.c
