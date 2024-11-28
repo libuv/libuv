@@ -1368,10 +1368,7 @@ int uv_os_gethostname(char* buffer, size_t* size) {
 
   uv__once_init(); /* Initialize winsock */
 
-  if (pGetHostNameW == NULL)
-    return UV_ENOSYS;
-
-  if (pGetHostNameW(buf, UV_MAXHOSTNAMESIZE) != 0)
+  if (GetHostNameW(buf, UV_MAXHOSTNAMESIZE) != 0)
     return uv_translate_sys_error(WSAGetLastError());
 
   return uv__copy_utf16_to_utf8(buf, -1, buffer, size);

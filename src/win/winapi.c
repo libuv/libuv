@@ -45,9 +45,6 @@ sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
 /* User32.dll function pointer */
 sSetWinEventHook pSetWinEventHook;
 
-/* ws2_32.dll function pointer */
-uv_sGetHostNameW pGetHostNameW;
-
 /* api-ms-win-core-file-l2-1-4.dll function pointer */
 sGetFileInformationByName pGetFileInformationByName;
 
@@ -56,7 +53,6 @@ void uv__winapi_init(void) {
   HMODULE powrprof_module;
   HMODULE user32_module;
   HMODULE kernel32_module;
-  HMODULE ws2_32_module;
   HMODULE api_win_core_file_module;
 
   ntdll_module = GetModuleHandleA("ntdll.dll");
@@ -140,13 +136,6 @@ void uv__winapi_init(void) {
   if (user32_module != NULL) {
     pSetWinEventHook = (sSetWinEventHook)
       GetProcAddress(user32_module, "SetWinEventHook");
-  }
-
-  ws2_32_module = GetModuleHandleA("ws2_32.dll");
-  if (ws2_32_module != NULL) {
-    pGetHostNameW = (uv_sGetHostNameW) GetProcAddress(
-        ws2_32_module,
-        "GetHostNameW");
   }
 
   api_win_core_file_module = GetModuleHandleA("api-ms-win-core-file-l2-1-4.dll");
