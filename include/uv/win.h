@@ -20,7 +20,7 @@
  */
 
 #ifndef _WIN32_WINNT
-# define _WIN32_WINNT   0x0600
+# define _WIN32_WINNT   0x0A00
 #endif
 
 #if !defined(_SSIZE_T_) && !defined(_SSIZE_T_DEFINED)
