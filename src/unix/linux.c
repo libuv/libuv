@@ -1713,16 +1713,22 @@ int uv_uptime(double* uptime) {
 int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
 #if defined(__PPC__)
   static const char model_marker[] = "cpu\t\t: ";
+  static const char model_marker2[] = "";
 #elif defined(__arm__)
-  static const char model_marker[] = "Processor\t: ";
+  static const char model_marker[] = "model name\t: ";
+  static const char model_marker2[] = "Processor\t: ";
 #elif defined(__aarch64__)
   static const char model_marker[] = "CPU part\t: ";
+  static const char model_marker2[] = "";
 #elif defined(__mips__)
   static const char model_marker[] = "cpu model\t\t: ";
+  static const char model_marker2[] = "";
 #elif defined(__loongarch__)
   static const char model_marker[] = "cpu family\t\t: ";
+  static const char model_marker2[] = "";
 #else
   static const char model_marker[] = "model name\t: ";
+  static const char model_marker2[] = "";
 #endif
   static const char parts[] =
 #ifdef __aarch64__
@@ -1821,14 +1827,22 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     if (1 != fscanf(fp, "processor\t: %u\n", &cpu))
       break;  /* Parse error. */
 
-    found = 0;
-    while (!found && fgets(buf, sizeof(buf), fp))
-      found = !strncmp(buf, model_marker, sizeof(model_marker) - 1);
+    while (fgets(buf, sizeof(buf), fp)) {
+      if (!strncmp(buf, model_marker, sizeof(model_marker) - 1)) {
+        p = buf + sizeof(model_marker) - 1;
+        goto parts;
+      }
+      if (!*model_marker2)
+        continue;
+      if (!strncmp(buf, model_marker2, sizeof(model_marker2) - 1)) {
+        p = buf + sizeof(model_marker2) - 1;
+        goto parts;
+      }
+    }
 
-    if (!found)
-      goto next;
+    goto next;  /* Not found. */
 
-    p = buf + sizeof(model_marker) - 1;
+parts:
     n = (int) strcspn(p, "\n");
 
     /* arm64: translate CPU part code to model name. */
