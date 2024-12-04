@@ -1968,13 +1968,11 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
   size_t len;
   size_t split;
   WCHAR splitchar;
-  int is_long_path;
   int includes_name;
 
-  /* aka strtok or wcscspn, in reverse */
+  /* AKA strtok or wcscspn, in reverse. */
   len = wcslen(path);
   split = len;
-  is_long_path = wcsncmp(path, LONG_PATH_PREFIX, LONG_PATH_PREFIX_LEN) == 0;
 
   includes_name = 0;
   while (split > 0 && path[split - 1] != L'\\' && path[split - 1] != L'/' &&
@@ -1985,17 +1983,17 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
     }
     split--;
   }
-  /* if the path is a relative path with a file name or a folder name */
+  /* If the path is a relative path with a file name or a folder name */
   if (split == 0 && includes_name) {
     path_dirpath = L".";
-  /* if there is a slash or a backslash */
+  /* If there is a slash or a backslash */
   } else if (path[split - 1] == L'\\' || path[split - 1] == L'/') {
     path_dirpath = path;
-    /* if there is no filename, consider it as a relative folder path */
+    /* If there is no filename, consider it as a relative folder path */
     if (!includes_name) {
       split = len;
-    /* if it is not a long path, split it */
-    } else if (!is_long_path) {
+    /* Else, split it */
+    } else {
       splitchar = path[split - 1];
       path[split - 1] = L'\0';
     }
