@@ -468,7 +468,8 @@ typedef struct {
 #define uv_pipe_server_fields                                                 \
   int pending_instances;                                                      \
   uv_pipe_accept_t* accept_reqs;                                              \
-  uv_pipe_accept_t* pending_accepts;
+  uv_pipe_accept_t* pending_accepts;                                          \
+  LPFN_ACCEPTEX func_acceptex;
 
 #define uv_pipe_connection_fields                                             \
   uv_timer_t* eof_timer;                                                      \
@@ -482,11 +483,15 @@ typedef struct {
   int ipc_xfer_queue_length;                                                  \
   uv_write_t* non_overlapped_writes_tail;                                     \
   CRITICAL_SECTION readfile_thread_lock;                                      \
-  volatile HANDLE readfile_thread_handle;
+  volatile HANDLE readfile_thread_handle;                                     \
+  LPFN_CONNECTEX func_connectex;
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   HANDLE handle;                                                              \
-  WCHAR* name;                                                                \
+  union {                                                                     \
+    char* pathname;                                                           \
+    WCHAR* name;                                                              \
+  };                                                                          \
   union {                                                                     \
     struct { uv_pipe_server_fields } serv;                                    \
     struct { uv_pipe_connection_fields } conn;                                \

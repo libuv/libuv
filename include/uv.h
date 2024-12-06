@@ -851,7 +851,8 @@ enum {
  * uv_pipe_t is a subclass of uv_stream_t.
  *
  * Representing a pipe stream or pipe server. On Windows this is a Named
- * Pipe. On Unix this is a Unix domain socket.
+ * Pipe or a Unix domain socket depends on the path name.
+ * On Unix this is a Unix domain socket.
  */
 struct uv_pipe_s {
   UV_HANDLE_FIELDS
