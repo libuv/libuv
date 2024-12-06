@@ -110,7 +110,7 @@ static void uv__close_pipe_handle(uv_pipe_t* handle, HANDLE h) {
    * unix domain socket we should use closesocket instead of CloseHandle.
    * https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-closehandle
    */
-  if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     closesocket((SOCKET) h);
   } else {
     CloseHandle(h);
@@ -505,7 +505,7 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
     return UV_EBUSY;
 
   /* Skip if the handle is a unix domain socket */
-  if (!(handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) &&
+  if (!(handle->flags & UV_HANDLE_WIN_UDS_PIPE) &&
     !SetNamedPipeHandleState(pipeHandle, &mode, NULL, NULL)) {
     err = GetLastError();
     if (err == ERROR_ACCESS_DENIED) {
@@ -554,7 +554,7 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
                                (ULONG_PTR) handle,
                                0) == NULL) {
       /* Unix domain socket should always support IOCP. */
-      assert(!(handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET));
+      assert(!(handle->flags & UV_HANDLE_WIN_UDS_PIPE));
 
       handle->flags |= UV_HANDLE_EMULATE_IOCP;
     }
@@ -840,7 +840,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     handle->pipe.serv.pending_instances = default_pending_pipe_instances;
   }
 
-  if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     /* Only use 1 pending instance when use unix domain socket, cause
      * call AcceptEx multiple times seems result in multiple accept events.
      * Not the expected queue behavior, that only one of them is triggered. */
@@ -882,7 +882,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
      * Prefix not match named pipe, use unix domain socket.
      */
     int uds_err = 0;
-    handle->flags |= UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET;
+    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     if (!pipe_alloc_accept_unix_domain_socket(
             loop, handle, &handle->pipe.serv.accept_reqs[0], name, &uds_err, TRUE)) {
       err = uv_translate_sys_error(uds_err);
@@ -1106,7 +1106,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     }
 
     // Set flag indicates it is a unix domain socket;
-    handle->flags |= UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET;
+    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     req->u.connect.pipeHandle = pipeHandle;
     req->u.connect.duplex_flags = UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
 
@@ -1290,7 +1290,7 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
   assert(handle->flags & UV_HANDLE_LISTENING);
 
   if (!firstInstance) {
-    if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+    if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
       int uds_err = 0;
       if (!pipe_alloc_accept_unix_domain_socket(loop, handle, req, handle->pathname, &uds_err, FALSE)) {
         SET_REQ_ERROR(req, uds_err);
@@ -1313,7 +1313,7 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
 
-  if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     DWORD bytes_received;
     CHAR accept_buf[2 * (sizeof(SOCKADDR_STORAGE) + 16)];
     if (!handle->pipe.serv.func_acceptex((SOCKET)handle->handle,
@@ -1402,7 +1402,7 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
     pipe_client->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
 
     /* A unix domain socket server */
-    if (server->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+    if (server->flags & UV_HANDLE_WIN_UDS_PIPE) {
       /* Associate it with the I/O completion port. Use uv_handle_t pointer as
        * completion key. */
       if (CreateIoCompletionPort(req->pipeHandle,
@@ -1414,7 +1414,7 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 
       /* AcceptEx() implicitly binds the accepted socket. */
       pipe_client->flags |= UV_HANDLE_BOUND;
-      pipe_client->flags |= UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET;
+      pipe_client->flags |= UV_HANDLE_WIN_UDS_PIPE;
     }
 
     /* Prepare the req to pick up a new connection */
@@ -1422,7 +1422,7 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
     req->next_pending = NULL;
     req->pipeHandle = INVALID_HANDLE_VALUE;
 
-    if (!(server->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET)) {
+    if (!(server->flags & UV_HANDLE_WIN_UDS_PIPE)) {
       /* Unix domain socket doesn't transfer to client ownership, so do not reset here.*/
       server->handle = INVALID_HANDLE_VALUE;
     }
@@ -1461,7 +1461,7 @@ int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
     return WSAEINVAL;
   }
 
-  if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     /* Load function AcceptEx */
     if (!handle->pipe.serv.func_acceptex) {
       if (!uv__get_acceptex_function((SOCKET)handle->handle, &handle->pipe.serv.func_acceptex)) {
@@ -2388,7 +2388,7 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
     return;
 
   if (!REQ_SUCCESS(req)) {
-    if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+    if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
       err = GET_REQ_SOCK_ERROR(req);
       if (err == WSAECONNABORTED) {
         /* Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with Unix.
@@ -2504,7 +2504,7 @@ void uv__process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
     return;
   }
 
-  if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     /* If it is unix domain handle, the event comes from AcceptEx IOCP. */
     setsockopt((SOCKET)req->pipeHandle,
                SOL_SOCKET,
@@ -2543,7 +2543,7 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   assert(handle->type == UV_NAMED_PIPE);
 
-  if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     /* If it is unix domain handle, the event comes from ConnectEx IOCP. */
     setsockopt((SOCKET)req->u.connect.pipeHandle,
                SOL_SOCKET,
