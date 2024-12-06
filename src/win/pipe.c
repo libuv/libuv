@@ -2388,14 +2388,31 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
     return;
 
   if (!REQ_SUCCESS(req)) {
-    /* An error occurred doing the zero-read. */
-    err = GET_REQ_ERROR(req);
+    if (handle->flags & UV_HANDLE_WIN_UNIX_DOMAIN_SOCKET) {
+      err = GET_REQ_SOCK_ERROR(req);
+      if (err == WSAECONNABORTED) {
+        /* Turn WSAECONNABORTED into UV_ECONNRESET to be consistent with Unix.
+         */
+        err = WSAECONNRESET;
+      }
+      handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
-    /* If the read was cancelled by uv__pipe_interrupt_read(), the request may
-     * indicate an ERROR_OPERATION_ABORTED error. This error isn't relevant to
-     * the user; we'll start a new zero-read at the end of this function. */
-    if (err != ERROR_OPERATION_ABORTED)
-      uv__pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
+      if (err == WSAECONNRESET) {
+        uv__pipe_read_eof(loop, handle, uv_null_buf_);
+      } else {
+        uv__pipe_read_error(loop, handle, err, uv_null_buf_);
+      }
+
+    } else {
+      /* An error occurred doing the zero-read. */
+      err = GET_REQ_ERROR(req);
+
+      /* If the read was cancelled by uv__pipe_interrupt_read(), the request may
+       * indicate an ERROR_OPERATION_ABORTED error. This error isn't relevant to
+       * the user; we'll start a new zero-read at the end of this function. */
+      if (err != ERROR_OPERATION_ABORTED)
+        uv__pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
+    }
 
   } else {
     /* The zero-read completed without error, indicating there is data
