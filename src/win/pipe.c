@@ -107,7 +107,7 @@ static void eof_timer_close_cb(uv_handle_t* handle);
 
 
 static int should_use_named_pipe(const char *s) {
-#if !defined(__MINGW32__)
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
   /* Tell if the name is started by the named pipe prefix */
   return strstr(s, pipe_prefix) == s;
 #else
