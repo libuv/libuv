@@ -793,7 +793,8 @@ int uv__udp_try_send(uv_udp_t* handle,
   struct msghdr h;
   ssize_t size;
 
-  assert(nbufs > 0);
+  if (nbufs < 1)
+    return UV_EINVAL;
 
   /* already sending a message */
   if (handle->send_queue_count != 0)
