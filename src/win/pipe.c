@@ -2940,6 +2940,15 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+    if (handle->pathname != NULL) {
+      *size = strlen(handle->pathname);
+      memcpy(buffer, handle->pathname, *size);
+    }
+
+    return 0;
+  }
+
   if (handle->flags & UV_HANDLE_BOUND)
     return uv__pipe_getname(handle, buffer, size);
 
@@ -2960,6 +2969,15 @@ int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
   /* emulate unix behaviour */
   if (handle->flags & UV_HANDLE_BOUND)
     return UV_ENOTCONN;
+
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+    if (handle->pathname != NULL) {
+      *size = strlen(handle->pathname);
+      memcpy(buffer, handle->pathname, *size);
+    }
+
+    return 0;
+  }
 
   if (handle->handle != INVALID_HANDLE_VALUE)
     return uv__pipe_getname(handle, buffer, size);
@@ -2992,6 +3010,11 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
   if (handle == NULL || handle->handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
+
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+    /* Unix domain socket doesn't support this. */
+    return UV_ENOSYS;
+  }
 
   if (mode != UV_READABLE &&
       mode != UV_WRITABLE &&
