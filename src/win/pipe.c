@@ -34,7 +34,14 @@
 
 #include <aclapi.h>
 #include <accctrl.h>
+
+#if defined(__MINGW32__) || defined(__MINGW64__)
+#define UV__DISABLE_WIN_UDS_PIPE
+#endif
+
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
 #include <afunix.h>
+#endif
 
 /* A zero-size buffer for use by uv_pipe_read */
 static char uv_zero_[] = "";
@@ -99,9 +106,14 @@ static void eof_timer_destroy(uv_pipe_t* pipe);
 static void eof_timer_close_cb(uv_handle_t* handle);
 
 
-static int uv__is_named_pipe_prefix(const char *s) {
+static int should_use_named_pipe(const char *s) {
+#if !defined(__MINGW32__)
   /* Tell if the name is started by the named pipe prefix */
   return strstr(s, pipe_prefix) == s;
+#else
+  /* Disable this on mingw */
+  return true;
+#endif
 }
 
 
@@ -574,6 +586,7 @@ uds_pipe:
 }
 
 
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
 static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* handle,
                              uv_pipe_accept_t* req, const char * name, int* err, BOOL firstInstance) {
   assert(req->pipeHandle == INVALID_HANDLE_VALUE);
@@ -619,6 +632,7 @@ static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* hand
 
   return 1;
 }
+#endif
 
 
 static int pipe_alloc_accept_named_pipe(uv_loop_t* loop, uv_pipe_t* handle,
@@ -820,8 +834,9 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     return UV_EINVAL;
   }
 
-  int use_win_named_pipe = uv__is_named_pipe_prefix(name);
+  int use_win_named_pipe = should_use_named_pipe(name);
 
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
   if (!use_win_named_pipe) {
     if (flags & UV_PIPE_NO_TRUNCATE)
       if (namelen > UNIX_PATH_MAX)
@@ -830,6 +845,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     if (namelen > UNIX_PATH_MAX)
       namelen = UNIX_PATH_MAX;
   }
+#endif
 
   /* Already bound? */
   if (handle->flags & UV_HANDLE_BOUND) {
@@ -893,6 +909,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     /*
      * Prefix not match named pipe, use unix domain socket.
      */
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
     int uds_err = 0;
     handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     if (!pipe_alloc_accept_unix_domain_socket(
@@ -900,6 +917,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
       err = uv_translate_sys_error(uds_err);
       goto error;
     }
+#endif
   } else {
     /*
      * Attempt to create the first pipe with FILE_FLAG_FIRST_PIPE_INSTANCE.
@@ -1037,7 +1055,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     return UV_EINVAL;
   }
 
-  int use_win_named_pipe = uv__is_named_pipe_prefix(name);
+  int use_win_named_pipe = should_use_named_pipe(name);
 
   name_copy = uv__malloc(namelen + 1);
   if (name_copy == NULL) {
@@ -1073,6 +1091,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     goto error;
   }
 
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
   if (!use_win_named_pipe) {
     /*
      * If prefix is not "\\.\pipe", we assume it is a Unix Domain Socket.
@@ -1149,6 +1168,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     REGISTER_HANDLE_REQ(loop, handle);
     return 0;
   }
+#endif
 
   /*
    * When matched with named pipe prefix, use named pipe as backend.
@@ -1336,6 +1356,7 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
 
   if (!firstInstance) {
     if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
       int uds_err = 0;
       if (!pipe_alloc_accept_unix_domain_socket(loop, handle, req, handle->pathname, &uds_err, FALSE)) {
         SET_REQ_ERROR(req, uds_err);
@@ -1343,6 +1364,7 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
         handle->reqs_pending++;
         return;
       }
+#endif
     } else {
       if (!pipe_alloc_accept_named_pipe(loop, handle, req, FALSE)) {
         SET_REQ_ERROR(req, GetLastError());
