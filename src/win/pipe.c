@@ -239,7 +239,7 @@ static void close_pipe(uv_pipe_t* pipe) {
   pipe->handle = INVALID_HANDLE_VALUE;
 }
 
-/* Not yet support unix domain socket */
+/* Pipe pair doesn't use unix domain socket */
 static int uv__pipe_server(
     HANDLE* pipeHandle_ptr, DWORD access,
     char* name, size_t nameSize, unsigned long long random) {
@@ -280,7 +280,7 @@ static int uv__pipe_server(
 }
 
 
-/* Not yet support unix domain socket */
+/* Pipe pair doesn't use unix domain socket */
 static int uv__create_pipe_pair(
     HANDLE* server_pipe_ptr, HANDLE* client_pipe_ptr,
     unsigned int server_flags, unsigned int client_flags,
@@ -381,7 +381,7 @@ static int uv__create_pipe_pair(
 }
 
 
-/* Not yet support unix domain socket */
+/* Pipe pair doesn't use unix domain socket */
 int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
   uv_file temp[2];
   int err;
@@ -427,7 +427,7 @@ int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
 }
 
 
-/* Not yet support unix domain socket */
+/* Pipe pair doesn't use unix domain socket */
 int uv__create_stdio_pipe_pair(uv_loop_t* loop,
     uv_pipe_t* parent_pipe, HANDLE* child_pipe_ptr, unsigned int flags) {
   /* The parent_pipe is always the server_pipe and kept by libuv.
