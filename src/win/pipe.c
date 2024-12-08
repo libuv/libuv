@@ -504,9 +504,14 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
   if (handle->handle != INVALID_HANDLE_VALUE)
     return UV_EBUSY;
 
-  /* Skip if the handle is a unix domain socket */
-  if (!(handle->flags & UV_HANDLE_WIN_UDS_PIPE) &&
-    !SetNamedPipeHandleState(pipeHandle, &mode, NULL, NULL)) {
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+    /* Skip if the handle is a unix domain socket.
+     * We already created IOCP at connect2.
+     */
+    goto uds_pipe;
+  }
+
+  if (!SetNamedPipeHandleState(pipeHandle, &mode, NULL, NULL)) {
     err = GetLastError();
     if (err == ERROR_ACCESS_DENIED) {
       /*
@@ -560,6 +565,7 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
     }
   }
 
+uds_pipe:
   handle->handle = pipeHandle;
   handle->u.fd = fd;
   handle->flags |= duplex_flags;
@@ -680,6 +686,12 @@ void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t *req) {
   SET_REQ_SUCCESS(req);
 
   if (handle->flags & UV_HANDLE_CLOSING) {
+    uv__insert_pending_req(loop, (uv_req_t*) req);
+    return;
+  }
+
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+    /* Unix domain socket seems ok to just skip the following code.*/
     uv__insert_pending_req(loop, (uv_req_t*) req);
     return;
   }
@@ -1008,7 +1020,6 @@ int uv_pipe_connect2(uv_connect_t* req,
   req->u.connect.pipeHandle = INVALID_HANDLE_VALUE;
   req->u.connect.duplex_flags = 0;
   req->u.connect.name = NULL;
-  memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
 
   if (flags & ~UV_PIPE_NO_TRUNCATE) {
     return UV_EINVAL;
@@ -1077,26 +1088,45 @@ int uv_pipe_connect2(uv_connect_t* req,
       goto error;
     }
 
-    struct sockaddr_un addr = {0};
-    addr.sun_family = AF_UNIX;
-    strcpy(addr.sun_path, name);
-
     /* Load function ConnectEx */
     if (!handle->pipe.conn.func_connectex) {
-      if (!uv__get_connectex_function((SOCKET) handle->handle, &handle->pipe.conn.func_connectex)) {
+      if (!uv__get_connectex_function(client_fd, &handle->pipe.conn.func_connectex)) {
         err = WSAEAFNOSUPPORT;
         goto error;
       }
     }
 
-    DWORD bytes_sent;
-    int ret = handle->pipe.conn.func_connectex(client_fd,
-                                               (const struct sockaddr*)&addr,
+    struct sockaddr_un addr1 = {0};
+    addr1.sun_family = AF_UNIX;
+
+    /* ConnectEx need to be initially bound */
+    int ret = bind(client_fd, (SOCKADDR*) &addr1, sizeof(addr1));
+    if (ret != 0) {
+      err = WSAGetLastError();
+      goto error;
+    }
+
+    struct sockaddr_un addr2 = {0};
+    addr2.sun_family = AF_UNIX;
+    strcpy(addr2.sun_path, name);
+
+    /* Associate it with IOCP so we can get events. */
+    if (CreateIoCompletionPort((HANDLE) client_fd,
+                               loop->iocp,
+                               (ULONG_PTR) handle,
+                               0) == NULL) {
+      uv_fatal_error(GetLastError(), "CreateIoCompletionPort");
+    }
+
+    memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+    ret = handle->pipe.conn.func_connectex(client_fd,
+                                               (const struct sockaddr*)&addr2,
                                                sizeof(struct sockaddr_un),
                                                NULL,
                                                0,
-                                               &bytes_sent,
+                                               NULL,
                                                &req->u.io.overlapped);
+
     if (!ret) {
       err = WSAGetLastError();
       if (err != ERROR_IO_PENDING) {
@@ -1105,10 +1135,14 @@ int uv_pipe_connect2(uv_connect_t* req,
       }
     }
 
-    // Set flag indicates it is a unix domain socket;
+    /* Set flag indicates it is a unix domain socket; */
     handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
-    req->u.connect.pipeHandle = pipeHandle;
-    req->u.connect.duplex_flags = UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
+
+    /* Since we use IOCP we can't set value to u.connect.pipeHandle
+     * as it will be rewritten by the result of IOCP.
+     */
+    handle->handle = (HANDLE) client_fd;
+    req->u.connect.duplex_flags = UV_HANDLE_WRITABLE | UV_HANDLE_READABLE;
 
     /* The req will be processed with IOCP. */
     handle->reqs_pending++;
@@ -1257,6 +1291,17 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
   if (handle->name) {
     uv__free(handle->name);
     handle->name = NULL;
+  }
+
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+    /* Force the subsequent closesocket to be abortative. */
+    struct linger l = {1, 0};
+    setsockopt((SOCKET)handle->handle,
+               SOL_SOCKET,
+               SO_LINGER,
+               (const char*)&l,
+               sizeof(l));
+
   }
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
@@ -2544,8 +2589,12 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   assert(handle->type == UV_NAMED_PIPE);
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+    /* IOCP overwrites the pipeHandle, so workaround using the handle. */
+    req->u.connect.pipeHandle = handle->handle;
+    handle->handle = INVALID_HANDLE_VALUE;
+
     /* If it is unix domain handle, the event comes from ConnectEx IOCP. */
-    setsockopt((SOCKET)req->u.connect.pipeHandle,
+    setsockopt((SOCKET) req->u.connect.pipeHandle,
                SOL_SOCKET,
                SO_UPDATE_CONNECT_CONTEXT,
                NULL,
