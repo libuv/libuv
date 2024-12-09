@@ -35,11 +35,11 @@
 #include <aclapi.h>
 #include <accctrl.h>
 
-#if defined(__MINGW32__) || defined(__MINGW64__)
-#define UV__DISABLE_WIN_UDS_PIPE
+#if defined(_WIN32) && !defined(__MINGW32__) && !defined(__MINGW64__)
+#define UV__ENABLE_WIN_UDS_PIPE
 #endif
 
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
 #include <afunix.h>
 #endif
 
@@ -106,13 +106,13 @@ static void eof_timer_destroy(uv_pipe_t* pipe);
 static void eof_timer_close_cb(uv_handle_t* handle);
 
 
-static int should_use_named_pipe(const char *s) {
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
-  /* Tell if the name is started by the named pipe prefix */
-  return strstr(s, pipe_prefix) == s;
+static int uv__should_use_uds_pipe(const char *s) {
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
+  /* Tell if the name is not started by the named pipe prefix */
+  return strstr(s, pipe_prefix) != s;
 #else
   /* Disable this on mingw */
-  return 1;
+  return 0;
 #endif
 }
 
@@ -583,7 +583,7 @@ uds_pipe:
 }
 
 
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
 static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* handle,
                              uv_pipe_accept_t* req, const char * name, int* err, BOOL firstInstance) {
   assert(req->pipeHandle == INVALID_HANDLE_VALUE);
@@ -831,10 +831,10 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     return UV_EINVAL;
   }
 
-  int use_win_named_pipe = should_use_named_pipe(name);
+  int use_uds_pipe = uv__should_use_uds_pipe(name);
 
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
-  if (!use_win_named_pipe) {
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
+  if (use_uds_pipe) {
     if (flags & UV_PIPE_NO_TRUNCATE)
       if (namelen > UNIX_PATH_MAX)
         return UV_EINVAL;
@@ -887,7 +887,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     req->next_pending = NULL;
   }
 
-  if (use_win_named_pipe) {
+  if (!use_uds_pipe) {
     /* TODO(bnoordhuis) Add converters that take a |length| parameter. */
     err = uv__convert_utf8_to_utf16(name_copy, &handle->name);
     uv__free(name_copy);
@@ -902,11 +902,11 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     goto error;
   }
 
-  if (!use_win_named_pipe) {
+  if (use_uds_pipe) {
     /*
      * Prefix not match named pipe, use unix domain socket.
      */
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
     int uds_err = 0;
     handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     if (!pipe_alloc_accept_unix_domain_socket(
@@ -1052,10 +1052,10 @@ int uv_pipe_connect2(uv_connect_t* req,
     return UV_EINVAL;
   }
 
-  int use_win_named_pipe = should_use_named_pipe(name);
+  int use_uds_pipe = uv__should_use_uds_pipe(name);
 
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
-  if (!use_win_named_pipe) {
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
+  if (use_uds_pipe) {
     if (flags & UV_PIPE_NO_TRUNCATE)
       if (namelen > UNIX_PATH_MAX)
         return UV_EINVAL;
@@ -1083,7 +1083,7 @@ int uv_pipe_connect2(uv_connect_t* req,
   }
   uv__pipe_connection_init(handle);
 
-  if (use_win_named_pipe) {
+  if (!use_uds_pipe) {
     /* TODO(bnoordhuis) Add converters that take a |length| parameter. */
     err = uv__convert_utf8_to_utf16(name_copy, &handle->name);
     uv__free(name_copy);
@@ -1099,8 +1099,8 @@ int uv_pipe_connect2(uv_connect_t* req,
     goto error;
   }
 
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
-  if (!use_win_named_pipe) {
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
+  if (use_uds_pipe) {
     /*
      * If prefix is not "\\.\pipe", we assume it is a Unix Domain Socket.
      * Although "NamedPipe" is a Windows concept, however in libuv, it has
@@ -1165,10 +1165,12 @@ int uv_pipe_connect2(uv_connect_t* req,
     /* Set flag indicates it is a unix domain socket; */
     handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
 
-    /* Since we use IOCP we can't set value to u.connect.pipeHandle
-     * as it will be rewritten by the result of IOCP.
+    /* Since we use IOCP, we can't set value to u.connect.pipeHandle
+     * as it will be rewritten by the result of IOCP. Thus, we set the socket
+     * to uds_socket (reuse the `name`) and set it to pipeHandle later at req
+     * handler.
      */
-    handle->handle = (HANDLE) client_fd;
+    req->u.connect.uds_socket = client_fd;
     req->u.connect.duplex_flags = UV_HANDLE_WRITABLE | UV_HANDLE_READABLE;
 
     /* The req will be processed with IOCP. */
@@ -1364,7 +1366,7 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
 
   if (!firstInstance) {
     if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
-#if !defined(UV__DISABLE_WIN_UDS_PIPE)
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
       int uds_err = 0;
       if (!pipe_alloc_accept_unix_domain_socket(loop, handle, req, handle->pathname, &uds_err, FALSE)) {
         SET_REQ_ERROR(req, uds_err);
@@ -2619,9 +2621,8 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   assert(handle->type == UV_NAMED_PIPE);
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
-    /* IOCP overwrites the pipeHandle, so workaround using the handle. */
-    req->u.connect.pipeHandle = handle->handle;
-    handle->handle = INVALID_HANDLE_VALUE;
+    /* IOCP overwrites the connect.pipeHandle, so workaround here. */
+    req->u.connect.pipeHandle = (HANDLE) req->u.connect.uds_socket;
 
     /* If it is unix domain handle, the event comes from ConnectEx IOCP. */
     setsockopt((SOCKET) req->u.connect.pipeHandle,
