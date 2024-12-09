@@ -112,7 +112,7 @@ static int should_use_named_pipe(const char *s) {
   return strstr(s, pipe_prefix) == s;
 #else
   /* Disable this on mingw */
-  return true;
+  return 1;
 #endif
 }
 
@@ -570,9 +570,6 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
                                loop->iocp,
                                (ULONG_PTR) handle,
                                0) == NULL) {
-      /* Unix domain socket should always support IOCP. */
-      assert(!(handle->flags & UV_HANDLE_WIN_UDS_PIPE));
-
       handle->flags |= UV_HANDLE_EMULATE_IOCP;
     }
   }
@@ -1056,6 +1053,17 @@ int uv_pipe_connect2(uv_connect_t* req,
   }
 
   int use_win_named_pipe = should_use_named_pipe(name);
+
+#if !defined(UV__DISABLE_WIN_UDS_PIPE)
+  if (!use_win_named_pipe) {
+    if (flags & UV_PIPE_NO_TRUNCATE)
+      if (namelen > UNIX_PATH_MAX)
+        return UV_EINVAL;
+
+    if (namelen > UNIX_PATH_MAX)
+      namelen = UNIX_PATH_MAX;
+  }
+#endif
 
   name_copy = uv__malloc(namelen + 1);
   if (name_copy == NULL) {
