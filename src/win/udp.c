@@ -1101,7 +1101,8 @@ int uv__udp_try_send(uv_udp_t* handle,
   struct sockaddr_storage converted;
   int err;
 
-  assert(nbufs > 0);
+  if (nbufs < 1)
+    return UV_EINVAL;
 
   if (addr != NULL) {
     err = uv__convert_to_localhost_if_unspecified(addr, &converted);
