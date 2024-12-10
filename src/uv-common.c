@@ -514,6 +514,25 @@ int uv_udp_try_send(uv_udp_t* handle,
 }
 
 
+int uv_udp_try_send2(uv_udp_t* handle,
+                     unsigned int count,
+                     uv_buf_t* bufs[/*count*/],
+                     unsigned int nbufs[/*count*/],
+                     struct sockaddr* addrs[/*count*/],
+                     unsigned int flags) {
+  if (count < 1)
+    return UV_EINVAL;
+
+  if (flags != 0)
+    return UV_EINVAL;
+
+  if (handle->send_queue_count > 0)
+    return UV_EAGAIN;
+
+  return uv__udp_try_send2(handle, count, bufs, nbufs, addrs);
+}
+
+
 int uv_udp_recv_start(uv_udp_t* handle,
                       uv_alloc_cb alloc_cb,
                       uv_udp_recv_cb recv_cb) {
