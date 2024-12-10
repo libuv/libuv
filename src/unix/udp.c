@@ -1401,3 +1401,18 @@ again:
 feed:
   uv__io_feed(handle->loop, &handle->io_watcher);
 }
+
+
+int uv__udp_try_send2(uv_udp_t* handle,
+                      unsigned int count,
+                      uv_buf_t* bufs[/*count*/],
+                      unsigned int nbufs[/*count*/],
+                      struct sockaddr* addrs[/*count*/]) {
+  int fd;
+
+  fd = handle->io_watcher.fd;
+  if (fd == -1)
+    return UV_EINVAL;
+
+  return uv__udp_sendmsgv(fd, count, bufs, nbufs, addrs);
+}
