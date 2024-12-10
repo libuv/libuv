@@ -35,8 +35,8 @@ struct sockaddr_in uv_addr_ip4_any_;
 struct sockaddr_in6 uv_addr_ip6_any_;
 
 /* WSA function pointers */
-static LPFN_ACCEPTEX uv_wsa_acceptex = NULL;
-static LPFN_CONNECTEX uv_wsa_connectex = NULL;
+LPFN_ACCEPTEX uv_wsa_acceptex = NULL;
+LPFN_CONNECTEX uv_wsa_connectex = NULL;
 
 
 /*
@@ -63,18 +63,6 @@ static BOOL uv__get_extension_function(SOCKET socket, GUID guid,
   } else {
     return TRUE;
   }
-}
-
-
-BOOL uv__get_acceptex_function(SOCKET socket, LPFN_ACCEPTEX* target) {
-  *target = uv_wsa_acceptex;
-  return uv_wsa_acceptex != NULL;
-}
-
-
-BOOL uv__get_connectex_function(SOCKET socket, LPFN_CONNECTEX* target) {
-  *target = uv_wsa_connectex;
-  return uv_wsa_connectex != NULL;
 }
 
 
@@ -141,9 +129,12 @@ void uv__winsock_init(void) {
     const GUID wsaid_acceptex = WSAID_ACCEPTEX;
     const GUID wsaid_connectex = WSAID_CONNECTEX;
 
-    /* If anyone failed, will return false when get them later. */
-    uv__get_extension_function(dummy, wsaid_acceptex, (void**)uv_wsa_acceptex);
-    uv__get_extension_function(dummy, wsaid_connectex, (void**)uv_wsa_connectex);
+    if (!uv__get_extension_function(
+            dummy, wsaid_acceptex, (void**)uv_wsa_acceptex) ||
+        !uv__get_extension_function(
+            dummy, wsaid_connectex, (void**)uv_wsa_connectex)) {
+      uv_fatal_error(WSAGetLastError(), "WSAIoctl");
+    }
 
     closesocket(dummy);
   }

@@ -298,9 +298,6 @@ void uv__winsock_init(void);
 
 int uv__ntstatus_to_winsock_error(NTSTATUS status);
 
-BOOL uv__get_acceptex_function(SOCKET socket, LPFN_ACCEPTEX* target);
-BOOL uv__get_connectex_function(SOCKET socket, LPFN_CONNECTEX* target);
-
 int WSAAPI uv__wsarecv_workaround(SOCKET socket, WSABUF* buffers,
     DWORD buffer_count, DWORD* bytes, DWORD* flags, WSAOVERLAPPED *overlapped,
     LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
@@ -319,6 +316,10 @@ extern int uv_tcp_non_ifs_lsp_ipv6;
 /* Ip address used to bind to any port at any interface */
 extern struct sockaddr_in uv_addr_ip4_any_;
 extern struct sockaddr_in6 uv_addr_ip6_any_;
+
+/* WSA function pointers */
+extern LPFN_ACCEPTEX uv_wsa_acceptex;
+extern LPFN_CONNECTEX uv_wsa_connectex;
 
 /*
  * Wake all loops with fake message

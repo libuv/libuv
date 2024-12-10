@@ -37,9 +37,6 @@
 
 #if defined(_WIN32) && !defined(__MINGW32__) && !defined(__MINGW64__)
 #define UV__ENABLE_WIN_UDS_PIPE
-#endif
-
-#if defined(UV__ENABLE_WIN_UDS_PIPE)
 #include <afunix.h>
 #endif
 
@@ -108,16 +105,12 @@ static void eof_timer_close_cb(uv_handle_t* handle);
 
 static int uv__should_use_uds_pipe(const char *s) {
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
-  /* Tell if the name is started by the named pipe prefix */
-  if (strstr(s, pipe_prefix) == s) {
-    return 0;
-  }
-
-  return 1;
-#endif
-
-  /* Disable uds on mingw */
+  /* Tell if the name is not started by the named pipe prefix */
+  return strstr(s, pipe_prefix) != s;
+#else
+  /* Disable this on mingw */
   return 0;
+#endif
 }
 
 
@@ -606,6 +599,8 @@ static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* hand
 
     struct sockaddr_un addr = {0};
     addr.sun_family = AF_UNIX;
+    /* `name` is guaranteed to be a null terminated string
+     * length (with '\0') <= UNIX_PATH_MAX */
     strcpy(addr.sun_path, name);
 
     int ret = bind(server_fd, (const struct sockaddr*)&addr, sizeof(struct sockaddr_un));
@@ -795,6 +790,11 @@ void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
 void uv_pipe_pending_instances(uv_pipe_t* handle, int count) {
   if (handle->flags & UV_HANDLE_BOUND)
     return;
+
+  /* Unix domain socket only use 1 pending instance. */
+  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE)
+    return;
+
   handle->pipe.serv.pending_instances = count;
   handle->flags |= UV_HANDLE_PIPESERVER;
 }
@@ -833,14 +833,20 @@ int uv_pipe_bind2(uv_pipe_t* handle,
 
   int use_uds_pipe = uv__should_use_uds_pipe(name);
 
+#if !defined(UV__ENABLE_WIN_UDS_PIPE)
+  if (use_uds_pipe) {
+    return UV_ENOSYS;
+  }
+#endif
+
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
     if (flags & UV_PIPE_NO_TRUNCATE)
-      if (namelen > UNIX_PATH_MAX)
+      if (namelen >= UNIX_PATH_MAX)
         return UV_EINVAL;
 
-    if (namelen > UNIX_PATH_MAX)
-      namelen = UNIX_PATH_MAX;
+    if (namelen >= UNIX_PATH_MAX)
+      namelen = UNIX_PATH_MAX - 1;
   }
 #endif
 
@@ -902,40 +908,43 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     goto error;
   }
 
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
     /*
      * Prefix not match named pipe, use unix domain socket.
      */
-#if defined(UV__ENABLE_WIN_UDS_PIPE)
     handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     int uds_err = pipe_alloc_accept_unix_domain_socket(
-        loop, handle, &handle->pipe.serv.accept_reqs[0], name, TRUE);
+        loop, handle, &handle->pipe.serv.accept_reqs[0], handle->pathname, TRUE);
     if (uds_err) {
       err = uv_translate_sys_error(uds_err);
       goto error;
     }
+
+    goto uds_pipe;
+  }
 #endif
-  } else {
-    /*
-     * Attempt to create the first pipe with FILE_FLAG_FIRST_PIPE_INSTANCE.
-     * If this fails then there's already a pipe server for the given pipe name.
-     */
-    if (!pipe_alloc_accept_named_pipe(loop,
-                           handle,
-                           &handle->pipe.serv.accept_reqs[0],
-                           TRUE)) {
-      err = GetLastError();
-      if (err == ERROR_ACCESS_DENIED) {
-        err = UV_EADDRINUSE;
-      } else if (err == ERROR_PATH_NOT_FOUND || err == ERROR_INVALID_NAME) {
-        err = UV_EACCES;
-      } else {
-        err = uv_translate_sys_error(err);
-      }
-      goto error;
+
+  /*
+   * Attempt to create the first pipe with FILE_FLAG_FIRST_PIPE_INSTANCE.
+   * If this fails then there's already a pipe server for the given pipe name.
+   */
+  if (!pipe_alloc_accept_named_pipe(loop,
+                         handle,
+                         &handle->pipe.serv.accept_reqs[0],
+                         TRUE)) {
+    err = GetLastError();
+    if (err == ERROR_ACCESS_DENIED) {
+      err = UV_EADDRINUSE;
+    } else if (err == ERROR_PATH_NOT_FOUND || err == ERROR_INVALID_NAME) {
+      err = UV_EACCES;
+    } else {
+      err = uv_translate_sys_error(err);
     }
+    goto error;
   }
 
+uds_pipe:
   handle->pipe.serv.pending_accepts = NULL;
   handle->flags |= UV_HANDLE_PIPESERVER;
   handle->flags |= UV_HANDLE_BOUND;
@@ -1054,14 +1063,22 @@ int uv_pipe_connect2(uv_connect_t* req,
 
   int use_uds_pipe = uv__should_use_uds_pipe(name);
 
+#if !defined(UV__ENABLE_WIN_UDS_PIPE)
+  if (use_uds_pipe) {
+    return UV_ENOSYS;
+  }
+#endif
+
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
+    /* https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/ */
+    /* a null-terminated UTF-8 file system path */
     if (flags & UV_PIPE_NO_TRUNCATE)
-      if (namelen > UNIX_PATH_MAX)
+      if (namelen >= UNIX_PATH_MAX)
         return UV_EINVAL;
 
-    if (namelen > UNIX_PATH_MAX)
-      namelen = UNIX_PATH_MAX;
+    if (namelen >= UNIX_PATH_MAX)
+      namelen = UNIX_PATH_MAX - 1;
   }
 #endif
 
@@ -1109,12 +1126,6 @@ int uv_pipe_connect2(uv_connect_t* req,
      * of the pipe is not matched.
     */
 
-    LPFN_CONNECTEX func_connectex = NULL;
-    if (!uv__get_connectex_function((SOCKET)handle->handle, &func_connectex)) {
-      err = WSAEAFNOSUPPORT;
-      goto error;
-    }
-
     SOCKET client_fd = socket(AF_UNIX, SOCK_STREAM, IPPROTO_IP);
     if (client_fd == INVALID_SOCKET) {
       err = WSAGetLastError();
@@ -1133,24 +1144,27 @@ int uv_pipe_connect2(uv_connect_t* req,
 
     struct sockaddr_un addr2 = {0};
     addr2.sun_family = AF_UNIX;
-    strcpy(addr2.sun_path, name);
+    memcpy(addr2.sun_path, name, namelen);
+    addr2.sun_path[namelen] = '\0';
 
     /* Associate it with IOCP so we can get events. */
     if (CreateIoCompletionPort((HANDLE) client_fd,
                                loop->iocp,
                                (ULONG_PTR) handle,
                                0) == NULL) {
-      uv_fatal_error(GetLastError(), "CreateIoCompletionPort");
+      closesocket(client_fd);
+      err = GetLastError();
+      goto error;
     }
 
     memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
-    ret = func_connectex(client_fd,
-                         (const struct sockaddr*)&addr2,
-                         sizeof(struct sockaddr_un),
-                         NULL,
-                         0,
-                         NULL,
-                         &req->u.io.overlapped);
+    ret = uv_wsa_connectex(client_fd,
+                           (const struct sockaddr*)&addr2,
+                           sizeof(struct sockaddr_un),
+                           NULL,
+                           0,
+                           NULL,
+                           &req->u.io.overlapped);
 
     if (!ret) {
       err = WSAGetLastError();
@@ -1362,17 +1376,9 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
     uv_pipe_accept_t* req, BOOL firstInstance) {
   assert(handle->flags & UV_HANDLE_LISTENING);
 
-  LPFN_ACCEPTEX func_acceptex = NULL;
-  if (!uv__get_acceptex_function((SOCKET)handle->handle, &func_acceptex)) {
-    SET_REQ_ERROR(req, WSAEAFNOSUPPORT);
-    uv__insert_pending_req(loop, (uv_req_t*)req);
-    handle->reqs_pending++;
-    return;
-  }
-
   if (!firstInstance) {
-    if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
+    if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
       int uds_err = pipe_alloc_accept_unix_domain_socket(
           loop, handle, req, handle->pathname, FALSE);
       if (uds_err) {
@@ -1381,17 +1387,20 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
         handle->reqs_pending++;
         return;
       }
+
+      goto uds_pipe;
+    }
 #endif
-    } else {
-      if (!pipe_alloc_accept_named_pipe(loop, handle, req, FALSE)) {
-        SET_REQ_ERROR(req, GetLastError());
-        uv__insert_pending_req(loop, (uv_req_t*) req);
-        handle->reqs_pending++;
-        return;
-      }
+
+    if (!pipe_alloc_accept_named_pipe(loop, handle, req, FALSE)) {
+      SET_REQ_ERROR(req, GetLastError());
+      uv__insert_pending_req(loop, (uv_req_t*) req);
+      handle->reqs_pending++;
+      return;
     }
   }
 
+uds_pipe:
   assert(req->pipeHandle != INVALID_HANDLE_VALUE);
 
   /* Prepare the overlapped structure. */
@@ -1401,14 +1410,14 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
     DWORD bytes_received;
     CHAR accept_buf[2 * (sizeof(SOCKADDR_STORAGE) + 16)];
 
-    if (!func_acceptex((SOCKET)handle->handle,
-                       (SOCKET)req->pipeHandle,
-                       accept_buf,
-                       0,
-                       sizeof(SOCKADDR_STORAGE) + 16,
-                       sizeof(SOCKADDR_STORAGE) + 16,
-                       &bytes_received,
-                       &req->u.io.overlapped)) {
+    if (!uv_wsa_acceptex((SOCKET)handle->handle,
+                         (SOCKET)req->pipeHandle,
+                         accept_buf,
+                         0,
+                         sizeof(SOCKADDR_STORAGE) + 16,
+                         sizeof(SOCKADDR_STORAGE) + 16,
+                         &bytes_received,
+                         &req->u.io.overlapped)) {
       int wsa_err = WSAGetLastError();
       if (wsa_err != ERROR_IO_PENDING) {
         closesocket((SOCKET) req->pipeHandle);
