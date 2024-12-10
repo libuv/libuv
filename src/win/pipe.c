@@ -104,13 +104,8 @@ static void eof_timer_close_cb(uv_handle_t* handle);
 
 
 static int uv__should_use_uds_pipe(const char *s) {
-#if defined(UV__ENABLE_WIN_UDS_PIPE)
   /* Tell if the name is not started by the named pipe prefix */
   return strstr(s, pipe_prefix) != s;
-#else
-  /* Disable this on mingw */
-  return 0;
-#endif
 }
 
 
