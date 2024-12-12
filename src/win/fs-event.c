@@ -253,6 +253,8 @@ short_path_done:
     }
 
     dir_to_watch = dir;
+    uv__free(short_path);
+    short_path = NULL;
     uv__free(pathw);
     pathw = NULL;
   }
