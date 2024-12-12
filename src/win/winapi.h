@@ -4150,38 +4150,35 @@ typedef struct _FILE_STAT_BASIC_INFORMATION {
 } FILE_STAT_BASIC_INFORMATION;
 #endif
 
-/* MinGW already has a definition. */
-#if defined(_MSC_VER)
-  typedef struct _REPARSE_DATA_BUFFER {
-    ULONG  ReparseTag;
-    USHORT ReparseDataLength;
-    USHORT Reserved;
-    union {
-      struct {
-        USHORT SubstituteNameOffset;
-        USHORT SubstituteNameLength;
-        USHORT PrintNameOffset;
-        USHORT PrintNameLength;
-        ULONG Flags;
-        WCHAR PathBuffer[1];
-      } SymbolicLinkReparseBuffer;
-      struct {
-        USHORT SubstituteNameOffset;
-        USHORT SubstituteNameLength;
-        USHORT PrintNameOffset;
-        USHORT PrintNameLength;
-        WCHAR PathBuffer[1];
-      } MountPointReparseBuffer;
-      struct {
-        UCHAR  DataBuffer[1];
-      } GenericReparseBuffer;
-      struct {
-        ULONG StringCount;
-        WCHAR StringList[1];
-      } AppExecLinkReparseBuffer;
-    };
-  } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
-#endif
+typedef struct _REPARSE_DATA_BUFFER {
+  ULONG  ReparseTag;
+  USHORT ReparseDataLength;
+  USHORT Reserved;
+  union {
+    struct {
+      USHORT SubstituteNameOffset;
+      USHORT SubstituteNameLength;
+      USHORT PrintNameOffset;
+      USHORT PrintNameLength;
+      ULONG Flags;
+      WCHAR PathBuffer[1];
+    } SymbolicLinkReparseBuffer;
+    struct {
+      USHORT SubstituteNameOffset;
+      USHORT SubstituteNameLength;
+      USHORT PrintNameOffset;
+      USHORT PrintNameLength;
+      WCHAR PathBuffer[1];
+    } MountPointReparseBuffer;
+    struct {
+      UCHAR  DataBuffer[1];
+    } GenericReparseBuffer;
+    struct {
+      ULONG StringCount;
+      WCHAR StringList[1];
+    } AppExecLinkReparseBuffer;
+  };
+} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
 typedef struct _IO_STATUS_BLOCK {
   union {
