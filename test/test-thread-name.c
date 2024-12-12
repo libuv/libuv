@@ -66,8 +66,7 @@ TEST_IMPL(thread_name) {
   char long_thread_name[UV_PTHREAD_MAX_NAMELEN_NP + 1];
   struct semaphores sem;
 
-#if defined(__MINGW32__) || \
-    defined(__ANDROID_API__) && __ANDROID_API__ < 26 || \
+#if defined(__ANDROID_API__) && __ANDROID_API__ < 26 || \
     defined(_AIX) || \
     defined(__MVS__) || \
     defined(__PASE__)
@@ -140,4 +139,3 @@ TEST_IMPL(thread_name) {
 
   return 0;
 }
-
