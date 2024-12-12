@@ -279,9 +279,6 @@ int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2) {
 
 
 int uv_thread_setname(const char* name) {
-#ifdef __MINGW32__
-  return UV_ENOSYS;
-#else
   HRESULT hr;
   WCHAR* namew;
   int err;
@@ -304,14 +301,10 @@ int uv_thread_setname(const char* name) {
     return uv_translate_sys_error(HRESULT_CODE(hr));
 
   return 0;
-#endif /* __MINGW32__ */
 }
 
 
 int uv_thread_getname(uv_thread_t* tid, char* name, size_t size) {
-#ifdef __MINGW32__
-  return UV_ENOSYS;
-#else
   HRESULT hr;
   WCHAR* namew;
   char* thread_name;
@@ -347,7 +340,6 @@ int uv_thread_getname(uv_thread_t* tid, char* name, size_t size) {
 
   LocalFree(namew);
   return r;
-#endif /* __MINGW32__ */
 }
 
 
