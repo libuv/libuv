@@ -170,11 +170,6 @@ void uv__threadpool_cleanup(void) {
   if (nthreads == 0)
     return;
 
-#ifndef __MVS__
-  /* TODO(gabylb) - zos: revisit when Woz compiler is available. */
-  post(&exit_message, UV__WORK_CPU);
-#endif
-
   for (i = 0; i < nthreads; i++)
     if (uv_thread_join(threads + i))
       abort();
