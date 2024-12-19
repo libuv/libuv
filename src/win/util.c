@@ -1701,3 +1701,8 @@ int uv__random_rtlgenrandom(void* buf, size_t buflen) {
 void uv_sleep(unsigned int msec) {
   Sleep(msec);
 }
+
+
+int uv_battery_info(uv_battery_info_t* info) {
+  return UV_ENOSYS;
+}

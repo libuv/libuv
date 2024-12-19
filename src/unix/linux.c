@@ -1940,6 +1940,73 @@ nocpuinfo:
 }
 
 
+int uv_battery_info(uv_battery_info_t* info) {
+  int err;
+  char buf[1024];
+  int r;
+  int level = 0;
+  double energy_full = 0;
+  double energy_now = 0;
+  double power_now = 0;
+  char status[32];
+  char* line;
+  struct stat statbuf;
+
+  r = uv__stat("/sys/class/power_supply/BAT0/uevent", &statbuf);
+  /* The battery doesn't exist, (maybe it's a server or something) */
+  if (r < 0) {
+    err = UV_ENODEV;
+    goto out2;
+  }
+
+  r = uv__slurp("/sys/class/power_supply/BAT0/uevent", buf, sizeof(buf));
+  if (r < 0)
+    goto out;
+
+
+  if ((line = strstr(buf, "POWER_SUPPLY_CAPACITY=")) != NULL)
+    sscanf(line, "POWER_SUPPLY_CAPACITY=%d", &level);
+
+  if ((line = strstr(buf, "POWER_SUPPLY_ENERGY_FULL=")) != NULL)
+    sscanf(line, "POWER_SUPPLY_ENERGY_FULL=%lf", &energy_full);
+
+  if ((line = strstr(buf, "POWER_SUPPLY_ENERGY_NOW=")) != NULL)
+    sscanf(line, "POWER_SUPPLY_ENERGY_NOW=%lf", &energy_now);
+
+  if ((line = strstr(buf, "POWER_SUPPLY_POWER_NOW=")) != NULL)
+    sscanf(line, "POWER_SUPPLY_POWER_NOW=%lf", &power_now);
+
+  if ((line = strstr(buf, "POWER_SUPPLY_STATUS=")) != NULL)
+    sscanf(line, "POWER_SUPPLY_STATUS=%s", status);
+
+  if (strstr(status, "Charging") != NULL) {
+    info->is_charging = 1;
+    info->charge_time_in_secs = ((energy_full - energy_now) / power_now) * 3600;
+    info->discharge_time_in_secs = 0;
+  } else { /* the battery is "Discharging" */
+    info->is_charging = 0;
+    info->charge_time_in_secs = 0;
+    info->discharge_time_in_secs = (energy_now / power_now) * 3600;
+  }
+
+  info->level = level;
+  /* Success */
+  err = 0;
+  goto out2;
+
+ out:
+  /* In case of error, fill everything with 0 */
+  err = UV_ENOSYS;
+  info->charge_time_in_secs = 0;
+  info->discharge_time_in_secs = 0;
+  info->is_charging = 0;
+  info->level = 0;
+
+ out2:
+  return err;
+}
+
+
 static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;

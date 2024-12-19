@@ -1318,3 +1318,8 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   if(loop->backend_fd >= 0)
     pollset_ctl(loop->backend_fd, &pc, 1);
 }
+
+
+void uv_battery_info(uv_battery_info_t* battery) {
+  return UV_ENOSYS;
+}

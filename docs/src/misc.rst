@@ -239,6 +239,20 @@ Data types
 
     Random data request type.
 
+.. c:type:: uv_battery_info_t
+
+    Data type for battery information storage.
+
+    ::
+
+        typedef struct uv_battery_info_s {
+            int is_charging;
+            uint64_t level;
+            uint64_t discharge_time_in_secs;
+            uint64_t charge_time_in_secs;
+            void* reserved[7];
+        } uv_battery_info_t;
+
 API
 ---
 
@@ -387,6 +401,21 @@ API
     considers to be online.
 
     .. versionadded:: 1.44.0
+
+.. c:function:: int uv_battery_info(uv_battery_info_t* battery_info)
+
+    Gets information about the current power source and battery status of the
+    system. The gathered information is stored in the provided `battery_info_t`
+    structure.
+
+    In Linux, it will read over from `/sys/class/power_supply/BAT0` and write
+    the results in the provided `uv_battery_info_t` struct.
+
+    In macOS, it will use IOKit as the source of information.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+    It will return `UV_ENOSYS` for desktop or non-detected battery sources.
+    On macOS it could return a `UV_ENOENT` in case of IOKit linking failure.
 
 .. c:function:: int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count)
 

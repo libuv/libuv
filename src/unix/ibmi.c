@@ -540,3 +540,8 @@ int uv_get_process_title(char* buffer, size_t size) {
 
 void uv__process_title_cleanup(void) {
 }
+
+
+void uv_battery_info(uv_battery_info_t* battery) {
+  return UV_ENOSYS;
+}
