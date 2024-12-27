@@ -1960,6 +1960,7 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
   FILE_ID_FULL_DIR_INFORMATION dir_info;
   FILE_FS_VOLUME_INFORMATION volume_info;
   FILE_FS_DEVICE_INFORMATION device_info;
+  FILE_ALL_INFORMATION file_info;
   IO_STATUS_BLOCK io_status;
   NTSTATUS nt_status;
   WCHAR* path_dirpath = NULL;
@@ -1968,6 +1969,7 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
   size_t len;
   size_t split;
   WCHAR splitchar;
+  char *target = NULL;
   int includes_name;
 
   /* AKA strtok or wcscspn, in reverse. */
@@ -2065,23 +2067,90 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
   stat_info.CreationTime.QuadPart = dir_info.CreationTime.QuadPart;
   stat_info.LastAccessTime.QuadPart = dir_info.LastAccessTime.QuadPart;
   stat_info.LastWriteTime.QuadPart = dir_info.LastWriteTime.QuadPart;
-  if (stat_info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-    /* A file handle is needed to get st_size for the link (from
-     * FSCTL_GET_REPARSE_POINT), which is required by posix, but we are here
-     * because getting the file handle failed. We could get just the
-     * ReparsePointTag by querying FILE_ID_EXTD_DIR_INFORMATION instead to make
-     * sure this really is a link before giving up here on the uv_fs_stat call,
-     * but that doesn't seem essential. */
-    if (!do_lstat)
-      goto cleanup;
-    stat_info.EndOfFile.QuadPart = 0;
-    stat_info.AllocationSize.QuadPart = 0;
-  } else {
-    stat_info.EndOfFile.QuadPart = dir_info.EndOfFile.QuadPart;
-    stat_info.AllocationSize.QuadPart = dir_info.AllocationSize.QuadPart;
-  }
+  stat_info.EndOfFile.QuadPart = dir_info.EndOfFile.QuadPart;
+  stat_info.AllocationSize.QuadPart = dir_info.AllocationSize.QuadPart;
   stat_info.ChangeTime.QuadPart = dir_info.ChangeTime.QuadPart;
   stat_info.FileId.QuadPart = dir_info.FileId.QuadPart;
+
+  if (stat_info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
+    if (!do_lstat) {
+      /* Adjust the path */
+      if (split != 0)
+        path[split - 1] = splitchar;
+
+      /* Close the directory handle */
+      CloseHandle(handle);
+
+      /* Get file handle */
+      handle = CreateFileW(path,
+                           0,
+                           0,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                           NULL);
+
+      if (handle == INVALID_HANDLE_VALUE) {
+        ret_error = GetLastError();
+        goto cleanup;
+      }
+
+      /* Read the target file name */
+      if (fs__readlink_handle(handle, (char**)&target, NULL) != 0) {
+        printf("fs__readlink_handle error: %d\n", GetLastError());
+        goto cleanup;
+      }
+
+      CloseHandle(handle);
+
+      /* Get file handle for the target */
+      handle = CreateFile(target,
+                          0,
+                          0,
+                          NULL,
+                          OPEN_EXISTING,
+                          FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                          NULL);
+      uv__free(target);
+
+      if (handle == INVALID_HANDLE_VALUE) {
+        ret_error = GetLastError();
+        goto cleanup;
+      }
+
+      nt_status = pNtQueryInformationFile(handle,
+                                          &io_status,
+                                          &file_info,
+                                          sizeof file_info,
+                                          FileAllInformation);
+
+      /* Buffer overflow (a warning status code) is expected here. */
+      if (NT_ERROR(nt_status)) {
+        SetLastError(pRtlNtStatusToDosError(nt_status));
+        return -1;
+      }
+
+      stat_info.FileAttributes = file_info.BasicInformation.FileAttributes;
+      stat_info.NumberOfLinks = file_info.StandardInformation.NumberOfLinks;
+      stat_info.FileId.QuadPart =
+          file_info.InternalInformation.IndexNumber.QuadPart;
+      stat_info.ChangeTime.QuadPart =
+          file_info.BasicInformation.ChangeTime.QuadPart;
+      stat_info.CreationTime.QuadPart =
+          file_info.BasicInformation.CreationTime.QuadPart;
+      stat_info.LastAccessTime.QuadPart =
+          file_info.BasicInformation.LastAccessTime.QuadPart;
+      stat_info.LastWriteTime.QuadPart =
+          file_info.BasicInformation.LastWriteTime.QuadPart;
+      stat_info.AllocationSize.QuadPart =
+          file_info.StandardInformation.AllocationSize.QuadPart;
+      stat_info.EndOfFile.QuadPart =
+          file_info.StandardInformation.EndOfFile.QuadPart;
+    } else {
+      stat_info.EndOfFile.QuadPart = 0;
+      stat_info.AllocationSize.QuadPart = 0;
+    }
+  }
 
   /* Finish up by getting device info from the directory handle,
    * since files presumably must live on their device. */
@@ -2159,7 +2228,8 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
 
   if (handle == INVALID_HANDLE_VALUE) {
     ret = GetLastError();
-    if (ret != ERROR_ACCESS_DENIED && ret != ERROR_SHARING_VIOLATION)
+    if (ret != ERROR_ACCESS_DENIED && ret != ERROR_SHARING_VIOLATION &&
+        ret != ERROR_CANT_ACCESS_FILE)
       return ret;
     return fs__stat_directory(path, statbuf, do_lstat, ret);
   }
