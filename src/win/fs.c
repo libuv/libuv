@@ -1953,6 +1953,93 @@ INLINE static void fs__stat_prepare_path(WCHAR* pathw) {
   }
 }
 
+INLINE static DWORD fs__stat_get_handle(HANDLE handle, WCHAR* path, int do_lstat) {
+  WCHAR* tmp_path = NULL;
+  char *target = NULL;
+  size_t len = 0;
+  int ret_error = 0;
+  size_t tmp_len = 0;
+  int i;
+
+  if (!do_lstat) {
+    /* Create a tmp path variable */
+    len = wcslen(path);
+    tmp_path = uv__malloc(sizeof(WCHAR) * (len + 1));
+    memcpy(tmp_path, path, sizeof(WCHAR) * (len + 1));
+
+    for (i = 0; i < 255; i++) {
+      /* Get file handle */
+      handle = CreateFileW(tmp_path,
+                           0,
+                           0,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_FLAG_BACKUP_SEMANTICS,
+                           NULL);
+
+      if (handle != INVALID_HANDLE_VALUE) {
+        break;
+      }
+
+      handle = CreateFileW(tmp_path,
+                           0,
+                           0,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                           NULL);
+
+      if (handle == INVALID_HANDLE_VALUE) {
+        ret_error = GetLastError();
+        goto cleanup;
+      }
+
+      if (target) {
+        uv__free(target);
+        target = NULL;
+      }
+
+      /* Read the target file name */
+      if (fs__readlink_handle(handle, (char**)&target, NULL) != 0) {
+        ret_error = GetLastError();
+        CloseHandle(handle);
+        goto cleanup;
+      }
+
+      CloseHandle(handle);
+
+      /* Convert from char* to WCHAR* */
+      uv__free(tmp_path);
+      tmp_len = uv_wtf8_length_as_utf16(target);
+      tmp_path = uv__malloc(tmp_len * sizeof(WCHAR));
+      uv_wtf8_to_utf16(target, tmp_path, tmp_len);
+    }
+
+cleanup:
+    if (target) {
+      uv__free(target);
+      target = NULL;
+    }
+    if (tmp_path) {
+      uv__free(tmp_path);
+      tmp_path = NULL;
+    }
+  } else {
+    handle = CreateFileW(path,
+                         0,
+                         0,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                         NULL);
+
+    if (handle == INVALID_HANDLE_VALUE) {
+      ret_error = GetLastError();
+    }
+  }
+  return ret_error;
+}
+
 INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
     int do_lstat, DWORD ret_error) {
   HANDLE handle = INVALID_HANDLE_VALUE;
@@ -1969,7 +2056,6 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
   size_t len;
   size_t split;
   WCHAR splitchar;
-  char *target = NULL;
   int includes_name;
 
   /* AKA strtok or wcscspn, in reverse. */
@@ -2081,40 +2167,9 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
       /* Close the directory handle */
       CloseHandle(handle);
 
-      /* Get file handle */
-      handle = CreateFileW(path,
-                           0,
-                           0,
-                           NULL,
-                           OPEN_EXISTING,
-                           FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
-                           NULL);
+      ret_error = fs__stat_get_handle(handle, path, do_lstat);
 
-      if (handle == INVALID_HANDLE_VALUE) {
-        ret_error = GetLastError();
-        goto cleanup;
-      }
-
-      /* Read the target file name */
-      if (fs__readlink_handle(handle, (char**)&target, NULL) != 0) {
-        printf("fs__readlink_handle error: %d\n", GetLastError());
-        goto cleanup;
-      }
-
-      CloseHandle(handle);
-
-      /* Get file handle for the target */
-      handle = CreateFile(target,
-                          0,
-                          0,
-                          NULL,
-                          OPEN_EXISTING,
-                          FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
-                          NULL);
-      uv__free(target);
-
-      if (handle == INVALID_HANDLE_VALUE) {
-        ret_error = GetLastError();
+      if (ret_error != 0) {
         goto cleanup;
       }
 
@@ -2126,8 +2181,7 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
 
       /* Buffer overflow (a warning status code) is expected here. */
       if (NT_ERROR(nt_status)) {
-        SetLastError(pRtlNtStatusToDosError(nt_status));
-        return -1;
+        return pRtlNtStatusToDosError(nt_status);
       }
 
       stat_info.FileAttributes = file_info.BasicInformation.FileAttributes;
