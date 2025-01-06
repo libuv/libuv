@@ -1953,7 +1953,7 @@ INLINE static void fs__stat_prepare_path(WCHAR* pathw) {
   }
 }
 
-INLINE static DWORD fs__stat_get_handle(HANDLE handle, WCHAR* path, int do_lstat) {
+INLINE static DWORD fs__stat_get_handle(HANDLE* handle, WCHAR* path, int do_lstat) {
   WCHAR* tmp_path = NULL;
   char *target = NULL;
   size_t len = 0;
