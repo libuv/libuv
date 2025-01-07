@@ -1969,7 +1969,7 @@ INLINE static DWORD fs__stat_get_handle(HANDLE* handle, WCHAR* path, int do_lsta
 
     for (i = 0; i < 255; i++) {
       /* Get file handle */
-      handle = CreateFileW(tmp_path,
+      *handle = CreateFileW(tmp_path,
                            0,
                            0,
                            NULL,
@@ -1977,11 +1977,11 @@ INLINE static DWORD fs__stat_get_handle(HANDLE* handle, WCHAR* path, int do_lsta
                            FILE_FLAG_BACKUP_SEMANTICS,
                            NULL);
 
-      if (handle != INVALID_HANDLE_VALUE) {
+      if (*handle != INVALID_HANDLE_VALUE) {
         break;
       }
 
-      handle = CreateFileW(tmp_path,
+      *handle = CreateFileW(tmp_path,
                            0,
                            0,
                            NULL,
@@ -1989,7 +1989,7 @@ INLINE static DWORD fs__stat_get_handle(HANDLE* handle, WCHAR* path, int do_lsta
                            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
                            NULL);
 
-      if (handle == INVALID_HANDLE_VALUE) {
+      if (*handle == INVALID_HANDLE_VALUE) {
         ret_error = GetLastError();
         goto cleanup;
       }
@@ -2000,13 +2000,13 @@ INLINE static DWORD fs__stat_get_handle(HANDLE* handle, WCHAR* path, int do_lsta
       }
 
       /* Read the target file name */
-      if (fs__readlink_handle(handle, (char**)&target, NULL) != 0) {
+      if (fs__readlink_handle(*handle, (char**)&target, NULL) != 0) {
         ret_error = GetLastError();
-        CloseHandle(handle);
+        CloseHandle(*handle);
         goto cleanup;
       }
 
-      CloseHandle(handle);
+      CloseHandle(*handle);
 
       /* Convert from char* to WCHAR* */
       uv__free(tmp_path);
@@ -2025,7 +2025,7 @@ cleanup:
       tmp_path = NULL;
     }
   } else {
-    handle = CreateFileW(path,
+    *handle = CreateFileW(path,
                          0,
                          0,
                          NULL,
@@ -2033,7 +2033,7 @@ cleanup:
                          FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
                          NULL);
 
-    if (handle == INVALID_HANDLE_VALUE) {
+    if (*handle == INVALID_HANDLE_VALUE) {
       ret_error = GetLastError();
     }
   }
@@ -2043,6 +2043,7 @@ cleanup:
 INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
     int do_lstat, DWORD ret_error) {
   HANDLE handle = INVALID_HANDLE_VALUE;
+  HANDLE tmp_handle = INVALID_HANDLE_VALUE;
   FILE_STAT_BASIC_INFORMATION stat_info;
   FILE_ID_FULL_DIR_INFORMATION dir_info;
   FILE_FS_VOLUME_INFORMATION volume_info;
@@ -2080,6 +2081,7 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
     /* If there is no filename, consider it as a relative folder path */
     if (!includes_name) {
       split = len;
+      splitchar = path[split - 1];
     /* Else, split it */
     } else {
       splitchar = path[split - 1];
@@ -2089,6 +2091,7 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
   } else {
     path_dirpath = path;
     split = len;
+    splitchar = path[split - 1];
   }
   path_filename = &path[split];
 
@@ -2158,20 +2161,23 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
   stat_info.ChangeTime.QuadPart = dir_info.ChangeTime.QuadPart;
   stat_info.FileId.QuadPart = dir_info.FileId.QuadPart;
 
-  if (stat_info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-    if (!do_lstat) {
-      /* Adjust the path */
-      if (split != 0)
-        path[split - 1] = splitchar;
+  if (!do_lstat) {
+    /* Adjust the path */
+    if (split != 0)
+      path[split - 1] = splitchar;
 
-      /* Close the directory handle */
-      CloseHandle(handle);
+    tmp_handle = handle;
+    handle = INVALID_HANDLE_VALUE;
 
-      ret_error = fs__stat_get_handle(handle, path, do_lstat);
+    ret_error = fs__stat_get_handle(&handle, path, do_lstat);
 
-      if (ret_error != 0) {
-        goto cleanup;
-      }
+    /* If there occurs an error while getting file handle, continue
+     * with the directory handle */
+    if (ret_error != 0) {
+      handle = tmp_handle;
+    } else {
+      /* Close directory handle and continue with file handle */
+      CloseHandle(tmp_handle);
 
       nt_status = pNtQueryInformationFile(handle,
                                           &io_status,
@@ -2181,7 +2187,8 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
 
       /* Buffer overflow (a warning status code) is expected here. */
       if (NT_ERROR(nt_status)) {
-        return pRtlNtStatusToDosError(nt_status);
+        ret_error = pRtlNtStatusToDosError(nt_status);
+        goto cleanup;
       }
 
       stat_info.FileAttributes = file_info.BasicInformation.FileAttributes;
@@ -2200,10 +2207,10 @@ INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
           file_info.StandardInformation.AllocationSize.QuadPart;
       stat_info.EndOfFile.QuadPart =
           file_info.StandardInformation.EndOfFile.QuadPart;
-    } else {
-      stat_info.EndOfFile.QuadPart = 0;
-      stat_info.AllocationSize.QuadPart = 0;
     }
+  } else {
+    stat_info.EndOfFile.QuadPart = 0;
+    stat_info.AllocationSize.QuadPart = 0;
   }
 
   /* Finish up by getting device info from the directory handle,
