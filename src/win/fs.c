@@ -183,7 +183,7 @@ void uv__fs_init(void) {
 
 
 INLINE static int fs__readlink_handle(HANDLE handle,
-                                      char** target_ptr,
+                                      WCHAR** target_ptr,
                                       size_t* target_len_ptr) {
   char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
   REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*) buffer;
@@ -315,7 +315,15 @@ INLINE static int fs__readlink_handle(HANDLE handle,
   }
 
   assert(target_ptr == NULL || *target_ptr == NULL);
-  return uv_utf16_to_wtf8(w_target, w_target_len, target_ptr, target_len_ptr);
+  if (target_ptr) {
+    *target_ptr = uv__malloc((w_target_len + 1) * sizeof(WCHAR));
+    memcpy(*target_ptr, w_target, w_target_len * sizeof(WCHAR));
+    (*target_ptr)[w_target_len] = L'\0';
+  }
+  if (target_len_ptr) {
+    *target_len_ptr = w_target_len;
+  }
+  return 0;
 }
 
 
@@ -1955,10 +1963,8 @@ INLINE static void fs__stat_prepare_path(WCHAR* pathw) {
 
 INLINE static DWORD fs__stat_get_handle(HANDLE* handle, WCHAR* path, int do_lstat) {
   WCHAR* tmp_path = NULL;
-  char *target = NULL;
   size_t len = 0;
   int ret_error = 0;
-  size_t tmp_len = 0;
   int i;
 
   if (!do_lstat) {
@@ -1970,68 +1976,56 @@ INLINE static DWORD fs__stat_get_handle(HANDLE* handle, WCHAR* path, int do_lsta
     for (i = 0; i < 255; i++) {
       /* Get file handle */
       *handle = CreateFileW(tmp_path,
-                           0,
-                           0,
-                           NULL,
-                           OPEN_EXISTING,
-                           FILE_FLAG_BACKUP_SEMANTICS,
-                           NULL);
+                            0,
+                            0,
+                            NULL,
+                            OPEN_EXISTING,
+                            FILE_FLAG_BACKUP_SEMANTICS,
+                            NULL);
 
       if (*handle != INVALID_HANDLE_VALUE) {
         break;
       }
 
       *handle = CreateFileW(tmp_path,
-                           0,
-                           0,
-                           NULL,
-                           OPEN_EXISTING,
-                           FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
-                           NULL);
+                            0,
+                            0,
+                            NULL,
+                            OPEN_EXISTING,
+                            FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                            NULL);
 
       if (*handle == INVALID_HANDLE_VALUE) {
         ret_error = GetLastError();
         goto cleanup;
       }
 
-      if (target) {
-        uv__free(target);
-        target = NULL;
-      }
+      uv__free(tmp_path);
+      tmp_path = NULL;
 
       /* Read the target file name */
-      if (fs__readlink_handle(*handle, (char**)&target, NULL) != 0) {
+      if (fs__readlink_handle(*handle, (WCHAR**)&tmp_path, NULL) != 0) {
         ret_error = GetLastError();
         CloseHandle(*handle);
         goto cleanup;
       }
 
       CloseHandle(*handle);
-
-      /* Convert from char* to WCHAR* */
-      uv__free(tmp_path);
-      tmp_len = uv_wtf8_length_as_utf16(target);
-      tmp_path = uv__malloc(tmp_len * sizeof(WCHAR));
-      uv_wtf8_to_utf16(target, tmp_path, tmp_len);
     }
 
 cleanup:
-    if (target) {
-      uv__free(target);
-      target = NULL;
-    }
     if (tmp_path) {
       uv__free(tmp_path);
       tmp_path = NULL;
     }
   } else {
     *handle = CreateFileW(path,
-                         0,
-                         0,
-                         NULL,
-                         OPEN_EXISTING,
-                         FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
-                         NULL);
+                          0,
+                          0,
+                          NULL,
+                          OPEN_EXISTING,
+                          FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                          NULL);
 
     if (*handle == INVALID_HANDLE_VALUE) {
       ret_error = GetLastError();
@@ -2041,7 +2035,8 @@ cleanup:
 }
 
 INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
-    int do_lstat, DWORD ret_error) {
+    int do_lstat) {
+  DWORD ret_error;
   HANDLE handle = INVALID_HANDLE_VALUE;
   HANDLE tmp_handle = INVALID_HANDLE_VALUE;
   FILE_STAT_BASIC_INFORMATION stat_info;
@@ -2292,7 +2287,7 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
     if (ret != ERROR_ACCESS_DENIED && ret != ERROR_SHARING_VIOLATION &&
         ret != ERROR_CANT_ACCESS_FILE)
       return ret;
-    return fs__stat_directory(path, statbuf, do_lstat, ret);
+    return fs__stat_directory(path, statbuf, do_lstat);
   }
 
   if (fs__stat_handle(handle, statbuf, do_lstat) != 0)
@@ -3049,7 +3044,8 @@ static void fs__readlink(uv_fs_t* req) {
   }
 
   assert(req->ptr == NULL);
-  if (fs__readlink_handle(handle, (char**) &req->ptr, NULL) != 0) {
+  WCHAR* target_ptr = NULL;
+  if (fs__readlink_handle(handle, (WCHAR**) &target_ptr, NULL) != 0) {
     DWORD error = GetLastError();
     SET_REQ_WIN32_ERROR(req, error);
     if (error == ERROR_NOT_A_REPARSE_POINT)
@@ -3058,6 +3054,8 @@ static void fs__readlink(uv_fs_t* req) {
     return;
   }
 
+  uv_utf16_to_wtf8(target_ptr, wcslen(target_ptr), (char**)&req->ptr, NULL);
+  uv__free(target_ptr);
   req->flags |= UV_FS_FREE_PTR;
   SET_REQ_RESULT(req, 0);
 
