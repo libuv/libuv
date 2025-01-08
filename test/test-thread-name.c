@@ -139,3 +139,51 @@ TEST_IMPL(thread_name) {
 
   return 0;
 }
+
+#define MAX_THREADS 4
+
+static void* executedThreads[MAX_THREADS] = { NULL };
+static int size;
+static uv_loop_t* loop;
+
+static unsigned short int key_exists(void* key) {
+  size_t i;
+  for (i = 0; i < MAX_THREADS; i++) {
+    if (executedThreads[i] == key) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+static void work_cb(uv_work_t* req) {
+  uv_thread_t thread = uv_thread_self();
+  req->data = &thread;
+  char tn[UV_PTHREAD_MAX_NAMELEN_NP];
+  ASSERT_OK(uv_thread_getname(&thread, tn, sizeof(tn)));
+  ASSERT_STR_EQ(tn, "libuv-worker");
+}
+
+static void after_work_cb(uv_work_t* req, int status) {
+  ASSERT_OK(status);
+  if (!key_exists(req->data)) {
+    executedThreads[size++] = req->data;
+  }
+
+  if (size == MAX_THREADS) {
+    return;
+  }
+
+  uv_queue_work(loop, req, work_cb, after_work_cb);
+}
+
+TEST_IMPL(thread_name_threadpool) {
+  uv_work_t req;
+  loop = uv_default_loop();
+  // Just to make sure all workers will be executed
+  // with the correct thread name
+  ASSERT_OK(uv_queue_work(loop, &req, work_cb, after_work_cb));
+  uv_run(loop, UV_RUN_DEFAULT);
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
