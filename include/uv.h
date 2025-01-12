@@ -412,7 +412,17 @@ typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
                               const uv_stat_t* prev,
                               const uv_stat_t* curr);
 
-typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
+#ifdef _WIN32
+typedef void (*uv_signal_cb)(uv_signal_t* handle,
+                            int signum);
+#else
+typedef void (*uv_signal_cb)(uv_signal_t* handle,
+                            int signum,
+                            int sigcode,
+                            int sigpid,
+                            int siguid,
+                            int sigval);
+#endif
 
 
 typedef enum {
@@ -1705,6 +1715,12 @@ struct uv_signal_s {
   UV_HANDLE_FIELDS
   uv_signal_cb signal_cb;
   int signum;
+#ifndef _WIN32
+  int sigcode;
+  int sigpid;
+  int siguid;
+  int sigval;
+#endif
   UV_SIGNAL_PRIVATE_FIELDS
 };
 

@@ -98,7 +98,7 @@ struct signal_ctx {
 };
 
 
-static void signal_cb(uv_signal_t* handle, int signum) {
+static void signal_cb(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   struct signal_ctx* ctx = container_of(handle, struct signal_ctx, handle);
   ASSERT_EQ(signum, ctx->signum);
   if (++ctx->ncalls == NSIGNALS) {
@@ -111,7 +111,7 @@ static void signal_cb(uv_signal_t* handle, int signum) {
   }
 }
 
-static void signal_cb_one_shot(uv_signal_t* handle, int signum) {
+static void signal_cb_one_shot(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   struct signal_ctx* ctx = container_of(handle, struct signal_ctx, handle);
   ASSERT_EQ(signum, ctx->signum);
   ASSERT_EQ(1, ++ctx->ncalls);

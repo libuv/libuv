@@ -65,14 +65,14 @@ static void increment_counter(int* counter) {
 }
 
 
-static void signal1_cb(uv_signal_t* handle, int signum) {
+static void signal1_cb(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   ASSERT_EQ(signum, SIGUSR1);
   increment_counter(&signal1_cb_counter);
   uv_signal_stop(handle);
 }
 
 
-static void signal2_cb(uv_signal_t* handle, int signum) {
+static void signal2_cb(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   ASSERT_EQ(signum, SIGUSR2);
   increment_counter(&signal2_cb_counter);
   uv_signal_stop(handle);
@@ -156,7 +156,7 @@ static void signal_handling_worker(void* context) {
 }
 
 
-static void signal_unexpected_cb(uv_signal_t* handle, int signum) {
+static void signal_unexpected_cb(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   ASSERT(0 && "signal_unexpected_cb should never be called");
 }
 

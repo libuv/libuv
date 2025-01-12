@@ -35,6 +35,10 @@
 typedef struct {
   uv_signal_t* handle;
   int signum;
+  int sigcode;
+  int sigpid;
+  int siguid;
+  int sigval;
 } uv__signal_msg_t;
 
 RB_HEAD(uv__signal_tree_s, uv_signal_s);
@@ -180,7 +184,7 @@ static uv_signal_t* uv__signal_first_handle(int signum) {
 }
 
 
-static void uv__signal_handler(int signum) {
+static void uv__signal_handler(int signum, siginfo_t *siginfo, void *ptr) {
   uv__signal_msg_t msg;
   uv_signal_t* handle;
   int saved_errno;
@@ -199,6 +203,12 @@ static void uv__signal_handler(int signum) {
     int r;
 
     msg.signum = signum;
+    if (siginfo) {
+      msg.sigcode = siginfo->si_code;
+      msg.sigpid = siginfo->si_pid;
+      msg.siguid = siginfo->si_uid;
+      msg.sigval = siginfo->si_value.sival_int;
+    }
     msg.handle = handle;
 
     /* write() should be atomic for small data chunks, so the entire message
@@ -229,8 +239,8 @@ static int uv__signal_register_handler(int signum, int oneshot) {
   memset(&sa, 0, sizeof(sa));
   if (sigfillset(&sa.sa_mask))
     abort();
-  sa.sa_handler = uv__signal_handler;
-  sa.sa_flags = SA_RESTART;
+  sa.sa_sigaction = uv__signal_handler;
+  sa.sa_flags = SA_SIGINFO | SA_RESTART;
   if (oneshot)
     sa.sa_flags |= SA_RESETHAND;
 
@@ -475,7 +485,7 @@ static void uv__signal_event(uv_loop_t* loop,
 
       if (msg->signum == handle->signum) {
         assert(!(handle->flags & UV_HANDLE_CLOSING));
-        handle->signal_cb(handle, handle->signum);
+        handle->signal_cb(handle, handle->signum, handle->sigcode, handle->sigpid, handle->siguid, handle->sigval);
       }
 
       handle->dispatched_signals++;

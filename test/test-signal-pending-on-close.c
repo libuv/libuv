@@ -34,12 +34,12 @@ static char* buf;
 static int close_cb_called;
 
 
-static void stop_loop_cb(uv_signal_t* signal, int signum) {
+static void stop_loop_cb(uv_signal_t* signal, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   ASSERT_EQ(signum, SIGPIPE);
   uv_stop(signal->loop);
 }
 
-static void signal_cb(uv_signal_t* signal, int signum) {
+static void signal_cb(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   ASSERT(0);
 }
 

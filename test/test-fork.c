@@ -236,7 +236,7 @@ TEST_IMPL(fork_socketpair_started) {
 
 static int fork_signal_cb_called;
 
-void fork_signal_to_child_cb(uv_signal_t* handle, int signum)
+void fork_signal_to_child_cb(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval)
 {
   fork_signal_cb_called = signum;
   uv_close((uv_handle_t*)handle, NULL);
@@ -375,8 +375,8 @@ TEST_IMPL(fork_signal_to_child_closed) {
   return 0;
 }
 
-static void fork_signal_cb(uv_signal_t* h, int s) {
-  fork_signal_cb_called = s;
+static void fork_signal_cb(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
+  fork_signal_cb_called = signum;
 }
 static void empty_close_cb(uv_handle_t* h){}
 

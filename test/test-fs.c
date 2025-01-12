@@ -3776,7 +3776,7 @@ static void thread_main(void* arg) {
   }
 }
 
-static void sig_func(uv_signal_t* handle, int signum) {
+static void sig_func(uv_signal_t* handle, int signum, int sigcode, int sigpid, int siguid, int sigval) {
   uv_signal_stop(handle);
 }
 
