@@ -282,6 +282,11 @@ API
     Sends the specified signal to the given PID. Check the documentation
     on :c:ref:`signal` for signal support, specially on Windows.
 
+.. c:function:: int uv_sigqueue(int pid, int signum, int sigval)
+
+    Sends the specified signal to the given PID with specified value.
+    This function is not implemented on Windows and MacOS, where it returns ``UV_ENOTSUP``.
+
 .. c:function:: uv_pid_t uv_process_get_pid(const uv_process_t* handle)
 
     Returns `handle->pid`.

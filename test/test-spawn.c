@@ -823,6 +823,38 @@ TEST_IMPL(spawn_preserve_env) {
 }
 
 
+TEST_IMPL(spawn_detached_sigqueue) {
+  int r;
+
+  init_process_options("spawn_helper4", detach_failure_cb);
+
+  options.flags |= UV_PROCESS_DETACHED;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT_OK(r);
+
+  uv_unref((uv_handle_t*) &process);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT_OK(r);
+
+  ASSERT_OK(exit_cb_called);
+
+  ASSERT_EQ(process.pid, uv_process_get_pid(&process));
+
+#ifdef __linux__
+  ASSERT_EQ(uv_sigqueue(process.pid, 0, 42), 0);
+  ASSERT_EQ(uv_sigqueue(process.pid, SIGTERM, 42), 0);
+#else
+  ASSERT_EQ(uv_sigqueue(process.pid, 0, 42), UV_ENOTSUP);
+  ASSERT_EQ(uv_sigqueue(process.pid, SIGTERM, 42), UV_ENOTSUP);
+#endif
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
 TEST_IMPL(spawn_detached) {
   int r;
 

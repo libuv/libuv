@@ -1100,6 +1100,16 @@ int uv_kill(int pid, int signum) {
 }
 
 
+int uv_sigqueue(int pid, int signum, int sigvalue) {
+#ifdef __linux__
+  union sigval value;
+  value.sival_int = sigvalue;
+  return sigqueue(pid, signum, value);
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
 void uv__process_close(uv_process_t* handle) {
   uv__queue_remove(&handle->queue);
   uv__handle_stop(handle);

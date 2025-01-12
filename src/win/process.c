@@ -1395,3 +1395,9 @@ int uv_kill(int pid, int signum) {
 
   return err;  /* err is already translated. */
 }
+
+
+int uv_sigqueue(int pid, int signum, int sigvalue) {
+  return UV_ENOTSUP;
+}
+
