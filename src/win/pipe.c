@@ -882,7 +882,8 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     handle->pipe.serv.pending_instances = default_pending_pipe_instances;
   }
 
-  if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
+  if (use_uds_pipe) {
+    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     /* Only use 1 pending instance when use unix domain socket, cause
      * call AcceptEx multiple times seems result in multiple accept events.
      * Not the expected queue behavior, that only one of them is triggered. */
@@ -921,7 +922,6 @@ int uv_pipe_bind2(uv_pipe_t* handle,
 
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
-    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     int uds_err = pipe_alloc_accept_unix_domain_socket(
         loop, handle, &handle->pipe.serv.accept_reqs[0], handle->pathname, TRUE);
     if (uds_err) {
@@ -1079,6 +1079,9 @@ int uv_pipe_connect2(uv_connect_t* req,
 
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
+    /* Set flag indicates it is a unix domain socket; */
+    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
+
     /* https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/ */
     /* a null-terminated UTF-8 file system path */
     if (flags & UV_PIPE_NO_TRUNCATE)
@@ -1181,9 +1184,6 @@ int uv_pipe_connect2(uv_connect_t* req,
         goto error;
       }
     }
-
-    /* Set flag indicates it is a unix domain socket; */
-    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
 
     /* Since we use IOCP, we can't set value to u.connect.pipeHandle
      * as it will be rewritten by the result of IOCP. Thus, we set the socket
@@ -2641,12 +2641,14 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
     /* IOCP overwrites the connect.pipeHandle, so workaround here. */
     req->u.connect.pipeHandle = (HANDLE) req->u.connect.uds_socket;
 
-    /* If it is unix domain handle, the event comes from ConnectEx IOCP. */
-    setsockopt((SOCKET) req->u.connect.pipeHandle,
-               SOL_SOCKET,
-               SO_UPDATE_CONNECT_CONTEXT,
-               NULL,
-               0);
+    if (req->u.connect.pipeHandle) {
+      /* If it is unix domain handle, the event comes from ConnectEx IOCP. */
+      setsockopt((SOCKET) req->u.connect.pipeHandle,
+                 SOL_SOCKET,
+                 SO_UPDATE_CONNECT_CONTEXT,
+                 NULL,
+                 0);
+    }
   }
 
   UNREGISTER_HANDLE_REQ(loop, handle);
