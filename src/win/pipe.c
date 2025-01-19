@@ -1147,16 +1147,11 @@ int uv_pipe_connect2(uv_connect_t* req,
     addr1.sun_family = AF_UNIX;
 
     /* ConnectEx need to be initially bound */
-    int ret = bind(client_fd, (SOCKADDR*) &addr1, sizeof(addr1));
+    int ret = bind(client_fd, (const struct sockaddr*)&addr1, sizeof(struct sockaddr_un));
     if (ret != 0) {
       err = WSAGetLastError();
       goto error;
     }
-
-    struct sockaddr_un addr2 = {0};
-    addr2.sun_family = AF_UNIX;
-    memcpy(addr2.sun_path, name, namelen);
-    addr2.sun_path[namelen] = '\0';
 
     /* Associate it with IOCP so we can get events. */
     if (CreateIoCompletionPort((HANDLE) client_fd,
@@ -1168,13 +1163,27 @@ int uv_pipe_connect2(uv_connect_t* req,
       goto error;
     }
 
+    struct sockaddr_un addr2 = {0};
+    addr2.sun_family = AF_UNIX;
+    memcpy(addr2.sun_path, name, namelen);
+    addr2.sun_path[namelen] = '\0';
+    
     memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+
+    /*
+     * https://learn.microsoft.com/en-us/windows/win32/api/mswsock/nc-mswsock-lpfn_connectex
+     * Although doc says the send buffer can be ignored, it will smash the
+     * stack if we don't actually allocate them on stack and pass them.
+     */
+    DWORD dummy_send_cnt = 0;
+    char dummy_send_buffer[512] = {0};
+
     ret = uv_wsa_connectex(client_fd,
                            (const struct sockaddr*)&addr2,
                            sizeof(struct sockaddr_un),
-                           NULL,
+                           dummy_send_buffer,
                            0,
-                           NULL,
+                           &dummy_send_cnt,
                            &req->u.io.overlapped);
 
     if (!ret) {
