@@ -25,47 +25,109 @@
 #ifdef _WIN32
 
 static int close_cb_called = 0;
-static int connect_cb_called = 0;
+static int server_connect_cb_called = 0;
+static int client_connect_cb_called = 0;
+
+static uv_pipe_t pipe_server;
+static uv_pipe_t pipe_client;
+const char *pipe_test_data = "send test through win uds pipe";
+
+static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+  buf->base = malloc(size);
+  buf->len = size;
+}
 
 static void close_cb(uv_handle_t *handle) {
   ASSERT_NOT_NULL(handle);
   close_cb_called++;
 }
 
-static void connect_cb_file(uv_connect_t *connect_req, int status) {
+static void after_write_cb(uv_write_t *req, int status) {
+  ASSERT_OK(status);
+  free(req->data);
+  free(req);
+}
+
+static void client_connect_cb(uv_connect_t *connect_req, int status) {
   ASSERT_EQ(status, 0);
-  uv_close((uv_handle_t *) connect_req->handle, close_cb);
-  connect_cb_called++;
+  client_connect_cb_called++;
+
+  // Server connected, send test data.
+  uv_buf_t bufs[1];
+  bufs[0] = uv_buf_init(pipe_test_data, strlen(pipe_test_data));
+  uv_write_t *req = malloc(sizeof(*req));
+  req->data = NULL;
+  uv_write(req, connect_req->handle, bufs, 1, after_write_cb);
+}
+
+static void read_cb(uv_stream_t *stream,
+                    ssize_t nread,
+                    const uv_buf_t *buf) {
+  // Ignore read error.
+  if (nread < 0 || !buf)
+    return;
+
+  // Test if the buffer length equal.
+  ASSERT_EQ(nread, strlen(pipe_test_data));
+
+  char read[256];
+  memcpy(read, buf->base, nread);
+  read[nread] = '\0';
+
+  // Test if data equal.
+  ASSERT_STR_EQ(read, pipe_test_data);
+
+  // Everything good, close pipe, exit loop.
+  uv_close((uv_handle_t *) &pipe_client, close_cb);
+  uv_close((uv_handle_t *) &pipe_server, close_cb);
+}
+
+static void server_connect_cb(uv_stream_t *handle, int status) {
+  ASSERT_EQ(status, 0);
+  server_connect_cb_called++;
+
+  // Client accepted, start reading.
+  uv_pipe_t *conn = malloc(sizeof(uv_pipe_t));
+  ASSERT_OK(uv_pipe_init_ex(handle->loop, conn, UV_PIPE_INIT_WIN_UDS));
+  ASSERT_OK(uv_accept(handle, (uv_stream_t*) conn));
+  ASSERT_OK(uv_read_start((uv_stream_t*) conn, alloc_cb, read_cb));
 }
 
 TEST_IMPL(pipe_win_uds) {
+  int r;
+  uv_fs_t fs;
+  uv_connect_t req;
   size_t size = MAX_PATH;
   char path[MAX_PATH];
-  ASSERT_OK(uv_os_tmpdir(path, &size));
+
+  // The windows UDS needs to be created on disk, create in temp dir.
+  r = uv_os_tmpdir(path, &size);
+  ASSERT_OK(r);
   strcat_s(path, MAX_PATH, "\\uv_pipe_win_uds");
 
-  uv_fs_t fs;
+  // Remove the existing file, the file must not exist before server bind.
   uv_fs_unlink(uv_default_loop(), &fs, path, NULL);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  uv_pipe_t server;
-  uv_pipe_t client;
-  uv_connect_t req;
-  int r;
+  // Bind server
+  r = uv_pipe_init_ex(uv_default_loop(), &pipe_server, UV_PIPE_INIT_WIN_UDS);
+  ASSERT_OK(r);
+  r = uv_pipe_bind(&pipe_server, path);
+  ASSERT_OK(r);
+  uv_listen((uv_stream_t *) &pipe_server, SOMAXCONN, server_connect_cb);
+  uv_read_start((uv_stream_t *) &pipe_server, alloc_cb, read_cb);
 
-  r = uv_pipe_init_ex(uv_default_loop(), &server, UV_PIPE_INIT_WIN_UDS);
+  // Connect client to server
+  r = uv_pipe_init_ex(uv_default_loop(), &pipe_client, UV_PIPE_INIT_WIN_UDS);
   ASSERT_OK(r);
-  r = uv_pipe_bind(&server, path);
-  ASSERT_OK(r);
+  uv_pipe_connect(&req, &pipe_client, path, client_connect_cb);
+
+  // Run the loop
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  r = uv_pipe_init_ex(uv_default_loop(), &client, UV_PIPE_INIT_WIN_UDS);
-  ASSERT_OK(r);
-  uv_pipe_connect(&req, &client, path, connect_cb_file);
-  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-
-  ASSERT_EQ(1, close_cb_called);
-  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(2, close_cb_called);
+  ASSERT_EQ(1, server_connect_cb_called);
+  ASSERT_EQ(1, client_connect_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
