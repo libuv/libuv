@@ -94,6 +94,7 @@ static void server_connect_cb(uv_stream_t *handle, int status) {
 }
 
 TEST_IMPL(pipe_win_uds) {
+#if !defined(__MINGW32__) && !defined(__MINGW64__)
   int r;
   uv_fs_t fs;
   uv_connect_t req;
@@ -128,9 +129,10 @@ TEST_IMPL(pipe_win_uds) {
   ASSERT_EQ(2, close_cb_called);
   ASSERT_EQ(1, server_connect_cb_called);
   ASSERT_EQ(1, client_connect_cb_called);
+#endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
-#endif  /* _WIN32 */
+#endif

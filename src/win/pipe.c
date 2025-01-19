@@ -103,12 +103,23 @@ static void eof_timer_destroy(uv_pipe_t* pipe);
 static void eof_timer_close_cb(uv_handle_t* handle);
 
 
-static int uv__should_use_uds_pipe(uv_pipe_t* handle, const char *s) {
-  if (!handle->pipe.conn.uds)
-    return 0;
+static int uv__win_uds_pipe_file_exists(const char* path, int* exists) {
+  if (!exists || !path) {
+    return UV_EINVAL;
+  }
 
-  /* Tell if the name is not started by the named pipe prefix */
-  return strstr(s, pipe_prefix) != s;
+  WCHAR* wpath;
+  int err = uv__convert_utf8_to_utf16(path, &wpath);
+  if (err) {
+    return err;
+  }
+
+  DWORD dwAttrib = GetFileAttributesW(wpath);
+  *exists = (dwAttrib != INVALID_FILE_ATTRIBUTES &&
+         !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+
+  free(wpath);
+  return 0;
 }
 
 
@@ -162,7 +173,10 @@ int uv_pipe_init_ex(uv_loop_t* loop, uv_pipe_t* handle, unsigned int flags) {
   handle->pipe.conn.ipc_xfer_queue_length = 0;
   handle->ipc = ipc;
   handle->pipe.conn.non_overlapped_writes_tail = NULL;
-  handle->pipe.conn.uds = uds;
+
+  if (uds) {
+    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
+  }
 
   return 0;
 }
@@ -842,7 +856,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     return UV_EINVAL;
   }
 
-  int use_uds_pipe = uv__should_use_uds_pipe(handle, name);
+  int use_uds_pipe = (handle->flags & UV_HANDLE_WIN_UDS_PIPE) != 0;
 
 #if !defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
@@ -883,7 +897,18 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   }
 
   if (use_uds_pipe) {
-    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
+    int exists;
+    err = uv__win_uds_pipe_file_exists(name_copy, &exists);
+    if (err) {
+      goto error;
+    }
+
+    /* The uds file must not exist before bind. */
+    if (exists) {
+      err = UV_EEXIST;
+      goto error;
+    }
+
     /* Only use 1 pending instance when use unix domain socket, cause
      * call AcceptEx multiple times seems result in multiple accept events.
      * Not the expected queue behavior, that only one of them is triggered. */
@@ -1069,7 +1094,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     return UV_EINVAL;
   }
 
-  int use_uds_pipe = uv__should_use_uds_pipe(handle, name);
+  int use_uds_pipe = (handle->flags & UV_HANDLE_WIN_UDS_PIPE) != 0;
 
 #if !defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
@@ -1079,9 +1104,6 @@ int uv_pipe_connect2(uv_connect_t* req,
 
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
-    /* Set flag indicates it is a unix domain socket; */
-    handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
-
     /* https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/ */
     /* a null-terminated UTF-8 file system path */
     if (flags & UV_PIPE_NO_TRUNCATE)
@@ -1100,6 +1122,20 @@ int uv_pipe_connect2(uv_connect_t* req,
 
   memcpy(name_copy, name, namelen);
   name_copy[namelen] = '\0';
+
+  if (use_uds_pipe) {
+    int exists;
+    err = uv__win_uds_pipe_file_exists(name_copy, &exists);
+    if (err) {
+      goto error;
+    }
+
+    /* The uds file must have been created by server. */
+    if (!exists) {
+      err = UV_ENOENT;
+      goto error;
+    }
+  }
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
     err = ERROR_INVALID_PARAMETER;
