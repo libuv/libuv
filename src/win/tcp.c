@@ -576,6 +576,10 @@ int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
       return handle->delayed_error;
   }
 
+  if (!uv_wsa_acceptex) {
+    return WSAEAFNOSUPPORT;
+  }
+
   /* If this flag is set, we already made this listen call in xfer. */
   if (!(handle->flags & UV_HANDLE_SHARED_TCP_SOCKET) &&
       listen(handle->socket, backlog) == SOCKET_ERROR) {
@@ -791,6 +795,10 @@ static int uv__tcp_try_connect(uv_connect_t* req,
       return err;
     if (handle->delayed_error != 0)
       goto out;
+  }
+
+  if (!uv_wsa_connectex) {
+    return WSAEAFNOSUPPORT;
   }
 
   /* This makes connect() fail instantly if the target port on the localhost
@@ -1599,6 +1607,10 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
     goto wsaerror;
   if (!SetHandleInformation((HANDLE) client1, HANDLE_FLAG_INHERIT, 0))
     goto error;
+  if (!uv_wsa_acceptex) {
+    err = WSAEAFNOSUPPORT;
+    goto cleanup;
+  }
   memset(&overlap, 0, sizeof(overlap));
   if (!uv_wsa_acceptex(server,
                        client1,

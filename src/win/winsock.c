@@ -130,9 +130,9 @@ void uv__winsock_init(void) {
     const GUID wsaid_connectex = WSAID_CONNECTEX;
 
     if (!uv__get_extension_function(
-            dummy, wsaid_acceptex, (void**)uv_wsa_acceptex) ||
+            dummy, wsaid_acceptex, (void**)&uv_wsa_acceptex) ||
         !uv__get_extension_function(
-            dummy, wsaid_connectex, (void**)uv_wsa_connectex)) {
+            dummy, wsaid_connectex, (void**)&uv_wsa_connectex)) {
       uv_fatal_error(WSAGetLastError(), "WSAIoctl");
     }
 

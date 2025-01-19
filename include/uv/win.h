@@ -479,7 +479,14 @@ typedef struct {
 #define uv_pipe_connection_fields                                             \
   uv_timer_t* eof_timer;                                                      \
   uv_write_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
-  DWORD ipc_remote_pid;                                                       \
+  union {                                                                     \
+    DWORD ipc_remote_pid;                                                     \
+    /* TODO: reuse this field for ABI compat, since IPC can't work together
+     * with UDS, so use this field indicating the enable of unix domain socket
+     * on Windows.
+     */                                                                       \
+    int uds;                                                                  \
+  };                                                                          \
   union {                                                                     \
     uint32_t payload_remaining;                                               \
     uint64_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \

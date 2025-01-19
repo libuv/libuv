@@ -103,7 +103,10 @@ static void eof_timer_destroy(uv_pipe_t* pipe);
 static void eof_timer_close_cb(uv_handle_t* handle);
 
 
-static int uv__should_use_uds_pipe(const char *s) {
+static int uv__should_use_uds_pipe(uv_pipe_t* handle, const char *s) {
+  if (!handle->pipe.conn.uds)
+    return 0;
+
   /* Tell if the name is not started by the named pipe prefix */
   return strstr(s, pipe_prefix) != s;
 }
@@ -136,8 +139,20 @@ static void uv__unique_pipe_name(unsigned long long ptr, char* name, size_t size
 
 
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
-  uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
+  return uv_pipe_init_ex(loop, handle, ipc ? UV_PIPE_INIT_IPC : 0);
+}
 
+
+int uv_pipe_init_ex(uv_loop_t* loop, uv_pipe_t* handle, unsigned int flags) {
+  int ipc = (flags & UV_PIPE_INIT_IPC) != 0;
+  int uds = (flags & UV_PIPE_INIT_WIN_UDS) != 0;
+
+  if (ipc && uds) {
+    // Unix domain socket on Windows doesn't work with IPC mode currently.
+    return EINVAL;
+  }
+
+  uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
   handle->reqs_pending = 0;
   handle->handle = INVALID_HANDLE_VALUE;
   handle->name = NULL;
@@ -147,6 +162,7 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   handle->pipe.conn.ipc_xfer_queue_length = 0;
   handle->ipc = ipc;
   handle->pipe.conn.non_overlapped_writes_tail = NULL;
+  handle->pipe.conn.uds = uds;
 
   return 0;
 }
@@ -826,7 +842,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     return UV_EINVAL;
   }
 
-  int use_uds_pipe = uv__should_use_uds_pipe(name);
+  int use_uds_pipe = uv__should_use_uds_pipe(handle, name);
 
 #if !defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
@@ -905,9 +921,6 @@ int uv_pipe_bind2(uv_pipe_t* handle,
 
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
-    /*
-     * Prefix not match named pipe, use unix domain socket.
-     */
     handle->flags |= UV_HANDLE_WIN_UDS_PIPE;
     int uds_err = pipe_alloc_accept_unix_domain_socket(
         loop, handle, &handle->pipe.serv.accept_reqs[0], handle->pathname, TRUE);
@@ -1056,7 +1069,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     return UV_EINVAL;
   }
 
-  int use_uds_pipe = uv__should_use_uds_pipe(name);
+  int use_uds_pipe = uv__should_use_uds_pipe(handle, name);
 
 #if !defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
@@ -1338,7 +1351,6 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
                SO_LINGER,
                (const char*)&l,
                sizeof(l));
-
   }
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
