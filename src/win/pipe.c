@@ -905,18 +905,6 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   }
 
   if (use_uds_pipe) {
-    int exists;
-    err = uv__win_uds_pipe_file_exists(name_copy, &exists);
-    if (err) {
-      goto error;
-    }
-
-    /* The uds file must not exist before bind. */
-    if (exists) {
-      err = UV_EEXIST;
-      goto error;
-    }
-
     /* Only use 1 pending instance when use unix domain socket, cause
      * call AcceptEx multiple times seems result in multiple accept events.
      * Not the expected queue behavior, that only one of them is triggered. */
@@ -952,13 +940,33 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (err) {
     goto error;
   }
-
+  
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
+    int exists;
+    err = uv__win_uds_pipe_file_exists(handle->pathname, &exists);
+    if (err) {
+      goto error;
+    }
+
+    /* The uds file must not exist before bind. */
+    if (exists) {
+      err = UV_EEXIST;
+      goto error;
+    }
+
     int uds_err = pipe_alloc_accept_unix_domain_socket(
         loop, handle, &handle->pipe.serv.accept_reqs[0], handle->pathname, TRUE);
     if (uds_err) {
-      err = uv_translate_sys_error(uds_err);
+      if (uds_err == WSAENETDOWN) {
+        /*
+         * Typically it means the file at pathname cannot be created,
+         * possibly bad parent directory in path.
+         */
+        err = UV_EINVAL;
+      } else {
+        err = uv_translate_sys_error(uds_err);
+      }
       goto error;
     }
 
@@ -1131,20 +1139,6 @@ int uv_pipe_connect2(uv_connect_t* req,
   memcpy(name_copy, name, namelen);
   name_copy[namelen] = '\0';
 
-  if (use_uds_pipe) {
-    int exists;
-    err = uv__win_uds_pipe_file_exists(name_copy, &exists);
-    if (err) {
-      goto error;
-    }
-
-    /* The uds file must have been created by server. */
-    if (!exists) {
-      err = UV_ENOENT;
-      goto error;
-    }
-  }
-
   if (handle->flags & UV_HANDLE_PIPESERVER) {
     err = ERROR_INVALID_PARAMETER;
     goto error;
@@ -1170,9 +1164,21 @@ int uv_pipe_connect2(uv_connect_t* req,
     err = ERROR_NO_UNICODE_TRANSLATION;
     goto error;
   }
-
+  
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
+    int exists;
+    err = uv__win_uds_pipe_file_exists(handle->pathname, &exists);
+    if (err) {
+      goto error;
+    }
+
+    /* The uds file must have been created by server. */
+    if (!exists) {
+      err = UV_ENOENT;
+      goto error;
+    }
+
     /*
      * If prefix is not "\\.\pipe", we assume it is a Unix Domain Socket.
      * Although "NamedPipe" is a Windows concept, however in libuv, it has

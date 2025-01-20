@@ -24,6 +24,10 @@
 
 #ifdef _WIN32
 
+#if !defined(__MINGW32__) && !defined(__MINGW64__)
+#define UV_SUPPORTS_WIN_UDS
+#endif
+
 static int close_cb_called = 0;
 static int server_connect_cb_called = 0;
 static int client_connect_cb_called = 0;
@@ -94,7 +98,7 @@ static void server_connect_cb(uv_stream_t *handle, int status) {
 }
 
 TEST_IMPL(pipe_win_uds) {
-#if !defined(__MINGW32__) && !defined(__MINGW64__)
+#if defined(UV_SUPPORTS_WIN_UDS)
   int r;
   uv_fs_t fs;
   uv_connect_t req;
@@ -129,6 +133,47 @@ TEST_IMPL(pipe_win_uds) {
   ASSERT_EQ(2, close_cb_called);
   ASSERT_EQ(1, server_connect_cb_called);
   ASSERT_EQ(1, client_connect_cb_called);
+#endif
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+static void bad_name_connect_cb(uv_connect_t *connect_req, int status) {
+  ASSERT_EQ(status, UV_ENOENT);
+}
+
+
+TEST_IMPL(pipe_win_uds_bad_name) {
+#if defined(UV_SUPPORTS_WIN_UDS)
+  int r;
+  uv_connect_t req;
+  uv_pipe_t pipe_server_1;
+  uv_pipe_t pipe_server_2;
+  uv_pipe_t pipe_client_1;
+  const char * path_1 = "not/exist/file/path";
+  const char * path_2 = "test/fixtures/empty_file";
+
+  // Bind server 1 which has a bad path
+  r = uv_pipe_init_ex(uv_default_loop(), &pipe_server_1, UV_PIPE_INIT_WIN_UDS);
+  ASSERT_OK(r);
+  r = uv_pipe_bind(&pipe_server_1, path_1);
+  ASSERT_EQ(r, UV_EINVAL);
+  
+  // Bind server 2 which file exists
+  r = uv_pipe_init_ex(uv_default_loop(), &pipe_server_2, UV_PIPE_INIT_WIN_UDS);
+  ASSERT_OK(r);
+  r = uv_pipe_bind(&pipe_server_2, path_2);
+  ASSERT_EQ(r, UV_EEXIST);
+
+  // Connect client to server with bad name
+  r = uv_pipe_init_ex(uv_default_loop(), &pipe_client_1, UV_PIPE_INIT_WIN_UDS);
+  ASSERT_OK(r);
+  uv_pipe_connect(&req, &pipe_client_1, path_1, bad_name_connect_cb);
+
+  // Run the loop
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 #endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());

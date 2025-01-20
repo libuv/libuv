@@ -216,6 +216,7 @@ TEST_DECLARE   (pipe_sendmsg)
 TEST_DECLARE   (pipe_server_close)
 #ifdef _WIN32
 TEST_DECLARE   (pipe_win_uds)
+TEST_DECLARE   (pipe_win_uds_bad_name)
 #endif
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
@@ -633,6 +634,7 @@ TASK_LIST_START
   TEST_ENTRY_CUSTOM (pipe_set_non_blocking, 0, 0, 20000)
 #ifdef _WIN32
   TEST_ENTRY   (pipe_win_uds)
+  TEST_ENTRY   (pipe_win_uds_bad_name)
 #endif
 
   TEST_ENTRY  (pipe_set_chmod)
