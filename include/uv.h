@@ -868,8 +868,8 @@ enum uv_pipe_init_flags {
   UV_PIPE_INIT_IPC = 1u << 0,
 
   /*
-   * Use the name as Unix Domain Socket filepath instead of NamedPipe
-   * name on Windows.
+   * Use Unix Domain Socket instead of NamedPipe on Windows. Will validate
+   * the `name` as a file path when calling bind / connect if this flag is set.
    */
   UV_PIPE_INIT_WIN_UDS = 1u << 1,
 };

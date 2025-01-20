@@ -377,7 +377,8 @@ typedef struct {
       HANDLE pipeHandle;                                                      \
       DWORD duplex_flags;                                                     \
       /* When using unix domain socket, ConnectEx IOCP result will overwrite  
-       * result + pipeHandle, to keep the ABI, reusing the name field.
+       * result + pipeHandle, to keep the ABI, reusing the name field to store
+       * the pending uds_socket for connect handler.
        */                                                                     \
       union {                                                                 \
         WCHAR* name;                                                          \
@@ -492,6 +493,10 @@ typedef struct {
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   HANDLE handle;                                                              \
+  /*
+   * The uds doesn't use wchar name, reuse this memory to store raw utf-8 name
+   * while keep the ABI compact.
+   */                                                                         \
   union {                                                                     \
     char* pathname;                                                           \
     WCHAR* name;                                                              \

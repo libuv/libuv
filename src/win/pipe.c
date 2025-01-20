@@ -102,7 +102,12 @@ static void eof_timer_cb(uv_timer_t* timer);
 static void eof_timer_destroy(uv_pipe_t* pipe);
 static void eof_timer_close_cb(uv_handle_t* handle);
 
-
+/*
+ * When use with bind, the file path must not exist for successful creation
+ * of server socket. When use with connect, the file path must exist so that
+ * the client socket can connect to.
+ * The UDS on Windows only supports this pathname mode.
+ */
 static int uv__win_uds_pipe_file_exists(const char* path, int* exists) {
   if (!exists || !path) {
     return UV_EINVAL;
@@ -154,6 +159,9 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 }
 
 
+/*
+ * Init pipe with flags.
+ */
 int uv_pipe_init_ex(uv_loop_t* loop, uv_pipe_t* handle, unsigned int flags) {
   int ipc = (flags & UV_PIPE_INIT_IPC) != 0;
   int uds = (flags & UV_PIPE_INIT_WIN_UDS) != 0;
@@ -259,7 +267,7 @@ static void close_pipe(uv_pipe_t* pipe) {
   pipe->handle = INVALID_HANDLE_VALUE;
 }
 
-/* Pipe pair doesn't use unix domain socket */
+/* Pipe pair use named pipe only, no uds support. */
 static int uv__pipe_server(
     HANDLE* pipeHandle_ptr, DWORD access,
     char* name, size_t nameSize, unsigned long long random) {
@@ -300,7 +308,7 @@ static int uv__pipe_server(
 }
 
 
-/* Pipe pair doesn't use unix domain socket */
+/* Pipe pair use named pipe only, no uds support. */
 static int uv__create_pipe_pair(
     HANDLE* server_pipe_ptr, HANDLE* client_pipe_ptr,
     unsigned int server_flags, unsigned int client_flags,
@@ -401,7 +409,7 @@ static int uv__create_pipe_pair(
 }
 
 
-/* Pipe pair doesn't use unix domain socket */
+/* Pipe pair use named pipe only, no uds support. */
 int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
   uv_file temp[2];
   int err;
@@ -447,7 +455,7 @@ int uv_pipe(uv_file fds[2], int read_flags, int write_flags) {
 }
 
 
-/* Pipe pair doesn't use unix domain socket */
+/* Pipe pair use named pipe only, no uds support. */
 int uv__create_stdio_pipe_pair(uv_loop_t* loop,
     uv_pipe_t* parent_pipe, HANDLE* child_pipe_ptr, unsigned int flags) {
   /* The parent_pipe is always the server_pipe and kept by libuv.
