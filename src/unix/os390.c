@@ -19,6 +19,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "uv.h"
 #include "internal.h"
 #include <sys/ioctl.h>
 #include <net/if.h>
@@ -30,6 +31,7 @@
 #include <sys/msg.h>
 #include <sys/resource.h>
 #include "zos-base.h"
+#include "zos-sys-info.h"
 #if defined(__clang__)
 #include "csrsic.h"
 #else
@@ -65,9 +67,6 @@
 
 /* Total number of frames currently on all available frame queues. */
 #define RCEAFC_OFFSET     0x088
-
-/* CPC model length from the CSRSI Service. */
-#define CPCMODEL_LENGTH   16
 
 /* Pointer to the home (current) ASCB. */
 #define PSAAOLD           0x224
@@ -198,6 +197,11 @@ uint64_t uv_get_constrained_memory(void) {
 }
 
 
+uint64_t uv_get_available_memory(void) {
+  return uv_get_free_memory();
+}
+
+
 int uv_resident_set_memory(size_t* rss) {
   char* ascb;
   char* rax;
@@ -253,9 +257,12 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   idx = 0;
   while (idx < *count) {
     cpu_info->speed = *(int*)(info.siv1v2si22v1.si22v1cpucapability);
-    cpu_info->model = uv__malloc(CPCMODEL_LENGTH + 1);
-    memset(cpu_info->model, '\0', CPCMODEL_LENGTH + 1);
-    memcpy(cpu_info->model, info.siv1v2si11v1.si11v1cpcmodel, CPCMODEL_LENGTH);
+    cpu_info->model = uv__malloc(ZOSCPU_MODEL_LENGTH + 1);
+    if (cpu_info->model == NULL) {
+      uv_free_cpu_info(*cpu_infos, idx);
+      return UV_ENOMEM; 
+    }
+    __get_cpu_model(cpu_info->model, ZOSCPU_MODEL_LENGTH + 1);
     cpu_info->cpu_times.user = cpu_usage_avg;
     /* TODO: implement the following */
     cpu_info->cpu_times.sys = 0;
@@ -278,7 +285,9 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   __net_ifconf6header_t ifc;
   __net_ifconf6entry_t* ifr;
   __net_ifconf6entry_t* p;
-  __net_ifconf6entry_t flg;
+  unsigned int i;
+  int count_names;
+  unsigned char netmask[16] = {0};
 
   *count = 0;
   /* Assume maximum buffer size allowable */
@@ -287,24 +296,33 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   if (0 > (sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP)))
     return UV__ERR(errno);
 
-  ifc.__nif6h_version = 1;
-  ifc.__nif6h_buflen = maxsize;
-  ifc.__nif6h_buffer = uv__calloc(1, maxsize);;
+  ifc.__nif6h_buffer = uv__calloc(1, maxsize);
 
-  if (ioctl(sockfd, SIOCGIFCONF6, &ifc) == -1) {
+  if (ifc.__nif6h_buffer == NULL) {
     uv__close(sockfd);
-    return UV__ERR(errno);
+    return UV_ENOMEM;
   }
 
+  ifc.__nif6h_version = 1;
+  ifc.__nif6h_buflen = maxsize;
 
-  *count = 0;
+  if (ioctl(sockfd, SIOCGIFCONF6, &ifc) == -1) {
+    /* This will error on a system that does not support IPv6. However, we want
+     * to treat this as there being 0 interfaces so we can continue to get IPv4
+     * interfaces in uv_interface_addresses(). So return 0 instead of the error.
+     */
+    uv__free(ifc.__nif6h_buffer);
+    uv__close(sockfd);
+    errno = 0;
+    return 0;
+  }
+
   ifr = (__net_ifconf6entry_t*)(ifc.__nif6h_buffer);
   while ((char*)ifr < (char*)ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
     p = ifr;
     ifr = (__net_ifconf6entry_t*)((char*)ifr + ifc.__nif6h_entrylen);
 
-    if (!(p->__nif6e_addr.sin6_family == AF_INET6 ||
-          p->__nif6e_addr.sin6_family == AF_INET))
+    if (!(p->__nif6e_addr.sin6_family == AF_INET6))
       continue;
 
     if (!(p->__nif6e_flags & _NIF6E_FLAGS_ON_LINK_ACTIVE))
@@ -313,21 +331,28 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
     ++(*count);
   }
 
+  if ((*count) == 0) {
+    uv__free(ifc.__nif6h_buffer);
+    uv__close(sockfd);
+    return 0;
+  }
+
   /* Alloc the return interface structs */
-  *addresses = uv__malloc(*count * sizeof(uv_interface_address_t));
+  *addresses = uv__calloc(1, *count * sizeof(uv_interface_address_t));
   if (!(*addresses)) {
+    uv__free(ifc.__nif6h_buffer);
     uv__close(sockfd);
     return UV_ENOMEM;
   }
   address = *addresses;
 
+  count_names = 0;
   ifr = (__net_ifconf6entry_t*)(ifc.__nif6h_buffer);
   while ((char*)ifr < (char*)ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
     p = ifr;
     ifr = (__net_ifconf6entry_t*)((char*)ifr + ifc.__nif6h_entrylen);
 
-    if (!(p->__nif6e_addr.sin6_family == AF_INET6 ||
-          p->__nif6e_addr.sin6_family == AF_INET))
+    if (!(p->__nif6e_addr.sin6_family == AF_INET6))
       continue;
 
     if (!(p->__nif6e_flags & _NIF6E_FLAGS_ON_LINK_ACTIVE))
@@ -335,20 +360,41 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
 
     /* All conditions above must match count loop */
 
-    address->name = uv__strdup(p->__nif6e_name);
+    i = 0;
+    /* Ignore EBCDIC space (0x40) padding in name */
+    while (i < ARRAY_SIZE(p->__nif6e_name) &&
+           p->__nif6e_name[i] != 0x40 &&
+           p->__nif6e_name[i] != 0)
+      ++i;
+    address->name = uv__malloc(i + 1);
+    if (address->name == NULL) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.__nif6h_buffer);
+      uv__close(sockfd);
+      return UV_ENOMEM;
+    }
+    memcpy(address->name, p->__nif6e_name, i);
+    address->name[i] = '\0';
+    __e2a_s(address->name);
+    count_names++;
 
-    if (p->__nif6e_addr.sin6_family == AF_INET6)
-      address->address.address6 = *((struct sockaddr_in6*) &p->__nif6e_addr);
-    else
-      address->address.address4 = *((struct sockaddr_in*) &p->__nif6e_addr);
+    address->address.address6 = *((struct sockaddr_in6*) &p->__nif6e_addr);
 
-    /* TODO: Retrieve netmask using SIOCGIFNETMASK ioctl */
+    for (i = 0; i < (p->__nif6e_prefixlen / 8); i++)
+      netmask[i] = 0xFF;
 
-    address->is_internal = flg.__nif6e_flags & _NIF6E_FLAGS_LOOPBACK ? 1 : 0;
-    memset(address->phys_addr, 0, sizeof(address->phys_addr));
+    if (p->__nif6e_prefixlen % 8)
+      netmask[i] = 0xFF << (8 - (p->__nif6e_prefixlen % 8));
+
+    address->netmask.netmask6.sin6_len = p->__nif6e_prefixlen;
+    memcpy(&(address->netmask.netmask6.sin6_addr), netmask, 16);
+    address->netmask.netmask6.sin6_family = AF_INET6;
+
+    address->is_internal = p->__nif6e_flags & _NIF6E_FLAGS_LOOPBACK ? 1 : 0;
     address++;
   }
 
+  uv__free(ifc.__nif6h_buffer);
   uv__close(sockfd);
   return 0;
 }
@@ -362,14 +408,18 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   struct ifreq flg;
   struct ifreq* ifr;
   struct ifreq* p;
+  uv_interface_address_t* addresses_v6;
   int count_v6;
+  unsigned int i;
+  int rc;
+  int count_names;
 
   *count = 0;
   *addresses = NULL;
 
   /* get the ipv6 addresses first */
-  uv_interface_address_t* addresses_v6;
-  uv__interface_addresses_v6(&addresses_v6, &count_v6);
+  if ((rc = uv__interface_addresses_v6(&addresses_v6, &count_v6)) != 0)
+    return rc;
 
   /* now get the ipv4 addresses */
 
@@ -377,12 +427,27 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   maxsize = 16384;
 
   sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
-  if (0 > sockfd)
+  if (0 > sockfd) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
     return UV__ERR(errno);
+  }
 
   ifc.ifc_req = uv__calloc(1, maxsize);
+
+  if (ifc.ifc_req == NULL) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
+    uv__close(sockfd);
+    return UV_ENOMEM;
+  }
+
   ifc.ifc_len = maxsize;
+
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
+    uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return UV__ERR(errno);
   }
@@ -403,6 +468,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
+      if (count_v6)
+        uv_free_interface_addresses(addresses_v6, count_v6);
+      uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV__ERR(errno);
     }
@@ -413,27 +481,35 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     (*count)++;
   }
 
-  if (*count == 0) {
+  if (*count == 0 && count_v6 == 0) {
+    uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return 0;
   }
 
   /* Alloc the return interface structs */
-  *addresses = uv__malloc((*count + count_v6) *
+  *addresses = uv__calloc(1, (*count + count_v6) *
                           sizeof(uv_interface_address_t));
 
   if (!(*addresses)) {
+    if (count_v6)
+      uv_free_interface_addresses(addresses_v6, count_v6);
+    uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return UV_ENOMEM;
   }
   address = *addresses;
 
-  /* copy over the ipv6 addresses */
-  memcpy(address, addresses_v6, count_v6 * sizeof(uv_interface_address_t));
-  address += count_v6;
-  *count += count_v6;
-  uv__free(addresses_v6);
+  /* copy over the ipv6 addresses if any are found */
+  if (count_v6) {
+    memcpy(address, addresses_v6, count_v6 * sizeof(uv_interface_address_t));
+    address += count_v6;
+    *count += count_v6;
+    /* free ipv6 addresses, but keep address names */
+    uv__free(addresses_v6);
+  }
 
+  count_names = *count;
   ifr = ifc.ifc_req;
   while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
     p = ifr;
@@ -446,6 +522,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV_ENOSYS;
     }
@@ -455,22 +533,43 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     /* All conditions above must match count loop */
 
-    address->name = uv__strdup(p->ifr_name);
+    i = 0;
+    /* Ignore EBCDIC space (0x40) padding in name */
+    while (i < ARRAY_SIZE(p->ifr_name) &&
+           p->ifr_name[i] != 0x40 &&
+           p->ifr_name[i] != 0)
+      ++i;
+    address->name = uv__malloc(i + 1);
+    if (address->name == NULL) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.ifc_req);
+      uv__close(sockfd);
+      return UV_ENOMEM;
+    }
+    memcpy(address->name, p->ifr_name, i);
+    address->name[i] = '\0';
+    __e2a_s(address->name);
+    count_names++;
 
-    if (p->ifr_addr.sa_family == AF_INET6) {
-      address->address.address6 = *((struct sockaddr_in6*) &p->ifr_addr);
-    } else {
-      address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
+    address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
+
+    if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1) {
+      uv_free_interface_addresses(*addresses, count_names);
+      uv__free(ifc.ifc_req);
+      uv__close(sockfd);
+      return UV__ERR(errno);
     }
 
+    address->netmask.netmask4 = *((struct sockaddr_in*) &p->ifr_addr);
+    address->netmask.netmask4.sin_family = AF_INET;
     address->is_internal = flg.ifr_flags & IFF_LOOPBACK ? 1 : 0;
-    memset(address->phys_addr, 0, sizeof(address->phys_addr));
     address++;
   }
 
 #undef ADDR_SIZE
 #undef MAX
 
+  uv__free(ifc.ifc_req);
   uv__close(sockfd);
   return 0;
 }
@@ -529,26 +628,16 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__fs_event_close(uv_fs_event_t* handle) {
-  uv_fs_event_stop(handle);
-}
-
-
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
   return 0;
 }
 
 
-int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
-                      const char* filename, unsigned int flags) {
+static int os390_regfileint(uv_fs_event_t* handle, char* path) {
   uv__os390_epoll* ep;
   _RFIS reg_struct;
-  char* path;
   int rc;
-
-  if (uv__is_active(handle))
-    return UV_EINVAL;
 
   ep = handle->loop->ep;
   assert(ep->msg_queue != -1);
@@ -558,17 +647,10 @@ int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
   reg_struct.__rfis_type = 1;
   memcpy(reg_struct.__rfis_utok, &handle, sizeof(handle));
 
-  path = uv__strdup(filename);
-  if (path == NULL)
-    return UV_ENOMEM;
-
   rc = __w_pioctl(path, _IOCC_REGFILEINT, sizeof(reg_struct), &reg_struct);
   if (rc != 0)
     return UV__ERR(errno);
 
-  uv__handle_start(handle);
-  handle->path = path;
-  handle->cb = cb;
   memcpy(handle->rfis_rftok, reg_struct.__rfis_rftok,
          sizeof(handle->rfis_rftok));
 
@@ -576,7 +658,33 @@ int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
 }
 
 
-int uv_fs_event_stop(uv_fs_event_t* handle) {
+int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
+                      const char* filename, unsigned int flags) {
+  char* path;
+  int rc;
+
+  if (uv__is_active(handle))
+    return UV_EINVAL;
+
+  path = uv__strdup(filename);
+  if (path == NULL)
+    return UV_ENOMEM;
+
+  rc = os390_regfileint(handle, path);
+  if (rc != 0) {
+    uv__free(path);
+    return rc;
+  }
+
+  uv__handle_start(handle);
+  handle->path = path;
+  handle->cb = cb;
+
+  return 0;
+}
+
+
+int uv__fs_event_stop(uv_fs_event_t* handle) {
   uv__os390_epoll* ep;
   _RFIS reg_struct;
   int rc;
@@ -602,9 +710,37 @@ int uv_fs_event_stop(uv_fs_event_t* handle) {
   if (rc != 0 && errno != EALREADY && errno != ENOENT)
     abort();
 
+  if (handle->path != NULL) {
+    uv__free(handle->path);
+    handle->path = NULL;
+  }
+
+  if (rc != 0 && errno == EALREADY)
+    return -1;
+
   uv__handle_stop(handle);
 
   return 0;
+}
+
+
+int uv_fs_event_stop(uv_fs_event_t* handle) {
+  uv__fs_event_stop(handle);
+  return 0;
+}
+
+
+void uv__fs_event_close(uv_fs_event_t* handle) {
+  /*
+   * If we were unable to unregister file interest here, then it is most likely
+   * that there is a pending queued change notification. When this happens, we
+   * don't want to complete the close as it will free the underlying memory for
+   * the handle, causing a use-after-free problem when the event is processed.
+   * We defer the final cleanup until after the event is consumed in
+   * os390_message_queue_handler().
+   */
+  if (uv__fs_event_stop(handle) == 0)
+    uv__make_close_pending((uv_handle_t*) handle);
 }
 
 
@@ -628,7 +764,15 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
   events = 0;
   if (msg.__rfim_event == _RFIM_ATTR || msg.__rfim_event == _RFIM_WRITE)
     events = UV_CHANGE;
-  else if (msg.__rfim_event == _RFIM_RENAME)
+  else if (msg.__rfim_event == _RFIM_RENAME || msg.__rfim_event == _RFIM_UNLINK)
+    events = UV_RENAME;
+  else if (msg.__rfim_event == 156)
+    /* TODO(gabylb): zos - this event should not happen, need to investigate.
+     *
+     * This event seems to occur when the watched file is [re]moved, or an
+     * editor (like vim) renames then creates the file on save (for vim, that's
+     * when backupcopy=no|auto).
+     */
     events = UV_RENAME;
   else
     /* Some event that we are not interested in. */
@@ -639,6 +783,26 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
    */
   __a2e_l(msg.__rfim_utok, sizeof(msg.__rfim_utok));
   handle = *(uv_fs_event_t**)(msg.__rfim_utok);
+  assert(handle != NULL);
+
+  assert((handle->flags & UV_HANDLE_CLOSED) == 0);
+  if (uv__is_closing(handle)) {
+    uv__handle_stop(handle);
+    uv__make_close_pending((uv_handle_t*) handle);
+    return 0;
+  } else if (handle->path == NULL) {
+    /* _RFIS_UNREG returned EALREADY. */
+    uv__handle_stop(handle);
+    return 0;
+  }
+
+  /* The file is implicitly unregistered when the change notification is
+   * sent, only one notification is sent per registration. So we need to
+   * re-register interest in a file after each change notification we
+   * receive.
+   */
+  assert(handle->path != NULL);
+  os390_regfileint(handle, handle->path);
   handle->cb(handle, uv__basename_r(handle->path), events, 0);
   return 1;
 }
@@ -646,12 +810,14 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   static const int max_safe_timeout = 1789569;
+  uv__loop_internal_fields_t* lfields;
   struct epoll_event events[1024];
   struct epoll_event* pe;
   struct epoll_event e;
   uv__os390_epoll* ep;
+  int have_signals;
   int real_timeout;
-  QUEUE* q;
+  struct uv__queue* q;
   uv__io_t* w;
   uint64_t base;
   int count;
@@ -663,17 +829,19 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int reset_timeout;
 
   if (loop->nfds == 0) {
-    assert(QUEUE_EMPTY(&loop->watcher_queue));
+    assert(uv__queue_empty(&loop->watcher_queue));
     return;
   }
 
-  while (!QUEUE_EMPTY(&loop->watcher_queue)) {
+  lfields = uv__get_internal_fields(loop);
+
+  while (!uv__queue_empty(&loop->watcher_queue)) {
     uv_stream_t* stream;
 
-    q = QUEUE_HEAD(&loop->watcher_queue);
-    QUEUE_REMOVE(q);
-    QUEUE_INIT(q);
-    w = QUEUE_DATA(q, uv__io_t, watcher_queue);
+    q = uv__queue_head(&loop->watcher_queue);
+    uv__queue_remove(q);
+    uv__queue_init(q);
+    w = uv__queue_data(q, uv__io_t, watcher_queue);
 
     assert(w->pevents != 0);
     assert(w->fd >= 0);
@@ -712,8 +880,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   count = 48; /* Benchmarks suggest this gives the best throughput. */
   real_timeout = timeout;
   int nevents = 0;
+  have_signals = 0;
 
-  if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
+  if (lfields->flags & UV_METRICS_IDLE_TIME) {
     reset_timeout = 1;
     user_timeout = timeout;
     timeout = 0;
@@ -731,6 +900,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (sizeof(int32_t) == sizeof(long) && timeout >= max_safe_timeout)
       timeout = max_safe_timeout;
+
+    /* Store the current timeout in a location that's globally accessible so
+     * other locations like uv__work_done() can determine whether the queue
+     * of events in the callback were waiting when poll was called.
+     */
+    lfields->current_timeout = timeout;
 
     nfds = epoll_wait(loop->ep, events,
                       ARRAY_SIZE(events), timeout);
@@ -796,6 +971,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       ep = loop->ep;
       if (pe->is_msg) {
         os390_message_queue_handler(ep);
+        nevents++;
         continue;
       }
 
@@ -825,18 +1001,36 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         pe->events |= w->pevents & (POLLIN | POLLOUT);
 
       if (pe->events != 0) {
-        uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, pe->events);
+        /* Run signal watchers last.  This also affects child process watchers
+         * because those are implemented in terms of signal watchers.
+         */
+        if (w == &loop->signal_io_watcher) {
+          have_signals = 1;
+        } else {
+          uv__metrics_update_idle_time(loop);
+          w->cb(loop, w, pe->events);
+        }
         nevents++;
       }
     }
-    loop->watchers[loop->nwatchers] = NULL;
-    loop->watchers[loop->nwatchers + 1] = NULL;
 
+    uv__metrics_inc_events(loop, nevents);
     if (reset_timeout != 0) {
       timeout = user_timeout;
       reset_timeout = 0;
+      uv__metrics_inc_events_waiting(loop, nevents);
     }
+
+    if (have_signals != 0) {
+      uv__metrics_update_idle_time(loop);
+      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+    }
+
+    loop->watchers[loop->nwatchers] = NULL;
+    loop->watchers[loop->nwatchers + 1] = NULL;
+
+    if (have_signals != 0)
+      return;  /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -872,6 +1066,5 @@ int uv__io_fork(uv_loop_t* loop) {
   */
   loop->ep = NULL;
 
-  uv__platform_loop_delete(loop);
   return uv__platform_loop_init(loop);
 }

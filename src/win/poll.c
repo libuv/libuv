@@ -425,9 +425,8 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
     return uv_translate_sys_error(WSAGetLastError());
 
 /* Try to obtain a base handle for the socket. This increases this chances that
- * we find an AFD handle and are able to use the fast poll mechanism. This will
- * always fail on windows XP/2k3, since they don't support the. SIO_BASE_HANDLE
- * ioctl. */
+ * we find an AFD handle and are able to use the fast poll mechanism.
+ */
 #ifndef NDEBUG
   base_socket = INVALID_SOCKET;
 #endif

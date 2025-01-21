@@ -53,7 +53,8 @@ uv_buf_t make_discover_msg() {
     // HOPS
     buffer.base[3] = 0x0;
     // XID 4 bytes
-    buffer.base[4] = (unsigned int) random();
+    if (uv_random(NULL, NULL, &buffer.base[4], 4, 0, NULL))
+      abort();
     // SECS
     buffer.base[8] = 0x0;
     // FLAGS

@@ -14,33 +14,85 @@ on:
       - master
 
 jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: configure
+        run: |
+          ./autogen.sh
+          mkdir build
+          (cd build && ../configure)
+      - name: distcheck
+        run: |
+          make -C build distcheck
+
   build-android:
     runs-on: ubuntu-latest
-    container: reactnativecommunity/react-native-android:2020-5-20
+    env:
+      ANDROID_AVD_HOME: /root/.android/avd
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Envinfo
         run: npx envinfo
-      - name: Configure android arm64
-        # see build options you can use in https://developer.android.com/ndk/guides/cmake
+      - name: Enable KVM
         run: |
-          mkdir build
-          cd build
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake -DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/20.0.5594570/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="arm64-v8a" -DANDROID_PLATFORM=android-24 ..
-      - name: Build android arm64
-        run: |
-          $ANDROID_HOME/cmake/3.10.2.4988404/bin/cmake --build build
-          ls -lh build
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build and Test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          ram-size: 2048M
+          emulator-options: -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system -no-snapshot-save -no-snapshot-load -no-snapshot
+          disable-animations: true
+          script: |
+            echo "::group::Configure"
+            cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-30
+            echo "::endgroup::"
+
+            echo "::group::Build"
+            cmake --build build
+
+            ## Correct some ld bugs that cause problems with libuv tests
+            wget "https://github.com/termux/termux-elf-cleaner/releases/download/v2.2.1/termux-elf-cleaner" -P build
+            chmod a+x build/termux-elf-cleaner
+            build/termux-elf-cleaner --api-level 30 ./build/uv_run_tests
+            build/termux-elf-cleaner --api-level 30 ./build/uv_run_tests_a
+
+            adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
+
+            ## Push the build and test fixtures to the device
+            adb push build /data/local/tmp
+            adb shell mkdir /data/local/tmp/build/test
+            adb push test/fixtures /data/local/tmp/build/test
+            echo "::endgroup::"
+
+            ## Run the tests
+            file build/uv_run_tests_a
+            adb shell "cd /data/local/tmp/build && env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
 
   build-macos:
-    runs-on: macos-10.15
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Envinfo
         run: npx envinfo
+      - name: Disable Firewall
+        run: |
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+          sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 0
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
       - name: Setup
         run: |
-          brew install ninja
+          brew install ninja automake libtool
       - name: Configure
         run: |
           mkdir build
@@ -59,11 +111,22 @@ jobs:
       - name: Test
         run: |
           cd build && ctest -V
+      - name: Autotools configure
+        if: always()
+        run: |
+          ./autogen.sh
+          mkdir build-auto
+          (cd build-auto && ../configure)
+          make -C build-auto -j4
 
   build-ios:
-    runs-on: macos-10.15
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-14]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Configure
         run: |
           mkdir build-ios
@@ -75,46 +138,36 @@ jobs:
           ls -lh build-ios
 
   build-cross-qemu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: build-cross-qemu-${{ matrix.config.target }}
 
     strategy:
       fail-fast: false
       matrix:
         config:
-          - {target: arm,     toolchain: gcc-arm-linux-gnueabi,     cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm-static     }
-          - {target: armhf,   toolchain: gcc-arm-linux-gnueabihf,   cc: arm-linux-gnueabihf-gcc,    qemu: qemu-arm-static     }
-          - {target: aarch64, toolchain: gcc-aarch64-linux-gnu,     cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64-static }
-          - {target: riscv64, toolchain: gcc-riscv64-linux-gnu,     cc: riscv64-linux-gnu-gcc,      qemu: qemu-riscv64-static }
-          - {target: ppc,     toolchain: gcc-powerpc-linux-gnu,     cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc-static     }
-          - {target: ppc64,   toolchain: gcc-powerpc64-linux-gnu,   cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64-static   }
-          - {target: ppc64le, toolchain: gcc-powerpc64le-linux-gnu, cc: powerpc64le-linux-gnu-gcc,  qemu: qemu-ppc64le-static }
-          - {target: s390x,   toolchain: gcc-s390x-linux-gnu,       cc: s390x-linux-gnu-gcc,        qemu: qemu-s390x-static   }
-          - {target: mips,    toolchain: gcc-mips-linux-gnu,          cc: mips-linux-gnu-gcc,         qemu: qemu-mips-static     }
-          - {target: mips64,  toolchain: gcc-mips64-linux-gnuabi64,   cc: mips64-linux-gnuabi64-gcc,  qemu: qemu-mips64-static   }
-          - {target: mipsel,  toolchain: gcc-mipsel-linux-gnu,        cc: mipsel-linux-gnu-gcc,       qemu: qemu-mipsel-static   }
-          - {target: mips64el,toolchain: gcc-mips64el-linux-gnuabi64, cc: mips64el-linux-gnuabi64-gcc,qemu: qemu-mips64el-static }
-          - {target: alpha,   toolchain: gcc-alpha-linux-gnu,       cc: alpha-linux-gnu-gcc,        qemu: qemu-alpha-static   }
-          - {target: arm (u64 slots),     toolchain: gcc-arm-linux-gnueabi,     cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm-static}
-          - {target: aarch64 (u64 slots), toolchain: gcc-aarch64-linux-gnu,     cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64-static}
-          - {target: ppc (u64 slots),     toolchain: gcc-powerpc-linux-gnu,     cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc-static}
-          - {target: ppc64 (u64 slots),   toolchain: gcc-powerpc64-linux-gnu,   cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64-static}
+          - {target: arm,                 toolchain: gcc-arm-linux-gnueabi,       cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm      }
+          - {target: armhf,               toolchain: gcc-arm-linux-gnueabihf,     cc: arm-linux-gnueabihf-gcc,    qemu: qemu-arm      }
+          - {target: aarch64,             toolchain: gcc-aarch64-linux-gnu,       cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64  }
+          - {target: riscv64,             toolchain: gcc-riscv64-linux-gnu,       cc: riscv64-linux-gnu-gcc,      qemu: qemu-riscv64  }
+          - {target: ppc,                 toolchain: gcc-powerpc-linux-gnu,       cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc      }
+          - {target: ppc64,               toolchain: gcc-powerpc64-linux-gnu,     cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64    }
+          - {target: ppc64le,             toolchain: gcc-powerpc64le-linux-gnu,   cc: powerpc64le-linux-gnu-gcc,  qemu: qemu-ppc64le  }
+          - {target: s390x,               toolchain: gcc-s390x-linux-gnu,         cc: s390x-linux-gnu-gcc,        qemu: qemu-s390x    }
+          - {target: mips,                toolchain: gcc-mips-linux-gnu,          cc: mips-linux-gnu-gcc,         qemu: qemu-mips     }
+          - {target: mips64,              toolchain: gcc-mips64-linux-gnuabi64,   cc: mips64-linux-gnuabi64-gcc,  qemu: qemu-mips64   }
+          - {target: mipsel,              toolchain: gcc-mipsel-linux-gnu,        cc: mipsel-linux-gnu-gcc,       qemu: qemu-mipsel   }
+          - {target: mips64el,            toolchain: gcc-mips64el-linux-gnuabi64, cc: mips64el-linux-gnuabi64-gcc,qemu: qemu-mips64el }
+          - {target: arm (u64 slots),     toolchain: gcc-arm-linux-gnueabi,       cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm      }
+          - {target: aarch64 (u64 slots), toolchain: gcc-aarch64-linux-gnu,       cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64  }
+          - {target: ppc (u64 slots),     toolchain: gcc-powerpc-linux-gnu,       cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc      }
+          - {target: ppc64 (u64 slots),   toolchain: gcc-powerpc64-linux-gnu,     cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64    }
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Install QEMU
-        # this ensure install latest qemu on ubuntu, apt get version is old
-        env:
-          QEMU_SRC: "http://archive.ubuntu.com/ubuntu/pool/universe/q/qemu"
-          QEMU_VER: "qemu-user-static_4\\.2-.*_amd64.deb$"
-        run: |
-          DEB=`curl -s $QEMU_SRC/ | grep -o -E 'href="([^"#]+)"' | cut -d'"' -f2 | grep $QEMU_VER | tail -1`
-          wget $QEMU_SRC/$DEB
-          sudo dpkg -i $DEB
-      - name: Install ${{ matrix.config.toolchain }}
+      - uses: actions/checkout@v4
+      - name: Install qemu and ${{ matrix.config.toolchain }}
         run: |
           sudo apt update
-          sudo apt install ${{ matrix.config.toolchain }} -y
+          sudo apt install qemu-user qemu-user-binfmt ${{ matrix.config.toolchain }} -y
       - name: Configure with ${{ matrix.config.cc }}
         run: |
           mkdir build

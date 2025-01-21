@@ -64,6 +64,19 @@ static void uv__prep_sockaddr_un(union uv__sockaddr_un* s, const char* path) {
 }
 
 
+/* Does the file path contain embedded nul bytes? */
+static int includes_nul(const char *s, size_t n) {
+  if (n == 0)
+    return 0;
+#ifdef __linux__
+  /* Accept abstract socket namespace path ("\0/virtual/path"). */
+  s++;
+  n--;
+#endif
+  return NULL != memchr(s, '\0', n);
+}
+
+
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
   handle->shutdown_req = NULL;
@@ -75,24 +88,68 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 
 
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
-  union uv__sockaddr_un saddr;
-  const char* pipe_fname;
+  return uv_pipe_bind2(handle, name, strlen(name), 0);
+}
+
+
+int uv_pipe_bind2(uv_pipe_t* handle,
+                  const char* name,
+                  size_t namelen,
+                  unsigned int flags) {
+  struct sockaddr_un saddr;
+  char* pipe_fname;
   int sockfd;
   int err;
+  socklen_t addrlen;
 
   pipe_fname = NULL;
+
+  if (flags & ~UV_PIPE_NO_TRUNCATE)
+    return UV_EINVAL;
+
+  if (name == NULL)
+    return UV_EINVAL;
+
+  /* namelen==0 on Linux means autobind the listen socket in the abstract
+   * socket namespace, see `man 7 unix` for details.
+   */
+#if !defined(__linux__)
+  if (namelen == 0)
+    return UV_EINVAL;
+#endif
+
+  if (includes_nul(name, namelen))
+    return UV_EINVAL;
+
+  if (flags & UV_PIPE_NO_TRUNCATE)
+    if (namelen > sizeof(saddr.sun_path))
+      return UV_EINVAL;
+
+  /* Truncate long paths. Documented behavior. */
+  if (namelen > sizeof(saddr.sun_path))
+    namelen = sizeof(saddr.sun_path);
 
   /* Already bound? */
   if (uv__stream_fd(handle) >= 0)
     return UV_EINVAL;
 
-  /* Make a copy of the file name, it outlives this function's scope. */
-  pipe_fname = uv__strdup(name);
-  if (pipe_fname == NULL)
-    return UV_ENOMEM;
+  if (uv__is_closing(handle))
+    return UV_EINVAL;
 
-  /* We've got a copy, don't touch the original any more. */
-  name = NULL;
+  /* Make a copy of the file path unless it is an abstract socket.
+   * We unlink the file later but abstract sockets disappear
+   * automatically since they're not real file system entities.
+   */
+  if (*name == '\0') {
+    addrlen = offsetof(struct sockaddr_un, sun_path) + namelen;
+  } else {
+    pipe_fname = uv__malloc(namelen + 1);
+    if (pipe_fname == NULL)
+      return UV_ENOMEM;
+    memcpy(pipe_fname, name, namelen);
+    pipe_fname[namelen] = '\0';
+    addrlen = sizeof saddr;
+  }
 
   err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
   if (err < 0)
@@ -113,12 +170,12 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
 
   /* Success. */
   handle->flags |= UV_HANDLE_BOUND;
-  handle->pipe_fname = pipe_fname; /* Is a strdup'ed copy. */
+  handle->pipe_fname = pipe_fname; /* NULL or a copy of |name| */
   handle->io_watcher.fd = sockfd;
   return 0;
 
 err_socket:
-  uv__free((void*)pipe_fname);
+  uv__free(pipe_fname);
   return err;
 }
 
@@ -206,10 +263,56 @@ void uv_pipe_connect(uv_connect_t* req,
                     uv_pipe_t* handle,
                     const char* name,
                     uv_connect_cb cb) {
-  union uv__sockaddr_un saddr;
+  int err;
+
+  err = uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
+
+  if (err) {
+    handle->delayed_error = err;
+    handle->connect_req = req;
+
+    uv__req_init(handle->loop, req, UV_CONNECT);
+    req->handle = (uv_stream_t*) handle;
+    req->cb = cb;
+    uv__queue_init(&req->queue);
+
+    /* Force callback to run on next tick in case of error. */
+    uv__io_feed(handle->loop, &handle->io_watcher);
+  }
+}
+
+
+int uv_pipe_connect2(uv_connect_t* req,
+                     uv_pipe_t* handle,
+                     const char* name,
+                     size_t namelen,
+                     unsigned int flags,
+                     uv_connect_cb cb) {
+  struct sockaddr_un saddr;
   int new_sock;
   int err;
   int r;
+  socklen_t addrlen;
+
+  if (flags & ~UV_PIPE_NO_TRUNCATE)
+    return UV_EINVAL;
+
+  if (name == NULL)
+    return UV_EINVAL;
+
+  if (namelen == 0)
+    return UV_EINVAL;
+
+  if (includes_nul(name, namelen))
+    return UV_EINVAL;
+
+  if (flags & UV_PIPE_NO_TRUNCATE)
+    if (namelen > sizeof(saddr.sun_path))
+      return UV_EINVAL;
+
+  /* Truncate long paths. Documented behavior. */
+  if (namelen > sizeof(saddr.sun_path))
+    namelen = sizeof(saddr.sun_path);
 
   new_sock = (uv__stream_fd(handle) == -1);
 
@@ -254,14 +357,15 @@ out:
   handle->connect_req = req;
 
   uv__req_init(handle->loop, req, UV_CONNECT);
-  req->handle = (uv_stream_t*)handle;
+  req->handle = (uv_stream_t*) handle;
   req->cb = cb;
-  QUEUE_INIT(&req->queue);
+  uv__queue_init(&req->queue);
 
   /* Force callback to run on next tick in case of error. */
   if (err)
     uv__io_feed(handle->loop, &handle->io_watcher);
 
+  return 0;
 }
 
 
@@ -271,11 +375,26 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
                                     size_t* size) {
   union uv__sockaddr_un saddr;
   int addrlen;
+
+#if defined(__linux__)
+  static const int is_linux = 1;
+#else
+  static const int is_linux = 0;
+#endif
+  struct sockaddr_un sa;
+  socklen_t addrlen;
+  size_t slop;
+  char* p;
   int err;
   char* nul;
 
   addrlen = sizeof(saddr);
   memset(&saddr, 0, sizeof(saddr));
+  if (buffer == NULL || size == NULL || *size == 0)
+    return UV_EINVAL;
+
+  addrlen = sizeof(sa);
+  memset(&sa, 0, addrlen);
   err = uv__getsockpeername((const uv_handle_t*) handle,
                             func,
                             &saddr.sa,
@@ -285,21 +404,20 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
     return err;
   }
 
-#if defined(__linux__)
-  if (saddr.up.path[0] == 0)
-    /* Linux abstract namespace */
-    addrlen -= offsetof(struct uv__sockaddr_un_path, path);
-  else
-#endif
-  {
-    nul = memchr(saddr.up.path, '\0', sizeof(saddr.up.path));
-    addrlen = (int) sizeof(saddr.up.path);
-    if (nul != NULL)
-      addrlen = nul - saddr.up.path;
+  slop = 1;
+  if (is_linux && sa.sun_path[0] == '\0') {
+    /* Linux abstract namespace. Not zero-terminated. */
+    slop = 0;
+    addrlen -= offsetof(struct sockaddr_un, sun_path);
+  } else {
+    p = memchr(sa.sun_path, '\0', sizeof(sa.sun_path));
+    if (p == NULL)
+      p = ARRAY_END(sa.sun_path);
+    addrlen = p - sa.sun_path;
   }
 
-  if ((size_t)addrlen >= *size) {
-    *size = addrlen + 1;
+  if ((size_t)addrlen + slop > *size) {
+    *size = addrlen + slop;
     return UV_ENOBUFS;
   }
 
@@ -359,7 +477,7 @@ uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle) {
 int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   unsigned desired_mode;
   struct stat pipe_stat;
-  char* name_buffer;
+  char name_buffer[1 + UV__PATH_MAX];
   size_t name_len;
   int r;
 
@@ -372,26 +490,14 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     return UV_EINVAL;
 
   /* Unfortunately fchmod does not work on all platforms, we will use chmod. */
-  name_len = 0;
-  r = uv_pipe_getsockname(handle, NULL, &name_len);
-  if (r != UV_ENOBUFS)
-    return r;
-
-  name_buffer = uv__malloc(name_len);
-  if (name_buffer == NULL)
-    return UV_ENOMEM;
-
+  name_len = sizeof(name_buffer);
   r = uv_pipe_getsockname(handle, name_buffer, &name_len);
-  if (r != 0) {
-    uv__free(name_buffer);
+  if (r != 0)
     return r;
-  }
 
   /* stat must be used as fstat has a bug on Darwin */
-  if (stat(name_buffer, &pipe_stat) == -1) {
-    uv__free(name_buffer);
-    return -errno;
-  }
+  if (uv__stat(name_buffer, &pipe_stat) == -1)
+    return UV__ERR(errno);
 
   desired_mode = 0;
   if (mode & UV_READABLE)
@@ -400,15 +506,12 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     desired_mode |= S_IWUSR | S_IWGRP | S_IWOTH;
 
   /* Exit early if pipe already has desired mode. */
-  if ((pipe_stat.st_mode & desired_mode) == desired_mode) {
-    uv__free(name_buffer);
+  if ((pipe_stat.st_mode & desired_mode) == desired_mode)
     return 0;
-  }
 
   pipe_stat.st_mode |= desired_mode;
 
   r = chmod(name_buffer, pipe_stat.st_mode);
-  uv__free(name_buffer);
 
   return r != -1 ? 0 : UV__ERR(errno);
 }
@@ -417,7 +520,11 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
   uv_os_fd_t temp[2];
   int err;
-#if defined(__FreeBSD__) || defined(__linux__)
+#if defined(__linux__) || \
+    defined(__FreeBSD__) || \
+    defined(__OpenBSD__) || \
+    defined(__DragonFly__) || \
+    defined(__NetBSD__)
   int flags = O_CLOEXEC;
 
   if ((read_flags & UV_NONBLOCK_PIPE) && (write_flags & UV_NONBLOCK_PIPE))

@@ -13,24 +13,21 @@ on:
       - master
 
 jobs:
-  sanitizers:
-    runs-on: ubuntu-latest
+  sanitizers-linux:
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup
         run: |
           sudo apt-get install ninja-build
       - name: Envinfo
         run: npx envinfo
-      - name: TSAN Build
+
+      # [AM]SAN fail on newer kernels due to a bigger PIE slide
+      - name: Disable ASLR
         run: |
-          mkdir build-tsan
-          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
-          cmake --build build-tsan
-      - name: TSAN Test
-        continue-on-error: true # currently permit failures
-        run: |
-          ./build-tsan/uv_run_tests_a
+          sudo sysctl -w kernel.randomize_va_space=0
+
       - name: ASAN Build
         run: |
           mkdir build-asan
@@ -39,3 +36,93 @@ jobs:
       - name: ASAN Test
         run: |
           ./build-asan/uv_run_tests_a
+
+      - name: MSAN Build
+        run: |
+          mkdir build-msan
+          (cd build-msan && cmake .. -G Ninja -DBUILD_TESTING=ON -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-msan
+      - name: MSAN Test
+        run: |
+          ./build-msan/uv_run_tests_a
+
+      - name: TSAN Build
+        run: |
+          mkdir build-tsan
+          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake --build build-tsan
+      - name: TSAN Test
+        # Note: path must be absolute because some tests chdir.
+        # TSan exits with an error when it can't find the file.
+        run: |
+          env TSAN_OPTIONS="suppressions=$PWD/tsansupp.txt" ./build-tsan/uv_run_tests_a
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          (cd build-ubsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a
+
+  sanitizers-macos:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Envinfo
+        run: npx envinfo
+
+      - name: ASAN Build
+        run: |
+          mkdir build-asan
+          (cd build-asan && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-asan
+      - name: ASAN Test
+        run: |
+          ./build-asan/uv_run_tests_a
+
+      - name: TSAN Build
+        run: |
+          mkdir build-tsan
+          (cd build-tsan && cmake .. -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
+          cmake --build build-tsan
+      - name: TSAN Test
+        run: |
+          ./build-tsan/uv_run_tests_a
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          (cd build-ubsan && cmake .. -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug)
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a
+
+  sanitizers-windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup
+        run: |
+          choco install ninja
+
+      # Note: clang shipped with VS2022 has an issue where the UBSAN runtime doesn't link.
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: "17"
+
+      - name: Envinfo
+        run: npx envinfo
+
+      - name: UBSAN Build
+        run: |
+          mkdir build-ubsan
+          cmake -B build-ubsan -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
+          cmake --build build-ubsan
+      - name: UBSAN Test
+        run: |
+          ./build-ubsan/uv_run_tests_a
