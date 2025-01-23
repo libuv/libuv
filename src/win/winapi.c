@@ -53,7 +53,7 @@ sGetFileInformationByName pGetFileInformationByName;
 void uv__winapi_init(void) {
   HMODULE ntdll_module;
   HMODULE powrprof_module;
-  HMODULE kernel32_module;
+  HMODULE kernelbase_module;
   HMODULE user32_module;
   HMODULE ws2_32_module;
   HMODULE api_win_core_file_module;
@@ -126,12 +126,12 @@ void uv__winapi_init(void) {
       GetProcAddress(powrprof_module, "PowerRegisterSuspendResumeNotification");
   }
 
-  kernel32_module = GetModuleHandleA("kernel32.dll");
-  if (kernel32_module != NULL) {
+  kernelbase_module = GetModuleHandleA("kernelbase.dll");
+  if (kernelbase_module != NULL) {
     pGetThreadDescription = (sGetThreadDescription)
-      GetProcAddress(kernel32_module, "GetThreadDescription");
+      GetProcAddress(kernelbase_module, "GetThreadDescription");
     pSetThreadDescription = (sSetThreadDescription)
-      GetProcAddress(kernel32_module, "SetThreadDescription");
+      GetProcAddress(kernelbase_module, "SetThreadDescription");
   }
 
   user32_module = GetModuleHandleA("user32.dll");
