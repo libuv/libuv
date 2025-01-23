@@ -35,6 +35,8 @@ sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 sNtQueryDirectoryFile pNtQueryDirectoryFile;
 sNtQuerySystemInformation pNtQuerySystemInformation;
 sNtQueryInformationProcess pNtQueryInformationProcess;
+sGetThreadDescription pGetThreadDescription;
+sSetThreadDescription pSetThreadDescription;
 
 /* Powrprof.dll function pointer */
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
@@ -51,6 +53,7 @@ sGetFileInformationByName pGetFileInformationByName;
 void uv__winapi_init(void) {
   HMODULE ntdll_module;
   HMODULE powrprof_module;
+  HMODULE kernel32_module;
   HMODULE user32_module;
   HMODULE ws2_32_module;
   HMODULE api_win_core_file_module;
@@ -121,6 +124,14 @@ void uv__winapi_init(void) {
   if (powrprof_module != NULL) {
     pPowerRegisterSuspendResumeNotification = (sPowerRegisterSuspendResumeNotification)
       GetProcAddress(powrprof_module, "PowerRegisterSuspendResumeNotification");
+  }
+
+  kernel32_module = GetModuleHandleA("kernel32.dll");
+  if (kernel32_module != NULL) {
+    pGetThreadDescription = (sGetThreadDescription)
+      GetProcAddress(kernel32_module, "GetThreadDescription");
+    pSetThreadDescription = (sSetThreadDescription)
+      GetProcAddress(kernel32_module, "SetThreadDescription");
   }
 
   user32_module = GetModuleHandleA("user32.dll");

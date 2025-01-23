@@ -284,6 +284,9 @@ int uv_thread_setname(const char* name) {
   int err;
   char namebuf[UV_PTHREAD_MAX_NAMELEN_NP];
 
+  if (pSetThreadDescription == NULL)
+    return UV_ENOSYS;
+
   if (name == NULL)
     return UV_EINVAL;
 
@@ -295,7 +298,7 @@ int uv_thread_setname(const char* name) {
   if (err)
     return err;
 
-  hr = SetThreadDescription(GetCurrentThread(), namew);
+  hr = pSetThreadDescription(GetCurrentThread(), namew);
   uv__free(namew);
   if (FAILED(hr))
     return uv_translate_sys_error(HRESULT_CODE(hr));
@@ -312,6 +315,9 @@ int uv_thread_getname(uv_thread_t* tid, char* name, size_t size) {
   int r;
   DWORD exit_code;
 
+  if (pGetThreadDescription == NULL)
+    return UV_ENOSYS;
+
   if (name == NULL || size == 0)
     return UV_EINVAL;
 
@@ -324,7 +330,7 @@ int uv_thread_getname(uv_thread_t* tid, char* name, size_t size) {
 
   namew = NULL;
   thread_name = NULL;
-  hr = GetThreadDescription(*tid, &namew);
+  hr = pGetThreadDescription(*tid, &namew);
   if (FAILED(hr))
     return uv_translate_sys_error(HRESULT_CODE(hr));
 
