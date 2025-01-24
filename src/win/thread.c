@@ -58,8 +58,8 @@ STATIC_ASSERT(sizeof(uv_thread_t) <= sizeof(void*));
 static uv_key_t uv__current_thread_key;
 static uv_once_t uv__current_thread_init_guard = UV_ONCE_INIT;
 static uv_once_t uv__thread_name_once = UV_ONCE_INIT;
-HRESULT WINAPI (*pGetThreadDescription)(HANDLE, PWSTR*);
-HRESULT WINAPI (*pSetThreadDescription)(HANDLE, PCWSTR);
+HRESULT (WINAPI *pGetThreadDescription)(HANDLE, PWSTR*);
+HRESULT (WINAPI *pSetThreadDescription)(HANDLE, PCWSTR);
 
 
 static void uv__init_current_thread_key(void) {
