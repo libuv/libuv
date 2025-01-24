@@ -4828,13 +4828,4 @@ typedef int (WINAPI *uv_sGetHostNameW)
              int);
 extern uv_sGetHostNameW pGetHostNameW;
 
-/* processthreadsapi.h */
-#if defined(__MINGW32__)
-WINBASEAPI
-HRESULT WINAPI GetThreadDescription(HANDLE hThread,
-                                    PWSTR *ppszThreadDescription);
-WINBASEAPI
-HRESULT WINAPI SetThreadDescription(HANDLE hThread, PCWSTR lpThreadDescription);
-#endif
-
 #endif /* UV_WIN_WINAPI_H_ */
