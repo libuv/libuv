@@ -125,7 +125,7 @@ enum {
 
   /* Only used by uv_tty_t handles. */
   UV_HANDLE_TTY_READABLE                = 0x01000000,
-  UV_HANDLE_TTY_RAW                     = 0x02000000,
+  UV_HANDLE_UNUSED0                     = 0x02000000,
   UV_HANDLE_TTY_SAVED_POSITION          = 0x04000000,
   UV_HANDLE_TTY_SAVED_ATTRIBUTES        = 0x08000000,
 
@@ -139,6 +139,11 @@ enum {
   /* Only used by uv_process_t handles. */
   UV_HANDLE_REAP                        = 0x10000000
 };
+
+#define uv__is_raw_tty_mode(m)                                                \
+  ((m) == UV_TTY_MODE_RAW ||                                                  \
+   (m) == UV_TTY_MODE_RAW_VT ||                                               \
+   (m) == UV_TTY_MODE_RAW_LEGACY)
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
