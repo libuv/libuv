@@ -282,6 +282,11 @@ static int uv__async_start(uv_loop_t* loop) {
      * during the cleanup, as other FDs. */
     err = uv__open_cloexec("/dev/null", O_RDONLY);
     if (err < 0)
+        /* In the rare case that "/dev/null" isn't mounted open "/"
+         * instead.
+         */
+        err = uv__open_cloexec("/", O_RDONLY);
+    if (err < 0)
       return err;
 
     pipefd[0] = err;
