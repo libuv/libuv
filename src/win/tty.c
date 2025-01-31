@@ -165,6 +165,8 @@ static uv_tty_vtermstate_t uv__vterm_state = UV_TTY_UNSUPPORTED;
 static void uv__determine_vterm_state(HANDLE handle);
 
 void uv__console_init(void) {
+  DWORD dwMode;
+
   if (uv_sem_init(&uv_tty_output_lock, 1))
     abort();
   uv__tty_console_handle_out = CreateFileW(L"CONOUT$",
@@ -193,7 +195,6 @@ void uv__console_init(void) {
                                           0,
                                           0);
   if (uv__tty_console_handle_in != INVALID_HANDLE_VALUE) {
-    DWORD dwMode;
     if (GetConsoleMode(uv__tty_console_handle_in, &dwMode)) {
       uv__tty_console_in_original_mode = dwMode;
     }
