@@ -1097,6 +1097,8 @@ int uv_pipe_connect2(uv_connect_t* req,
   char* name_copy;
 
   int use_uds_pipe;
+
+#if defined(UV__ENABLE_WIN_UDS_PIPE)
   int uds_file_exists;
   SOCKET uds_client_fd;
   struct sockaddr_un uds_addr_bind = {0};
@@ -1113,6 +1115,7 @@ int uv_pipe_connect2(uv_connect_t* req,
    * dummy memory instead of causing stack corruption.
    */
   char uds_dummy_send_buffer[512] = {0};
+#endif
 
   loop = handle->loop;
   UV_REQ_INIT(req, UV_CONNECT);
