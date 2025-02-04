@@ -89,7 +89,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
   // Test if data equal.
   ASSERT_EQ(nread, (int) sizeof(pipe_test_data) - 1);
-  ASSERT_STR_EQ(buf->base, pipe_test_data, nread);
+  ASSERT_MEM_EQ(buf->base, pipe_test_data, nread);
 
   if (use_shutdown) {
     uv_shutdown(&shutdown_client, (uv_stream_t*) &pipe_client, shutdown_cb);
