@@ -576,7 +576,7 @@ int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
       return handle->delayed_error;
   }
 
-  if (!uv_wsa_acceptex) {
+  if (uv_wsa_acceptex == NULL) {
     return WSAEAFNOSUPPORT;
   }
 
@@ -797,7 +797,7 @@ static int uv__tcp_try_connect(uv_connect_t* req,
       goto out;
   }
 
-  if (!uv_wsa_connectex) {
+  if (uv_wsa_connectex == NULL) {
     return WSAEAFNOSUPPORT;
   }
 
@@ -1607,7 +1607,7 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
     goto wsaerror;
   if (!SetHandleInformation((HANDLE) client1, HANDLE_FLAG_INHERIT, 0))
     goto error;
-  if (!uv_wsa_acceptex) {
+  if (uv_wsa_acceptex == NULL) {
     err = WSAEAFNOSUPPORT;
     goto cleanup;
   }

@@ -63,13 +63,15 @@ static void after_write_cb(uv_write_t *req, int status) {
 }
 
 static void client_connect_cb(uv_connect_t *connect_req, int status) {
+  uv_buf_t bufs[1];
+  uv_write_t *req;
+
   ASSERT_EQ(status, 0);
   client_connect_cb_called++;
 
   // Server connected, send test data.
-  uv_buf_t bufs[1];
   bufs[0] = uv_buf_init(pipe_test_data, strlen(pipe_test_data));
-  uv_write_t *req = malloc(sizeof(*req));
+  req = malloc(sizeof(*req));
   req->data = NULL;
   uv_write(req, connect_req->handle, bufs, 1, after_write_cb);
 }
@@ -102,11 +104,13 @@ static void read_cb(uv_stream_t *stream,
 }
 
 static void server_connect_cb(uv_stream_t *handle, int status) {
+  uv_pipe_t *conn;
+
   ASSERT_EQ(status, 0);
   server_connect_cb_called++;
 
   // Client accepted, start reading.
-  uv_pipe_t *conn = malloc(sizeof(uv_pipe_t));
+  conn = malloc(sizeof(uv_pipe_t));
   ASSERT_OK(uv_pipe_init_ex(handle->loop, conn, UV_PIPE_INIT_WIN_UDS));
   ASSERT_OK(uv_accept(handle, (uv_stream_t*) conn));
   ASSERT_OK(uv_read_start((uv_stream_t*) conn, alloc_cb, read_cb));

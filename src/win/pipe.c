@@ -1388,6 +1388,7 @@ void uv__pipe_read_stop(uv_pipe_t* handle) {
 void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
   int i;
   HANDLE pipeHandle;
+  struct linger uds_linger = {1, 0};
 
   if (handle->flags & UV_HANDLE_READING) {
     handle->flags &= ~UV_HANDLE_READING;
@@ -1412,12 +1413,11 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     /* Force the subsequent closesocket to be abortative. */
-    struct linger l = {1, 0};
     setsockopt((SOCKET)handle->handle,
                SOL_SOCKET,
                SO_LINGER,
-               (const char*)&l,
-               sizeof(l));
+               (const char*)&uds_linger,
+               sizeof(uds_linger));
   }
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
@@ -1448,16 +1448,21 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
 
 static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
     uv_pipe_accept_t* req, BOOL firstInstance) {
+  int uds_err;
+  int wsa_err;
+  DWORD bytes_received;
+  CHAR accept_buf[2 * (sizeof(SOCKADDR_STORAGE) + 16)];
+
   assert(handle->flags & UV_HANDLE_LISTENING);
 
   if (!firstInstance) {
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
     if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
-      int uds_err = pipe_alloc_accept_unix_domain_socket(
-          loop, handle, req, handle->pathname, FALSE);
+      uds_err = pipe_alloc_accept_unix_domain_socket(
+        loop, handle, req, handle->pathname, FALSE);
       if (uds_err) {
         SET_REQ_ERROR(req, uds_err);
-        uv__insert_pending_req(loop, (uv_req_t*)req);
+        uv__insert_pending_req(loop, (uv_req_t *) req);
         handle->reqs_pending++;
         return;
       }
@@ -1481,9 +1486,6 @@ uds_pipe:
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
-    DWORD bytes_received;
-    CHAR accept_buf[2 * (sizeof(SOCKADDR_STORAGE) + 16)];
-
     if (!uv_wsa_acceptex((SOCKET)handle->handle,
                          (SOCKET)req->pipeHandle,
                          accept_buf,
@@ -1492,7 +1494,7 @@ uds_pipe:
                          sizeof(SOCKADDR_STORAGE) + 16,
                          &bytes_received,
                          &req->u.io.overlapped)) {
-      int wsa_err = WSAGetLastError();
+      wsa_err = WSAGetLastError();
       if (wsa_err != ERROR_IO_PENDING) {
         closesocket((SOCKET) req->pipeHandle);
         req->pipeHandle = INVALID_HANDLE_VALUE;
@@ -1608,6 +1610,7 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   uv_loop_t* loop = handle->loop;
   int i;
+  int err;
 
   if (handle->flags & UV_HANDLE_LISTENING) {
     handle->stream.serv.connection_cb = cb;
@@ -1630,7 +1633,7 @@ int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   }
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
-    int err = listen((SOCKET) handle->handle, backlog);
+    err = listen((SOCKET) handle->handle, backlog);
     if (err) {
       return err;
     }

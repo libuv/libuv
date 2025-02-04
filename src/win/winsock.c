@@ -73,6 +73,9 @@ void uv__winsock_init(void) {
   WSAPROTOCOL_INFOW protocol_info;
   int opt_len;
 
+  const GUID wsaid_acceptex = WSAID_ACCEPTEX;
+  const GUID wsaid_connectex = WSAID_CONNECTEX;
+
   /* Set implicit binding address used by connectEx */
   if (uv_ip4_addr("0.0.0.0", 0, &uv_addr_ip4_any_)) {
     abort();
@@ -126,9 +129,6 @@ void uv__winsock_init(void) {
   /* Try to get WSA function pointers */
   dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if (dummy != INVALID_SOCKET) {
-    const GUID wsaid_acceptex = WSAID_ACCEPTEX;
-    const GUID wsaid_connectex = WSAID_CONNECTEX;
-
     if (!uv__get_extension_function(
             dummy, wsaid_acceptex, (void**)&uv_wsa_acceptex) ||
         !uv__get_extension_function(
