@@ -170,7 +170,7 @@ int uv_pipe_init_ex(uv_loop_t* loop, uv_pipe_t* handle, unsigned int flags) {
   int uds = (flags & UV_PIPE_INIT_WIN_UDS) != 0;
 
   if (ipc && uds) {
-    // Unix domain socket on Windows doesn't work with IPC mode currently.
+    /* Unix domain socket on Windows doesn't work with IPC mode currently. */
     return EINVAL;
   }
 
