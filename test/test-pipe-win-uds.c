@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -38,31 +38,36 @@ static int client_connect_cb_called = 0;
 
 static uv_pipe_t pipe_server;
 static uv_pipe_t pipe_client;
-const char *pipe_test_data = "send test through win uds pipe";
+const char pipe_test_data[] = "send test through win uds pipe";
 
-static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
+
+static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   buf->base = malloc(size);
   buf->len = size;
 }
 
-static void close_cb(uv_handle_t *handle) {
+
+static void close_cb(uv_handle_t* handle) {
   ASSERT_NOT_NULL(handle);
   close_cb_called++;
 }
 
-static void shutdown_cb(uv_shutdown_t *req, int status) {
+
+static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT_NOT_NULL(req);
-  uv_close((uv_handle_t *) req->handle, close_cb);
+  uv_close((uv_handle_t*) req->handle, close_cb);
   shutdown_cb_called++;
 }
 
-static void after_write_cb(uv_write_t *req, int status) {
+
+static void after_write_cb(uv_write_t* req, int status) {
   ASSERT_OK(status);
   free(req->data);
   free(req);
 }
 
-static void client_connect_cb(uv_connect_t *connect_req, int status) {
+
+static void client_connect_cb(uv_connect_t* connect_req, int status) {
   uv_buf_t bufs[1];
   uv_write_t *req;
 
@@ -76,45 +81,39 @@ static void client_connect_cb(uv_connect_t *connect_req, int status) {
   uv_write(req, connect_req->handle, bufs, 1, after_write_cb);
 }
 
-static void read_cb(uv_stream_t *stream,
-                    ssize_t nread,
-                    const uv_buf_t *buf) {
-  char read[256];
 
+static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   // Ignore read error.
   if (nread < 0 || !buf)
     return;
 
-  // Test if the buffer length equal.
-  ASSERT_EQ(nread, strlen(pipe_test_data));
-
-  memcpy(read, buf->base, nread);
-  read[nread] = '\0';
-
   // Test if data equal.
-  ASSERT_STR_EQ(read, pipe_test_data);
+  ASSERT_EQ(nread, (int) sizeof(pipe_test_data) - 1);
+  ASSERT_STR_EQ(buf->base, pipe_test_data, nread);
 
   if (use_shutdown) {
-    uv_shutdown(&shutdown_client, (uv_stream_t *) &pipe_client, shutdown_cb);
+    uv_shutdown(&shutdown_client, (uv_stream_t*) &pipe_client, shutdown_cb);
   } else {
-    uv_close((uv_handle_t *) &pipe_client, close_cb);
+    uv_close((uv_handle_t*) &pipe_client, close_cb);
   }
 
-  uv_close((uv_handle_t *) &pipe_server, close_cb);
+  uv_close((uv_handle_t*) &pipe_server, close_cb);
 }
 
-static void server_connect_cb(uv_stream_t *handle, int status) {
-  uv_pipe_t *conn;
+
+static void server_connect_cb(uv_stream_t* handle, int status) {
+  uv_pipe_t* conn;
 
   ASSERT_EQ(status, 0);
   server_connect_cb_called++;
 
   // Client accepted, start reading.
-  conn = malloc(sizeof(uv_pipe_t));
+  conn = malloc(sizeof(*conn));
   ASSERT_OK(uv_pipe_init_ex(handle->loop, conn, UV_PIPE_INIT_WIN_UDS));
   ASSERT_OK(uv_accept(handle, (uv_stream_t*) conn));
   ASSERT_OK(uv_read_start((uv_stream_t*) conn, alloc_cb, read_cb));
 }
+
 
 int test_pipe_win_uds() {
 #if defined(UV_SUPPORTS_WIN_UDS)
@@ -127,7 +126,7 @@ int test_pipe_win_uds() {
   // The windows UDS needs to be created on disk, create in temp dir.
   r = uv_os_tmpdir(path, &size);
   ASSERT_OK(r);
-  strcat_s(path, MAX_PATH, "\\uv_pipe_win_uds");
+  snprintf(path, sizeof(path), "\\uv_pipe_win_uds");
 
   // Remove the existing file, the file must not exist before server bind.
   uv_fs_unlink(uv_default_loop(), &fs, path, NULL);
@@ -138,8 +137,8 @@ int test_pipe_win_uds() {
   ASSERT_OK(r);
   r = uv_pipe_bind(&pipe_server, path);
   ASSERT_OK(r);
-  uv_listen((uv_stream_t *) &pipe_server, SOMAXCONN, server_connect_cb);
-  uv_read_start((uv_stream_t *) &pipe_server, alloc_cb, read_cb);
+  uv_listen((uv_stream_t*) &pipe_server, SOMAXCONN, server_connect_cb);
+  uv_read_start((uv_stream_t*) &pipe_server, alloc_cb, read_cb);
 
   // Connect client to server
   r = uv_pipe_init_ex(uv_default_loop(), &pipe_client, UV_PIPE_INIT_WIN_UDS);
@@ -175,7 +174,7 @@ TEST_IMPL(pipe_win_uds_shutdown) {
 }
 
 
-static void bad_name_connect_cb(uv_connect_t *connect_req, int status) {
+static void bad_name_connect_cb(uv_connect_t* connect_req, int status) {
   ASSERT_EQ(status, UV_ENOENT);
 }
 
@@ -187,8 +186,8 @@ TEST_IMPL(pipe_win_uds_bad_name) {
   uv_pipe_t pipe_server_1;
   uv_pipe_t pipe_server_2;
   uv_pipe_t pipe_client_1;
-  const char *path_1 = "not/exist/file/path";
-  const char *path_2 = "test/fixtures/empty_file";
+  const char* path_1 = "not/exist/file/path";
+  const char* path_2 = "test/fixtures/empty_file";
 
   // Bind server 1 which has a bad path
   r = uv_pipe_init_ex(uv_default_loop(), &pipe_server_1, UV_PIPE_INIT_WIN_UDS);

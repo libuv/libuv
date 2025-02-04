@@ -616,7 +616,7 @@ uds_pipe:
 
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
 static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* handle,
-                             uv_pipe_accept_t* req, const char * name, BOOL firstInstance) {
+                             uv_pipe_accept_t* req, const char* name, BOOL firstInstance) {
   int ret = 0, err = 0;
   SOCKET accept_fd;
   SOCKET server_fd;
@@ -639,11 +639,12 @@ static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* hand
     }
 
     addr.sun_family = AF_UNIX;
-    /* `name` is guaranteed to be a null terminated string
-     * length (with '\0') <= UNIX_PATH_MAX */
-    strcpy(addr.sun_path, name);
+    ret = uv__strscpy(addr.sun_path, name, UNIX_PATH_MAX);
+    if (ret < 0) {
+      return ret;
+    }
 
-    ret = bind(server_fd, (const struct sockaddr*)&addr, sizeof(struct sockaddr_un));
+    ret = bind(server_fd, (const struct sockaddr*)&addr, sizeof(addr));
     if (ret == SOCKET_ERROR) {
       err = WSAGetLastError();
       closesocket(server_fd);
@@ -1212,7 +1213,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     uds_addr_bind.sun_family = AF_UNIX;
 
     /* ConnectEx need to be initially bound */
-    int ret = bind(uds_client_fd, (const struct sockaddr*)&uds_addr_bind, sizeof(struct sockaddr_un));
+    int ret = bind(uds_client_fd, (const struct sockaddr*)&uds_addr_bind, sizeof(uds_addr_bind));
     if (ret != 0) {
       err = WSAGetLastError();
       goto error;
@@ -1229,6 +1230,8 @@ int uv_pipe_connect2(uv_connect_t* req,
     }
 
     uds_addr_real.sun_family = AF_UNIX;
+
+    /* The namelen was guaranteed to be < UNIX_PATH_MAX above. */
     memcpy(uds_addr_real.sun_path, name, namelen);
     uds_addr_real.sun_path[namelen] = '\0';
 
@@ -1241,7 +1244,7 @@ int uv_pipe_connect2(uv_connect_t* req,
      */
     ret = uv_wsa_connectex(uds_client_fd,
                            (const struct sockaddr*)&uds_addr_real,
-                           sizeof(struct sockaddr_un),
+                           sizeof(uds_addr_real),
                            uds_dummy_send_buffer,
                            0,
                            &uds_dummy_send_cnt,
@@ -1576,9 +1579,9 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
       /* Associate it with the I/O completion port. Use uv_handle_t pointer as
        * completion key. */
       if (CreateIoCompletionPort(req->pipeHandle,
-                             pipe_client->loop->iocp,
-                             (ULONG_PTR)req->pipeHandle,
-                             0) == NULL) {
+                                 pipe_client->loop->iocp,
+                                 (ULONG_PTR) req->pipeHandle,
+                                 0) == NULL) {
           return GetLastError();
       }
 
@@ -3057,13 +3060,20 @@ int uv_pipe_pending_count(uv_pipe_t* handle) {
 
 
 int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
+  size_t len;
+
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     if (handle->pathname != NULL) {
-      *size = strlen(handle->pathname);
-      memcpy(buffer, handle->pathname, *size);
+      len = strlen(handle->pathname);
+      if (len > *size) {
+        return UV_ENOBUFS;
+      }
+
+      *size = len;
+      memcpy(buffer, handle->pathname, len);
     }
 
     return 0;
@@ -3083,6 +3093,8 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
 
 
 int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
+  size_t len;
+
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
@@ -3092,8 +3104,13 @@ int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
     if (handle->pathname != NULL) {
-      *size = strlen(handle->pathname);
-      memcpy(buffer, handle->pathname, *size);
+      len = strlen(handle->pathname);
+      if (len > *size) {
+        return UV_ENOBUFS;
+      }
+
+      *size = len;
+      memcpy(buffer, handle->pathname, len);
     }
 
     return 0;
