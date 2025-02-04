@@ -1102,6 +1102,16 @@ int uv_pipe_connect2(uv_connect_t* req,
   struct sockaddr_un uds_addr_bind = {0};
   struct sockaddr_un uds_addr_real = {0};
   DWORD uds_dummy_send_cnt = 0;
+
+  /* ConnectEx seems has a bug when using with 'sockaddr_un'.
+   * It seems corrupting stack if no such buffer present on stack.
+   * Looks like needs at least 316 bytes to not overwriting some data onto
+   * valid stack spaces, allocating 512 bytes for 'safety'.
+   *
+   * TODO: It still overflow write to this buffer instead of valid
+   * stack, so it is just a dangerous workaround to write to a controlled
+   * dummy memory instead of causing stack corruption.
+   */
   char uds_dummy_send_buffer[512] = {0};
 
   loop = handle->loop;
@@ -1239,7 +1249,7 @@ int uv_pipe_connect2(uv_connect_t* req,
 
     /*
      * https://learn.microsoft.com/en-us/windows/win32/api/mswsock/nc-mswsock-lpfn_connectex
-     * Although doc says the send buffer can be ignored, it will smash the
+     * Although doc says the send buffer can be ignored, it will corrupt the
      * stack if we don't actually allocate them on stack and pass them.
      */
     ret = uv_wsa_connectex(uds_client_fd,
