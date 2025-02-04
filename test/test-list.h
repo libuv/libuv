@@ -217,6 +217,7 @@ TEST_DECLARE   (pipe_server_close)
 #ifdef _WIN32
 TEST_DECLARE   (pipe_win_uds)
 TEST_DECLARE   (pipe_win_uds_bad_name)
+TEST_DECLARE   (pipe_win_uds_shutdown)
 #endif
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
@@ -635,6 +636,7 @@ TASK_LIST_START
 #ifdef _WIN32
   TEST_ENTRY   (pipe_win_uds)
   TEST_ENTRY   (pipe_win_uds_bad_name)
+  TEST_ENTRY   (pipe_win_uds_shutdown)
 #endif
 
   TEST_ENTRY  (pipe_set_chmod)

@@ -28,7 +28,11 @@
 #define UV_SUPPORTS_WIN_UDS
 #endif
 
+static int use_shutdown = 0;
+static uv_shutdown_t shutdown_client;
+
 static int close_cb_called = 0;
+static int shutdown_cb_called = 0;
 static int server_connect_cb_called = 0;
 static int client_connect_cb_called = 0;
 
@@ -44,6 +48,12 @@ static void alloc_cb(uv_handle_t *handle, size_t size, uv_buf_t *buf) {
 static void close_cb(uv_handle_t *handle) {
   ASSERT_NOT_NULL(handle);
   close_cb_called++;
+}
+
+static void shutdown_cb(uv_shutdown_t *req, int status) {
+  ASSERT_NOT_NULL(req);
+  uv_close((uv_handle_t *) req->handle, close_cb);
+  shutdown_cb_called++;
 }
 
 static void after_write_cb(uv_write_t *req, int status) {
@@ -67,6 +77,8 @@ static void client_connect_cb(uv_connect_t *connect_req, int status) {
 static void read_cb(uv_stream_t *stream,
                     ssize_t nread,
                     const uv_buf_t *buf) {
+  char read[256];
+
   // Ignore read error.
   if (nread < 0 || !buf)
     return;
@@ -74,15 +86,18 @@ static void read_cb(uv_stream_t *stream,
   // Test if the buffer length equal.
   ASSERT_EQ(nread, strlen(pipe_test_data));
 
-  char read[256];
   memcpy(read, buf->base, nread);
   read[nread] = '\0';
 
   // Test if data equal.
   ASSERT_STR_EQ(read, pipe_test_data);
 
-  // Everything good, close pipe, exit loop.
-  uv_close((uv_handle_t *) &pipe_client, close_cb);
+  if (use_shutdown) {
+    uv_shutdown(&shutdown_client, (uv_stream_t *) &pipe_client, shutdown_cb);
+  } else {
+    uv_close((uv_handle_t *) &pipe_client, close_cb);
+  }
+
   uv_close((uv_handle_t *) &pipe_server, close_cb);
 }
 
@@ -97,7 +112,7 @@ static void server_connect_cb(uv_stream_t *handle, int status) {
   ASSERT_OK(uv_read_start((uv_stream_t*) conn, alloc_cb, read_cb));
 }
 
-TEST_IMPL(pipe_win_uds) {
+int test_pipe_win_uds() {
 #if defined(UV_SUPPORTS_WIN_UDS)
   int r;
   uv_fs_t fs;
@@ -130,6 +145,10 @@ TEST_IMPL(pipe_win_uds) {
   // Run the loop
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
+  if (use_shutdown) {
+    ASSERT_EQ(1, shutdown_cb_called);
+  }
+
   ASSERT_EQ(2, close_cb_called);
   ASSERT_EQ(1, server_connect_cb_called);
   ASSERT_EQ(1, client_connect_cb_called);
@@ -137,6 +156,18 @@ TEST_IMPL(pipe_win_uds) {
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
+}
+
+
+TEST_IMPL(pipe_win_uds) {
+  use_shutdown = 0;
+  return test_pipe_win_uds();
+}
+
+
+TEST_IMPL(pipe_win_uds_shutdown) {
+  use_shutdown = 1;
+  return test_pipe_win_uds();
 }
 
 
@@ -152,15 +183,15 @@ TEST_IMPL(pipe_win_uds_bad_name) {
   uv_pipe_t pipe_server_1;
   uv_pipe_t pipe_server_2;
   uv_pipe_t pipe_client_1;
-  const char * path_1 = "not/exist/file/path";
-  const char * path_2 = "test/fixtures/empty_file";
+  const char *path_1 = "not/exist/file/path";
+  const char *path_2 = "test/fixtures/empty_file";
 
   // Bind server 1 which has a bad path
   r = uv_pipe_init_ex(uv_default_loop(), &pipe_server_1, UV_PIPE_INIT_WIN_UDS);
   ASSERT_OK(r);
   r = uv_pipe_bind(&pipe_server_1, path_1);
   ASSERT_EQ(r, UV_EINVAL);
-  
+
   // Bind server 2 which file exists
   r = uv_pipe_init_ex(uv_default_loop(), &pipe_server_2, UV_PIPE_INIT_WIN_UDS);
   ASSERT_OK(r);

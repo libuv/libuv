@@ -109,12 +109,14 @@ static void eof_timer_close_cb(uv_handle_t* handle);
  * The UDS on Windows only supports this pathname mode.
  */
 static int uv__win_uds_pipe_file_exists(const char* path, int* exists) {
-  if (!exists || !path) {
+  int err;
+  WCHAR* wpath;
+
+  if (exists == NULL || path == NULL) {
     return UV_EINVAL;
   }
 
-  WCHAR* wpath;
-  int err = uv__convert_utf8_to_utf16(path, &wpath);
+  err = uv__convert_utf8_to_utf16(path, &wpath);
   if (err) {
     return err;
   }
@@ -730,7 +732,7 @@ void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t *req) {
   }
 
   if (handle->flags & UV_HANDLE_WIN_UDS_PIPE) {
-    /* Unix domain socket seems ok to just skip the following code.*/
+    /* Unix domain socket support neither query 'named pipe' info, nor FlushFileBuffer. */
     uv__insert_pending_req(loop, (uv_req_t*) req);
     return;
   }
@@ -940,7 +942,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (err) {
     goto error;
   }
-  
+
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
     int exists;
@@ -1164,7 +1166,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     err = ERROR_NO_UNICODE_TRANSLATION;
     goto error;
   }
-  
+
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
     int exists;
@@ -1217,7 +1219,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     addr2.sun_family = AF_UNIX;
     memcpy(addr2.sun_path, name, namelen);
     addr2.sun_path[namelen] = '\0';
-    
+
     memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
 
     /*
@@ -1259,9 +1261,6 @@ int uv_pipe_connect2(uv_connect_t* req,
   }
 #endif
 
-  /*
-   * When matched with named pipe prefix, use named pipe as backend.
-   */
   pipeHandle = open_named_pipe(handle->name, &duplex_flags);
   if (pipeHandle == INVALID_HANDLE_VALUE) {
     if (GetLastError() == ERROR_PIPE_BUSY) {
