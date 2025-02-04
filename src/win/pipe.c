@@ -111,6 +111,7 @@ static void eof_timer_close_cb(uv_handle_t* handle);
 static int uv__win_uds_pipe_file_exists(const char* path, int* exists) {
   int err;
   WCHAR* wpath;
+  DWORD attrib;
 
   if (exists == NULL || path == NULL) {
     return UV_EINVAL;
@@ -121,9 +122,9 @@ static int uv__win_uds_pipe_file_exists(const char* path, int* exists) {
     return err;
   }
 
-  DWORD dwAttrib = GetFileAttributesW(wpath);
-  *exists = (dwAttrib != INVALID_FILE_ATTRIBUTES &&
-         !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+  attrib = GetFileAttributesW(wpath);
+  *exists = (attrib != INVALID_FILE_ATTRIBUTES &&
+         !(attrib & FILE_ATTRIBUTE_DIRECTORY));
 
   free(wpath);
   return 0;
@@ -616,10 +617,15 @@ uds_pipe:
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
 static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* handle,
                              uv_pipe_accept_t* req, const char * name, BOOL firstInstance) {
+  int ret = 0, err = 0;
+  SOCKET accept_fd;
+  SOCKET server_fd;
+  struct sockaddr_un addr = {0};
+
   assert(req->pipeHandle == INVALID_HANDLE_VALUE);
 
   /* Create a non bound socket for AcceptEx second parameter. */
-  SOCKET accept_fd = socket(AF_UNIX, SOCK_STREAM, IPPROTO_IP);
+  accept_fd = socket(AF_UNIX, SOCK_STREAM, IPPROTO_IP);
   if (accept_fd == INVALID_SOCKET) {
     return WSAGetLastError();
   }
@@ -627,20 +633,19 @@ static int pipe_alloc_accept_unix_domain_socket(uv_loop_t* loop, uv_pipe_t* hand
 
   if (firstInstance) {
     /* First instance, only possible at bind, create the server socket. */
-    SOCKET server_fd = socket(AF_UNIX, SOCK_STREAM, IPPROTO_IP);
+    server_fd = socket(AF_UNIX, SOCK_STREAM, IPPROTO_IP);
     if (server_fd == INVALID_SOCKET) {
       return WSAGetLastError();
     }
 
-    struct sockaddr_un addr = {0};
     addr.sun_family = AF_UNIX;
     /* `name` is guaranteed to be a null terminated string
      * length (with '\0') <= UNIX_PATH_MAX */
     strcpy(addr.sun_path, name);
 
-    int ret = bind(server_fd, (const struct sockaddr*)&addr, sizeof(struct sockaddr_un));
+    ret = bind(server_fd, (const struct sockaddr*)&addr, sizeof(struct sockaddr_un));
     if (ret == SOCKET_ERROR) {
-      int err = WSAGetLastError();
+      err = WSAGetLastError();
       closesocket(server_fd);
       return err;
     }
@@ -849,6 +854,9 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   int i, err = 0;
   uv_pipe_accept_t* req;
   char* name_copy;
+  int use_uds_pipe;
+  int uds_file_exists;
+  int uds_err;
 
   if (flags & ~UV_PIPE_NO_TRUNCATE) {
     return UV_EINVAL;
@@ -866,7 +874,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     return UV_EINVAL;
   }
 
-  int use_uds_pipe = (handle->flags & UV_HANDLE_WIN_UDS_PIPE) != 0;
+  use_uds_pipe = (handle->flags & UV_HANDLE_WIN_UDS_PIPE) != 0;
 
 #if !defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
@@ -945,20 +953,19 @@ int uv_pipe_bind2(uv_pipe_t* handle,
 
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
-    int exists;
-    err = uv__win_uds_pipe_file_exists(handle->pathname, &exists);
+    err = uv__win_uds_pipe_file_exists(handle->pathname, &uds_file_exists);
     if (err) {
       goto error;
     }
 
     /* The uds file must not exist before bind. */
-    if (exists) {
+    if (uds_file_exists) {
       err = UV_EEXIST;
       goto error;
     }
 
-    int uds_err = pipe_alloc_accept_unix_domain_socket(
-        loop, handle, &handle->pipe.serv.accept_reqs[0], handle->pathname, TRUE);
+    uds_err = pipe_alloc_accept_unix_domain_socket(
+      loop, handle, &handle->pipe.serv.accept_reqs[0], handle->pathname, TRUE);
     if (uds_err) {
       if (uds_err == WSAENETDOWN) {
         /*
@@ -1088,6 +1095,14 @@ int uv_pipe_connect2(uv_connect_t* req,
   DWORD duplex_flags;
   char* name_copy;
 
+  int use_uds_pipe;
+  int uds_file_exists;
+  SOCKET uds_client_fd;
+  struct sockaddr_un uds_addr_bind = {0};
+  struct sockaddr_un uds_addr_real = {0};
+  DWORD uds_dummy_send_cnt = 0;
+  char uds_dummy_send_buffer[512] = {0};
+
   loop = handle->loop;
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
@@ -1112,7 +1127,7 @@ int uv_pipe_connect2(uv_connect_t* req,
     return UV_EINVAL;
   }
 
-  int use_uds_pipe = (handle->flags & UV_HANDLE_WIN_UDS_PIPE) != 0;
+  use_uds_pipe = (handle->flags & UV_HANDLE_WIN_UDS_PIPE) != 0;
 
 #if !defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
@@ -1169,14 +1184,13 @@ int uv_pipe_connect2(uv_connect_t* req,
 
 #if defined(UV__ENABLE_WIN_UDS_PIPE)
   if (use_uds_pipe) {
-    int exists;
-    err = uv__win_uds_pipe_file_exists(handle->pathname, &exists);
+    err = uv__win_uds_pipe_file_exists(handle->pathname, &uds_file_exists);
     if (err) {
       goto error;
     }
 
     /* The uds file must have been created by server. */
-    if (!exists) {
+    if (!uds_file_exists) {
       err = UV_ENOENT;
       goto error;
     }
@@ -1189,36 +1203,34 @@ int uv_pipe_connect2(uv_connect_t* req,
      * of the pipe is not matched.
     */
 
-    SOCKET client_fd = socket(AF_UNIX, SOCK_STREAM, IPPROTO_IP);
-    if (client_fd == INVALID_SOCKET) {
+    uds_client_fd = socket(AF_UNIX, SOCK_STREAM, IPPROTO_IP);
+    if (uds_client_fd == INVALID_SOCKET) {
       err = WSAGetLastError();
       goto error;
     }
 
-    struct sockaddr_un addr1 = {0};
-    addr1.sun_family = AF_UNIX;
+    uds_addr_bind.sun_family = AF_UNIX;
 
     /* ConnectEx need to be initially bound */
-    int ret = bind(client_fd, (const struct sockaddr*)&addr1, sizeof(struct sockaddr_un));
+    int ret = bind(uds_client_fd, (const struct sockaddr*)&uds_addr_bind, sizeof(struct sockaddr_un));
     if (ret != 0) {
       err = WSAGetLastError();
       goto error;
     }
 
     /* Associate it with IOCP so we can get events. */
-    if (CreateIoCompletionPort((HANDLE) client_fd,
+    if (CreateIoCompletionPort((HANDLE) uds_client_fd,
                                loop->iocp,
                                (ULONG_PTR) handle,
                                0) == NULL) {
-      closesocket(client_fd);
+      closesocket(uds_client_fd);
       err = GetLastError();
       goto error;
     }
 
-    struct sockaddr_un addr2 = {0};
-    addr2.sun_family = AF_UNIX;
-    memcpy(addr2.sun_path, name, namelen);
-    addr2.sun_path[namelen] = '\0';
+    uds_addr_real.sun_family = AF_UNIX;
+    memcpy(uds_addr_real.sun_path, name, namelen);
+    uds_addr_real.sun_path[namelen] = '\0';
 
     memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
 
@@ -1227,21 +1239,18 @@ int uv_pipe_connect2(uv_connect_t* req,
      * Although doc says the send buffer can be ignored, it will smash the
      * stack if we don't actually allocate them on stack and pass them.
      */
-    DWORD dummy_send_cnt = 0;
-    char dummy_send_buffer[512] = {0};
-
-    ret = uv_wsa_connectex(client_fd,
-                           (const struct sockaddr*)&addr2,
+    ret = uv_wsa_connectex(uds_client_fd,
+                           (const struct sockaddr*)&uds_addr_real,
                            sizeof(struct sockaddr_un),
-                           dummy_send_buffer,
+                           uds_dummy_send_buffer,
                            0,
-                           &dummy_send_cnt,
+                           &uds_dummy_send_cnt,
                            &req->u.io.overlapped);
 
     if (!ret) {
       err = WSAGetLastError();
       if (err != ERROR_IO_PENDING) {
-        closesocket(client_fd);
+        closesocket(uds_client_fd);
         goto error;
       }
     }
@@ -1251,7 +1260,7 @@ int uv_pipe_connect2(uv_connect_t* req,
      * to uds_socket (reuse the `name`) and set it to pipeHandle later at req
      * handler.
      */
-    req->u.connect.uds_socket = client_fd;
+    req->u.connect.uds_socket = uds_client_fd;
     req->u.connect.duplex_flags = UV_HANDLE_WRITABLE | UV_HANDLE_READABLE;
 
     /* The req will be processed with IOCP. */
