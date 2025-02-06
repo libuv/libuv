@@ -26,7 +26,6 @@ Data types
 
       typedef enum {
           /* Initial/normal terminal mode */
-          /* Initial/normal terminal mode */
           UV_TTY_MODE_NORMAL,
           /*
           * Raw input mode (On Windows, ENABLE_WINDOW_INPUT is also enabled).
