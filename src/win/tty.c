@@ -372,9 +372,6 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   uv_read_cb read_cb;
   int err;
 
-  if (mode == UV_TTY_MODE_RAW_LEGACY)
-    mode = UV_TTY_MODE_RAW;
-
   if (!(tty->flags & UV_HANDLE_TTY_READABLE)) {
     return UV_EINVAL;
   }
@@ -383,7 +380,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
     return 0;
   }
 
-  flags = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
+  try_set_flags = 0;
   switch (mode) {
     case UV_TTY_MODE_NORMAL:
       flags = ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT;
@@ -417,10 +414,8 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   }
 
   uv_sem_wait(&uv_tty_output_lock);
-  if (
-    !SetConsoleMode(tty->handle, flags | try_set_flags) &&
-    !SetConsoleMode(tty->handle, flags)
-  ) {
+  if (!SetConsoleMode(tty->handle, flags | try_set_flags) &&
+      !SetConsoleMode(tty->handle, flags)) {
     err = uv_translate_sys_error(GetLastError());
     uv_sem_post(&uv_tty_output_lock);
     return err;
@@ -2333,7 +2328,7 @@ int uv_tty_reset_mode(void) {
   if (
     uv__tty_console_handle_in != INVALID_HANDLE_VALUE &&
     uv__tty_console_in_original_mode != (DWORD)-1 &&
-    InterlockedOr(&uv__tty_console_in_need_mode_reset, 0) != 0
+    InterlockedExchange(&uv__tty_console_in_need_mode_reset, 0) != 0
   ) {
     SetConsoleMode(uv__tty_console_handle_in, uv__tty_console_in_original_mode);
   }

@@ -140,10 +140,9 @@ enum {
   UV_HANDLE_REAP                        = 0x10000000
 };
 
-#define uv__is_raw_tty_mode(m)                                                \
-  ((m) == UV_TTY_MODE_RAW ||                                                  \
-   (m) == UV_TTY_MODE_RAW_VT ||                                               \
-   (m) == UV_TTY_MODE_RAW_LEGACY)
+static inline int uv__is_raw_tty_mode(uv_tty_mode_t m) {
+  return m == UV_TTY_MODE_RAW || m == UV_TTY_MODE_RAW_VT;
+}
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
