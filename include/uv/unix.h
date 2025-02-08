@@ -509,4 +509,6 @@ typedef struct {
 #define UV_FS_O_SEQUENTIAL    0
 #define UV_FS_O_TEMPORARY     0
 
+#define UV_SPAWN_BUFFER_SIZE (64 * 1024)
+
 #endif /* UV_UNIX_H */

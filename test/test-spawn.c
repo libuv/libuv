@@ -603,6 +603,22 @@ TEST_IMPL(spawn_stdin) {
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT_OK(r);
 
+#ifdef __APPLE__
+  int recv_buf;
+  int recv_fd;
+  int send_buf;
+  int send_fd;
+  socklen_t optlen = sizeof(int);
+
+  ASSERT_OK(uv_fileno((uv_handle_t*) options.stdio[0].data.stream, &recv_fd));
+  ASSERT_OK(getsockopt(recv_fd, SOL_SOCKET, SO_RCVBUF, &recv_buf, &optlen));
+  ASSERT_EQ(recv_buf, UV_SPAWN_BUFFER_SIZE);
+
+  ASSERT_OK(uv_fileno((uv_handle_t*) options.stdio[1].data.stream, &send_fd));
+  ASSERT_OK(getsockopt(send_fd, SOL_SOCKET, SO_SNDBUF, &send_buf, &optlen));
+  ASSERT_EQ(send_buf, UV_SPAWN_BUFFER_SIZE);
+#endif
+  
   buf.base = buffer;
   buf.len = sizeof(buffer);
   r = uv_write(&write_req, (uv_stream_t*) &in, &buf, 1, write_cb);

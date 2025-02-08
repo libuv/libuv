@@ -188,6 +188,7 @@ void uv__wait_children(uv_loop_t* loop) {
 static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   int mask;
   int fd;
+  int ret;
 
   mask = UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD | UV_INHERIT_STREAM;
 
@@ -199,8 +200,27 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
     assert(container->data.stream != NULL);
     if (container->data.stream->type != UV_NAMED_PIPE)
       return UV_EINVAL;
-    else
-      return uv_socketpair(SOCK_STREAM, 0, fds, 0, 0);
+    else {
+      ret = uv_socketpair(SOCK_STREAM, 0, fds, 0, 0);
+
+#ifdef __APPLE__
+    if(ret == 0) {
+      int size = UV_SPAWN_BUFFER_SIZE;
+      int options[] = {SO_RCVBUF, SO_SNDBUF};
+
+      for (int i = 0; i < 2; i++) {
+        for (int j = 0; j < 2; j++) {
+          ret = setsockopt(fds[i], SOL_SOCKET, options[j], &size, sizeof(size));
+
+          if (ret != 0)
+            return ret;
+        }
+      }
+    }
+#endif
+
+      return ret;
+    }
 
   case UV_INHERIT_FD:
   case UV_INHERIT_STREAM:
