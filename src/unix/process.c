@@ -205,7 +205,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
 
 #ifdef __APPLE__
     if(ret == 0) {
-      int size = UV_SPAWN_BUFFER_SIZE;
+      int size = 64 * 1024;
       int options[] = {SO_RCVBUF, SO_SNDBUF};
 
       for (int i = 0; i < 2; i++) {
