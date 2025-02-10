@@ -190,7 +190,7 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   int fd;
   int ret;
   int size = 64 * 1024;
-  int options[] = {SO_RCVBUF, SO_SNDBUF};
+  int i;
 
   mask = UV_IGNORE | UV_CREATE_PIPE | UV_INHERIT_FD | UV_INHERIT_STREAM;
 
@@ -205,18 +205,11 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
     else {
       ret = uv_socketpair(SOCK_STREAM, 0, fds, 0, 0);
 
-#ifdef __APPLE__
-    if (ret == 0) {
-      for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 2; j++) {
-          ret = setsockopt(fds[i], SOL_SOCKET, options[j], &size, sizeof(size));
-
-          if (ret != 0)
-            return ret;
-        }
+    if (ret == 0)
+      for (i = 0; i < 2; i++) {
+        setsockopt(fds[i], SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
+        setsockopt(fds[i], SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
       }
-    }
-#endif
 
       return ret;
     }

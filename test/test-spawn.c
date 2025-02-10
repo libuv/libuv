@@ -603,7 +603,6 @@ TEST_IMPL(spawn_stdin) {
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT_OK(r);
 
-#ifdef __APPLE__
   int recv_buf;
   int recv_fd;
   int send_buf;
@@ -618,7 +617,6 @@ TEST_IMPL(spawn_stdin) {
   ASSERT_OK(uv_fileno((uv_handle_t*) options.stdio[1].data.stream, &send_fd));
   ASSERT_OK(getsockopt(send_fd, SOL_SOCKET, SO_SNDBUF, &send_buf, &optlen));
   ASSERT_EQ(send_buf, size);
-#endif
   
   buf.base = buffer;
   buf.len = sizeof(buffer);
