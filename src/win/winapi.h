@@ -4145,8 +4145,8 @@ typedef struct _FILE_STAT_BASIC_INFORMATION {
   ULONG DeviceType;
   ULONG DeviceCharacteristics;
   ULONG Reserved;
-  FILE_ID_128 FileId128;
   LARGE_INTEGER VolumeSerialNumber;
+  FILE_ID_128 FileId128;
 } FILE_STAT_BASIC_INFORMATION;
 #endif
 
