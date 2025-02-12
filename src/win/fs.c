@@ -2118,7 +2118,7 @@ static void fs__access(uv_fs_t* req) {
       (attr & FILE_ATTRIBUTE_DIRECTORY)) {
     SET_REQ_RESULT(req, 0);
   } else {
-    SET_REQ_WIN32_ERROR(req, UV_EPERM);
+    SET_REQ_WIN32_ERROR(req, UV_EACCES);
   }
 
 }
