@@ -1717,6 +1717,18 @@ TEST_IMPL(fs_access) {
   ASSERT_EQ(1, access_cb_count);
   access_cb_count = 0; /* reset for the next test */
 
+  /* Make the file read-only */
+  r = uv_fs_fchmod(NULL, &req, file, 0400, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  /* Check that the file is not writable */
+  r = uv_fs_access(NULL, &req, "test_file", W_OK, NULL);
+  ASSERT_EQ(r, UV_EACCES);
+  ASSERT_EQ(req.result, UV_EACCES);
+  uv_fs_req_cleanup(&req);
+
   /* Close file */
   r = uv_fs_close(NULL, &req, file, NULL);
   ASSERT_OK(r);
@@ -1740,6 +1752,8 @@ TEST_IMPL(fs_access) {
   uv_run(loop, UV_RUN_DEFAULT);
 
   /* Cleanup. */
+  uv_fs_chmod(NULL, &req, "test_file", 0600, NULL);
+  uv_fs_req_cleanup(&req);
   unlink("test_file");
   rmdir("test_dir");
 
