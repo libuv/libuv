@@ -1607,6 +1607,50 @@ TEST_IMPL(fs_fstat) {
 }
 
 
+TEST_IMPL(fs_fstat_st_dev) {
+  uv_fs_t req;
+  uv_fs_t req_link;
+  uv_loop_t* loop = uv_default_loop();
+  char* test_file = "tmp_st_dev";
+  char* symlink_file = "tmp_st_dev_link";
+
+  unlink(test_file);
+  unlink(symlink_file);
+
+  // Create file
+  int r = uv_fs_open(NULL, &req, test_file, UV_FS_O_RDWR | UV_FS_O_CREAT,
+      S_IWUSR | S_IRUSR, NULL);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(req.result, 0);
+  uv_fs_req_cleanup(&req);
+
+  // Create a symlink
+  r = uv_fs_symlink(loop, &req, test_file, symlink_file, 0, NULL);
+  ASSERT_EQ(r, 0);
+  uv_fs_req_cleanup(&req);
+
+  // Call uv_fs_fstat for file
+  r = uv_fs_stat(loop, &req, test_file, NULL);
+  ASSERT_EQ(r, 0);
+
+  // Call uv_fs_fstat for symlink
+  r = uv_fs_stat(loop, &req_link, symlink_file, NULL);
+  ASSERT_EQ(r, 0);
+
+  // Compare st_dev
+  ASSERT_EQ(((uv_stat_t*)req.ptr)->st_dev, ((uv_stat_t*)req_link.ptr)->st_dev);
+
+  // Cleanup
+  uv_fs_req_cleanup(&req);
+  uv_fs_req_cleanup(&req_link);
+  unlink(test_file);
+  unlink(symlink_file);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
 TEST_IMPL(fs_fstat_stdio) {
   int fd;
   int res;
