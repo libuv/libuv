@@ -203,8 +203,23 @@ static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 }
 
 
-UV_UNUSED(static struct timespec uv__fs_to_timespec(double time)) {
+#if defined(__APPLE__)                                                        \
+    || defined(_AIX71)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__HAIKU__)                                                     \
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)
+static struct timespec uv__fs_to_timespec(double time) {
   struct timespec ts;
+
+  if (uv__isinf(time))
+    return (struct timespec){UTIME_NOW, UTIME_NOW};
+  if (uv__isnan(time))
+    return (struct timespec){UTIME_OMIT, UTIME_OMIT};
+
   ts.tv_sec  = time;
   ts.tv_nsec = (time - ts.tv_sec) * 1e9;
 
@@ -221,41 +236,23 @@ UV_UNUSED(static struct timespec uv__fs_to_timespec(double time)) {
   }
   return ts;
 }
+#endif
 
-UV_UNUSED(static struct timeval uv__fs_to_timeval(double time)) {
-  struct timeval tv;
-  tv.tv_sec  = time;
-  tv.tv_usec = (time - tv.tv_sec) * 1e6;
-  if (tv.tv_usec < 0) {
-    tv.tv_usec += 1e6;
-    tv.tv_sec -= 1;
-  }
-  return tv;
-}
 
 static ssize_t uv__fs_futime(uv_fs_t* req) {
-#if defined(__linux__)                                                        \
+#if defined(__APPLE__)                                                        \
     || defined(_AIX71)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
     || defined(__HAIKU__)                                                     \
-    || defined(__GNU__)
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
   return futimens(req->file, ts);
-#elif defined(__APPLE__)                                                      \
-    || defined(__DragonFly__)                                                 \
-    || defined(__FreeBSD__)                                                   \
-    || defined(__NetBSD__)                                                    \
-    || defined(__OpenBSD__)                                                   \
-    || defined(__sun)
-  struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
-# if defined(__sun)
-  return futimesat(req->file, NULL, tv);
-# else
-  return futimes(req->file, tv);
-# endif
 #elif defined(__MVS__)
   attrib_t atr;
   memset(&atr, 0, sizeof(atr));
@@ -1142,25 +1139,20 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_utime(uv_fs_t* req) {
-#if defined(__linux__)                                                         \
-    || defined(_AIX71)                                                         \
-    || defined(__sun)                                                          \
-    || defined(__HAIKU__)
+#if defined(__APPLE__)                                                        \
+    || defined(_AIX71)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__HAIKU__)                                                     \
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, 0);
-#elif defined(__APPLE__)                                                      \
-    || defined(__DragonFly__)                                                 \
-    || defined(__FreeBSD__)                                                   \
-    || defined(__NetBSD__)                                                    \
-    || defined(__OpenBSD__)
-  struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
-  return utimes(req->path, tv);
-#elif defined(_AIX)                                                           \
-    && !defined(_AIX71)
+#elif defined(_AIX) && !defined(_AIX71)
   struct utimbuf buf;
   buf.actime = req->atime;
   buf.modtime = req->mtime;
@@ -1181,24 +1173,19 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_lutime(uv_fs_t* req) {
-#if defined(__linux__)            ||                                           \
-    defined(_AIX71)               ||                                           \
-    defined(__sun)                ||                                           \
-    defined(__HAIKU__)            ||                                           \
-    defined(__GNU__)              ||                                           \
-    defined(__OpenBSD__)
+#if defined(__APPLE__)                                                        \
+    || defined(_AIX71)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__HAIKU__)                                                     \
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
-#elif defined(__APPLE__)          ||                                          \
-      defined(__DragonFly__)      ||                                          \
-      defined(__FreeBSD__)        ||                                          \
-      defined(__NetBSD__)
-  struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
-  return lutimes(req->path, tv);
 #else
   errno = ENOSYS;
   return -1;

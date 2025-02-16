@@ -58,6 +58,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <math.h>
 
 /* Internal type, do not use. */
 struct uv__queue {
@@ -1585,6 +1586,8 @@ UV_EXTERN int uv_fs_chmod(uv_loop_t* loop,
                           const char* path,
                           int mode,
                           uv_fs_cb cb);
+#define UV_FS_UTIME_NOW  (INFINITY)
+#define UV_FS_UTIME_OMIT (NAN)
 UV_EXTERN int uv_fs_utime(uv_loop_t* loop,
                           uv_fs_t* req,
                           const char* path,
