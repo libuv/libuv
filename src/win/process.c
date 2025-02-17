@@ -920,11 +920,8 @@ int uv_spawn(uv_loop_t* loop,
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
-<<<<<<< HEAD
-                              UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
-=======
                               UV_PROCESS_SETGROUPS |
->>>>>>> 20a263fd (unix: Support setting supplementary process groups)
+                              UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
                               UV_PROCESS_WINDOWS_HIDE_GUI |

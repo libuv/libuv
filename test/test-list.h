@@ -341,12 +341,9 @@ TEST_DECLARE   (spawn_preserve_env)
 TEST_DECLARE   (spawn_same_stdout_stderr)
 TEST_DECLARE   (spawn_setuid_fails)
 TEST_DECLARE   (spawn_setgid_fails)
-<<<<<<< HEAD
 TEST_DECLARE   (spawn_affinity)
 TEST_DECLARE   (spawn_affinity_invalid_mask)
-=======
 TEST_DECLARE   (spawn_setgids_fails)
->>>>>>> 20a263fd (unix: Support setting supplementary process groups)
 TEST_DECLARE   (spawn_stdout_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file)
 TEST_DECLARE   (spawn_stdout_and_stderr_to_file2)
@@ -1042,12 +1039,9 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_same_stdout_stderr)
   TEST_ENTRY  (spawn_setuid_fails)
   TEST_ENTRY  (spawn_setgid_fails)
-<<<<<<< HEAD
   TEST_ENTRY  (spawn_affinity)
   TEST_ENTRY  (spawn_affinity_invalid_mask)
-=======
   TEST_ENTRY  (spawn_setgids_fails)
->>>>>>> 20a263fd (unix: Support setting supplementary process groups)
   TEST_ENTRY  (spawn_stdout_to_file)
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file)
   TEST_ENTRY  (spawn_stdout_and_stderr_to_file2)

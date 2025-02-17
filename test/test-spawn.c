@@ -1515,7 +1515,7 @@ TEST_IMPL(spawn_setgids) {
   ASSERT(pw != NULL);
   gids[0] = pw->pw_gid;
   options.gids = gids;
-  options.num_gids = 1;
+  options.gids_size = 1;
 
   options.flags = UV_PROCESS_SETGROUPS;
 
@@ -1531,7 +1531,7 @@ TEST_IMPL(spawn_setgids) {
   ASSERT(exit_cb_called == 1);
   ASSERT(close_cb_called == 1);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 #endif
@@ -1652,7 +1652,7 @@ TEST_IMPL(spawn_setgids_fails) {
 
   options.flags |= UV_PROCESS_SETGROUPS;
   options.gids = gids;
-  options.num_gids = 1;
+  options.gids_size = 1;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT(r == UV_EPERM);
@@ -1662,7 +1662,7 @@ TEST_IMPL(spawn_setgids_fails) {
 
   ASSERT(close_cb_called == 0);
 
-  MAKE_VALGRIND_HAPPY();
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 #endif
