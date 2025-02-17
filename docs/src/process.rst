@@ -103,7 +103,7 @@ Data types
              * specified in the 'num_gids' field.  This does not work on windows;
              * setting this flag will cause uv_spawn() to fail.
              */
-            UV_PROCESS_SETGROUPS = (1 << 8)
+            UV_PROCESS_SETGROUPS = (1 << 9)
         };
 
 .. c:type:: uv_stdio_container_t
@@ -230,8 +230,8 @@ Public members
 
 .. c:member:: uv_uid_t uv_process_options_t.uid
 .. c:member:: uv_gid_t uv_process_options_t.gid
-.. c:member:: uv_process_options_t.gids
-.. c:member:: uv_process_options_t.gids_size
+.. c:member:: uv_gid_t* uv_process_options_t.gids
+.. c:member:: size_t uv_process_options_t.gids_size
 
     Libuv can change the child process' user/group id and supplementary group
     ids. This happens only when the appropriate bits are set in the flags fields.
