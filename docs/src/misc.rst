@@ -587,6 +587,10 @@ API
     memory allocated to `pwd` needs to be freed with
     :c:func:`uv_os_free_passwd`.
 
+    .. note::
+        If the effective uid does not have an entry in the password file this
+        function will return ENOENT even if the file exists.
+
     .. versionadded:: 1.9.0
 
 .. c:function:: int uv_os_get_passwd2(uv_passwd_t* pwd, uv_uid_t uid)
