@@ -24,6 +24,7 @@
 
 static uv_tcp_t server;
 static uv_tcp_t client;
+static uv_tcp_t conn;
 static int connection_cb_called;
 static int connect_cb_called;
 
@@ -40,11 +41,9 @@ static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT_OK(uv_reject(tcp));
 
   /* The server should not have accepted the connection */
-#ifdef _WIN32
-  ASSERT(server.tcp.serv.pending_accepts->accept_socket == INVALID_SOCKET);
-#else
-  ASSERT(server.accepted_fd == -1);
-#endif
+  int r = uv_tcp_init(uv_default_loop(), &conn);
+  r = uv_accept((uv_stream_t*)tcp, (uv_stream_t*)&conn);
+  ASSERT(r == UV_EAGAIN);
 
   /* Close the server */
   uv_close((uv_handle_t*) &server, NULL);

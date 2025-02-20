@@ -28,42 +28,42 @@ static int connection_cb_called = 0;
 static int do_accept_called = 0;
 static int close_cb_called = 0;
 static int connect_cb_called = 0;
+static uv_tcp_t connections[2];
 uv_tcp_t* server;
 
 static void close_cb(uv_handle_t* handle) {
   ASSERT_NOT_NULL(handle);
-  free(handle);
   close_cb_called++;
 }
 
 static void connection_cb(uv_stream_t* tcp, int status) {
+  int r;
+  uv_tcp_t* conn;
+
+  conn = &connections[connection_cb_called];
   ASSERT_OK(status);
 
   if (connection_cb_called == 0) {
     ASSERT_OK(uv_reject(tcp));
 
-#ifdef _WIN32
-    ASSERT(server->tcp.serv.pending_accepts->accept_socket == INVALID_SOCKET);
-#else
-    ASSERT(server->accepted_fd == -1);
-#endif
-  } else {
-    uv_tcp_t* accepted_handle = (uv_tcp_t*)malloc(sizeof *accepted_handle);
-
-    ASSERT_NOT_NULL(accepted_handle);
-
-    int r = uv_tcp_init(uv_default_loop(), accepted_handle);
+    r = uv_tcp_init(tcp->loop, conn);
     ASSERT_OK(r);
 
-    r = uv_accept((uv_stream_t*)tcp, (uv_stream_t*)accepted_handle);
+    r = uv_accept(tcp, (uv_stream_t*)conn);
+    ASSERT(r == UV_EAGAIN);
+  } else {
+    r = uv_tcp_init(uv_default_loop(), conn);
+    ASSERT_OK(r);
+
+    r = uv_accept((uv_stream_t*)tcp, (uv_stream_t*)conn);
     ASSERT_OK(r);
 
     do_accept_called++;
 
-    uv_close((uv_handle_t*)accepted_handle, close_cb);
+    uv_close((uv_handle_t*)conn, close_cb);
   }
 
-  /* After accepting the two clients close the server handle */
+  /* After accepting the second client, close the server handle */
   if (do_accept_called == 1) {
     uv_close((uv_handle_t*)tcp, close_cb);
   }
@@ -73,7 +73,7 @@ static void connection_cb(uv_stream_t* tcp, int status) {
 
 static void start_server(void) {
   struct sockaddr_in addr;
-  server = (uv_tcp_t*)malloc(sizeof *server);
+  server = malloc(sizeof *server);
   int r;
 
   ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));

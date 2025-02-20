@@ -27,8 +27,11 @@ typedef struct {
   uv_connect_t conn_req;
 } client_t;
 static uv_pipe_t server_handle;
-static client_t client_handle;
 static int connect_cb_called;
+static int do_accept_called = 0;
+static int connection_cb_called = 0;
+static uv_pipe_t connections[2];
+static client_t clients[2];
 
 static void connect_cb(uv_connect_t* _, int status) {
   ASSERT_OK(status);
@@ -36,9 +39,36 @@ static void connect_cb(uv_connect_t* _, int status) {
 }
 
 static void connection_pipe_cb(uv_stream_t* server, int status) {
-  ASSERT_OK(uv_reject(server));
+  int r;
+  uv_pipe_t* conn;
+
+  conn = &connections[connection_cb_called];
   ASSERT_OK(status);
-  uv_close((uv_handle_t*) &server_handle, NULL);
+
+  if (connection_cb_called == 0) {
+    ASSERT_OK(uv_reject(server));
+
+    r = uv_pipe_init(server->loop, conn, 0);
+    ASSERT_OK(r);
+
+    r = uv_accept(server, (uv_stream_t*)conn);
+    ASSERT(r == UV_EAGAIN);
+  } else {
+    r = uv_pipe_init(server->loop, conn, 0);
+    ASSERT_OK(r);
+
+    r = uv_accept(server, (uv_stream_t*)conn);
+    ASSERT_OK(r);
+
+    do_accept_called++;
+  }
+
+  /* After accepting the second client, close the server handle */
+  if (do_accept_called == 1) {
+    uv_close((uv_handle_t*) &server_handle, NULL);
+  }
+
+  connection_cb_called++;
 }
 
 TEST_IMPL(pipe_reject) {
@@ -57,15 +87,24 @@ TEST_IMPL(pipe_reject) {
   r = uv_listen((uv_stream_t*)&server_handle, 128, connection_pipe_cb);
   ASSERT_OK(r);
 
-  r = uv_pipe_init(loop, (uv_pipe_t*)&client_handle, 0);
+  r = uv_pipe_init(loop, &clients[0].pipe_handle, 0);
   ASSERT_OK(r);
-  uv_pipe_connect(&client_handle.conn_req,
-                  &client_handle.pipe_handle,
+  uv_pipe_connect(&clients[0].conn_req,
+                  &clients[0].pipe_handle,
+                  TEST_PIPENAME,
+                  connect_cb);
+
+  r = uv_pipe_init(loop, &clients[1].pipe_handle, 0);
+  ASSERT_OK(r);
+  uv_pipe_connect(&clients[1].conn_req,
+                  &clients[1].pipe_handle,
                   TEST_PIPENAME,
                   connect_cb);
 
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT(connect_cb_called == 1);
+  ASSERT_EQ(2, connection_cb_called);
+  ASSERT_EQ(2, connect_cb_called);
+  ASSERT_EQ(1, do_accept_called);
   return 0;
 }

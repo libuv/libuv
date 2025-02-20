@@ -66,6 +66,8 @@ int uv_reject(uv_stream_t* server) {
 
       CloseHandle(pipe_req->pipeHandle);
       pipe_req->pipeHandle = INVALID_HANDLE_VALUE;
+      ((uv_pipe_t*)server)->pipe.serv.pending_accepts = pipe_req->next_pending;
+      pipe_req->next_pending = NULL;
       break;
     case UV_TCP:
       tcp_req = ((uv_tcp_t*)server)->tcp.serv.pending_accepts;
@@ -76,6 +78,8 @@ int uv_reject(uv_stream_t* server) {
 
       closesocket(tcp_req->accept_socket);
       tcp_req->accept_socket = INVALID_SOCKET;
+      ((uv_tcp_t*)server)->tcp.serv.pending_accepts = tcp_req->next_pending;
+      tcp_req->next_pending = NULL;
       break;
     default:
       return UV_EINVAL;
