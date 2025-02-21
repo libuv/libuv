@@ -31,6 +31,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "uv.h"
 #include "uv/tree.h"
@@ -447,5 +448,23 @@ struct uv__loop_internal_fields_s {
 #else
 # define UV_PTHREAD_MAX_NAMELEN_NP 16
 #endif
+
+/* Open-coded so downstream users don't have to link libm. */
+static inline int uv__isinf(double d) {
+  uint64_t v;
+
+  STATIC_ASSERT(sizeof(v) == sizeof(d));
+  memcpy(&v, &d, sizeof(v));
+  return (v << 1 >> 53) == 2047 && !(v << 12);
+}
+
+/* Open-coded so downstream users don't have to link libm. */
+static inline int uv__isnan(double d) {
+  uint64_t v;
+
+  STATIC_ASSERT(sizeof(v) == sizeof(d));
+  memcpy(&v, &d, sizeof(v));
+  return (v << 1 >> 53) == 2047 && !!(v << 12);
+}
 
 #endif /* UV_COMMON_H_ */
