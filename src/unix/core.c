@@ -1078,6 +1078,8 @@ int uv_getrusage_thread(uv_rusage_t* rusage) {
 
   return 0;
 
+#elif defined(RUSAGE_LWP)
+  return uv__getrusage(RUSAGE_LWP, rusage);
 #elif defined(RUSAGE_THREAD)
   return uv__getrusage(RUSAGE_THREAD, rusage);
 #endif  /* defined(__APPLE__) */
