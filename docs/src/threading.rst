@@ -162,6 +162,7 @@ Threads
     .. versionadded:: 1.50.0
 
 .. c:function:: int uv_thread_setpriority(uv_thread_t tid, int priority)
+
     If the function succeeds, the return value is 0.
     If the function fails, the return value is less than zero.
     Sets the scheduling priority of the thread specified by tid. It requires elevated
@@ -169,7 +170,9 @@ Threads
     The priority can be set to the following constants. UV_THREAD_PRIORITY_HIGHEST, 
     UV_THREAD_PRIORITY_ABOVE_NORMAL, UV_THREAD_PRIORITY_NORMAL, 
     UV_THREAD_PRIORITY_BELOW_NORMAL, UV_THREAD_PRIORITY_LOWEST.
+
 .. c:function:: int uv_thread_getpriority(uv_thread_t tid, int* priority)
+
     If the function succeeds, the return value is 0.
     If the function fails, the return value is less than zero.
     Retrieves the scheduling priority of the thread specified by tid. The value in the
