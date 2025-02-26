@@ -106,6 +106,7 @@ static uv_loop_t* loop;
 
 static uv_fs_t open_req1;
 static uv_fs_t open_req2;
+static uv_fs_t open_req_noclose;
 static uv_fs_t read_req;
 static uv_fs_t write_req;
 static uv_fs_t unlink_req;
@@ -323,7 +324,7 @@ static void chown_root_cb(uv_fs_t* req) {
     ASSERT_EQ(req->result, UV_EINVAL);
 #   elif defined(__PASE__)
     /* On IBMi PASE, there is no root user. uid 0 is user qsecofr.
-     * User may grant qsecofr's privileges, including changing 
+     * User may grant qsecofr's privileges, including changing
      * the file's ownership to uid 0.
      */
     ASSERT(req->result == 0 || req->result == UV_EPERM);
@@ -1121,6 +1122,53 @@ TEST_IMPL(fs_file_sync) {
   return 0;
 }
 
+TEST_IMPL(fs_posix_delete) {
+  int r;
+  uv_os_fd_t file;
+
+  /* Setup. */
+  unlink("test_dir/file");
+  rmdir("test_dir");
+
+  r = uv_fs_mkdir(NULL, &mkdir_req, "test_dir", 0755, NULL);
+  ASSERT_OK(r);
+
+  r = uv_fs_open(NULL, &open_req_noclose, "test_dir/file", UV_FS_O_WRONLY | UV_FS_O_CREAT, S_IWUSR | S_IRUSR, NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(open_req_noclose.result, 0);
+  file = (uv_os_fd_t) open_req_noclose.result;
+  uv_fs_req_cleanup(&open_req_noclose);
+
+  /* should not be possible to delete the non-empty dir */
+  r = uv_fs_rmdir(NULL, &rmdir_req, "test_dir", NULL);
+  ASSERT((r == UV_ENOTEMPTY) || (r == UV_EEXIST));
+  ASSERT_EQ(r, rmdir_req.result);
+  uv_fs_req_cleanup(&rmdir_req);
+
+  r = uv_fs_rmdir(NULL, &rmdir_req, "test_dir/file", NULL);
+  ASSERT((r == UV_ENOTDIR) || (r == UV_ENOENT));
+  ASSERT_EQ(r, rmdir_req.result);
+  uv_fs_req_cleanup(&rmdir_req);
+
+  r = uv_fs_unlink(NULL, &unlink_req, "test_dir/file", NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(unlink_req.result);
+  uv_fs_req_cleanup(&unlink_req);
+
+  /* delete the dir while the file is still open, which should succeed on posix */
+  r = uv_fs_rmdir(NULL, &rmdir_req, "test_dir", NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(rmdir_req.result);
+  uv_fs_req_cleanup(&rmdir_req);
+
+  /* Cleanup */
+  r = uv_fs_close(NULL, &close_req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&close_req);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
 
 static void fs_file_write_null_buffer(int add_flags) {
   int r;
@@ -2441,8 +2489,8 @@ int test_symlink_dir_impl(int type) {
   strcpy(test_dir_abs_buf, "\\\\?\\");
   uv_cwd(test_dir_abs_buf + 4, &test_dir_abs_size);
   test_dir_abs_size += 4;
-  strcat(test_dir_abs_buf, "\\test_dir\\");
-  test_dir_abs_size += strlen("\\test_dir\\");
+  strcat(test_dir_abs_buf, "\\test_dir");
+  test_dir_abs_size += strlen("\\test_dir");
   test_dir = test_dir_abs_buf;
 #else
   uv_cwd(test_dir_abs_buf, &test_dir_abs_size);
@@ -2497,8 +2545,8 @@ int test_symlink_dir_impl(int type) {
   r = uv_fs_realpath(NULL, &req, "test_dir_symlink", NULL);
   ASSERT_OK(r);
 #ifdef _WIN32
-  ASSERT_EQ(strlen(req.ptr), test_dir_abs_size - 5);
-  ASSERT_OK(_strnicmp(req.ptr, test_dir + 4, test_dir_abs_size - 5));
+  ASSERT_EQ(strlen(req.ptr), test_dir_abs_size - 4);
+  ASSERT_OK(_strnicmp(req.ptr, test_dir + 4, test_dir_abs_size - 4));
 #else
   ASSERT_OK(strcmp(req.ptr, test_dir_abs_buf));
 #endif
@@ -4556,8 +4604,8 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
                  S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT_OK(r);
-  ASSERT_GE(open_req1.result, 0);
-  file = (uv_os_fd_t) open_req1.result;
+  ASSERT_GE(open_req2.result, 0);
+  file = (uv_os_fd_t) open_req2.result;
   uv_fs_req_cleanup(&open_req2);
 
   r = uv_fs_close(NULL, &close_req, file, NULL);
@@ -4689,11 +4737,12 @@ TEST_IMPL(fs_open_readonly_acl) {
     /* Try opening the file */
     r = uv_fs_open(NULL, &open_req1, "test_file_icacls", UV_FS_O_RDONLY, 0,
                    NULL);
-    if (r < 0) {
+    if (r != 0) {
         goto acl_cleanup;
     }
+    file = (uv_os_fd_t) open_req1.result;
     uv_fs_req_cleanup(&open_req1);
-    r = uv_fs_close(NULL, &close_req, (uv_os_fd_t) open_req1.result, NULL);
+    r = uv_fs_close(NULL, &close_req, (uv_os_fd_t) file, NULL);
     if (r != 0) {
         goto acl_cleanup;
     }
@@ -4704,6 +4753,62 @@ TEST_IMPL(fs_open_readonly_acl) {
     call_icacls("icacls test_file_icacls /remove \"%s\" /inheritance:e",
                 pwd.username);
     unlink("test_file_icacls");
+    uv_os_free_passwd(&pwd);
+    ASSERT_OK(r);
+    MAKE_VALGRIND_HAPPY(loop);
+    return 0;
+}
+
+TEST_IMPL(fs_stat_no_permission) {
+    uv_passwd_t pwd;
+    uv_fs_t req;
+    int r;
+    uv_os_fd_t file;
+    char* filename = "test_file_no_permission.txt";
+
+    /* Setup - clear the ACL and remove the file */
+    loop = uv_default_loop();
+    r = uv_os_get_passwd(&pwd);
+    ASSERT_OK(r);
+    call_icacls("icacls %s /remove *S-1-1-0:(F)", filename);
+    unlink(filename);
+
+    /* Create the file */
+    r = uv_fs_open(loop,
+                   &open_req1,
+                   filename,
+                   UV_FS_O_RDONLY | UV_FS_O_CREAT,
+                   S_IRUSR,
+                   NULL);
+    ASSERT_OK(r);
+    ASSERT_GE(open_req1.result, 0);
+    file = (uv_os_fd_t) open_req1.result;
+    uv_fs_req_cleanup(&open_req1);
+    r = uv_fs_close(NULL, &close_req, file, NULL);
+    ASSERT_OK(r);
+    ASSERT_OK(close_req.result);
+    uv_fs_req_cleanup(&close_req);
+
+    /* Set up ACL */
+    r = call_icacls("icacls %s /deny *S-1-1-0:(F)", filename);
+    if (r != 0) {
+        goto acl_cleanup;
+    }
+
+    /* Read file stats */
+    r = uv_fs_stat(NULL, &req, filename, NULL);
+    if (r != 0) {
+        goto acl_cleanup;
+    }
+
+    uv_fs_req_cleanup(&req);
+
+ acl_cleanup:
+    /* Cleanup */
+    call_icacls("icacls %s /reset", filename);
+    uv_fs_unlink(NULL, &unlink_req, filename, NULL);
+    uv_fs_req_cleanup(&unlink_req);
+    unlink(filename);
     uv_os_free_passwd(&pwd);
     ASSERT_OK(r);
     MAKE_VALGRIND_HAPPY(loop);

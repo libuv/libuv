@@ -53,16 +53,16 @@
   (uv__ntstatus_to_winsock_error(GET_REQ_STATUS((req))))
 
 
-#define REGISTER_HANDLE_REQ(loop, handle, req)                          \
+#define REGISTER_HANDLE_REQ(loop, handle)                               \
   do {                                                                  \
     INCREASE_ACTIVE_COUNT((loop), (handle));                            \
-    uv__req_register((loop), (req));                                    \
+    uv__req_register((loop));                                           \
   } while (0)
 
-#define UNREGISTER_HANDLE_REQ(loop, handle, req)                        \
+#define UNREGISTER_HANDLE_REQ(loop, handle)                             \
   do {                                                                  \
     DECREASE_ACTIVE_COUNT((loop), (handle));                            \
-    uv__req_unregister((loop), (req));                                  \
+    uv__req_unregister((loop));                                         \
   } while (0)
 
 

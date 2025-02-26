@@ -32,6 +32,7 @@
 
 #if defined(__APPLE__)          || \
     defined(_AIX)               || \
+    defined(__FreeBSD__)        || \
     defined(__NetBSD__)         || \
     defined(__OpenBSD__)
   #define MULTICAST_ADDR "ff02::1%lo0"
@@ -198,6 +199,11 @@ TEST_IMPL(udp_multicast_join6) {
   }
 
   ASSERT_OK(r);
+
+#if defined(__ANDROID__)
+  /* It returns an ENOSYS error */
+  RETURN_SKIP("Test does not currently work in ANDROID");
+#endif
 
 /* TODO(gengjiawen): Fix test on QEMU. */
 #if defined(__QEMU__)

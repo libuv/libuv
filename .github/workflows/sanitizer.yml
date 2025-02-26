@@ -16,12 +16,17 @@ jobs:
   sanitizers-linux:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup
         run: |
           sudo apt-get install ninja-build
       - name: Envinfo
         run: npx envinfo
+
+      # [AM]SAN fail on newer kernels due to a bigger PIE slide
+      - name: Disable ASLR
+        run: |
+          sudo sysctl -w kernel.randomize_va_space=0
 
       - name: ASAN Build
         run: |
@@ -62,9 +67,9 @@ jobs:
           ./build-ubsan/uv_run_tests_a
 
   sanitizers-macos:
-    runs-on: macos-11
+    runs-on: macos-13
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Envinfo
         run: npx envinfo
@@ -99,14 +104,14 @@ jobs:
   sanitizers-windows:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup
         run: |
           choco install ninja
 
       # Note: clang shipped with VS2022 has an issue where the UBSAN runtime doesn't link.
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@v2
         with:
           version: "17"
 

@@ -21,25 +21,9 @@ Data types
 
     Union of all request types.
 
+.. c:enum:: uv_req_type
 
-Public members
-^^^^^^^^^^^^^^
-
-.. c:member:: uv_loop_t* uv_req_t.loop
-
-    Loop that started this request and where completion will be reported.
-    Readonly.
-    
-    .. versionadded:: 2.0.0
-       Moved from derived types (uv_connect_t, uv_fs_t, etc.) to uv_req_t.
-
-.. c:member:: void* uv_req_t.data
-
-    Space for user-defined arbitrary data. libuv does not use this field.
-
-.. c:member:: uv_req_type uv_req_t.type
-
-    Indicated the type of request. Readonly.
+    The kind of the libuv request.
 
     ::
 
@@ -56,6 +40,26 @@ Public members
             UV_GETNAMEINFO,
             UV_REQ_TYPE_MAX,
         } uv_req_type;
+
+
+Public members
+^^^^^^^^^^^^^^
+
+.. c:member:: uv_loop_t* uv_req_t.loop
+
+    Loop that started this request and where completion will be reported.
+    Readonly.
+
+    .. versionadded:: 2.0.0
+       Moved from derived types (uv_connect_t, uv_fs_t, etc.) to uv_req_t.
+
+.. c:member:: void* uv_req_t.data
+
+    Space for user-defined arbitrary data. libuv does not use this field.
+
+.. c:member:: uv_req_type uv_req_t.type
+
+    The :c:enum:`uv_req_type`, indicating the type of the request. Readonly.
 
 
 API
@@ -109,7 +113,7 @@ API
 
     .. versionadded:: 1.19.0
 
-.. c:function:: void* uv_req_set_data(uv_req_t* req, void* data)
+.. c:function:: void uv_req_set_data(uv_req_t* req, void* data)
 
     Sets `req->data` to `data`.
 

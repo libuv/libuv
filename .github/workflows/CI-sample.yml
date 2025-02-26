@@ -6,6 +6,7 @@ on:
       - '**'
       - '!docs/**'
       - '!.**'
+      - 'docs/code/**'
       - '.github/workflows/CI-sample.yml'
   push:
     branches:
@@ -20,7 +21,7 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{matrix.os}}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: setup
         run: cmake -E make_directory ${{runner.workspace}}/libuv/docs/code/build
       - name: configure

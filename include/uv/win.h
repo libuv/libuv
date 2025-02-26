@@ -162,11 +162,10 @@ typedef struct {
   DWORD tls_index;
 } uv_key_t;
 
-#define UV_ONCE_INIT { 0, NULL }
+#define UV_ONCE_INIT { INIT_ONCE_STATIC_INIT }
 
 typedef struct uv_once_s {
-  unsigned char ran;
-  HANDLE event;
+  INIT_ONCE init_once;
 } uv_once_t;
 
 /* Platform-specific definitions for uv_spawn support. */

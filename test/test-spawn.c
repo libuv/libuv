@@ -1051,7 +1051,7 @@ TEST_IMPL(kill) {
     sigaddset(&set, SIGTERM);
     ASSERT_OK(pthread_sigmask(SIG_BLOCK, &set, NULL));
   }
-  ASSERT_NE(SIG_ERR, signal(SIGTERM, SIG_IGN));
+  ASSERT_PTR_NE(SIG_ERR, signal(SIGTERM, SIG_IGN));
 #endif
 
   r = uv_spawn(uv_default_loop(), &process, &options);
@@ -1064,7 +1064,7 @@ TEST_IMPL(kill) {
     sigaddset(&set, SIGTERM);
     ASSERT_OK(pthread_sigmask(SIG_UNBLOCK, &set, NULL));
   }
-  ASSERT_NE(SIG_ERR, signal(SIGTERM, SIG_DFL));
+  ASSERT_PTR_NE(SIG_ERR, signal(SIGTERM, SIG_DFL));
 #endif
 
   /* Sending signum == 0 should check if the
@@ -1325,7 +1325,7 @@ TEST_IMPL(environment_creation) {
         found = 1;
       }
     }
-    if (prev) { /* verify sort order  */
+    if (prev) { /* verify sort order */
       ASSERT_EQ(1, CompareStringOrdinal(prev, -1, str, -1, TRUE));
     }
     ASSERT(found); /* verify that we expected this variable */
@@ -1519,7 +1519,7 @@ TEST_IMPL(spawn_setuid_fails) {
   init_process_options("spawn_helper1", fail_cb);
 
   options.flags |= UV_PROCESS_SETUID;
-  /* On IBMi PASE, there is no root user. User may grant 
+  /* On IBMi PASE, there is no root user. User may grant
    * root-like privileges, including setting uid to 0.
    */
 #if defined(__PASE__)
@@ -1570,7 +1570,7 @@ TEST_IMPL(spawn_setgid_fails) {
   init_process_options("spawn_helper1", fail_cb);
 
   options.flags |= UV_PROCESS_SETGID;
-  /* On IBMi PASE, there is no root user. User may grant 
+  /* On IBMi PASE, there is no root user. User may grant
    * root-like privileges, including setting gid to 0.
    */
 #if defined(__MVS__) || defined(__PASE__)
