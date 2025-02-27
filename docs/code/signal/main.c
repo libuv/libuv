@@ -49,6 +49,8 @@ void thread2_worker(void *userp)
 
     while (uv_run(loop2, UV_RUN_NOWAIT) || uv_run(loop3, UV_RUN_NOWAIT)) {
     }
+    free(loop2);
+    free(loop3);
 }
 
 int main()
