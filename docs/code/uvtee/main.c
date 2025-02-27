@@ -38,6 +38,7 @@ void write_data(uv_stream_t *dest, size_t size, uv_buf_t buf, uv_write_cb cb) {
     req->buf = uv_buf_init((char*) malloc(size), size);
     memcpy(req->buf.base, buf.base, size);
     uv_write((uv_write_t*) req, (uv_stream_t*)dest, &req->buf, 1, cb);
+    free_write_req(req);
 }
 
 void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
