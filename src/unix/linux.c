@@ -1954,11 +1954,15 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   return !exclude_type;
 }
 
+/* TODO(bnoordhuis) share with bsd-ifaddrs.c */
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-  struct ifaddrs *addrs, *ent;
   uv_interface_address_t* address;
+  struct sockaddr_ll* sll;
+  struct ifaddrs* addrs;
+  struct ifaddrs* ent;
+  size_t namelen;
+  char* name;
   int i;
-  struct sockaddr_ll *sll;
 
   *count = 0;
   *addresses = NULL;
@@ -1967,10 +1971,12 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     return UV__ERR(errno);
 
   /* Count the number of interfaces */
+  namelen = 0;
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
     if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFADDR))
       continue;
 
+    namelen += strlen(ent->ifa_name) + 1;
     (*count)++;
   }
 
@@ -1980,19 +1986,22 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   }
 
   /* Make sure the memory is initiallized to zero using calloc() */
-  *addresses = uv__calloc(*count, sizeof(**addresses));
-  if (!(*addresses)) {
+  *addresses = uv__calloc(1, *count * sizeof(**addresses) + namelen);
+  if (*addresses == NULL) {
     freeifaddrs(addrs);
     return UV_ENOMEM;
   }
 
+  name = (char*) &(*addresses)[*count];
   address = *addresses;
 
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
     if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFADDR))
       continue;
 
-    address->name = uv__strdup(ent->ifa_name);
+    namelen = strlen(ent->ifa_name) + 1;
+    address->name = memcpy(name, ent->ifa_name, namelen);
+    name += namelen;
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);
@@ -2036,14 +2045,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
+/* TODO(bnoordhuis) share with bsd-ifaddrs.c */
 void uv_free_interface_addresses(uv_interface_address_t* addresses,
-  int count) {
-  int i;
-
-  for (i = 0; i < count; i++) {
-    uv__free(addresses[i].name);
-  }
-
+                                 int count) {
   uv__free(addresses);
 }
 
