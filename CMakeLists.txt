@@ -670,6 +670,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-thread-name.c
        test/test-thread-priority.c
        test/test-threadpool-cancel.c
+       test/test-threadpool-size.c
        test/test-threadpool.c
        test/test-timer-again.c
        test/test-timer-from-check.c

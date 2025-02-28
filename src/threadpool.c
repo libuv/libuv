@@ -31,16 +31,20 @@
 
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
+static uv_cond_t cond_kill;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
 static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
 static uv_thread_t default_threads[4];
+static uv_thread_t tid_to_join;
 static struct uv__queue exit_message;
+static struct uv__queue kill_thread_message;
 static struct uv__queue wq;
 static struct uv__queue run_slow_work_message;
 static struct uv__queue slow_io_pending_wq;
+static uv_sem_t sem;
 
 static unsigned int slow_work_thread_threshold(void) {
   return (nthreads + 1) / 2;
@@ -81,6 +85,16 @@ static void worker(void* arg) {
     q = uv__queue_head(&wq);
     if (q == &exit_message) {
       uv_cond_signal(&cond);
+      uv_mutex_unlock(&mutex);
+      break;
+    }
+
+    /* Allow the main thread to kill targeted thread. */
+    if (q == &kill_thread_message) {
+      tid_to_join = uv_thread_self();
+      uv__queue_remove(q); /* Remove the kill message. */
+      uv__queue_init(q);
+      uv_cond_signal(&cond_kill);
       uv_mutex_unlock(&mutex);
       break;
     }
@@ -185,6 +199,7 @@ void uv__threadpool_cleanup(void) {
 
   uv_mutex_destroy(&mutex);
   uv_cond_destroy(&cond);
+  uv_cond_destroy(&cond_kill);
 
   threads = NULL;
   nthreads = 0;
@@ -195,7 +210,6 @@ static void init_threads(void) {
   uv_thread_options_t config;
   unsigned int i;
   const char* val;
-  uv_sem_t sem;
 
   nthreads = ARRAY_SIZE(default_threads);
   val = getenv("UV_THREADPOOL_SIZE");
@@ -216,6 +230,9 @@ static void init_threads(void) {
   }
 
   if (uv_cond_init(&cond))
+    abort();
+
+  if (uv_cond_init(&cond_kill))
     abort();
 
   if (uv_mutex_init(&mutex))
@@ -260,6 +277,146 @@ static void init_once(void) {
     abort();
 #endif
   init_threads();
+}
+
+
+int uv__threads_spin(unsigned int n) {
+  uv_thread_options_t config;
+  int r;
+  size_t i;
+  uv_thread_t* threads_tmp;
+
+  assert(n > nthreads);
+
+  config.flags = UV_THREAD_HAS_STACK_SIZE;
+  config.stack_size = 8u << 20;  /* 8 MB */
+
+  threads_tmp = uv__malloc(n * sizeof(threads[0]));
+  if (threads_tmp == NULL)
+    return UV_ENOMEM;
+
+
+  /* Copy all threads into the new list. */
+  for (i = 0; i < nthreads; i++)
+    threads_tmp[i] = threads[i];
+
+  /* Free the old list. And make it points to the new one */
+  if (threads != default_threads)
+    uv__free(threads);
+
+  threads = threads_tmp;
+
+  r = uv_sem_init(&sem, 0);
+  if (r)
+    goto out;
+
+  while (nthreads < n) {
+    /* Wire up the error code to the return value. */
+    r = uv_thread_create_ex(threads + nthreads, &config, worker, &sem);
+    if (r)
+      goto out;
+
+    uv_sem_wait(&sem);
+    nthreads++;
+  }
+
+  assert(nthreads == n);
+
+out:
+  uv_sem_destroy(&sem);
+  return r;
+}
+
+
+int uv__threads_join(unsigned int n) {
+  int r;
+  size_t i;
+  size_t j;
+  uv_thread_t* threads_tmp;
+
+  assert(nthreads > n);
+  while (nthreads != n) {
+    /* Request any thread to kill */
+    uv__queue_insert_tail(&wq, &kill_thread_message);
+
+    if (idle_threads > 0)
+      uv_cond_signal(&cond);
+
+    uv_cond_wait(&cond_kill, &mutex);
+    r = uv_thread_join(&tid_to_join);
+    if (r)
+      return r;
+
+    /* Alloc for one thread less */
+    threads_tmp = uv__malloc((nthreads - 1) * sizeof(threads[0]));
+    if (threads_tmp == NULL)
+      return UV_ENOMEM;
+
+
+    /* Copy all threads into the new list except the joined one. */
+    j = 0;
+    for (i = 0; i < nthreads; i++) {
+      if (tid_to_join != threads[i]) {
+        if (j >= nthreads) abort();
+        threads_tmp[j] = threads[i];
+        j++;
+      }
+    }
+
+    /* Free the old list (if malloc'd) */
+    if (threads != default_threads)
+      uv__free(threads);
+
+    /* Decrease the number of threads */
+    nthreads--;
+    threads = threads_tmp;
+  }
+
+  assert(nthreads == n);
+
+  return 0;
+}
+
+
+unsigned int uv_get_threadpool_size(void) {
+  int r;
+
+  uv_once(&once, init_once);
+
+  uv_mutex_lock(&mutex);
+  r = nthreads;
+  uv_mutex_unlock(&mutex);
+  return r;
+}
+
+
+unsigned int uv_set_threadpool_size(unsigned int n) {
+  int r;
+  uv_once(&once, init_once);
+
+  /* For now, NO-threadpool is not supported. */
+  if (n > MAX_THREADPOOL_SIZE || n < 1)
+    return UV_EINVAL;
+
+  uv_mutex_lock(&mutex);
+
+  /* No-op */
+  if (n == nthreads) {
+    uv_mutex_unlock(&mutex);
+    return 0;
+  }
+
+  /* Shrink the threadpool request. */
+  if (n < nthreads) {
+    r = uv__threads_join(n);
+    uv_mutex_unlock(&mutex);
+    return r;
+  }
+
+  /* Grow the threadpool. */
+  r = uv__threads_spin(n);
+  uv_mutex_unlock(&mutex);
+  return r;
 }
 
 
