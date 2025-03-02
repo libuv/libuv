@@ -511,7 +511,7 @@ static int uv__spawn_set_posix_spawn_attrs(
     return err;
   }
 
-  if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID)) {
+  if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID | UV_PROCESS_SETGROUPS)) {
     /* kauth_cred_issuser currently requires exactly uid == 0 for these
      * posixspawn_attrs (set_groups_np, setuid_np, setgid_np), which deviates
      * from the normal specification of setuid (which also uses euid), and they
