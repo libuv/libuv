@@ -29,6 +29,40 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+struct uv__sockaddr_un_path {
+  char pad[offsetof(struct sockaddr_un, sun_path)];
+#ifdef SOCK_MAXADDRLEN
+  /* macOS and the BSDs support paths > sizeof(su.sun_path).
+   * SOCK_MAXADDRLEN is, to the best of my knowledge, always 255.
+   * Minus the two byte header, that leaves 253 bytes for the path.
+   */
+  char path[SOCK_MAXADDRLEN - offsetof(struct sockaddr_un, sun_path)];
+#else
+  char path[sizeof(((struct sockaddr_un*)0)->sun_path)];
+#endif
+};
+
+union uv__sockaddr_un {
+  struct sockaddr sa;
+  struct uv__sockaddr_un_path up;
+};
+
+
+static void uv__prep_sockaddr_un(union uv__sockaddr_un* s, const char* path) {
+  size_t len;
+
+  len = 1 + strlen(path);
+  if (len > sizeof(s->up.path))
+    len = sizeof(s->up.path);
+
+  memset(s, 0, sizeof(*s));
+#ifdef SOCK_MAXADDRLEN
+  s->sa.sa_len = len;
+#endif
+  s->sa.sa_family = AF_UNIX;
+  memcpy(s->up.path, path, len);
+}
+
 
 /* Does the file path contain embedded nul bytes? */
 static int includes_nul(const char *s, size_t n) {
@@ -122,11 +156,9 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     goto err_socket;
   sockfd = err;
 
-  memset(&saddr, 0, sizeof saddr);
-  memcpy(&saddr.sun_path, name, namelen);
-  saddr.sun_family = AF_UNIX;
+  uv__prep_sockaddr_un(&saddr, pipe_fname);
 
-  if (bind(sockfd, (struct sockaddr*)&saddr, addrlen)) {
+  if (bind(sockfd, &saddr.sa, sizeof(saddr))) {
     err = UV__ERR(errno);
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == UV_ENOENT)
@@ -291,18 +323,10 @@ int uv_pipe_connect2(uv_connect_t* req,
     handle->io_watcher.fd = err;
   }
 
-  memset(&saddr, 0, sizeof saddr);
-  memcpy(&saddr.sun_path, name, namelen);
-  saddr.sun_family = AF_UNIX;
+  uv__prep_sockaddr_un(&saddr, name);
 
-  if (*name == '\0')
-    addrlen = offsetof(struct sockaddr_un, sun_path) + namelen;
-  else
-    addrlen = sizeof saddr;
-
-  do {
-    r = connect(uv__stream_fd(handle), (struct sockaddr*)&saddr, addrlen);
-  }
+  do
+    r = connect(uv__stream_fd(handle), &saddr.sa, sizeof(saddr));
   while (r == -1 && errno == EINTR);
 
   if (r == -1 && errno != EINPROGRESS) {
@@ -349,6 +373,9 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
                                     uv__peersockfunc func,
                                     char* buffer,
                                     size_t* size) {
+  union uv__sockaddr_un saddr;
+  int addrlen;
+
 #if defined(__linux__)
   static const int is_linux = 1;
 #else
@@ -359,7 +386,10 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
   size_t slop;
   char* p;
   int err;
+  char* nul;
 
+  addrlen = sizeof(saddr);
+  memset(&saddr, 0, sizeof(saddr));
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
@@ -367,8 +397,8 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
   memset(&sa, 0, addrlen);
   err = uv__getsockpeername((const uv_handle_t*) handle,
                             func,
-                            (struct sockaddr*) &sa,
-                            (int*) &addrlen);
+                            &saddr.sa,
+                            &addrlen);
   if (err < 0) {
     *size = 0;
     return err;
@@ -391,7 +421,7 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
     return UV_ENOBUFS;
   }
 
-  memcpy(buffer, sa.sun_path, addrlen);
+  memcpy(buffer, saddr.up.path, addrlen);
   *size = addrlen;
 
   /* only null-terminate if it's not an abstract socket */
