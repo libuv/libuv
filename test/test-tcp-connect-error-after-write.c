@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef _WIN32
 static int connect_cb_called;
 static int write_cb_called;
 static int close_cb_called;
@@ -47,6 +48,7 @@ static void write_cb(uv_write_t* req, int status) {
   ASSERT_LT(status, 0);
   write_cb_called++;
 }
+#endif
 
 
 /*
