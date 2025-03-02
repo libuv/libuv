@@ -34,6 +34,8 @@ Data types
             uv_gid_t gid;
             char* cpumask;
             size_t cpumask_size;
+            uv_gid_t* gids;
+            size_t gids_size;
         } uv_process_options_t;
 
 .. c:type:: void (*uv_exit_cb)(uv_process_t*, int64_t exit_status, int term_signal)
@@ -94,7 +96,20 @@ Data types
              * search for the exact file name before trying variants with
              * extensions like '.exe' or '.cmd'.
              */
-            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
+            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7),
+            /*
+             * Spawn the child process with the error mode of its parent.
+             * This option is only meaningful on Windows systems. On Unix
+             * it is silently ignored.
+             */
+            UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE = (1 << 8),
+            /*
+             * Set the child process' supplementary group ids. The group ids are supplied
+             * in the 'gids' field in the options struct, and the number of groups is
+             * specified in the 'num_gids' field.  This does not work on windows;
+             * setting this flag will cause uv_spawn() to fail.
+             */
+            UV_PROCESS_SETGROUPS = (1 << 9)
         };
 
 .. c:type:: uv_stdio_container_t
@@ -221,13 +236,17 @@ Public members
 
 .. c:member:: uv_uid_t uv_process_options_t.uid
 .. c:member:: uv_gid_t uv_process_options_t.gid
+.. c:member:: uv_gid_t* uv_process_options_t.gids
+.. c:member:: size_t uv_process_options_t.gids_size
 
-    Libuv can change the child process' user/group id. This happens only when
-    the appropriate bits are set in the flags fields.
+    Libuv can change the child process' user/group id and supplementary group
+    ids. This happens only when the appropriate bits are set in the flags fields.
 
     .. note::
         This is not supported on Windows, :c:func:`uv_spawn` will fail and set the error
         to ``UV_ENOTSUP``.
+
+    .. versionadded:: 2.0.0
 
 .. c:member:: char* uv_process_options_t.cpumask
 .. c:member:: size_t uv_process_options_t.cpumask_size

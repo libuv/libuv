@@ -1131,9 +1131,10 @@ typedef struct uv_process_options_s {
   int stdio_count;
   uv_stdio_container_t* stdio;
   /*
-   * Libuv can change the child process' user/group id. This happens only when
-   * the appropriate bits are set in the flags fields. This is not supported on
-   * windows; uv_spawn() will fail and set the error to UV_ENOTSUP.
+   * Libuv can change the child process' user/group id, and supplementarty
+   * group ids. This happens only when the appropriate bits are set in the
+   * flags fields. This is not supported on windows; uv_spawn() will fail and
+   * set the error to UV_ENOTSUP.
    */
   uv_uid_t uid;
   uv_gid_t gid;
@@ -1150,6 +1151,8 @@ typedef struct uv_process_options_s {
    */
   char* cpumask;
   size_t cpumask_size;
+  uv_gid_t* gids;
+  size_t gids_size;
 } uv_process_options_t;
 
 /*
@@ -1163,7 +1166,7 @@ enum uv_process_flags {
    */
   UV_PROCESS_SETUID = (1 << 0),
   /*
-   * Set the child process' group id. The user id is supplied in the `gid`
+   * Set the child process' group id. The group id is supplied in the `gid`
    * field of the options struct. This does not work on windows; setting this
    * flag will cause uv_spawn() to fail.
    */
@@ -1211,7 +1214,14 @@ enum uv_process_flags {
    * This option is only meaningful on Windows systems. On Unix
    * it is silently ignored.
    */
-  UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE = (1 << 8)
+  UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE = (1 << 8),
+  /*
+   * Set the child process' supplementary group ids. The group ids are supplied
+   * in the 'gids' field in the options struct, and the number of groups is
+   * specified in the 'num_gids' field.  This does not work on windows;
+   * setting this flag will cause uv_spawn() to fail on windows.
+   */
+  UV_PROCESS_SETGROUPS = (1 << 9)
 };
 
 /*

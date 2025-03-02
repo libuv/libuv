@@ -395,6 +395,12 @@ static void uv__process_child_init(const uv_process_options_t* options,
     SAVE_ERRNO(setgroups(0, NULL));
   }
 
+  if (options->flags & UV_PROCESS_SETGROUPS) {
+    if (setgroups(options->gids_size, options->gids)) {
+      uv__write_errno(error_fd);
+    }
+  }
+
   if ((options->flags & UV_PROCESS_SETGID) && setgid(options->gid))
     uv__write_errno(error_fd);
 
@@ -505,7 +511,7 @@ static int uv__spawn_set_posix_spawn_attrs(
     return err;
   }
 
-  if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID)) {
+  if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID | UV_PROCESS_SETGROUPS)) {
     /* kauth_cred_issuser currently requires exactly uid == 0 for these
      * posixspawn_attrs (set_groups_np, setuid_np, setgid_np), which deviates
      * from the normal specification of setuid (which also uses euid), and they
@@ -1022,6 +1028,7 @@ int uv_spawn(uv_loop_t* loop,
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
+                              UV_PROCESS_SETGROUPS |
                               UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
