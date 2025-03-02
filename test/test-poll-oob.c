@@ -68,7 +68,7 @@ static void idle_cb(uv_idle_t* idle) {
 static void poll_cb(uv_poll_t* handle, int status, int events) {
   char buffer[5];
   int n;
-  int fd;
+  uv_os_fd_t fd;
 
   ASSERT_OK(uv_fileno((uv_handle_t*)handle, &fd));
   memset(buffer, 0, 5);
