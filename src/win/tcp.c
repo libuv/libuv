@@ -1043,7 +1043,9 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
       buf = uv_buf_init(NULL, 0);
       handle->alloc_cb((uv_handle_t*) handle, 65536, &buf);
       if (buf.base == NULL || buf.len == 0) {
-        handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, &buf);
+        /* maybe uv_read_stop() was called in alloc cb */
+        if (handle->read_cb != NULL)
+          handle->read_cb((uv_stream_t*) handle, UV_ENOBUFS, &buf);
         break;
       }
       assert(buf.base != NULL);

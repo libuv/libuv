@@ -275,6 +275,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-connect6-error.c \
                          test/test-tcp-flags.c \
                          test/test-tcp-open.c \
+                         test/test-tcp-read-stop-from-alloc.c \
                          test/test-tcp-read-stop.c \
                          test/test-tcp-reuseport.c \
                          test/test-tcp-read-stop-start.c \
@@ -306,6 +307,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tty-escape-sequence-processing.c \
                          test/test-tty.c \
                          test/test-udp-alloc-cb-fail.c \
+                         test/test-udp-alloc-recv-stop.c \
                          test/test-udp-bind.c \
                          test/test-udp-connect.c \
                          test/test-udp-connect6.c \

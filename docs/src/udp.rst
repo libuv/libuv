@@ -486,6 +486,9 @@ API
 
     :returns: 0 on success, or an error code < 0 on failure.
 
+    .. versionchanged:: 1.51.0 If :c:func:`uv_udp_recv_stop` is called from a
+        `uv_alloc_cb`, all allocated resources must be freed manually.
+
 .. c:function:: size_t uv_udp_get_send_queue_size(const uv_udp_t* handle)
 
     Returns `handle->send_queue_size`.

@@ -1051,8 +1051,10 @@ static void uv__read(uv_stream_t* stream) {
     buf = uv_buf_init(NULL, 0);
     stream->alloc_cb((uv_handle_t*)stream, 64 * 1024, &buf);
     if (buf.base == NULL || buf.len == 0) {
-      /* User indicates it can't or won't handle the read. */
-      stream->read_cb(stream, UV_ENOBUFS, &buf);
+      /* maybe uv_read_stop() was called in alloc cb */
+      if (stream->read_cb != NULL)
+        /* User indicates it can't or won't handle the read. */
+        stream->read_cb(stream, UV_ENOBUFS, &buf);
       return;
     }
 
