@@ -156,6 +156,9 @@ API
     may be pending on the next input event on that TTY on Windows, and does not
     indicate failure.
 
+    .. versionchanged:: 1.51.0 If :c:func:`uv_read_stop` is called from a
+        `uv_alloc_cb`, all allocated resources must be freed manually.
+
 .. c:function:: int uv_write(uv_write_t* req, uv_stream_t* handle, const uv_buf_t bufs[], unsigned int nbufs, uv_write_cb cb)
 
     Write data to stream. Buffers are written in order. Example:

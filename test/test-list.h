@@ -153,6 +153,7 @@ TEST_DECLARE   (tcp_flags)
 TEST_DECLARE   (tcp_write_to_half_open_connection)
 TEST_DECLARE   (tcp_unexpected_read)
 TEST_DECLARE   (tcp_read_stop)
+TEST_DECLARE   (tcp_read_stop_from_alloc)
 TEST_DECLARE   (tcp_read_stop_start)
 TEST_DECLARE   (tcp_reuseport)
 TEST_DECLARE   (tcp_rst)
@@ -163,6 +164,7 @@ TEST_DECLARE   (tcp_bind6_error_inval)
 TEST_DECLARE   (tcp_bind6_localhost_ok)
 TEST_DECLARE   (tcp_write_ready)
 TEST_DECLARE   (udp_alloc_cb_fail)
+TEST_DECLARE   (udp_alloc_cb_stop_recv)
 TEST_DECLARE   (udp_bind)
 TEST_DECLARE   (udp_bind_reuseaddr)
 TEST_DECLARE   (udp_connect)
@@ -778,6 +780,9 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_read_stop)
   TEST_HELPER (tcp_read_stop, tcp4_echo_server)
 
+  TEST_ENTRY  (tcp_read_stop_from_alloc)
+  TEST_HELPER (tcp_read_stop_from_alloc, tcp4_echo_server)
+
   TEST_ENTRY  (tcp_read_stop_start)
 
   TEST_ENTRY  (tcp_reuseport)
@@ -792,6 +797,7 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_bind6_localhost_ok)
 
   TEST_ENTRY  (udp_alloc_cb_fail)
+  TEST_ENTRY  (udp_alloc_cb_stop_recv)
   TEST_ENTRY  (udp_bind)
   TEST_ENTRY  (udp_bind_reuseaddr)
   TEST_ENTRY  (udp_connect)
