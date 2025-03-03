@@ -1178,7 +1178,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
       continue;
 
-    namelen += strlen(ent->ifa_name) + 1;
+    namelen += strlen(p->ifr_name) + 1;
     (*count)++;
   }
 
@@ -1191,6 +1191,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     r = UV_ENOMEM;
     goto cleanup;
   }
+  name = (char*) &(*addresses)[*count];
   address = *addresses;
 
   ifr = ifc.ifc_req;
