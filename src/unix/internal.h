@@ -353,6 +353,7 @@ int uv__iou_fs_fsync_or_fdatasync(uv_loop_t* loop,
 int uv__iou_fs_link(uv_loop_t* loop, uv_fs_t* req);
 int uv__iou_fs_mkdir(uv_loop_t* loop, uv_fs_t* req);
 int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req);
+int uv__iou_fs_openat(uv_loop_t* loop, uv_fs_t* req);
 int uv__iou_fs_read_or_write(uv_loop_t* loop,
                              uv_fs_t* req,
                              int is_read);
@@ -370,6 +371,7 @@ int uv__iou_fs_unlink(uv_loop_t* loop, uv_fs_t* req);
 #define uv__iou_fs_link(loop, req) 0
 #define uv__iou_fs_mkdir(loop, req) 0
 #define uv__iou_fs_open(loop, req) 0
+#define uv__iou_fs_openat(loop, req) 0
 #define uv__iou_fs_read_or_write(loop, req, is_read) 0
 #define uv__iou_fs_rename(loop, req) 0
 #define uv__iou_fs_statx(loop, req, is_fstat, is_lstat) 0

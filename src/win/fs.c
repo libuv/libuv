@@ -35,6 +35,7 @@
 /* <winioctl.h> requires <windows.h>, included via "uv.h" above, but needs to
    be included before our "winapi.h", included via "internal.h" below. */
 #include <winioctl.h>
+#include <shlwapi.h>
 
 #include "internal.h"
 #include "req-inl.h"
@@ -664,6 +665,489 @@ void fs__open(uv_fs_t* req) {
  einval:
   SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
 }
+
+struct path {
+  WCHAR * buf;
+
+  // Capacity of the path buffer minus the terminating null in WCHARs.
+  size_t cap;
+
+  // Length of the path string without the terminating null in WCHARs.
+  size_t len;
+};
+
+// Must be freed by `uv__path_free`.
+int uv__path_init(struct path * p) {
+  WCHAR * buf = uv__malloc(sizeof(WCHAR));
+  if (buf == NULL) return UV_ENOMEM;
+
+  p->buf = buf;
+  p->buf[0] = L'\0';
+  p->cap = 0;
+  p->len = 0;
+
+  return 0;
+}
+
+void uv__path_free(struct path * p) {
+  uv__free(p->buf);
+}
+
+int uv__path_grow_until(struct path * p, size_t cap) {
+  if (cap <= p->cap) {
+    return 0;
+  }
+
+  WCHAR * buf = uv__realloc(p->buf, (cap + 1) * sizeof(WCHAR));
+  if (buf == NULL) return ENOMEM;
+
+  p->buf = buf;
+  p->cap = cap;
+
+  return 0;
+}
+
+int uv__path_set(struct path * p, WCHAR * source) {
+  size_t len = wcslen(source);
+
+  int err = uv__path_grow_until(p, len);
+  if (err) return err;
+
+  memcpy(p->buf, source, len * sizeof(WCHAR));
+  p->len = len;
+  p->buf[p->len] = L'\0';
+
+  return 0;
+}
+
+int uv__path_push(struct path * p, WCHAR * component) {
+  size_t len = wcslen(component);
+
+  int err = uv__path_grow_until(p, p->len + len + 1);
+  if (err) return err;
+
+  if (p->len > 0 && p->buf[p->len - 1] != L'\\') {
+    p->buf[p->len] = L'\\';
+    p->len += 1;
+  }
+
+  memcpy(p->buf + p->len, component, len * sizeof(WCHAR));
+  p->len += len;
+  p->buf[p->len] = L'\0';
+
+  return 0;
+}
+
+int uv__path_pop(struct path * p) {
+  int i;
+
+  if (p->len == 0) return 1;
+
+  for (i = p->len - 1; i >= 0; i--) {
+    if (p->buf[i] == L'\\' || i == 0) {
+      p->buf[i] = L'\0';
+      p->len = i;
+      break;
+    }
+  }
+
+  return 0;
+}
+
+void fs__openat(uv_fs_t* req) {
+  DWORD access;
+  DWORD share;
+  DWORD disposition;
+  DWORD attributes = 0;
+  ULONG options = 0;
+  HANDLE file;
+  UNICODE_STRING str;
+  IO_STATUS_BLOCK isb;
+  OBJECT_ATTRIBUTES obj;
+  int fd, current_umask, temp_umask = 0;
+  int flags = req->fs.info.file_flags;
+  struct uv__fd_info_s fd_info;
+  WCHAR * path = req->file.pathw;
+  size_t path_len = wcslen(path);
+  struct path rebuilt_path;
+  int i;
+
+  // NtCreateFile doesn't recognize forward slashes, only back slashes.
+  for (i = 0; path[i] != L'\0'; i++)
+    if (path[i] == L'/')
+      path[i] = L'\\';
+
+  HANDLE root_dir_handle = 0;
+  HANDLE dir_handle;
+  BOOL is_absolute = FALSE;
+
+  if (
+    (path_len > 0 && path[0] == L'\\') || 
+    (path_len > 2 && path[1] == L':' && path[2] == L'\\')
+  ) is_absolute = TRUE;
+
+  if (!is_absolute) {
+    dir_handle = (HANDLE) _get_osfhandle(req->fs.info.fd_out);
+    if (dir_handle == INVALID_HANDLE_VALUE) {
+      SET_REQ_WIN32_ERROR(req, (DWORD) UV_EBADF);
+      return;
+    }
+
+    root_dir_handle = dir_handle;
+  }
+
+  uv__path_init(&rebuilt_path);
+
+  WCHAR * next_token = NULL;
+  WCHAR * token = wcstok_s(path, L"\\", &next_token);
+
+  while (token != NULL) {
+    if (!wcscmp(L".", token) || wcslen(token) == 0) {
+      // Do nothing.
+    } else if (!wcscmp(L"..", token)) {
+      // If rebuilt_path is empty, set it to the path of the parent direcotry.
+      if (rebuilt_path.len == 0 && !is_absolute) {
+        DWORD dir_path_len = GetFinalPathNameByHandleW(dir_handle, NULL, 0, VOLUME_NAME_DOS);
+        if (dir_path_len == 0) {
+          SET_REQ_WIN32_ERROR(req, GetLastError());
+          return;
+        }
+
+        WCHAR * dir_path_buf = uv__malloc((dir_path_len + 1) * sizeof(WCHAR));
+        if (dir_path_buf == NULL) {
+          SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
+          return;
+        }
+
+        if (
+          GetFinalPathNameByHandleW(
+            dir_handle,
+            dir_path_buf,
+            dir_path_len,
+            VOLUME_NAME_DOS
+          ) == 0
+        ) {
+          uv__free(dir_path_buf);
+          SET_REQ_UV_ERROR(req, UV_EBADF, ERROR_INVALID_HANDLE);
+          return;
+        }
+
+        // We'll call `NtCreateFile` with an absolute path, set root dir handle
+        // to the null handle.
+        root_dir_handle = 0;
+
+        // The path we get has a prefix of `\\?\`.
+        // But we need an NT object directory prefix of `\??\`.
+        WCHAR * dir_path_without_extended_prefix = dir_path_buf + 4;
+
+        uv__path_set(&rebuilt_path, L"\\??");
+        uv__path_push(&rebuilt_path, dir_path_without_extended_prefix);
+        uv__free(dir_path_buf);
+      }
+
+      // Then pop the last component.
+      if (rebuilt_path.len > 0) uv__path_pop(&rebuilt_path);
+    } else {
+      uv__path_push(&rebuilt_path, token);
+    }
+
+    token = wcstok_s(NULL, L"\\", &next_token);
+  }
+
+  if (is_absolute) {
+    // Prepend the path with the NT object directory prefix.
+
+    WCHAR * buf = uv__malloc((rebuilt_path.len + 1) * sizeof(WCHAR));
+    memcpy(buf, rebuilt_path.buf, (rebuilt_path.len + 1) * sizeof(WCHAR));
+    uv__path_set(&rebuilt_path, L"\\??");
+    uv__path_push(&rebuilt_path, buf);
+    uv__free(buf);
+  }
+
+  wprintf(L"%d %s\n", root_dir_handle, rebuilt_path.buf);
+
+  /* Adjust flags to be compatible with the memory file mapping. Save the
+   * original flags to emulate the correct behavior. */
+  if (flags & UV_FS_O_FILEMAP) {
+    fd_info.flags = flags;
+    fd_info.current_pos.QuadPart = 0;
+
+    if ((flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) ==
+        UV_FS_O_WRONLY) {
+      /* CreateFileMapping always needs read access */
+      flags = (flags & ~UV_FS_O_WRONLY) | UV_FS_O_RDWR;
+    }
+
+    if (flags & UV_FS_O_APPEND) {
+      /* Clear the append flag and ensure RDRW mode */
+      flags &= ~UV_FS_O_APPEND;
+      flags &= ~(UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR);
+      flags |= UV_FS_O_RDWR;
+    }
+  }
+
+  /* Obtain the active umask. umask() never fails and returns the previous
+   * umask. */
+  _umask_s(temp_umask, &current_umask);
+  _umask_s(current_umask, &temp_umask);
+
+  /* convert flags and mode to CreateFile parameters */
+  switch (flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY | UV_FS_O_RDWR)) {
+  case UV_FS_O_RDONLY:
+    access = GENERIC_READ;
+    break;
+  case UV_FS_O_WRONLY:
+    access = GENERIC_WRITE;
+    break;
+  case UV_FS_O_RDWR:
+    access = GENERIC_READ | GENERIC_WRITE;
+    break;
+  default:
+    goto einval;
+  }
+
+  if (flags & UV_FS_O_APPEND) {
+    access &= ~FILE_WRITE_DATA;
+    access |= FILE_APPEND_DATA;
+  }
+
+  /*
+   * Here is where we deviate significantly from what CRT's _open()
+   * does. We indiscriminately use all the sharing modes, to match
+   * UNIX semantics. In particular, this ensures that the file can
+   * be deleted even whilst it's open, fixing issue
+   * https://github.com/nodejs/node-v0.x-archive/issues/1449.
+   * We still support exclusive sharing mode, since it is necessary
+   * for opening raw block devices, otherwise Windows will prevent
+   * any attempt to write past the master boot record.
+   */
+  if (flags & UV_FS_O_EXLOCK) {
+    share = 0;
+  } else {
+    share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
+  }
+
+  switch (flags & (UV_FS_O_CREAT | UV_FS_O_EXCL | UV_FS_O_TRUNC)) {
+  case 0:
+  case UV_FS_O_EXCL:
+    disposition = FILE_OPEN;
+    break;
+  case UV_FS_O_CREAT:
+    disposition = FILE_OPEN_IF;
+    break;
+  case UV_FS_O_CREAT | UV_FS_O_EXCL:
+  case UV_FS_O_CREAT | UV_FS_O_TRUNC | UV_FS_O_EXCL:
+    disposition = FILE_CREATE;
+    break;
+  case UV_FS_O_TRUNC:
+  case UV_FS_O_TRUNC | UV_FS_O_EXCL:
+    disposition = FILE_OVERWRITE;
+    break;
+  case UV_FS_O_CREAT | UV_FS_O_TRUNC:
+    disposition = FILE_SUPERSEDE;
+    break;
+  default:
+    goto einval;
+  }
+
+  attributes |= FILE_ATTRIBUTE_NORMAL;
+  if (flags & UV_FS_O_CREAT) {
+    if (!((req->fs.info.mode & ~current_umask) & _S_IWRITE)) {
+      // attributes |= FILE_ATTRIBUTE_READONLY;
+    }
+  }
+
+  if (flags & UV_FS_O_TEMPORARY ) {
+    options |= FILE_DELETE_ON_CLOSE;
+    attributes |= FILE_ATTRIBUTE_TEMPORARY;
+    access |= DELETE;
+  }
+
+  if (flags & UV_FS_O_SHORT_LIVED) {
+    attributes |= FILE_ATTRIBUTE_TEMPORARY;
+  }
+
+  switch (flags & (UV_FS_O_SEQUENTIAL | UV_FS_O_RANDOM)) {
+  case 0:
+    break;
+  case UV_FS_O_SEQUENTIAL:
+    options |= FILE_SEQUENTIAL_ONLY;
+    break;
+  case UV_FS_O_RANDOM:
+    options |= FILE_RANDOM_ACCESS;
+    break;
+  default:
+    goto einval;
+  }
+
+  if (flags & UV_FS_O_DIRECT) {
+    /*
+     * FILE_APPEND_DATA and FILE_FLAG_NO_BUFFERING are mutually exclusive.
+     * Windows returns 87, ERROR_INVALID_PARAMETER if these are combined.
+     *
+     * FILE_APPEND_DATA is included in FILE_GENERIC_WRITE:
+     *
+     * FILE_GENERIC_WRITE = STANDARD_RIGHTS_WRITE |
+     *                      FILE_WRITE_DATA |
+     *                      FILE_WRITE_ATTRIBUTES |
+     *                      FILE_WRITE_EA |
+     *                      FILE_APPEND_DATA |
+     *                      SYNCHRONIZE
+     *
+     * Note: Appends are also permitted by FILE_WRITE_DATA.
+     *
+     * In order for direct writes and direct appends to succeed, we therefore
+     * exclude FILE_APPEND_DATA if FILE_WRITE_DATA is specified, and otherwise
+     * fail if the user's sole permission is a direct append, since this
+     * particular combination is invalid.
+     */
+    if (access & FILE_APPEND_DATA) {
+      if (access & FILE_WRITE_DATA) {
+        access &= ~FILE_APPEND_DATA;
+      } else {
+        goto einval;
+      }
+    }
+    options |= FILE_NO_INTERMEDIATE_BUFFERING;
+  }
+
+  switch (flags & (UV_FS_O_DSYNC | UV_FS_O_SYNC)) {
+  case 0:
+    break;
+  case UV_FS_O_DSYNC:
+  case UV_FS_O_SYNC:
+    options |= FILE_WRITE_THROUGH;
+    break;
+  default:
+    goto einval;
+  }
+
+  /* Setting this flag makes it possible to open a directory. */
+  options |= FILE_OPEN_FOR_BACKUP_INTENT;
+
+  pRtlInitUnicodeString(&str, rebuilt_path.buf);
+  InitializeObjectAttributes(&obj,
+                             &str,
+                             OBJ_CASE_INSENSITIVE,
+                             root_dir_handle,
+                             NULL);
+
+  NTSTATUS status = pNtCreateFile(&file,
+                                  access,
+                                  &obj,
+                                  &isb,
+                                  0,
+                                  attributes,
+                                  share,
+                                  disposition,
+                                  options,
+                                  NULL,
+                                  0);
+  uv__path_free(&rebuilt_path);
+  if (!NT_SUCCESS(status)) {
+    ULONG error = pRtlNtStatusToDosError(status);
+
+    if (((isb.Information & FILE_EXISTS) != 0) && (flags & UV_FS_O_CREAT) &&
+        !(flags & UV_FS_O_EXCL)) {
+      /* Special case: when FILE_EXISTS happens and UV_FS_O_CREAT was
+       * specified, it means the path referred to a directory. */
+      SET_REQ_UV_ERROR(req, UV_EISDIR, error);
+    } else {
+      SET_REQ_WIN32_ERROR(req, error);
+    }
+    return;
+  }
+
+  if (flags & UV_FS_O_NOFOLLOW) {
+    // Emulate O_NOFOLLOW.
+
+    IO_STATUS_BLOCK io_status;
+    FILE_BASIC_INFORMATION basic_info;
+
+    status = pNtQueryInformationFile(file,
+                                     &io_status,
+                                     &basic_info,
+                                     sizeof(basic_info),
+                                     FileBasicInformation);
+    if (!NT_SUCCESS(status)) {
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+      return;
+    }
+
+    if (basic_info.FileAttributes & FILE_ATTRIBUTE_ARCHIVE) {
+      SET_REQ_WIN32_ERROR(req, (DWORD) UV_ELOOP);
+      return;
+    }
+  }
+
+  fd = _open_osfhandle((intptr_t) file, flags);
+  if (fd < 0) {
+    /* The only known failure mode for _open_osfhandle() is EMFILE, in which
+     * case GetLastError() will return zero. However we'll try to handle other
+     * errors as well, should they ever occur.
+     */
+    if (errno == EMFILE)
+      SET_REQ_UV_ERROR(req, UV_EMFILE, ERROR_TOO_MANY_OPEN_FILES);
+    else if (GetLastError() != ERROR_SUCCESS)
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+    else
+      SET_REQ_WIN32_ERROR(req, (DWORD) UV_UNKNOWN);
+    CloseHandle(file);
+    return;
+  }
+
+  if (flags & UV_FS_O_FILEMAP) {
+    FILE_STANDARD_INFO file_info;
+    if (!GetFileInformationByHandleEx(file,
+                                      FileStandardInfo,
+                                      &file_info,
+                                      sizeof file_info)) {
+      SET_REQ_WIN32_ERROR(req, GetLastError());
+      CloseHandle(file);
+      return;
+    }
+    fd_info.is_directory = file_info.Directory;
+
+    if (fd_info.is_directory) {
+      fd_info.size.QuadPart = 0;
+      fd_info.mapping = INVALID_HANDLE_VALUE;
+    } else {
+      if (!GetFileSizeEx(file, &fd_info.size)) {
+        SET_REQ_WIN32_ERROR(req, GetLastError());
+        CloseHandle(file);
+        return;
+      }
+
+      if (fd_info.size.QuadPart == 0) {
+        fd_info.mapping = INVALID_HANDLE_VALUE;
+      } else {
+        DWORD flProtect = (fd_info.flags & (UV_FS_O_RDONLY | UV_FS_O_WRONLY |
+          UV_FS_O_RDWR)) == UV_FS_O_RDONLY ? PAGE_READONLY : PAGE_READWRITE;
+        fd_info.mapping = CreateFileMapping(file,
+                                            NULL,
+                                            flProtect,
+                                            fd_info.size.HighPart,
+                                            fd_info.size.LowPart,
+                                            NULL);
+        if (fd_info.mapping == NULL) {
+          SET_REQ_WIN32_ERROR(req, GetLastError());
+          CloseHandle(file);
+          return;
+        }
+      }
+    }
+
+    uv__fd_hash_add(fd, &fd_info);
+  }
+
+  SET_REQ_RESULT(req, fd);
+  return;
+
+ einval:
+  uv__path_free(&rebuilt_path);
+  SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+}
+
 
 void fs__close(uv_fs_t* req) {
   int fd = req->file.fd;
@@ -2893,12 +3377,11 @@ static void fs__symlink(uv_fs_t* req) {
     flags = SYMBOLIC_LINK_FLAG_DIRECTORY | uv__file_symlink_usermode_flag;
   else
     flags = uv__file_symlink_usermode_flag;
-
+  
   if (CreateSymbolicLinkW(new_pathw, pathw, flags)) {
     SET_REQ_RESULT(req, 0);
     return;
   }
-
   /* Something went wrong. We will test if it is because of user-mode
    * symlinks.
    */
@@ -3133,6 +3616,7 @@ static void uv__fs_work(struct uv__work* w) {
 #define XX(uc, lc)  case UV_FS_##uc: fs__##lc(req); break;
   switch (req->fs_type) {
     XX(OPEN, open)
+    XX(OPENAT, openat)
     XX(CLOSE, close)
     XX(READ, read)
     XX(WRITE, write)
@@ -3232,6 +3716,29 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     return req->result;
   }
 
+  req->fs.info.file_flags = flags;
+  req->fs.info.mode = mode;
+  POST;
+}
+
+
+int uv_fs_openat(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 uv_file handle,
+                 const char* path,
+                 int flags,
+                 int mode,
+                 uv_fs_cb cb) {
+  int err;
+
+  INIT(UV_FS_OPENAT);
+  err = fs__capture_path(req, path, NULL, cb != NULL);
+  if (err) {
+    SET_REQ_WIN32_ERROR(req, err);
+    return req->result;
+  }
+
+  req->fs.info.fd_out = handle;
   req->fs.info.file_flags = flags;
   req->fs.info.mode = mode;
   POST;
