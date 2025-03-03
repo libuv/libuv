@@ -394,6 +394,8 @@ static int get_ibmi_physical_address(const char* line, char (*phys_addr)[6]) {
 int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   uv_interface_address_t* address;
   struct ifaddrs_pase *ifap = NULL, *cur;
+  size_t namelen;
+  char* name;
   int inet6, r = 0;
 
   *count = 0;
