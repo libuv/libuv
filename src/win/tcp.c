@@ -432,14 +432,14 @@ static void uv__tcp_queue_accept(uv_tcp_t* handle, uv_tcp_accept_t* req) {
     req->u.io.overlapped.hEvent = (HANDLE) ((ULONG_PTR) req->event_handle | 1);
   }
 
-  success = handle->tcp.serv.func_acceptex(handle->socket,
-                                          accept_socket,
-                                          (void*)req->accept_buffer,
-                                          0,
-                                          sizeof(struct sockaddr_storage),
-                                          sizeof(struct sockaddr_storage),
-                                          &bytes,
-                                          &req->u.io.overlapped);
+  success = uv_wsa_acceptex(handle->socket,
+                            accept_socket,
+                            (void*)req->accept_buffer,
+                            0,
+                            sizeof(struct sockaddr_storage),
+                            sizeof(struct sockaddr_storage),
+                            &bytes,
+                            &req->u.io.overlapped);
 
   if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
     /* Process the req without IOCP. */
@@ -576,10 +576,8 @@ int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
       return handle->delayed_error;
   }
 
-  if (!handle->tcp.serv.func_acceptex) {
-    if (!uv__get_acceptex_function(handle->socket, &handle->tcp.serv.func_acceptex)) {
-      return WSAEAFNOSUPPORT;
-    }
+  if (uv_wsa_acceptex == NULL) {
+    return WSAEAFNOSUPPORT;
   }
 
   /* If this flag is set, we already made this listen call in xfer. */
@@ -799,10 +797,8 @@ static int uv__tcp_try_connect(uv_connect_t* req,
       goto out;
   }
 
-  if (!handle->tcp.conn.func_connectex) {
-    if (!uv__get_connectex_function(handle->socket, &handle->tcp.conn.func_connectex)) {
-      return WSAEAFNOSUPPORT;
-    }
+  if (uv_wsa_connectex == NULL) {
+    return WSAEAFNOSUPPORT;
   }
 
   /* This makes connect() fail instantly if the target port on the localhost
@@ -839,13 +835,13 @@ out:
     return 0;
   }
 
-  success = handle->tcp.conn.func_connectex(handle->socket,
-                                            (const struct sockaddr*) &converted,
-                                            addrlen,
-                                            NULL,
-                                            0,
-                                            &bytes,
-                                            &req->u.io.overlapped);
+  success = uv_wsa_connectex(handle->socket,
+                             (const struct sockaddr*)&converted,
+                             addrlen,
+                             NULL,
+                             0,
+                             &bytes,
+                             &req->u.io.overlapped);
 
   if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
     /* Process the req without IOCP. */
@@ -1569,7 +1565,6 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
   SOCKET client0 = INVALID_SOCKET;
   SOCKET client1 = INVALID_SOCKET;
   SOCKADDR_IN name;
-  LPFN_ACCEPTEX func_acceptex;
   WSAOVERLAPPED overlap;
   char accept_buffer[sizeof(struct sockaddr_storage) * 2 + 32];
   int namelen;
@@ -1612,19 +1607,19 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
     goto wsaerror;
   if (!SetHandleInformation((HANDLE) client1, HANDLE_FLAG_INHERIT, 0))
     goto error;
-  if (!uv__get_acceptex_function(server, &func_acceptex)) {
+  if (uv_wsa_acceptex == NULL) {
     err = WSAEAFNOSUPPORT;
     goto cleanup;
   }
   memset(&overlap, 0, sizeof(overlap));
-  if (!func_acceptex(server,
-                     client1,
-                     accept_buffer,
-                     0,
-                     sizeof(struct sockaddr_storage),
-                     sizeof(struct sockaddr_storage),
-                     &bytes,
-                     &overlap)) {
+  if (!uv_wsa_acceptex(server,
+                       client1,
+                       accept_buffer,
+                       0,
+                       sizeof(struct sockaddr_storage),
+                       sizeof(struct sockaddr_storage),
+                       &bytes,
+                       &overlap)) {
     err = WSAGetLastError();
     if (err == ERROR_IO_PENDING) {
       /* Result should complete immediately, since we already called connect,

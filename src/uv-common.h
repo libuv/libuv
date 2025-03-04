@@ -123,6 +123,7 @@ enum {
   /* Only used by uv_pipe_t handles. */
   UV_HANDLE_NON_OVERLAPPED_PIPE         = 0x01000000,
   UV_HANDLE_PIPESERVER                  = 0x02000000,
+  UV_HANDLE_WIN_UDS_PIPE                = 0x04000000,
 
   /* Only used by uv_tty_t handles. */
   UV_HANDLE_TTY_READABLE                = 0x01000000,

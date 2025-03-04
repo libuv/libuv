@@ -215,6 +215,11 @@ TEST_DECLARE   (pipe_getsockname_blocking)
 TEST_DECLARE   (pipe_pending_instances)
 TEST_DECLARE   (pipe_sendmsg)
 TEST_DECLARE   (pipe_server_close)
+#ifdef _WIN32
+TEST_DECLARE   (pipe_win_uds)
+TEST_DECLARE   (pipe_win_uds_bad_name)
+TEST_DECLARE   (pipe_win_uds_shutdown)
+#endif
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
 TEST_DECLARE   (shutdown_close_tcp)
@@ -630,6 +635,12 @@ TASK_LIST_START
 #endif
   /* Seems to be either about 0.5s or 5s, depending on the OS. */
   TEST_ENTRY_CUSTOM (pipe_set_non_blocking, 0, 0, 20000)
+#ifdef _WIN32
+  TEST_ENTRY   (pipe_win_uds)
+  TEST_ENTRY   (pipe_win_uds_bad_name)
+  TEST_ENTRY   (pipe_win_uds_shutdown)
+#endif
+
   TEST_ENTRY  (pipe_set_chmod)
   TEST_ENTRY  (tty)
 #ifdef _WIN32

@@ -857,7 +857,8 @@ enum {
  * uv_pipe_t is a subclass of uv_stream_t.
  *
  * Representing a pipe stream or pipe server. On Windows this is a Named
- * Pipe. On Unix this is a Unix domain socket.
+ * Pipe or a Unix domain socket depends on the init flags. On Unix this is
+ * a Unix domain socket.
  */
 struct uv_pipe_s {
   UV_HANDLE_FIELDS
@@ -866,7 +867,22 @@ struct uv_pipe_s {
   UV_PIPE_PRIVATE_FIELDS
 };
 
+enum uv_pipe_init_flags {
+  /*
+   * Enable IPC mode of pipe.
+   */
+  UV_PIPE_INIT_IPC = 1u << 0,
+
+  /*
+   * Use Unix Domain Socket instead of NamedPipe on Windows. Will validate
+   * the `name` as a file path when calling bind / connect if this flag is set.
+   * On non-Windows platform this flag is ignored.
+   */
+  UV_PIPE_INIT_WIN_UDS = 1u << 1,
+};
+
 UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
+UV_EXTERN int uv_pipe_init_ex(uv_loop_t* loop, uv_pipe_t* handle, unsigned int flags);
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 UV_EXTERN int uv_pipe_bind2(uv_pipe_t* handle,

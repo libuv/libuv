@@ -34,6 +34,10 @@ int uv_tcp_non_ifs_lsp_ipv6;
 struct sockaddr_in uv_addr_ip4_any_;
 struct sockaddr_in6 uv_addr_ip6_any_;
 
+/* WSA function pointers */
+LPFN_ACCEPTEX uv_wsa_acceptex = NULL;
+LPFN_CONNECTEX uv_wsa_connectex = NULL;
+
 
 /*
  * Retrieves the pointer to a winsock extension function.
@@ -62,25 +66,15 @@ static BOOL uv__get_extension_function(SOCKET socket, GUID guid,
 }
 
 
-BOOL uv__get_acceptex_function(SOCKET socket, LPFN_ACCEPTEX* target) {
-  const GUID wsaid_acceptex = WSAID_ACCEPTEX;
-  return uv__get_extension_function(socket, wsaid_acceptex, (void**)target);
-}
-
-
-BOOL uv__get_connectex_function(SOCKET socket, LPFN_CONNECTEX* target) {
-  const GUID wsaid_connectex = WSAID_CONNECTEX;
-  return uv__get_extension_function(socket, wsaid_connectex, (void**)target);
-}
-
-
-
 void uv__winsock_init(void) {
   WSADATA wsa_data;
   int errorno;
   SOCKET dummy;
   WSAPROTOCOL_INFOW protocol_info;
   int opt_len;
+
+  const GUID wsaid_acceptex = WSAID_ACCEPTEX;
+  const GUID wsaid_connectex = WSAID_CONNECTEX;
 
   /* Set implicit binding address used by connectEx */
   if (uv_ip4_addr("0.0.0.0", 0, &uv_addr_ip4_any_)) {
@@ -129,6 +123,19 @@ void uv__winsock_init(void) {
       if (protocol_info.dwServiceFlags1 & XP1_IFS_HANDLES)
         uv_tcp_non_ifs_lsp_ipv6 = 0;
     }
+    closesocket(dummy);
+  }
+
+  /* Try to get WSA function pointers */
+  dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  if (dummy != INVALID_SOCKET) {
+    if (!uv__get_extension_function(
+            dummy, wsaid_acceptex, (void**)&uv_wsa_acceptex) ||
+        !uv__get_extension_function(
+            dummy, wsaid_connectex, (void**)&uv_wsa_connectex)) {
+      uv_fatal_error(WSAGetLastError(), "WSAIoctl");
+    }
+
     closesocket(dummy);
   }
 }

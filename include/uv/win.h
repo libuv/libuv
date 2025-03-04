@@ -376,7 +376,14 @@ typedef struct {
       ULONG_PTR result; /* overlapped.Internal is reused to hold the result */\
       HANDLE pipeHandle;                                                      \
       DWORD duplex_flags;                                                     \
-      WCHAR* name;                                                             \
+      /* When using unix domain socket, ConnectEx IOCP result will overwrite  
+       * result + pipeHandle, to keep the ABI, reusing the name field to store
+       * the pending uds_socket for connect handler.
+       */                                                                     \
+      union {                                                                 \
+        WCHAR* name;                                                          \
+        SOCKET uds_socket;                                                    \
+      };                                                                      \
     } connect;                                                                \
   } u;                                                                        \
   struct uv_req_s* next_req;
@@ -486,7 +493,14 @@ typedef struct {
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   HANDLE handle;                                                              \
-  WCHAR* name;                                                                \
+  /*
+   * The uds doesn't use wchar name, reuse this memory to store raw utf-8 name
+   * while keep the ABI compact.
+   */                                                                         \
+  union {                                                                     \
+    char* pathname;                                                           \
+    WCHAR* name;                                                              \
+  };                                                                          \
   union {                                                                     \
     struct { uv_pipe_server_fields } serv;                                    \
     struct { uv_pipe_connection_fields } conn;                                \
