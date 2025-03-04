@@ -34,6 +34,6 @@ int main(int argc, char **argv) {
 
         init_plugin();
     }
-
+    free(lib);
     return 0;
 }
