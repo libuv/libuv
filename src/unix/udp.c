@@ -320,7 +320,7 @@ static int uv__sock_reuseaddr(int fd) {
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
        return UV__ERR(errno);
   }
-#elif defined(SO_REUSEPORT) && (defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4)
+#elif defined(SO_REUSEPORT) && defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes))) {
     if (errno != ENOPROTOOPT)
       return UV__ERR(errno);
