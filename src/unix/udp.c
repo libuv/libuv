@@ -326,9 +326,8 @@ static int uv__sock_reuseaddr(int fd) {
       return UV__ERR(errno);
     /* Not all socket types accept SO_REUSEPORT. */
     errno = 0;
-    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes))) {
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)))
       return UV__ERR(errno);
-    }
   }
 #elif defined(SO_REUSEPORT) && \
   !defined(__linux__) && !defined(__GNU__) && \
