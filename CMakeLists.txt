@@ -434,6 +434,7 @@ endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
+  list(APPEND uv_libraries m)
 endif()
 
 if(CYGWIN OR MSYS)
