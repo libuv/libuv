@@ -31,13 +31,15 @@
 
 
 /* Does the file path contain embedded nul bytes? */
-static int includes_nul(const char *s, size_t n) {
+static int includes_invalid_nul(const char *s, size_t n) {
   if (n == 0)
     return 0;
 #ifdef __linux__
-  /* Accept abstract socket namespace path ("\0/virtual/path"). */
-  s++;
-  n--;
+  /* Accept abstract socket namespace paths, throughout which nul bytes have
+   * no special significance ("\0foo\0bar").
+   */
+  if (s[0] == '\0')
+    return 0;
 #endif
   return NULL != memchr(s, '\0', n);
 }
@@ -84,7 +86,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     return UV_EINVAL;
 #endif
 
-  if (includes_nul(name, namelen))
+  if (includes_invalid_nul(name, namelen))
     return UV_EINVAL;
 
   if (flags & UV_PIPE_NO_TRUNCATE)
@@ -271,7 +273,7 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (namelen == 0)
     return UV_EINVAL;
 
-  if (includes_nul(name, namelen))
+  if (includes_invalid_nul(name, namelen))
     return UV_EINVAL;
 
   if (flags & UV_PIPE_NO_TRUNCATE)
