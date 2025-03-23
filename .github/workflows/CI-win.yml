@@ -21,13 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {toolchain: Visual Studio 16 2019, arch: Win32, server: 2019}
-          - {toolchain: Visual Studio 16 2019, arch: x64, server: 2019}
           - {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: UBSAN}
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
+          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2025}
     steps:
       - uses: actions/checkout@v4
       - name: Build

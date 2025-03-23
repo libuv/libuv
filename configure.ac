@@ -33,7 +33,7 @@ CC_ATTRIBUTE_VISIBILITY([default], [
 # we exclude -fno-strict-aliasing for xlc
 CC_CHECK_FLAG_SUPPORTED_APPEND([-fno-strict-aliasing])
 CC_CHECK_CFLAGS_APPEND([-g])
-CC_CHECK_CFLAGS_APPEND([-std=c11])
+CC_CHECK_CFLAGS_APPEND([-std=gnu11])
 CC_CHECK_CFLAGS_APPEND([-Wall])
 CC_CHECK_CFLAGS_APPEND([-Wextra])
 CC_CHECK_CFLAGS_APPEND([-Wno-long-long])
