@@ -489,13 +489,7 @@ uv__fs_copy_file_range(int fd_in,
 #endif
 
 #ifdef __linux__
-typedef struct {
-  long long quota_per_period;
-  long long period_length;
-  double proportions;
-} uv__cpu_constraint;
-
-int uv__get_constrained_cpu(uv__cpu_constraint* constraint);
+int uv__get_constrained_cpu(long long* quota);
 #endif
 
 #if defined(__sun) && !defined(__illumos__)

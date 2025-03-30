@@ -2023,14 +2023,11 @@ unsigned int uv_available_parallelism(void) {
 
 #ifdef __linux__
   {
-    double rc_with_cgroup;
-    uv__cpu_constraint c = {0, 0, 0.0};
+    long long quota = 0;
 
-    if (uv__get_constrained_cpu(&c) == 0 && c.period_length > 0) {
-      rc_with_cgroup = (double)c.quota_per_period / c.period_length * c.proportions;
-      if (rc_with_cgroup < rc)
-        rc = (long)rc_with_cgroup; /* Casting is safe since rc_with_cgroup < rc < LONG_MAX */
-    }
+    if (uv__get_constrained_cpu(&quota) == 0)
+      if (quota > 0 && quota < rc)
+        rc = quota;
   }
 #endif  /* __linux__ */
 

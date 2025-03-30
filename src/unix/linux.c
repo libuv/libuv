@@ -2305,49 +2305,83 @@ uint64_t uv_get_available_memory(void) {
 
 
 static int uv__get_cgroupv2_constrained_cpu(const char* cgroup,
-                                            uv__cpu_constraint* constraint) {
-  char path[256];
-  char buf[1024];
-  unsigned int weight;
-  int cgroup_size;
+                                            long long* quota) {
+  static const char cgroup_mount[] = "/sys/fs/cgroup";
   const char* cgroup_trimmed;
+  char buf[1024];
+  char full_path[256];
+  char path[256];
   char quota_buf[16];
+  char* last_slash;
+  int cgroup_size;
+  long long limit;
+  long long min_quota;
+  long long period;
 
   if (strncmp(cgroup, "0::/", 4) != 0)
     return UV_EINVAL;
 
   /* Trim ending \n by replacing it with a 0 */
   cgroup_trimmed = cgroup + sizeof("0::/") - 1;      /* Skip the prefix "0::/" */
-  cgroup_size = (int)strcspn(cgroup_trimmed, "\n");  /* Find the first slash */
+  cgroup_size = (int)strcspn(cgroup_trimmed, "\n");  /* Find the first \n */
+  min_quota = LLONG_MAX;
 
-  /* Construct the path to the cpu.max file */
-  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.max", cgroup_size,
-           cgroup_trimmed);
+  /* Construct the path to the cpu.max files */
+  snprintf(path, sizeof(path), "%s/%.*s/cgroup.controllers", cgroup_mount,
+           cgroup_size, cgroup_trimmed);
 
-  /* Read cpu.max */
+  /* Read controllers, if not exists, not really a cgroup */
   if (uv__slurp(path, buf, sizeof(buf)) < 0)
     return UV_EIO;
 
-  if (sscanf(buf, "%15s %llu", quota_buf, &constraint->period_length) != 2)
-    return UV_EINVAL;
-
-  if (strncmp(quota_buf, "max", 3) == 0)
-    constraint->quota_per_period = LLONG_MAX;
-  else if (sscanf(quota_buf, "%lld", &constraint->quota_per_period) != 1)
-    return UV_EINVAL; // conversion failed
-
-  /* Construct the path to the cpu.weight file */
-  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.weight", cgroup_size,
+  snprintf(path, sizeof(path), "%s/%.*s", cgroup_mount, cgroup_size,
            cgroup_trimmed);
 
-  /* Read cpu.weight */
-  if (uv__slurp(path, buf, sizeof(buf)) < 0)
-    return UV_EIO;
+  /*
+   * Traverse up the cgroup v2 hierarchy, starting from the current cgroup path.
+   * At each level, attempt to read the "cpu.max" file, which defines the CPU
+   * quota and period.
+   *
+   * This reflects how Linux applies cgroup limits hierarchically.
+   *
+   * e.g: given a path like /sys/fs/cgroup/foo/bar/baz, we check:
+   *   - /sys/fs/cgroup/foo/bar/baz/cpu.max
+   *   - /sys/fs/cgroup/foo/bar/cpu.max
+   *   - /sys/fs/cgroup/foo/cpu.max
+   *   - /sys/fs/cgroup/cpu.max
+   */
+  while (strncmp(path, cgroup_mount, strlen(cgroup_mount)) == 0) {
+    snprintf(full_path, sizeof(full_path), "%s/cpu.max", path);
 
-  if (sscanf(buf, "%u", &weight) != 1)
-    return UV_EINVAL;
+    /* Silently ignore and continue if the file does not exist */
+    if (uv__slurp(full_path, quota_buf, sizeof(quota_buf)) < 0)
+      goto next;
 
-  constraint->proportions = (double)weight / 100.0;
+    /* No limit, move on */
+    if (strncmp(quota_buf, "max", 3) == 0)
+      goto next;
+
+    /* Read cpu.max */
+    if (sscanf(quota_buf, "%lld %lld", &limit, &period) != 2)
+      goto next;
+
+    /* Can't divide by 0 */
+    if (period == 0)
+      goto next;
+
+    *quota = limit / period;
+    if (*quota < min_quota)
+      min_quota = *quota;
+
+next:
+    /* Move up one level in the cgroup hierarchy by trimming the last path.
+     * The loop ends once we reach the cgroup root mount point.
+     */
+    last_slash = strrchr(path, '/');
+    if (last_slash == NULL || strcmp(path, cgroup_mount) == 0)
+      break;
+    *last_slash = '\0';
+  }
 
   return 0;
 }
@@ -2368,12 +2402,13 @@ static char* uv__cgroup1_find_cpu_controller(const char* cgroup,
 }
 
 static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
-                                            uv__cpu_constraint* constraint) {
+                                            long long* quota) {
   char path[256];
   char buf[1024];
-  unsigned int shares;
   int cgroup_size;
   char* cgroup_cpu;
+  long long period_length;
+  long long quota_per_period;
 
   cgroup_cpu = uv__cgroup1_find_cpu_controller(cgroup, &cgroup_size);
 
@@ -2384,10 +2419,11 @@ static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
   snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_quota_us",
            cgroup_size, cgroup_cpu);
 
+  /* Read cpu.cfs_quota_us */
   if (uv__slurp(path, buf, sizeof(buf)) < 0)
     return UV_EIO;
 
-  if (sscanf(buf, "%lld", &constraint->quota_per_period) != 1)
+  if (sscanf(buf, "%lld", &quota_per_period) != 1)
     return UV_EINVAL;
 
   /* Construct the path to the cpu.cfs_period_us file */
@@ -2398,26 +2434,19 @@ static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
   if (uv__slurp(path, buf, sizeof(buf)) < 0)
     return UV_EIO;
 
-  if (sscanf(buf, "%lld", &constraint->period_length) != 1)
+  if (sscanf(buf, "%lld", &period_length) != 1)
     return UV_EINVAL;
 
-  /* Construct the path to the cpu.shares file */
-  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.shares", cgroup_size,
-           cgroup_cpu);
-
-  /* Read cpu.shares */
-  if (uv__slurp(path, buf, sizeof(buf)) < 0)
-    return UV_EIO;
-
-  if (sscanf(buf, "%u", &shares) != 1)
+  /* Can't divide by 0 */
+  if (period_length == 0)
     return UV_EINVAL;
 
-  constraint->proportions = (double)shares / 1024.0;
+  *quota = quota_per_period / period_length;
 
   return 0;
 }
 
-int uv__get_constrained_cpu(uv__cpu_constraint* constraint) {
+int uv__get_constrained_cpu(long long* quota) {
   char cgroup[1024];
 
   /* Read the cgroup from /proc/self/cgroup */
@@ -2428,9 +2457,9 @@ int uv__get_constrained_cpu(uv__cpu_constraint* constraint) {
    * The entry for cgroup v2 is always in the format "0::$PATH"
    * see https://docs.kernel.org/admin-guide/cgroup-v2.html */
   if (strncmp(cgroup, "0::/", 4) == 0)
-    return uv__get_cgroupv2_constrained_cpu(cgroup, constraint);
+    return uv__get_cgroupv2_constrained_cpu(cgroup, quota);
   else
-    return uv__get_cgroupv1_constrained_cpu(cgroup, constraint);
+    return uv__get_cgroupv1_constrained_cpu(cgroup, quota);
 }
 
 
