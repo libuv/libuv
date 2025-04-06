@@ -496,7 +496,9 @@ int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
     defined(__FreeBSD__) || \
     defined(__OpenBSD__) || \
     defined(__DragonFly__) || \
-    defined(__NetBSD__)
+    defined(__NetBSD__) || \
+    defined(__illumos__) || \
+    (defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4)
   int flags = O_CLOEXEC;
 
   if ((read_flags & UV_NONBLOCK_PIPE) && (write_flags & UV_NONBLOCK_PIPE))
