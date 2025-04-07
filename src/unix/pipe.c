@@ -450,6 +450,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   char name_buffer[1 + UV__PATH_MAX];
   int desired_mode;
   size_t name_len;
+  const char* name;
   int fd;
   int r;
 
@@ -481,8 +482,13 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   r = uv_pipe_getsockname(handle, name_buffer, &name_len);
   if (r != 0)
     return r;
+  name = name_buffer;
 
-  if (chmod(name_buffer, desired_mode))
+  /* On some platforms, getsockname returns an empty string, and we try with pipe_fname. */
+  if (name_len == 0 && handle->pipe_fname != NULL)
+    name = handle->pipe_fname;
+
+  if (chmod(name, desired_mode))
     return UV__ERR(errno);
 
   return 0;
