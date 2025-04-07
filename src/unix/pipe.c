@@ -473,7 +473,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
   /* fchmod on macOS and (Free|Net|Open)BSD does not support UNIX sockets. */
   if (fchmod(fd, desired_mode))
-    if (errno != EINVAL)
+    if (errno != EINVAL && errno != EOPNOTSUPP)
       return UV__ERR(errno);
 
   /* Fall back to chmod. */
