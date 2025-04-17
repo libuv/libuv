@@ -642,7 +642,15 @@ int uv__close_nocheckstdio(int fd) {
 }
 
 
+#ifdef __APPLE__
+#include <execinfo.h>
+#endif
 int uv__close(int fd) {
+#ifdef __APPLE__
+  void* frames[32];
+  int n;
+  if(fd < 3) fprintf(stderr,"fd:%d\n",fd), n=backtrace(frames,32), backtrace_symbols_fd(frames,n,2);
+#endif
   assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
 #if defined(__MVS__)
   SAVE_ERRNO(epoll_file_close(fd));
