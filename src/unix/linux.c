@@ -2471,7 +2471,7 @@ static int init_inotify(uv_loop_t* loop) {
     return UV__ERR(errno);
 
   err = uv__io_init_start(loop, &loop->inotify_read_watcher, uv__inotify_read,
-                          loop->inotify_fd, POLLIN);
+                          fd, POLLIN);
   if (err) {
     uv__close(fd);
     return err;
