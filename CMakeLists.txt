@@ -584,6 +584,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-loop-close.c
        test/test-loop-configure.c
        test/test-loop-handles.c
+       test/test-loop-oom.c
        test/test-loop-stop.c
        test/test-loop-time.c
        test/test-metrics.c

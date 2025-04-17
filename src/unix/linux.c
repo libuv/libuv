@@ -2460,6 +2460,7 @@ static int compare_watchers(const struct watcher_list* a,
 
 
 static int init_inotify(uv_loop_t* loop) {
+  int err;
   int fd;
 
   if (loop->inotify_fd != -1)
@@ -2469,10 +2470,14 @@ static int init_inotify(uv_loop_t* loop) {
   if (fd < 0)
     return UV__ERR(errno);
 
-  loop->inotify_fd = fd;
-  uv__io_init(&loop->inotify_read_watcher, uv__inotify_read, loop->inotify_fd);
-  uv__io_start(loop, &loop->inotify_read_watcher, POLLIN);
+  err = uv__io_init_start(loop, &loop->inotify_read_watcher, uv__inotify_read,
+                          loop->inotify_fd, POLLIN);
+  if (err) {
+    uv__close(fd);
+    return err;
+  }
 
+  loop->inotify_fd = fd;
   return 0;
 }
 

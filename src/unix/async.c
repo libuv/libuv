@@ -308,8 +308,13 @@ static int uv__async_start(uv_loop_t* loop) {
     return err;
 #endif
 
-  uv__io_init(&loop->async_io_watcher, uv__async_io, pipefd[0]);
-  uv__io_start(loop, &loop->async_io_watcher, POLLIN);
+  err = uv__io_init_start(loop, &loop->async_io_watcher, uv__async_io,
+                          pipefd[0], POLLIN);
+  if (err < 0) {
+    uv__close(pipefd[0]);
+    uv__close(pipefd[1]);
+    return err;
+  }
   loop->async_wfd = pipefd[1];
 
 #if UV__KQUEUE_EVFILT_USER
