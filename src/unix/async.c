@@ -312,7 +312,8 @@ static int uv__async_start(uv_loop_t* loop) {
                           pipefd[0], POLLIN);
   if (err < 0) {
     uv__close(pipefd[0]);
-    uv__close(pipefd[1]);
+    if (pipefd[1] != -1)
+      uv__close(pipefd[1]);
     return err;
   }
   loop->async_wfd = pipefd[1];
