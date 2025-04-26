@@ -579,8 +579,8 @@ int uv__udp_send(uv_udp_send_t* req,
                  const struct sockaddr* addr,
                  unsigned int addrlen,
                  uv_udp_send_cb send_cb) {
-  int err;
   int empty_queue;
+  int err = 0;
 
   assert(nbufs > 0);
 
@@ -629,12 +629,22 @@ int uv__udp_send(uv_udp_send_t* req,
      * write.
      */
     if (!uv__queue_empty(&handle->write_queue))
-      uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+      err = uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
   } else {
-    uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+    err = uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
   }
 
-  return 0;
+  if (err) {
+    if (req->bufs != req->bufsml)
+      uv__free(req->bufs);  /* Free the allocated bufs */
+
+    req->bufs = NULL;
+    uv__queue_remove(&req->queue);  /* Remove from the write queue */
+    uv__req_unregister(handle->loop);  /* The req is not in the queue */
+    uv__handle_stop(handle);  /* The uv__io_start failed, undo handle op */
+  }
+
+  return err;
 }
 
 
@@ -1223,7 +1233,10 @@ int uv__udp_recv_start(uv_udp_t* handle,
   handle->alloc_cb = alloc_cb;
   handle->recv_cb = recv_cb;
 
-  uv__io_start(handle->loop, &handle->io_watcher, POLLIN);
+  err = uv__io_start(handle->loop, &handle->io_watcher, POLLIN);
+  if (err)
+    return err;
+
   uv__handle_start(handle);
 
   return 0;
