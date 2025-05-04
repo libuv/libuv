@@ -86,7 +86,7 @@ jobs:
           sudo apt install mingw-w64 ninja-build -y
       - name: Build
         run: |
-          cmake -S . -B build -G Ninja -DHOST_ARCH=${{ matrix.config.arch }} -DBUILD_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
+          cmake -B build -G Ninja -DHOST_ARCH=${{ matrix.config.arch }} -DBUILD_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
           cmake --build build
           cmake --install build --prefix "`pwd`/build/usr"
           mkdir -p build/usr/test build/usr/bin

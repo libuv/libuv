@@ -15,6 +15,17 @@ on:
 jobs:
   sanitizers-linux:
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        config:
+          - name: ASAN
+            flags: -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
+          - name: MSAN
+            flags: -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
+          - name: TSAN
+            flags: -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
+          - name: UBSAN
+            flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
     steps:
       - uses: actions/checkout@v4
       - name: Setup
@@ -28,78 +39,44 @@ jobs:
         run: |
           sudo sysctl -w kernel.randomize_va_space=0
 
-      - name: ASAN Build
+      - name: Build ${{ matrix.config.name }}
         run: |
-          mkdir build-asan
-          (cd build-asan && cmake .. -G Ninja -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
-          cmake --build build-asan
-      - name: ASAN Test
-        run: |
-          ./build-asan/uv_run_tests_a
+          cmake -B build -G Ninja -DBUILD_TESTING=ON ${{ matrix.config.flags }}
+          cmake --build build
 
-      - name: MSAN Build
+      - name: Test ${{ matrix.config.name }}
         run: |
-          mkdir build-msan
-          (cd build-msan && cmake .. -G Ninja -DBUILD_TESTING=ON -DMSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
-          cmake --build build-msan
-      - name: MSAN Test
-        run: |
-          ./build-msan/uv_run_tests_a
-
-      - name: TSAN Build
-        run: |
-          mkdir build-tsan
-          (cd build-tsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
-          cmake --build build-tsan
-      - name: TSAN Test
-        # Note: path must be absolute because some tests chdir.
-        # TSan exits with an error when it can't find the file.
-        run: |
-          env TSAN_OPTIONS="suppressions=$PWD/tsansupp.txt" ./build-tsan/uv_run_tests_a
-
-      - name: UBSAN Build
-        run: |
-          mkdir build-ubsan
-          (cd build-ubsan && cmake .. -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang)
-          cmake --build build-ubsan
-      - name: UBSAN Test
-        run: |
-          ./build-ubsan/uv_run_tests_a
+          # Note: path must be absolute because some tests chdir.
+          # TSan exits with an error when it can't find the file.
+          if [ "${{ matrix.config.name }}" = "TSAN" ]; then
+            env TSAN_OPTIONS="suppressions=$PWD/tsansupp.txt" ./build/uv_run_tests_a
+          else
+            ./build/uv_run_tests_a
+          fi
 
   sanitizers-macos:
     runs-on: macos-13
+    strategy:
+      matrix:
+        config:
+          - name: ASAN
+            flags: -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
+          - name: TSAN
+            flags: -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
+          - name: UBSAN
+            flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
     steps:
       - uses: actions/checkout@v4
 
       - name: Envinfo
         run: npx envinfo
 
-      - name: ASAN Build
+      - name: Build ${{ matrix.config.name }}
         run: |
-          mkdir build-asan
-          (cd build-asan && cmake .. -DBUILD_TESTING=ON -DASAN=ON -DCMAKE_BUILD_TYPE=Debug)
-          cmake --build build-asan
-      - name: ASAN Test
-        run: |
-          ./build-asan/uv_run_tests_a
-
-      - name: TSAN Build
-        run: |
-          mkdir build-tsan
-          (cd build-tsan && cmake .. -DBUILD_TESTING=ON -DTSAN=ON -DCMAKE_BUILD_TYPE=Release)
-          cmake --build build-tsan
-      - name: TSAN Test
-        run: |
-          ./build-tsan/uv_run_tests_a
-
-      - name: UBSAN Build
-        run: |
-          mkdir build-ubsan
-          (cd build-ubsan && cmake .. -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug)
-          cmake --build build-ubsan
-      - name: UBSAN Test
-        run: |
-          ./build-ubsan/uv_run_tests_a
+          cmake -B build -DBUILD_TESTING=ON ${{ matrix.config.flags }}
+          cmake --build build
+      - name: Test ${{ matrix.config.name }}
+        run: ./build/uv_run_tests_a
 
   sanitizers-windows:
     runs-on: windows-2022
@@ -120,7 +97,6 @@ jobs:
 
       - name: UBSAN Build
         run: |
-          mkdir build-ubsan
           cmake -B build-ubsan -G Ninja -DBUILD_TESTING=ON -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
           cmake --build build-ubsan
       - name: UBSAN Test

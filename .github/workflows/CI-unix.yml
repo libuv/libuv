@@ -51,7 +51,7 @@ jobs:
           disable-animations: true
           script: |
             echo "::group::Configure"
-            cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-30
+            cmake -B build -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-30
             echo "::endgroup::"
 
             echo "::group::Build"
@@ -95,9 +95,7 @@ jobs:
           brew install ninja automake libtool
       - name: Configure
         run: |
-          mkdir build
-          cd build
-          cmake .. -DBUILD_TESTING=ON -G Ninja
+          cmake -B build -DBUILD_TESTING=ON -G Ninja
       - name: Build
         run: |
           cmake --build build
@@ -129,9 +127,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Configure
         run: |
-          mkdir build-ios
-          cd build-ios
-          cmake .. -GXcode -DCMAKE_SYSTEM_NAME:STRING=iOS -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED:BOOL=NO -DCMAKE_CONFIGURATION_TYPES:STRING=Release
+          cmake -B build-ios -GXcode -DCMAKE_SYSTEM_NAME:STRING=iOS -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED:BOOL=NO -DCMAKE_CONFIGURATION_TYPES:STRING=Release
       - name: Build
         run: |
           cmake --build build-ios
@@ -170,9 +166,7 @@ jobs:
           sudo apt install qemu-user qemu-user-binfmt ${{ matrix.config.toolchain }} -y
       - name: Configure with ${{ matrix.config.cc }}
         run: |
-          mkdir build
-          cd build
-          cmake .. -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
+          cmake -B build -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
       - name: Build
         run: |
           cmake --build build
