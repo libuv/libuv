@@ -168,6 +168,8 @@ TEST_IMPL(udp_multicast_join) {
     RETURN_SKIP("No multicast support.");
   if (r == UV_ENOEXEC)
     RETURN_SKIP("No multicast support (likely a firewall issue).");
+  if (r == UV_ENOSYS)
+    RETURN_SKIP("No multicast support (likely a platform issue).");
   ASSERT_OK(r);
 #if defined(__ANDROID__)
   /* It returns an ENOSYS error */
