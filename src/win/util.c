@@ -1519,20 +1519,26 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
 }
 
 int uv_thread_getpriority(uv_thread_t tid, int* priority) {
+  DWORD err;
   int r;
 
   if (priority == NULL)
     return UV_EINVAL;
 
   r = GetThreadPriority(tid);
-  if (r == THREAD_PRIORITY_ERROR_RETURN)
-    return uv_translate_sys_error(GetLastError());
+  if (r == THREAD_PRIORITY_ERROR_RETURN) {
+    err = GetLastError();
+    if (err == ERROR_INVALID_HANDLE)
+      return UV_ESRCH;
+    return uv_translate_sys_error(err);
+  }
 
   *priority = r;
   return 0;
 }
 
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
+  DWORD err;
   int r;
 
   switch (priority) {
@@ -1555,8 +1561,12 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
       return 0;
   }
 
-  if (r == 0)
-    return uv_translate_sys_error(GetLastError());
+  if (r == 0) {
+    err = GetLastError();
+    if (err == ERROR_INVALID_HANDLE)
+      return UV_ESRCH;
+    return uv_translate_sys_error(err);
+  }
 
   return 0;
 }
