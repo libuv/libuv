@@ -1998,8 +1998,8 @@ unsigned int uv_available_parallelism(void) {
 #elif defined(__NetBSD__)
   cpuset_t* set = cpuset_create();
   if (set != NULL) {
-    if (0 == sched_getaffinity_np(getpid(), sizeof(set), &set))
-      rc = uv__cpu_count(&set);
+    if (0 == sched_getaffinity_np(getpid(), cpuset_size(set), set))
+      rc = uv__cpu_count(set);
     cpuset_destroy(set);
   }
 #elif defined(__APPLE__)
