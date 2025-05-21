@@ -91,26 +91,26 @@ static int uv__tcp_keepalive(uv_tcp_t* handle,
    * for TCP keepalive options. */
   if (minimal_windows10_version1709()) {
     if (setsockopt(socket,
-                  IPPROTO_TCP,
-                  TCP_KEEPIDLE,
-                  (const char*)&idle,
-                  sizeof idle) == -1) {
+                   IPPROTO_TCP,
+                   TCP_KEEPIDLE,
+                   (const char*)&idle,
+                   sizeof idle) == -1) {
       return WSAGetLastError();
     }
 
     if (setsockopt(socket,
-                  IPPROTO_TCP,
-                  TCP_KEEPINTVL,
-                  (const char*)&intvl,
-                  sizeof intvl) == -1) {
+                   IPPROTO_TCP,
+                   TCP_KEEPINTVL,
+                   (const char*)&intvl,
+                   sizeof intvl) == -1) {
       return WSAGetLastError();
     }
 
     if (setsockopt(socket,
-                  IPPROTO_TCP,
-                  TCP_KEEPCNT,
-                  (const char*)&cnt,
-                  sizeof cnt) == -1) {
+                   IPPROTO_TCP,
+                   TCP_KEEPCNT,
+                   (const char*)&cnt,
+                   sizeof cnt) == -1) {
       return WSAGetLastError();
     }
 
