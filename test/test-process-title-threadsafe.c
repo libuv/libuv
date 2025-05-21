@@ -85,7 +85,7 @@ TEST_IMPL(process_title_threadsafe) {
   int i;
 
 #if defined(__sun) || defined(__CYGWIN__) || defined(__MSYS__) || \
-    defined(__MVS__) || defined(__PASE__)
+    defined(__MVS__) || defined(__PASE__) || defined(__QNX__)
   RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
 #endif
 

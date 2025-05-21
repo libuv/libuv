@@ -141,6 +141,11 @@ union uv__sockaddr {
 /* Leans on the fact that, on Linux, POLLRDHUP == EPOLLRDHUP. */
 #ifdef POLLRDHUP
 # define UV__POLLRDHUP POLLRDHUP
+#elif defined(__QNX__)
+/* On QNX, POLLRDHUP is not available and the 0x2000 workaround 
+ * leads to undefined bahavior.
+ */ 
+# define UV__POLLRDHUP 0
 #else
 # define UV__POLLRDHUP 0x2000
 #endif

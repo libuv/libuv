@@ -747,6 +747,16 @@ if(LIBUV_BUILD_TESTS)
                        "$<TARGET_FILE:uv_run_tests_a>"
                        "$<TARGET_FILE_DIR:uv_run_tests_a>/uv_run_tests_a_no_ext")
   endif()
+
+  if(QNX)
+    install(TARGETS uv_run_tests uv_run_tests_a uv_run_benchmarks_a
+      DESTINATION bin/libuv_tests
+    )
+
+    install(DIRECTORY test/fixtures
+      DESTINATION bin/libuv_tests
+    )
+  endif()
 endif()
 
 # Now for some gibbering horrors from beyond the stars...

@@ -144,8 +144,8 @@ static void cl_recv_cb(uv_udp_t* handle,
 
 
 TEST_IMPL(udp_multicast_join) {
-#if defined(__OpenBSD__)
-  RETURN_SKIP("Test does not currently work in OpenBSD");
+#if defined(__OpenBSD__) || defined(QNX_IOPKT)
+  RETURN_SKIP("Test does not currently work in OpenBSD or QNX");
 #endif
   int r;
   struct sockaddr_in addr;

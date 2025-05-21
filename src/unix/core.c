@@ -275,7 +275,7 @@ void uv__make_close_pending(uv_handle_t* handle) {
 int uv__getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
-#elif defined(_SC_IOV_MAX)
+#elif defined(_SC_IOV_MAX) && !defined(__QNX__)
   static _Atomic int iovmax_cached = -1;
   int iovmax;
 
@@ -1611,6 +1611,10 @@ int uv_cpumask_size(void) {
 }
 
 int uv_os_getpriority(uv_pid_t pid, int* priority) {
+#if defined(__QNX__)
+  // QNX priority is not process-based
+  return UV_ENOSYS;
+#else
   int r;
 
   if (priority == NULL)
@@ -1624,10 +1628,15 @@ int uv_os_getpriority(uv_pid_t pid, int* priority) {
 
   *priority = r;
   return 0;
+#endif
 }
 
 
 int uv_os_setpriority(uv_pid_t pid, int priority) {
+#if defined(__QNX__)
+  // QNX priority is not process-based
+  return UV_ENOSYS;
+#else
   if (priority < UV_PRIORITY_HIGHEST || priority > UV_PRIORITY_LOW)
     return UV_EINVAL;
 
@@ -1635,6 +1644,7 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
     return UV__ERR(errno);
 
   return 0;
+#endif
 }
 
 /**

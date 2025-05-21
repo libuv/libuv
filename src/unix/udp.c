@@ -560,7 +560,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
     } while (r == -1 && errno == EINTR);
 
     if (r == -1) {
-#if defined(BSD)  /* The macro BSD is from sys/param.h */
+#if defined(BSD) || defined(__QNX__) /* The macro BSD is from sys/param.h */
       if (errno != EAFNOSUPPORT && errno != EINVAL)
         return UV__ERR(errno);
 #else
@@ -766,8 +766,8 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
     !defined(__NetBSD__) &&                                         \
     !defined(__ANDROID__) &&                                        \
     !defined(__DragonFly__) &&                                      \
-    !defined(__QNX__) &&                                            \
-    !defined(__GNU__)
+    !defined(__GNU__) &&                                            \
+    !defined(QNX_IOPKT)
 static int uv__udp_set_source_membership4(uv_udp_t* handle,
                                           const struct sockaddr_in* multicast_addr,
                                           const char* interface_addr,
@@ -957,8 +957,8 @@ int uv_udp_set_source_membership(uv_udp_t* handle,
     !defined(__NetBSD__) &&                                         \
     !defined(__ANDROID__) &&                                        \
     !defined(__DragonFly__) &&                                      \
-    !defined(__QNX__) &&                                            \
-    !defined(__GNU__)
+    !defined(__GNU__) &&                                          \
+    !defined(QNX_IOPKT)
   int err;
   union uv__sockaddr mcast_addr;
   union uv__sockaddr src_addr;
@@ -1312,7 +1312,7 @@ static int uv__udp_sendmsgv(int fd,
   nsent = 0;
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
-  (defined(__sun__) && defined(MSG_WAITFORONE))
+  (defined(__sun__) || defined(__QNX__) && defined(MSG_WAITFORONE))
   if (count > 1) {
     for (i = 0; i < count; /*empty*/) {
       struct mmsghdr m[20];
