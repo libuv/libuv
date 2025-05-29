@@ -2309,8 +2309,8 @@ static int uv__get_cgroupv2_constrained_cpu(const char* cgroup,
   static const char cgroup_mount[] = "/sys/fs/cgroup";
   const char* cgroup_trimmed;
   char buf[1024];
-  char full_path[256];
   char path[256];
+  char full_path[sizeof(path) + sizeof("/cpu.max")];
   char quota_buf[16];
   char* last_slash;
   int cgroup_size;
