@@ -438,7 +438,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/kqueue.c \
                     src/unix/proctitle.c \
                     src/unix/random-getentropy.c
-test_run_tests_LDFLAGS += -lutil
+test_run_tests_LDFLAGS += -lutil -lm
 endif
 
 if DRAGONFLY
@@ -448,7 +448,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/freebsd.c \
                     src/unix/kqueue.c \
                     src/unix/posix-hrtime.c
-test_run_tests_LDFLAGS += -lutil
+test_run_tests_LDFLAGS += -lutil -lm
 endif
 
 if FREEBSD
@@ -459,7 +459,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/kqueue.c \
                     src/unix/posix-hrtime.c \
                     src/unix/random-getrandom.c
-test_run_tests_LDFLAGS += -lutil
+test_run_tests_LDFLAGS += -lutil -lm
 endif
 
 if HAIKU
@@ -491,7 +491,7 @@ libuv_la_SOURCES += src/unix/linux.c \
                     src/unix/proctitle.c \
                     src/unix/random-getrandom.c \
                     src/unix/random-sysctl-linux.c
-test_run_tests_LDFLAGS += -lutil
+test_run_tests_LDFLAGS += -lutil -lm
 endif
 
 if MSYS
@@ -514,7 +514,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/kqueue.c \
                     src/unix/netbsd.c \
                     src/unix/posix-hrtime.c
-test_run_tests_LDFLAGS += -lutil
+test_run_tests_LDFLAGS += -lutil -lm
 endif
 
 if OPENBSD
@@ -525,7 +525,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/openbsd.c \
                     src/unix/posix-hrtime.c \
                     src/unix/random-getentropy.c
-test_run_tests_LDFLAGS += -lutil
+test_run_tests_LDFLAGS += -lutil -lm
 endif
 
 if SUNOS
