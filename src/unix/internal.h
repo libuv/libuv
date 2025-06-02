@@ -268,7 +268,7 @@ void uv__io_close(uv_loop_t* loop, uv__io_t* w);
 void uv__io_feed(uv_loop_t* loop, uv__io_t* w);
 int uv__io_active(const uv__io_t* w, unsigned int events);
 int uv__io_check_fd(uv_loop_t* loop, int fd);
-void uv__io_poll(uv_loop_t* loop, int timeout); /* in milliseconds or -1 */
+void uv__io_poll(uv_loop_t* loop, uint64_t timeout); /* in nanoseconds or -1 */
 int uv__io_fork(uv_loop_t* loop);
 int uv__fd_exists(uv_loop_t* loop, int fd);
 
@@ -406,7 +406,7 @@ void uv__fsevents_loop_delete(uv_loop_t* loop);
 UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
   /* Use a fast time source if available.  We only need millisecond precision.
    */
-  loop->time = uv__hrtime(UV_CLOCK_FAST) / 1000000;
+  loop->time = uv__ns_to_ms(uv__hrtime(UV_CLOCK_FAST)) * 1000 * 1000;
 }
 
 UV_UNUSED(static char* uv__basename_r(const char* path)) {

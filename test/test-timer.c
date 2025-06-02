@@ -287,7 +287,7 @@ TEST_IMPL(timer_huge_timeout) {
                            0));
   ASSERT_OK(uv_timer_start(&huge_timer2, tiny_timer_cb, (uint64_t) -1, 0));
   ASSERT_UINT64_EQ(1, uv_timer_get_due_in(&tiny_timer));
-  ASSERT_UINT64_EQ(281474976710655, uv_timer_get_due_in(&huge_timer1));
+  ASSERT_UINT64_EQ(UINT64_MAX, uv_timer_get_due_in(&huge_timer1));
   ASSERT_UINT64_LE(0, uv_timer_get_due_in(&huge_timer2));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   MAKE_VALGRIND_HAPPY(uv_default_loop());

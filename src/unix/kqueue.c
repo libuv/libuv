@@ -156,7 +156,7 @@ static void uv__kqueue_delete(int kqfd, const struct kevent *ev) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+void uv__io_poll(uv_loop_t* loop, uint64_t timeout) {
   uv__loop_internal_fields_t* lfields;
   struct kevent events[1024];
   struct kevent* ev;
@@ -178,8 +178,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int fd;
   int op;
   int i;
-  int user_timeout;
-  int reset_timeout;
+  uint64_t user_timeout;
+  uint64_t reset_timeout;
 
   if (loop->nfds == 0) {
     assert(uv__queue_empty(&loop->watcher_queue));
@@ -250,12 +250,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     sigaddset(pset, SIGPROF);
   }
 
-  assert(timeout >= -1);
   base = loop->time;
   count = 48; /* Benchmarks suggest this gives the best throughput. */
 
   if (lfields->flags & UV_METRICS_IDLE_TIME) {
-    reset_timeout = 1;
+    reset_timeout = 1000 * 1000;  /* One millisecond. */
     user_timeout = timeout;
     timeout = 0;
   } else {
@@ -269,9 +268,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
 
-    if (timeout != -1) {
-      spec.tv_sec = timeout / 1000;
-      spec.tv_nsec = (timeout % 1000) * 1000000;
+    if (timeout != (uint64_t) -1) {
+      spec.tv_sec = timeout / (1000 * 1000 * 1000);
+      spec.tv_nsec = timeout % (1000 * 1000 * 1000);
     }
 
     if (pset != NULL)
@@ -294,7 +293,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       assert(errno == EINTR);
     else if (nfds == 0)
       /* Unlimited timeout should only return with events or signal. */
-      assert(timeout != -1);
+      assert(timeout != (uint64_t) -1);
 
     if (pset != NULL)
       pthread_sigmask(SIG_UNBLOCK, pset, NULL);
@@ -462,13 +461,13 @@ update_timeout:
     if (timeout == 0)
       return;
 
-    if (timeout == -1)
+    if (timeout == (uint64_t) -1)
       continue;
 
     assert(timeout > 0);
 
     diff = loop->time - base;
-    if (diff >= (uint64_t) timeout)
+    if (diff >= timeout)
       return;
 
     timeout -= diff;

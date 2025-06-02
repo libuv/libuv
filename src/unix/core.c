@@ -398,7 +398,7 @@ static int uv__loop_alive(const uv_loop_t* loop) {
 }
 
 
-static int uv__backend_timeout(const uv_loop_t* loop) {
+static uint64_t uv__backend_timeout(const uv_loop_t* loop) {
   if (loop->stop_flag == 0 &&
       /* uv__loop_alive(loop) && */
       (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
@@ -413,7 +413,7 @@ static int uv__backend_timeout(const uv_loop_t* loop) {
 
 int uv_backend_timeout(const uv_loop_t* loop) {
   if (uv__queue_empty(&loop->watcher_queue))
-    return uv__backend_timeout(loop);
+    return uv__ns_to_ms_sat(uv__backend_timeout(loop));
   /* Need to call uv_run to update the backend fd state. */
   return 0;
 }
@@ -425,9 +425,9 @@ int uv_loop_alive(const uv_loop_t* loop) {
 
 
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
-  int timeout;
   int r;
   int can_sleep;
+  uint64_t timeout;
 
   r = uv__loop_alive(loop);
   if (!r)
