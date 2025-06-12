@@ -1312,7 +1312,7 @@ static int uv__udp_sendmsgv(int fd,
   nsent = 0;
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
-  (defined(__sun__) || defined(__QNX__) && defined(MSG_WAITFORONE))
+  (defined(__sun__) && defined(MSG_WAITFORONE)) || defined(__QNX__)
   if (count > 1) {
     for (i = 0; i < count; /*empty*/) {
       struct mmsghdr m[20];
@@ -1340,7 +1340,7 @@ static int uv__udp_sendmsgv(int fd,
     goto exit;
   }
 #endif  /* defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) ||
-	 * (defined(__sun__) && defined(MSG_WAITFORONE))
+	 * (defined(__sun__) && defined(MSG_WAITFORONE)) || defined(__QNX__)
 	 */
 
   for (i = 0; i < count; i++, nsent++)

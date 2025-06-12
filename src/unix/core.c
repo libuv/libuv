@@ -1612,7 +1612,7 @@ int uv_cpumask_size(void) {
 
 int uv_os_getpriority(uv_pid_t pid, int* priority) {
 #if defined(__QNX__)
-  // QNX priority is not process-based
+  /* QNX priority is not process-based */
   return UV_ENOSYS;
 #else
   int r;
@@ -1634,7 +1634,7 @@ int uv_os_getpriority(uv_pid_t pid, int* priority) {
 
 int uv_os_setpriority(uv_pid_t pid, int priority) {
 #if defined(__QNX__)
-  // QNX priority is not process-based
+  /* QNX priority is not process-based */
   return UV_ENOSYS;
 #else
   if (priority < UV_PRIORITY_HIGHEST || priority > UV_PRIORITY_LOW)

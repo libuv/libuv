@@ -3893,8 +3893,8 @@ TEST_IMPL(fs_read_dir) {
   ASSERT((r >= 0) || (r == UV_EISDIR));
 #elif defined(__QNX__)
   /*
-   * If UV_FS_O_DIRECTORY is supplied, QNX would return ENOSYS. Otherwise
-   * UV_EISDIR would be returned. Here we are lenient to accept both.
+   * If UV_FS_O_DIRECTORY is supplied, QNX returns ENOSYS. Otherwise
+   * UV_EISDIR is returned. Here we are lenient and accept both.
    */
   ASSERT((r == UV_ENOSYS) || (r == UV_EISDIR));
 #else

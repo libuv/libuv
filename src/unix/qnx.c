@@ -77,24 +77,24 @@ int uv_exepath(char* buffer, size_t* size) {
 }
 
 
-static uint64_t uv__read_pidin_info(const char* what)
-{
+static uint64_t uv__read_pidin_info(const char* what) {
   uint64_t rc;
   char* p;
   char buf[BUF_SIZE];
   const char* cmd = "pidin info";
 
   FILE* fp = popen(cmd, "r");
-  if(!fp) return -1;
+  if(fp == NULL)
+    return 0;
 
-  size_t sz = fread(buf, 1, BUF_SIZE-1, fp);
-  buf[sz]='\0';
+  size_t sz = fread(buf, 1, sizeof(buf) - 1, fp);
+  buf[sz] = '\0';
 
   pclose(fp);
 
   p = strstr(buf, what);
   if(p == NULL)
-    return -1;
+    return 0;
 
   p += strlen(what);
 

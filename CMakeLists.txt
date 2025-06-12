@@ -750,12 +750,10 @@ if(LIBUV_BUILD_TESTS)
 
   if(QNX)
     install(TARGETS uv_run_tests uv_run_tests_a uv_run_benchmarks_a
-      DESTINATION bin/libuv_tests
-    )
+      DESTINATION ${CMAKE_INSTALL_BINDIR}/libuv_tests)
 
     install(DIRECTORY test/fixtures
-      DESTINATION bin/libuv_tests
-    )
+      DESTINATION ${CMAKE_INSTALL_BINDIR}/libuv_tests)
   endif()
 endif()
 

@@ -419,7 +419,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
   if (context->got_fin && context->sent_fin && context->got_disconnect) {
 #else /* __sun && _AIX  && __MVS__ && __QNX__*/
   if (context->got_fin && context->sent_fin) {
-#endif /* !__sun && !_AIX && !__MVS__ && __QNX__ */
+#endif /* !__sun && !_AIX && !__MVS__ && !__QNX__ */
     /* Sent and received FIN. Close and destroy context. */
     close_socket(context->sock);
     destroy_connection_context(context);
