@@ -716,6 +716,7 @@ int uv__cloexec(int fd, int set) {
 }
 
 
+#ifndef __wasi__
 ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
 #if defined(__ANDROID__)   || \
     defined(__DragonFly__) || \
@@ -748,6 +749,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
   return rc;
 #endif
 }
+#endif
 
 
 int uv_cwd(char* buffer, size_t* size) {
@@ -1611,6 +1613,7 @@ int uv_cpumask_size(void) {
 }
 
 int uv_os_getpriority(uv_pid_t pid, int* priority) {
+#ifndef __wasi__
   int r;
 
   if (priority == NULL)
@@ -1624,16 +1627,22 @@ int uv_os_getpriority(uv_pid_t pid, int* priority) {
 
   *priority = r;
   return 0;
+#else
+  *priority = 0;
+  return 0;
+#endif
 }
 
 
 int uv_os_setpriority(uv_pid_t pid, int priority) {
+#ifndef __wasi__
   if (priority < UV_PRIORITY_HIGHEST || priority > UV_PRIORITY_LOW)
     return UV_EINVAL;
 
   if (setpriority(PRIO_PROCESS, (int) pid, priority) != 0)
     return UV__ERR(errno);
-
+#endif
+  
   return 0;
 }
 
@@ -1644,6 +1653,7 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
  * So the output parameter priority is actually the nice value.
 */
 int uv_thread_getpriority(uv_thread_t tid, int* priority) {
+#ifndef __wasi__
   int r;
   int policy;
   struct sched_param param;
@@ -1671,6 +1681,10 @@ int uv_thread_getpriority(uv_thread_t tid, int* priority) {
 
   *priority = param.sched_priority;
   return 0;
+#else
+  *priority = 0; /* WASIX does not support thread priority. */
+  return 0;
+#endif
 }
 
 #ifdef __linux__
@@ -1695,7 +1709,7 @@ static int set_nice_for_calling_thread(int priority) {
  * If the function fails, the return value is non-zero.
 */
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
-#if !defined(__GNU__)
+#if !defined(__GNU__) && !defined(__wasi__)
   int r;
   int min;
   int max;

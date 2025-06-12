@@ -79,7 +79,7 @@
       defined(__HAIKU__)  || \
       defined(__QNX__)
 # include <sys/statvfs.h>
-#else
+#elif !defined(__wasi__)
 # include <sys/statfs.h>
 #endif
 
@@ -677,6 +677,7 @@ static int uv__fs_closedir(uv_fs_t* req) {
   return 0;
 }
 
+#ifndef __wasi__
 static int uv__fs_statfs(uv_fs_t* req) {
   uv_statfs_t* stat_fs;
 #if defined(__sun)      || \
@@ -719,6 +720,7 @@ static int uv__fs_statfs(uv_fs_t* req) {
   req->ptr = stat_fs;
   return 0;
 }
+#endif
 
 static ssize_t uv__fs_pathmax_size(const char* path) {
   ssize_t pathmax;
@@ -1327,6 +1329,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
     goto out;
   }
 
+#ifndef __wasi__
   /*
    * Change the ownership and permissions of the destination file to match the
    * source file.
@@ -1334,6 +1337,7 @@ static ssize_t uv__fs_copyfile(uv_fs_t* req) {
    * `result` variable to silence a -Wunused-result warning.
    */
   result = fchown(dstfd, src_statsbuf.st_uid, src_statsbuf.st_gid);
+#endif
 
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
@@ -1696,12 +1700,16 @@ static void uv__fs_work(struct uv__work* w) {
     switch (req->fs_type) {
     X(ACCESS, access(req->path, req->flags));
     X(CHMOD, chmod(req->path, req->mode));
+#ifndef __wasi__
     X(CHOWN, chown(req->path, req->uid, req->gid));
+#endif
     X(CLOSE, uv__fs_close(req->file));
     X(COPYFILE, uv__fs_copyfile(req));
     X(FCHMOD, fchmod(req->file, req->mode));
+#ifndef __wasi__
     X(FCHOWN, fchown(req->file, req->uid, req->gid));
     X(LCHOWN, lchown(req->path, req->uid, req->gid));
+#endif
     X(FDATASYNC, uv__fs_fdatasync(req));
     X(FSTAT, uv__fs_fstat(req->file, &req->statbuf));
     X(FSYNC, uv__fs_fsync(req));
@@ -1725,7 +1733,9 @@ static void uv__fs_work(struct uv__work* w) {
     X(RMDIR, rmdir(req->path));
     X(SENDFILE, uv__fs_sendfile(req));
     X(STAT, uv__fs_stat(req->path, &req->statbuf));
+#ifndef __wasi__
     X(STATFS, uv__fs_statfs(req));
+#endif
     X(SYMLINK, symlink(req->path, req->new_path));
     X(UNLINK, unlink(req->path));
     X(UTIME, uv__fs_utime(req));

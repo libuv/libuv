@@ -382,6 +382,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
   if (options->cwd != NULL && chdir(options->cwd))
     uv__write_errno(error_fd);
 
+#ifndef __wasi__
   if (options->flags & (UV_PROCESS_SETUID | UV_PROCESS_SETGID)) {
     /* When dropping privileges from root, the `setgroups` call will
      * remove any extraneous groups. If we don't call this, then
@@ -392,6 +393,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
      */
     SAVE_ERRNO(setgroups(0, NULL));
   }
+#endif
 
   if ((options->flags & UV_PROCESS_SETGID) && setgid(options->gid))
     uv__write_errno(error_fd);

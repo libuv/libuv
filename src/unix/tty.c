@@ -125,10 +125,13 @@ static int uv__tty_is_slave(const int fd) {
     abort();
 
   result = (pts == major(sb.st_rdev));
-#else
+#elif !defined(__wasi__)
   /* Fallback to ptsname
    */
   result = ptsname(fd) == NULL;
+#else
+  /* No way to determine if the fd is a slave tty on this platform. */
+  result = 0;
 #endif
   return result;
 }

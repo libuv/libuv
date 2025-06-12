@@ -926,12 +926,17 @@ int uv__thread_setname(const char* name) {
   pthread_set_name_np(pthread_self(), namebuf);
   return 0;
 }
+#elif defined(__wasi__)
+int uv__thread_setname(const char* name) {
+  /* WASI does not support setting thread names. */
+  return UV_ENOSYS;
+}
 #else
 int uv__thread_setname(const char* name) {
-  char namebuf[UV_PTHREAD_MAX_NAMELEN_NP];
+  char namebuf[uv_pthread_max_namelen_np];
   strncpy(namebuf, name, sizeof(namebuf) - 1);
   namebuf[sizeof(namebuf) - 1] = '\0';
-  return UV__ERR(pthread_setname_np(pthread_self(), namebuf));
+  return uv__err(pthread_setname_np(pthread_self(), namebuf));
 }
 #endif
 
@@ -957,6 +962,12 @@ int uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {
     return UV__ERR(errno);
 
   strncpy(name, thread_name, size - 1);
+  name[size - 1] = '\0';
+  return 0;
+}
+#elif defined(__wasi__)
+int uv__thread_getname(uv_thread_t* tid, char* name, size_t size) {
+  snprintf(name, size - 1, "Thread %p", (void*)*tid);
   name[size - 1] = '\0';
   return 0;
 }

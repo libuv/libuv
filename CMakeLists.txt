@@ -268,6 +268,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
        src/unix/aix-common.c)
 endif()
 
+if (CMAKE_SYSTEM_NAME STREQUAL "WASI")
+  list(APPEND uv_defines _GNU_SOURCE)
+  list(APPEND uv_sources
+       src/unix/random-getrandom.c
+       src/unix/posix-hrtime.c
+       src/unix/posix-poll.c
+       src/unix/no-fsevents.c
+       src/unix/no-proctitle.c)
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
   list(APPEND uv_defines _GNU_SOURCE)
   list(APPEND uv_libraries dl)
