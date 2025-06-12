@@ -575,8 +575,13 @@ static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
   struct uv__queue* q;
   uv_handle_t* h;
 
-  if (loop == NULL)
+  if (loop == NULL) {
     loop = uv_default_loop();
+    if (loop == NULL) {
+      fprintf(stderr, "uv_default_loop() failed\n");
+      return;
+    }
+  }
 
   if (stream == NULL)
     stream = stderr;
