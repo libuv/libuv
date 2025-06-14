@@ -378,10 +378,15 @@ done:
 static int uv__get_process_title(void) {
   WCHAR title_w[MAX_TITLE_LENGTH];
   DWORD wlen;
+  DWORD err;
 
+  SetLastError(ERROR_SUCCESS);
   wlen = GetConsoleTitleW(title_w, sizeof(title_w) / sizeof(WCHAR));
-  if (wlen == 0)
-    return uv_translate_sys_error(GetLastError());
+  if (wlen == 0) {
+    err = GetLastError();
+    if (err != 0)
+      return uv_translate_sys_error(err);
+  }
 
   return uv__convert_utf16_to_utf8(title_w, wlen, &process_title);
 }
