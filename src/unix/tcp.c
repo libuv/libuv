@@ -333,14 +333,15 @@ int uv__tcp_connect(uv_connect_t* req,
   }
 
 out:
+  err = uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
+  if (err)
+    return err;
 
   uv__req_init(handle->loop, req, UV_CONNECT);
   req->cb = cb;
   req->handle = (uv_stream_t*) handle;
   uv__queue_init(&req->queue);
   handle->connect_req = req;
-
-  uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
 
   if (handle->delayed_error)
     uv__io_feed(handle->loop, &handle->io_watcher);
@@ -445,7 +446,14 @@ int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
   /* Start listening for connections. */
   tcp->io_watcher.cb = uv__server_io;
-  uv__io_start(tcp->loop, &tcp->io_watcher, POLLIN);
+  err = uv__io_start(tcp->loop, &tcp->io_watcher, POLLIN);
+  if (err) {
+    /* clean things up */
+    uv__queue_remove(&tcp->handle_queue);
+    uv__close(tcp->io_watcher.fd);
+    tcp->io_watcher.fd = -1;
+    return err;
+  }
 
   return 0;
 }

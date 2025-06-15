@@ -119,6 +119,7 @@ int uv_poll_start(uv_poll_t* handle, int pevents, uv_poll_cb poll_cb) {
   uv__io_t** watchers;
   uv__io_t* w;
   int events;
+  int r;
 
   assert((pevents & ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT |
                       UV_PRIORITIZED)) == 0);
@@ -146,7 +147,10 @@ int uv_poll_start(uv_poll_t* handle, int pevents, uv_poll_cb poll_cb) {
   if (pevents & UV_DISCONNECT)
     events |= UV__POLLRDHUP;
 
-  uv__io_start(handle->loop, &handle->io_watcher, events);
+  r = uv__io_start(handle->loop, &handle->io_watcher, events);
+  if (r)
+    return r;
+
   uv__handle_start(handle);
   handle->poll_cb = poll_cb;
 
