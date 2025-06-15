@@ -445,9 +445,8 @@ int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
   /* Start listening for connections. */
   tcp->io_watcher.cb = uv__server_io;
-  uv__io_start(tcp->loop, &tcp->io_watcher, POLLIN);
 
-  return 0;
+  return uv__io_start(tcp->loop, &tcp->io_watcher, POLLIN);
 }
 
 
