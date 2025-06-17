@@ -638,7 +638,7 @@ TEST_IMPL(poll_unidirectional) {
 TEST_IMPL(poll_bad_fdtype) {
 #if !defined(__sun) && \
     !defined(_AIX) && !defined(__MVS__) && \
-    !defined(__CYGWIN__) && !defined(__MSYS__)&& !defined(__QNX__)
+    !defined(__CYGWIN__) && !defined(__MSYS__) && !defined(__QNX__)
   uv_poll_t poll_handle;
   int fd[2];
 

@@ -36,8 +36,6 @@
 #else
 #define cpuinfo_val new_cpuinfo
 #endif
-#define BUF_SIZE 2048
-#define CONVERT_MB 1024*1024
 
 static void
 get_mem_info(uint64_t* totalmem, uint64_t* freemem) {
@@ -80,11 +78,10 @@ int uv_exepath(char* buffer, size_t* size) {
 static uint64_t uv__read_pidin_info(const char* what) {
   uint64_t rc;
   char* p;
-  char buf[BUF_SIZE];
-  const char* cmd = "pidin info";
+  char buf[2048];
 
-  FILE* fp = popen(cmd, "r");
-  if(fp == NULL)
+  FILE* fp = popen("pidin info", "r");
+  if (fp == NULL)
     return 0;
 
   size_t sz = fread(buf, 1, sizeof(buf) - 1, fp);
@@ -93,7 +90,7 @@ static uint64_t uv__read_pidin_info(const char* what) {
   pclose(fp);
 
   p = strstr(buf, what);
-  if(p == NULL)
+  if (p == NULL)
     return 0;
 
   p += strlen(what);
@@ -101,7 +98,7 @@ static uint64_t uv__read_pidin_info(const char* what) {
   rc = 0;
   sscanf(p, "%" PRIu64 " MB", &rc);
 
-  return rc * CONVERT_MB;
+  return rc * 1024 * 1024;
 }
 
 uint64_t uv_get_free_memory(void) {
@@ -152,7 +149,7 @@ int uv_resident_set_memory(size_t* rss) {
 int uv_uptime(double* uptime) {
   struct timespec ts;
   int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
-  if(ret == -1)
+  if (ret == -1)
     return ret;
   *uptime = (double)ts.tv_sec;
   return 0;
