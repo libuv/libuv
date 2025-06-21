@@ -43,13 +43,11 @@ jobs:
 
           cmake --build build
 
-          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.exe" -Destination "build\\RelWithDebInfo\\"' || '' }}
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.exe" -Destination "build\\"' || '' }}
 
-          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.dll" -Destination "build\\RelWithDebInfo\\"' || '' }}
+          ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.dll" -Destination "build\\"' || '' }}
 
           ls -l build
-          
-          ls -l build\\RelWithDebInfo
       - name: platform_output_a
         if: ${{ matrix.config.arch != 'arm64' }}
         shell: cmd
