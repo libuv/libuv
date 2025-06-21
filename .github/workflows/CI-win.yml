@@ -32,7 +32,9 @@ jobs:
       - name: Build
         run:
           $root = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+
           Import-Module "$root\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+
           Enter-VsDevShell -VsInstallPath $root -DevCmdArguments "-arch=${{ matrix.config.arch }}"
 
           cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
