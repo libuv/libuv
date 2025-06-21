@@ -21,21 +21,25 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {toolchain: Visual Studio 17 2022, arch: Win32, server: 2022}
-          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022}
-          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
-          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: UBSAN}
-          - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
-          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2025}
+          - {toolchain: Ninja, arch: x86, server: 2022}
+          - {toolchain: Ninja, arch: x64, server: 2022}
+          - {toolchain: Ninja, arch: x64, server: 2022, config: ASAN}
+          - {toolchain: Ninja, arch: x64, server: 2022, config: UBSAN}
+          - {toolchain: Ninja, arch: arm64, server: 2022}
+          - {toolchain: Ninja, arch: x64, server: 2025}
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run:
-          cmake -S . -B build -DBUILD_TESTING=ON
-            -G "${{ matrix.config.toolchain }}" -A ${{ matrix.config.arch }}
+          $root = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
+          Import-Module "$root\Common7\Tools\Microsoft.VisualStudio.DevShell.dll"
+          Enter-VsDevShell -VsInstallPath $root -DevCmdArguments "-arch=${{ matrix.arch }}"
+
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_TESTING=ON
+            -G "${{ matrix.config.toolchain }}"
             ${{ matrix.config.config == 'ASAN' && '-DASAN=on -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded' || '' }}
 
-          cmake --build build --config RelWithDebInfo
+          cmake --build build
 
           ${{ matrix.config.config == 'ASAN' && 'Copy-Item -Path "build\\*.exe" -Destination "build\\RelWithDebInfo\\"' || '' }}
 
