@@ -55,9 +55,9 @@ void uv__winapi_init(void) {
   HMODULE ws2_32_module;
   HMODULE api_win_core_file_module;
 
-  ntdll_module = GetModuleHandleA("ntdll.dll");
+  ntdll_module = GetModuleHandleW(L"ntdll.dll");
   if (ntdll_module == NULL) {
-    uv_fatal_error(GetLastError(), "GetModuleHandleA");
+    uv_fatal_error(GetLastError(), "GetModuleHandleW");
   }
 
   pRtlGetVersion = (sRtlGetVersion) GetProcAddress(ntdll_module,
@@ -123,20 +123,20 @@ void uv__winapi_init(void) {
       GetProcAddress(powrprof_module, "PowerRegisterSuspendResumeNotification");
   }
 
-  user32_module = GetModuleHandleA("user32.dll");
+  user32_module = GetModuleHandleW(L"user32.dll");
   if (user32_module != NULL) {
     pSetWinEventHook = (sSetWinEventHook)
       GetProcAddress(user32_module, "SetWinEventHook");
   }
 
-  ws2_32_module = GetModuleHandleA("ws2_32.dll");
+  ws2_32_module = GetModuleHandleW(L"ws2_32.dll");
   if (ws2_32_module != NULL) {
     pGetHostNameW = (uv_sGetHostNameW) GetProcAddress(
         ws2_32_module,
         "GetHostNameW");
   }
 
-  api_win_core_file_module = GetModuleHandleA("api-ms-win-core-file-l2-1-4.dll");
+  api_win_core_file_module = GetModuleHandleW(L"api-ms-win-core-file-l2-1-4.dll");
   if (api_win_core_file_module != NULL) {
     pGetFileInformationByName = (sGetFileInformationByName)GetProcAddress(
         api_win_core_file_module, "GetFileInformationByName");
