@@ -148,9 +148,8 @@ int uv_resident_set_memory(size_t* rss) {
 
 int uv_uptime(double* uptime) {
   struct timespec ts;
-  int ret = clock_gettime(CLOCK_MONOTONIC, &ts);
-  if (ret == -1)
-    return ret;
+  if(clock_gettime(CLOCK_MONOTONIC, &ts))
+    return UV__ERR(errno);
   *uptime = (double)ts.tv_sec;
   return 0;
 }
