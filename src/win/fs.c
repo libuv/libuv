@@ -1946,7 +1946,6 @@ INLINE static void fs__stat_assign_statbuf(uv_stat_t* statbuf,
 INLINE static void fs__stat_prepare_path(WCHAR* pathw) {
   size_t len = wcslen(pathw);
 
-  /* TODO: ignore namespaced paths. */
   if (len > 1 && pathw[len - 2] != L':' &&
       (pathw[len - 1] == L'\\' || pathw[len - 1] == L'/')) {
     pathw[len - 1] = '\0';
