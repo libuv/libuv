@@ -1054,3 +1054,11 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
     idle_time += uv_hrtime() - entry_time;
   return idle_time;
 }
+
+/* OS390 needs a different implementation, already provided in os390.c. */
+#ifndef __MVS__
+void uv_free_interface_addresses(uv_interface_address_t* addresses,
+                                 int count) {
+  uv__free(addresses);
+}
+#endif  /* !__MVS__ */

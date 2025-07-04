@@ -872,12 +872,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-    int count) {
-  uv__free(addresses);
-}
-
-
 int uv_getrusage(uv_rusage_t *uv_rusage) {
   FILETIME create_time, exit_time, kernel_time, user_time;
   SYSTEMTIME kernel_system_time, user_system_time;

@@ -2045,13 +2045,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
-/* TODO(bnoordhuis) share with bsd-ifaddrs.c */
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-                                 int count) {
-  uv__free(addresses);
-}
-
-
 void uv__set_process_title(const char* title) {
 #if defined(PR_SET_NAME)
   prctl(PR_SET_NAME, title);  /* Only copies first 16 characters. */

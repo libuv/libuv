@@ -1288,12 +1288,6 @@ cleanup:
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-                                 int count) {
-  uv__free(addresses);
-}
-
-
 void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
   struct pollfd* events;
   uintptr_t i;

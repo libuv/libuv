@@ -505,11 +505,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-                                 int count) {
-  uv__free(addresses);
-}
-
 char** uv_setup_args(int argc, char** argv) {
   char exepath[UV__PATH_MAX];
   char* s;
