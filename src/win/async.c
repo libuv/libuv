@@ -41,18 +41,7 @@ static char uv__atomic_exchange_set(char volatile* target) {
 #else /* GCC, Clang in mingw mode */
 
 static char uv__atomic_exchange_set(char volatile* target) {
-#if defined(__i386__) || defined(__x86_64__)
-  /* Mingw-32 version, hopefully this works for 64-bit gcc as well. */
-  const char one = 1;
-  char old_value;
-  __asm__ __volatile__ ("lock xchgb %0, %1\n\t"
-                        : "=r"(old_value), "=m"(*target)
-                        : "0"(one), "m"(*target)
-                        : "memory");
-  return old_value;
-#else
   return __sync_fetch_and_or(target, 1);
-#endif
 }
 
 #endif  /* _MSC_VER */
