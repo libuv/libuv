@@ -1701,7 +1701,7 @@ TEST_IMPL(spawn_fs_open) {
 #ifdef _WIN32
   ASSERT_NE(0, DuplicateHandle(GetCurrentProcess(), fd, GetCurrentProcess(), &dup_fd,
                                0, /* inherit */ TRUE, DUPLICATE_SAME_ACCESS));
-  kernelbase_module = GetModuleHandleW("kernelbase.dll");
+  kernelbase_module = GetModuleHandleW(L"kernelbase.dll");
   pCompareObjectHandles = (sCompareObjectHandles)
       GetProcAddress(kernelbase_module, "CompareObjectHandles");
   ASSERT_NE(pCompareObjectHandles == NULL ||
