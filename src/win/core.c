@@ -854,3 +854,26 @@ int uv__getsockpeername(const uv_handle_t* handle,
 
   return 0;
 }
+
+void uv__insert_pending_req(uv_loop_t* loop, uv_req_t* req) {
+  req->next_req = NULL;
+  if (loop->pending_reqs_tail) {
+#ifdef _DEBUG
+    /* Ensure the request is not already in the queue, or the queue
+     * will get corrupted.
+     */
+    uv_req_t* current = loop->pending_reqs_tail;
+    do {
+      assert(req != current);
+      current = current->next_req;
+    } while (current != loop->pending_reqs_tail);
+#endif
+
+    req->next_req = loop->pending_reqs_tail->next_req;
+    loop->pending_reqs_tail->next_req = req;
+    loop->pending_reqs_tail = req;
+  } else {
+    req->next_req = req;
+    loop->pending_reqs_tail = req;
+  }
+}
