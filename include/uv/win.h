@@ -692,7 +692,7 @@ typedef struct {
 #define UV_FS_O_EXLOCK       0x10000000 /* EXCLUSIVE SHARING MODE */
 #define UV_FS_O_NOATIME      0
 #define UV_FS_O_NOCTTY       0
-#define UV_FS_O_NOFOLLOW     0
+#define UV_FS_O_NOFOLLOW     0x40000000 /* Not mapped but handled as a special case in openat */
 #define UV_FS_O_NONBLOCK     0
 #define UV_FS_O_SYMLINK      0
 #define UV_FS_O_SYNC         0x08000000 /* FILE_FLAG_WRITE_THROUGH */
