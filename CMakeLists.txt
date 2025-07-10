@@ -166,6 +166,27 @@ list(APPEND uv_cflags ${lint-utf8-msvc} )
 check_c_compiler_flag(-fno-strict-aliasing UV_F_STRICT_ALIASING)
 list(APPEND uv_cflags $<$<BOOL:${UV_F_STRICT_ALIASING}>:-fno-strict-aliasing>)
 
+# Thread safety analysis - only enabled for Clang
+if(CMAKE_C_COMPILER_ID MATCHES "Clang")
+  check_c_compiler_flag(-Wthread-safety UV_THREAD_SAFETY)
+  check_c_compiler_flag(-Wthread-safety-negative UV_THREAD_SAFETY_NEGATIVE)
+  check_c_compiler_flag(-Wthread-safety-beta UV_THREAD_SAFETY_BETA)
+  check_c_compiler_flag(-Wthread-safety-pointer UV_THREAD_SAFETY_POINTER)
+
+  if(UV_THREAD_SAFETY)
+    list(APPEND uv_cflags -Wthread-safety)
+  endif()
+  if(UV_THREAD_SAFETY_NEGATIVE)
+    list(APPEND uv_cflags -Wthread-safety-negative)
+  endif()
+  if(UV_THREAD_SAFETY_BETA)
+    list(APPEND uv_cflags -Wthread-safety-beta)
+  endif()
+  if(UV_THREAD_SAFETY_POINTER)
+    list(APPEND uv_cflags -Wthread-safety-pointer)
+  endif()
+endif()
+
 if (MSVC)
   # Error on calling undeclared functions.
   list(APPEND uv_cflags "/we4013")

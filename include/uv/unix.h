@@ -124,12 +124,18 @@ typedef int uv_os_sock_t;
 typedef int uv_os_fd_t;
 typedef pid_t uv_pid_t;
 
-#define UV_ONCE_INIT PTHREAD_ONCE_INIT
+typedef struct UV_CAPABILITY("uv_once") uv_once_s {
+  pthread_once_t o;
+} uv_once_t;
 
-typedef pthread_once_t uv_once_t;
+#define UV_ONCE_INIT { PTHREAD_ONCE_INIT }
 typedef pthread_t uv_thread_t;
-typedef pthread_mutex_t uv_mutex_t;
-typedef pthread_rwlock_t uv_rwlock_t;
+typedef struct UV_CAPABILITY("uv_mutex") uv_mutex_s {
+  pthread_mutex_t m;
+} uv_mutex_t;
+typedef struct UV_CAPABILITY("uv_rwlock") uv_rwlock_s {
+  pthread_rwlock_t rw;
+} uv_rwlock_t;
 typedef UV_PLATFORM_SEM_T uv_sem_t;
 typedef pthread_cond_t uv_cond_t;
 typedef pthread_key_t uv_key_t;

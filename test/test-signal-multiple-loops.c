@@ -51,35 +51,43 @@ enum signal_action {
 
 static uv_sem_t sem;
 static uv_mutex_t lock;
-static int stop = 0;
+static int stop UV_GUARDED_BY(&lock) = 0;
 
-static int signal1_cb_counter = 0;
-static int signal2_cb_counter = 0;
-static int loop_creation_counter = 0;
+static int signal1_cb_counter UV_GUARDED_BY(&lock) = 0;
+static int signal2_cb_counter UV_GUARDED_BY(&lock) = 0;
+static int loop_creation_counter UV_GUARDED_BY(&lock) = 0;
 
 
-static void increment_counter(int* counter) {
+/* Since clang analyzer cannot handle the implications of UV_PT_GUARDED_BY on a
+ * parameter, define this using a macro instead for now:
+static void increment_counter(int* counter UV_PT_GUARDED_BY(&lock)) UV_EXCLUDES(&lock) {
   uv_mutex_lock(&lock);
   ++(*counter);
   uv_mutex_unlock(&lock);
 }
+*/
+
+#define increment_counter(counter) \
+  uv_mutex_lock(&lock); \
+  ++(*counter); \
+  uv_mutex_unlock(&lock);
 
 
-static void signal1_cb(uv_signal_t* handle, int signum) {
+static void signal1_cb(uv_signal_t* handle, int signum) UV_EXCLUDES(&lock) {
   ASSERT_EQ(signum, SIGUSR1);
   increment_counter(&signal1_cb_counter);
   uv_signal_stop(handle);
 }
 
 
-static void signal2_cb(uv_signal_t* handle, int signum) {
+static void signal2_cb(uv_signal_t* handle, int signum) UV_EXCLUDES(&lock) {
   ASSERT_EQ(signum, SIGUSR2);
   increment_counter(&signal2_cb_counter);
   uv_signal_stop(handle);
 }
 
 
-static void signal_handling_worker(void* context) {
+static void signal_handling_worker(void* context) UV_EXCLUDES(&lock) {
   enum signal_action action;
   uv_signal_t signal1a;
   uv_signal_t signal1b;
@@ -156,12 +164,12 @@ static void signal_handling_worker(void* context) {
 }
 
 
-static void signal_unexpected_cb(uv_signal_t* handle, int signum) {
+static void signal_unexpected_cb(uv_signal_t* handle, int signum) UV_EXCLUDES(&lock) {
   ASSERT(0 && "signal_unexpected_cb should never be called");
 }
 
 
-static void loop_creating_worker(void* context) {
+static void loop_creating_worker(void* context) UV_EXCLUDES(&lock) {
   int done;
 
   (void) context;
@@ -198,7 +206,7 @@ static void loop_creating_worker(void* context) {
 }
 
 
-TEST_IMPL(signal_multiple_loops) {
+TEST_IMPL(signal_multiple_loops) UV_EXCLUDES(&lock) {
 #if defined(__CYGWIN__) || defined(__MSYS__)
   /* FIXME: This test needs more investigation.  Somehow the `read` in
      uv__signal_lock fails spuriously with EACCES or even EAGAIN even
@@ -299,6 +307,8 @@ TEST_IMPL(signal_multiple_loops) {
   }
 
   uv_sem_destroy(&sem);
+
+  uv_mutex_lock(&lock); /* Unnecessary but makes static analysis happy. */
   printf("signal1_cb calls: %d\n", signal1_cb_counter);
   printf("signal2_cb calls: %d\n", signal2_cb_counter);
   printf("loops created and destroyed: %d\n", loop_creation_counter);
@@ -313,6 +323,7 @@ TEST_IMPL(signal_multiple_loops) {
    * least there should be 1 for every loop creating thread.
    */
   ASSERT_GE(loop_creation_counter, NUM_LOOP_CREATING_THREADS);
+  uv_mutex_unlock(&lock);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

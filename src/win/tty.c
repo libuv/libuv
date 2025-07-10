@@ -2424,7 +2424,7 @@ static DWORD WINAPI uv__tty_console_resize_watcher_thread(void* param) {
   return 0;
 }
 
-static void uv__tty_console_signal_resize(void) {
+static void uv__tty_console_signal_resize(void) UV_EXCLUDES(&uv__tty_console_resize_mutex) {
   CONSOLE_SCREEN_BUFFER_INFO sb_info;
   int width, height;
 
