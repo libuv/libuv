@@ -58,6 +58,11 @@
 #undef NANOSEC
 #define NANOSEC ((uint64_t) 1e9)
 
+typedef struct {
+  void (*entry)(void* arg);
+  void* arg;
+} uv__thread_start_args_t;
+
 /* Musl's PTHREAD_STACK_MIN is 2 KB on all architectures, which is
  * too small to safely receive signals on.
  *
@@ -123,6 +128,17 @@ size_t uv__thread_stack_size(void) {
 }
 
 
+static void* uv__thread_start_trampoline(void* arg) {
+  uv__thread_start_args_t* args = (uv__thread_start_args_t*) arg;
+
+  args->entry(args->arg);
+
+  uv__free(args);
+
+  return NULL;
+}
+
+
 int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
   uv_thread_options_t params;
   params.flags = UV_THREAD_NO_FLAGS;
@@ -145,12 +161,14 @@ int uv_thread_create_ex(uv_thread_t* tid,
   size_t pagesize;
   size_t stack_size;
   size_t min_stack_size;
+  uv__thread_start_args_t* start_args;
 
-  /* Used to squelch a -Wcast-function-type warning. */
-  union {
-    void (*in)(void*);
-    void* (*out)(void*);
-  } f;
+  start_args = uv__malloc(sizeof(*start_args));
+  if (start_args == NULL) {
+    abort();
+  }
+  start_args->entry = entry;
+  start_args->arg = arg;
 
   stack_size =
       params->flags & UV_THREAD_HAS_STACK_SIZE ? params->stack_size : 0;
@@ -177,8 +195,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
       abort();
   }
 
-  f.in = entry;
-  err = pthread_create(tid, attr, f.out, arg);
+  err = pthread_create(tid, attr, uv__thread_start_trampoline, start_args);
 
   if (attr != NULL)
     pthread_attr_destroy(attr);
