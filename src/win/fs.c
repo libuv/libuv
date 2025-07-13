@@ -1112,7 +1112,7 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   DWORD error;
 
   handle = CreateFileW(pathw,
-                       FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES | DELETE,
+                       FILE_READ_ATTRIBUTES | DELETE,
                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                        NULL,
                        OPEN_EXISTING,
@@ -1187,14 +1187,33 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
         /* Remove read-only attribute */
         FILE_BASIC_INFORMATION basic = { 0 };
 
+        /* We opened the handle above without FILE_WRITE_ATTRIBUTES access, which
+         * is not required in the happy path. On windows, it would probably
+         * be ok to ask for them anyway, but Wine has a bug that causes such calls
+         * to fail (https://bugs.winehq.org/show_bug.cgi?id=50771). To work around
+         * this bug, we re-open the handle here */
+        HANDLE write_attributes_handle;
+
         basic.FileAttributes = (info.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY) |
                               FILE_ATTRIBUTE_ARCHIVE;
 
-        status = pNtSetInformationFile(handle,
+        write_attributes_handle = ReOpenFile(handle, FILE_WRITE_ATTRIBUTES,
+                                             FILE_SHARE_READ | FILE_SHARE_WRITE |
+                                             FILE_SHARE_DELETE,
+                                             FILE_FLAG_OPEN_REPARSE_POINT |
+                                             FILE_FLAG_BACKUP_SEMANTICS);
+        if (write_attributes_handle == INVALID_HANDLE_VALUE) {
+          SET_REQ_WIN32_ERROR(req, GetLastError());
+          CloseHandle(handle);
+          return;
+        }
+
+        status = pNtSetInformationFile(write_attributes_handle,
                                       &iosb,
                                       &basic,
                                       sizeof basic,
                                       FileBasicInformation);
+        CloseHandle(write_attributes_handle);
         if (!NT_SUCCESS(status)) {
           SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
           CloseHandle(handle);
