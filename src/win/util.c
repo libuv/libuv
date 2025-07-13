@@ -1744,8 +1744,11 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
   return 0;
 }
 
-int uv__random_rtlgenrandom(void* buf, size_t buflen) {
+int uv__random_winrandom(void* buf, size_t buflen) {
   if (buflen == 0)
+    return 0;
+
+  if (pProcessPrng != NULL && pProcessPrng(buf, buflen))
     return 0;
 
   if (SystemFunction036(buf, buflen) == FALSE)

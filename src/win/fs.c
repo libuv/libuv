@@ -1269,7 +1269,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
 
   tries = TMP_MAX;
   do {
-    if (uv__random_rtlgenrandom((void *)&v, sizeof(v)) < 0) {
+    if (uv__random_winrandom(&v, sizeof(v)) < 0) {
       SET_REQ_UV_ERROR(req, UV_EIO, ERROR_IO_DEVICE);
       goto clobber;
     }
