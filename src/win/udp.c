@@ -1149,10 +1149,13 @@ int uv__udp_try_send2(uv_udp_t* handle,
                       uv_buf_t* bufs[/*count*/],
                       unsigned int nbufs[/*count*/],
                       struct sockaddr* addrs[/*count*/]) {
-  unsigned int i;
+  int i;
   int r;
 
-  for (i = 0; i < count; i++) {
+  if (count > INT_MAX)
+    return UV_EINVAL;
+
+  for (i = 0; i < (int) count; i++) {
     r = uv_udp_try_send(handle, bufs[i], nbufs[i], addrs[i]);
     if (r < 0)
       return i > 0 ? i : r;  /* Error if first packet, else send count. */
