@@ -1712,6 +1712,9 @@ int uv_os_uname(uv_utsname_t* buffer) {
     case PROCESSOR_ARCHITECTURE_ARM:
       uv__strscpy(buffer->machine, "arm", sizeof(buffer->machine));
       break;
+    case PROCESSOR_ARCHITECTURE_ARM64:
+      uv__strscpy(buffer->machine, "arm64", sizeof(buffer->machine));
+      break;
     default:
       uv__strscpy(buffer->machine, "unknown", sizeof(buffer->machine));
       break;
