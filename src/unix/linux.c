@@ -1739,7 +1739,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     unsigned model;
   };
   FILE* fp;
-  char* p;
+  const char* p;
   int found;
   int n;
   unsigned i;
