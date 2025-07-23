@@ -1,29 +1,29 @@
-# primary
-furo==2024.8.6
-Sphinx==7.0.1
+# Primary packages
+furo==2024.8.6               # Theme for Sphinx documentation
+Sphinx==7.0.1                # Documentation generator
 
-# dependencies
-alabaster==0.7.16
-babel==2.17.0
-beautifulsoup4==4.13.3
-certifi==2025.1.31
-charset-normalizer==3.4.1
-docutils==0.20.1
-idna==3.10
-imagesize==1.4.1
-Jinja2==3.1.6
-MarkupSafe==3.0.2
-packaging==24.2
-Pygments==2.19.1
-requests==2.32.3
-snowballstemmer==2.2.0
-soupsieve==2.6
-sphinx-basic-ng==1.0.0b2
-sphinxcontrib-applehelp==2.0.0
-sphinxcontrib-devhelp==2.0.0
-sphinxcontrib-htmlhelp==2.1.0
-sphinxcontrib-jsmath==1.0.1
-sphinxcontrib-qthelp==2.0.0
-sphinxcontrib-serializinghtml==2.0.0
-typing_extensions==4.13.0
-urllib3==2.3.0
+# Dependencies
+alabaster==0.7.16            # Optional Sphinx theme dependency
+babel==2.17.0                # Internationalization utilities
+beautifulsoup4==4.13.3       # HTML/XML parser for Python
+certifi==2025.1.31           # CA bundle for HTTPS validation
+charset-normalizer==3.4.1    # Encoding detection
+docutils==0.20.1             # Core for processing reStructuredText
+idna==3.10                   # Internationalized Domain Names support
+imagesize==1.4.1             # Get image sizes from files
+Jinja2==3.1.6                # Templating engine for Python
+MarkupSafe==3.0.2            # Safely escape/unescape strings in HTML/XML
+packaging==24.2              # Core utilities for Python packaging
+Pygments==2.19.1             # Syntax highlighter
+requests==2.32.3             # HTTP library for Python
+snowballstemmer==2.2.0       # Word stemming for Sphinx search
+soupsieve==2.6               # CSS selector support for BeautifulSoup
+sphinx-basic-ng==1.0.0b2     # Modern baseline theme for Sphinx
+sphinxcontrib-applehelp==2.0.0          # macOS Apple Help output support
+sphinxcontrib-devhelp==2.0.0            # GNOME Devhelp output support
+sphinxcontrib-htmlhelp==2.1.0           # HTML Help (CHM) file support
+sphinxcontrib-jsmath==1.0.1             # Math rendering using JavaScript
+sphinxcontrib-qthelp==2.0.0             # Qt Help output support
+sphinxcontrib-serializinghtml==2.0.0    # Serialized HTML output support
+typing_extensions==4.13.0   # Backports for newer Python type features
+urllib3==2.3.0               # HTTP client used by `requests`
