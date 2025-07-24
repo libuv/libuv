@@ -125,6 +125,7 @@ check_c_compiler_flag(-Wstrict-prototypes UV_LINT_STRICT_PROTOTYPES)
 check_c_compiler_flag(-Wextra UV_LINT_EXTRA)
 
 check_c_compiler_flag(/utf-8 UV_LINT_UTF8_MSVC)
+check_c_compiler_flag(/experimental:c11atomics UV_LINT_C11ATOMICS_MSVC)
 
 set(lint-no-unused-parameter $<$<BOOL:${UV_LINT_NO_UNUSED_PARAMETER}>:-Wno-unused-parameter>)
 set(lint-strict-prototypes $<$<BOOL:${UV_LINT_STRICT_PROTOTYPES}>:-Wstrict-prototypes>)
@@ -161,7 +162,7 @@ list(APPEND uv_cflags ${lint-no-hides-param-msvc})
 list(APPEND uv_cflags ${lint-no-hides-global-msvc})
 list(APPEND uv_cflags ${lint-no-conditional-assignment-msvc})
 list(APPEND uv_cflags ${lint-no-unsafe-msvc})
-list(APPEND uv_cflags ${lint-utf8-msvc} )
+list(APPEND uv_cflags ${lint-utf8-msvc})
 
 check_c_compiler_flag(-fno-strict-aliasing UV_F_STRICT_ALIASING)
 list(APPEND uv_cflags $<$<BOOL:${UV_F_STRICT_ALIASING}>:-fno-strict-aliasing>)
@@ -169,6 +170,12 @@ list(APPEND uv_cflags $<$<BOOL:${UV_F_STRICT_ALIASING}>:-fno-strict-aliasing>)
 if (MSVC)
   # Error on calling undeclared functions.
   list(APPEND uv_cflags "/we4013")
+  if (UV_LINT_C11ATOMICS_MSVC)
+    list(APPEND uv_cflags "/experimental:c11atomics")
+    # /experimental:c11atomics still defines __STDC_NO_ATOMICS__
+    # so we need alternate way to check in sources.
+    list(APPEND uv_defines _STDC_ATOMICS_MSVC)
+  endif()
 endif()
 
 set(uv_sources

@@ -30,6 +30,10 @@
 #include <sys/utime.h>
 #include <stdio.h>
 
+#if defined(_STDC_ATOMICS_MSVC)
+#include <stdatomic.h>
+#endif
+
 #include "uv.h"
 
 /* <winioctl.h> requires <windows.h>, included via "uv.h" above, but needs to
@@ -182,6 +186,51 @@ void uv__fs_init(void) {
   uv__fd_hash_init();
 }
 
+/*
+ * Check if the current environment is FSLogix
+ * by checking for the existence of the
+ * HKEY_LOCAL_MACHINE\SOFTWARE\FSLogix registry key.
+ */
+INLINE static int fs__fslogix_environment() {
+#if defined(_STDC_ATOMICS_MSVC)
+  static _Atomic int cached_is_fslogix = -1;
+#else
+  static int cached_is_fslogix = -1;
+#endif
+  int is_fslogix;
+  int err;
+  HKEY fslogix_key;
+
+#if defined(_STDC_ATOMICS_MSVC)
+  is_fslogix = atomic_load_explicit(&cached_is_fslogix, memory_order_relaxed);
+  if (is_fslogix != -1)
+    return is_fslogix;
+#else
+  if (cached_is_fslogix != -1)
+    return cached_is_fslogix;
+#endif
+
+  err = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                      L"SOFTWARE\\FSLogix",
+                      0,
+                      KEY_QUERY_VALUE | KEY_WOW64_64KEY,
+                      &fslogix_key);
+  if (err != ERROR_SUCCESS) {
+    is_fslogix = 0;
+  } else {
+    is_fslogix = 1;
+    RegCloseKey(fslogix_key);
+  }
+
+#if defined(_STDC_ATOMICS_MSVC)
+  atomic_store_explicit(&cached_is_fslogix, is_fslogix, memory_order_relaxed);
+#else
+  InterlockedExchange(
+      (volatile LONG*) &cached_is_fslogix, is_fslogix);
+#endif
+
+  return is_fslogix;
+}
 
 static int fs__readlink_handle(HANDLE handle,
                                char** target_ptr,
@@ -1719,6 +1768,15 @@ static fs__stat_path_return_t fs__stat_path(WCHAR* path,
     switch(GetLastError()) {
       case ERROR_FILE_NOT_FOUND:
       case ERROR_PATH_NOT_FOUND:
+        /* Accessing files under user profile directory
+         * fails with ERROR_FILE_NOT_FOUND/ERROR_PATH_NOT_FOUND
+         * when working with FSLogix profile containers. Retry
+         * with the slow path.
+         * Refs https://github.com/libuv/libuv/issues/4844
+         */
+        if (fs__fslogix_environment()) {
+          return FS__STAT_PATH_TRY_SLOW;
+        }
       case ERROR_NOT_READY:
       case ERROR_BAD_NET_NAME:
         /* These errors aren't worth retrying with the slow path. */
