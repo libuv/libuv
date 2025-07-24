@@ -187,9 +187,8 @@ void uv__fs_init(void) {
 }
 
 /*
- * Check if the current environment is FSLogix
- * by checking for the existence of the
- * HKEY_LOCAL_MACHINE\SOFTWARE\FSLogix registry key.
+ * Check if the current environment is FSLogix by checking for the existence
+ * of the HKEY_LOCAL_MACHINE\SOFTWARE\FSLogix registry key.
  */
 INLINE static int fs__fslogix_environment() {
 #if defined(_STDC_ATOMICS_MSVC)
@@ -225,8 +224,7 @@ INLINE static int fs__fslogix_environment() {
 #if defined(_STDC_ATOMICS_MSVC)
   atomic_store_explicit(&cached_is_fslogix, is_fslogix, memory_order_relaxed);
 #else
-  InterlockedExchange(
-      (volatile LONG*) &cached_is_fslogix, is_fslogix);
+  InterlockedExchange((volatile LONG*) &cached_is_fslogix, is_fslogix);
 #endif
 
   return is_fslogix;
@@ -1768,10 +1766,9 @@ static fs__stat_path_return_t fs__stat_path(WCHAR* path,
     switch(GetLastError()) {
       case ERROR_FILE_NOT_FOUND:
       case ERROR_PATH_NOT_FOUND:
-        /* Accessing files under user profile directory
-         * fails with ERROR_FILE_NOT_FOUND/ERROR_PATH_NOT_FOUND
-         * when working with FSLogix profile containers. Retry
-         * with the slow path.
+        /* Accessing files under user profile directory fails with
+         * ERROR_FILE_NOT_FOUND/ERROR_PATH_NOT_FOUND when working with
+         * FSLogix profile containers. Retry with the slow path.
          * Refs https://github.com/libuv/libuv/issues/4844
          */
         if (fs__fslogix_environment()) {
