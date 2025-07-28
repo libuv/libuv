@@ -661,10 +661,10 @@ int uv__udp_try_send(uv_udp_t* handle,
   }
 
   err = uv__udp_sendmsg1(handle->io_watcher.fd, bufs, nbufs, addr);
-  if (err > 0)
-    return uv__count_bufs(bufs, nbufs);
+  if (err)
+    return err;
 
-  return err;
+  return uv__count_bufs(bufs, nbufs);
 }
 
 
@@ -1295,7 +1295,7 @@ static int uv__udp_sendmsg1(int fd,
   /* UDP sockets don't EOF so we don't have to handle r=0 specially,
    * that only happens when the input was a zero-sized buffer.
    */
-  return 1;
+  return 0;
 }
 
 
