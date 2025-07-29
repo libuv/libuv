@@ -633,7 +633,7 @@ TEST_IMPL(poll_unidirectional) {
  * In addition to regular files, we also disallow FIFOs on Darwin.
  */
 #ifdef __APPLE__
-#define TEST_POLL_FIFO_PATH "/tmp/uv-test-poll-fifo"
+#define TEST_POLL_FIFO_PATH "uv-test-poll-fifo"
 #endif
 TEST_IMPL(poll_bad_fdtype) {
 #if !defined(__sun) && \

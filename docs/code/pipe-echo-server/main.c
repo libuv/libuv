@@ -6,7 +6,7 @@
 #ifdef _WIN32
 #define PIPENAME "\\\\?\\pipe\\echo.sock"
 #else
-#define PIPENAME "/tmp/echo.sock"
+#define PIPENAME "echo.sock"
 #endif
 
 uv_loop_t *loop;
