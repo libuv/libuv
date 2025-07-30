@@ -109,4 +109,6 @@
 * Haskell
    * [Z.Haskell](https://z.haskell.world)
 * C3
-   * [libuv.c3l](https://github.com/velikoss/libuv.c3l)   
+   * [libuv.c3l](https://github.com/velikoss/libuv.c3l)
+* C
+   * [uv_coroutine](https://github.com/zelang-dev/uv_coroutine) A memory safe focus *C framework*, combining [c-raii](https://zelang-dev.github.io/c-raii), `libuv`, **coroutine** and other concurrency primitives.
