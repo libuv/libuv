@@ -2363,6 +2363,8 @@ static int uv__get_cgroupv2_constrained_cpu(const char* cgroup,
       goto next;
 
     *quota = limit / period;
+    if (*quota == 0)
+        *quota = 1;
     if (*quota < min_quota)
       min_quota = *quota;
 
