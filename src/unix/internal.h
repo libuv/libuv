@@ -261,11 +261,60 @@ ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);
 void uv__make_close_pending(uv_handle_t* handle);
 int uv__getiovmax(void);
 
-void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd);
+typedef enum {
+    UV__NO_IO_CB,
+    UV__AHAFS_EVENT,
+    UV__ASYNC_IO,
+    UV__FS_EVENT,
+    UV__FS_EVENT_READ,
+    UV__INOTIFY_READ,
+    UV__POLL_IO,
+    UV__SIGNAL_EVENT,
+    UV__SERVER_IO,
+    UV__STREAM_IO,
+    UV__UDP_IO,
+} uv__io_cb_t;
+
+#define uv__io_cb_get(w)      ((uv__io_cb_t)((w)->bits & 15))
+#define uv__io_cb_set(w, cb)                                                  \
+  do {                                                                        \
+    (w)->bits -= uv__io_cb_get(w);                                            \
+    (w)->bits |= (cb) & 15;                                                   \
+  } while (0)
+
+void uv__ahafs_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__fs_event_read(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__inotify_read(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+
+#ifndef _AIX
+#define uv__ahafs_event(loop, w, events) UNREACHABLE()
+#endif
+
+#ifndef __APPLE__
+#define uv__fs_event(loop, w, events) UNREACHABLE()
+#endif
+
+#ifndef __linux__
+#define uv__inotify_read(loop, w, events) UNREACHABLE()
+#endif
+
+#ifndef __sun__
+#define uv__fs_event_read(loop, w, events) UNREACHABLE()
+#endif
+
+void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__io_init(uv__io_t* w, uv__io_cb_t cb, int fd);
 int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 int uv__io_init_start(uv_loop_t* loop,
                       uv__io_t* w,
-                      uv__io_cb cb,
+                      uv__io_cb_t cb,
                       int fd,
                       unsigned int events);
 void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events);

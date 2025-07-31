@@ -73,7 +73,6 @@ STATIC_ASSERT(256 == sizeof(union uv__cmsg));
 static void uv__stream_connect(uv_stream_t*);
 static void uv__write(uv_stream_t* stream);
 static void uv__read(uv_stream_t* stream);
-static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 static void uv__write_callbacks(uv_stream_t* stream);
 static size_t uv__write_req_size(uv_write_t* req);
 static void uv__drain(uv_stream_t* stream);
@@ -113,7 +112,7 @@ void uv__stream_init(uv_loop_t* loop,
   stream->select = NULL;
 #endif /* defined(__APPLE_) */
 
-  uv__io_init(&stream->io_watcher, uv__stream_io, -1);
+  uv__io_init(&stream->io_watcher, UV__STREAM_IO, -1);
 }
 
 
@@ -1186,7 +1185,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
 }
 
 
-static void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   uv_stream_t* stream;
 
   stream = container_of(w, uv_stream_t, io_watcher);

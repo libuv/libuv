@@ -851,7 +851,7 @@ static void uv__run_pending(uv_loop_t* loop) {
     uv__queue_remove(q);
     uv__queue_init(q);
     w = uv__queue_data(q, uv__io_t, pending_queue);
-    w->cb(loop, w, POLLOUT);
+    uv__io_cb(loop, w, POLLOUT);
   }
 }
 
@@ -903,20 +903,61 @@ static int maybe_resize(uv_loop_t* loop, unsigned int len) {
 }
 
 
-void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd) {
+void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+  switch (uv__io_cb_get(w)) {
+  case UV__AHAFS_EVENT:
+    uv__ahafs_event(loop, w, events);
+    break;
+  case UV__ASYNC_IO:
+    uv__async_io(loop, w, events);
+    break;
+  case UV__FS_EVENT:
+    uv__fs_event(loop, w, events);
+    break;
+  case UV__FS_EVENT_READ:
+    uv__fs_event_read(loop, w, events);
+    break;
+  case UV__INOTIFY_READ:
+    uv__inotify_read(loop, w, events);
+    break;
+  case UV__POLL_IO:
+    uv__poll_io(loop, w, events);
+    break;
+  case UV__SIGNAL_EVENT:
+    uv__signal_event(loop, w, events);
+    break;
+  case UV__SERVER_IO:
+    uv__server_io(loop, w, events);
+    break;
+  case UV__STREAM_IO:
+    uv__stream_io(loop, w, events);
+    break;
+  case UV__UDP_IO:
+    uv__udp_io(loop, w, events);
+    break;
+  default:
+    UNREACHABLE();
+  }
+}
+
+
+void uv__io_init(uv__io_t* w, uv__io_cb_t cb, int fd) {
   assert(fd >= -1);
   uv__queue_init(&w->pending_queue);
   uv__queue_init(&w->watcher_queue);
-  w->cb = cb;
   w->fd = fd;
+  w->bits = 0;
   w->events = 0;
   w->pevents = 0;
+  uv__io_cb_set(w, cb);
 }
 
 
 int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   int err;
 
+  assert(uv__io_cb_get(w) >= UV__AHAFS_EVENT);
+  assert(uv__io_cb_get(w) <= UV__UDP_IO);
   assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI)));
   assert(0 != events);
   assert(w->fd >= 0);
@@ -950,17 +991,16 @@ int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 int uv__io_init_start(uv_loop_t* loop,
                       uv__io_t* w,
-                      uv__io_cb cb,
+                      uv__io_cb_t cb,
                       int fd,
                       unsigned int events) {
   int err;
 
-  assert(cb != NULL);
   assert(fd > -1);
   uv__io_init(w, cb, fd);
   err = uv__io_start(loop, w, events);
   if (err)
-    uv__io_init(w, NULL, -1);
+    uv__io_init(w, UV__NO_IO_CB, -1);
   return err;
 }
 

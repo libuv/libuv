@@ -41,7 +41,6 @@
 #endif
 
 static void uv__udp_run_completed(uv_udp_t* handle);
-static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_recvmsg(uv_udp_t* handle);
 static void uv__udp_sendmsg(uv_udp_t* handle);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
@@ -136,7 +135,7 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
 }
 
 
-static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
+void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   uv_udp_t* handle;
 
   handle = container_of(w, uv_udp_t, io_watcher);
@@ -881,7 +880,7 @@ int uv__udp_init_ex(uv_loop_t* loop,
   handle->recv_cb = NULL;
   handle->send_queue_size = 0;
   handle->send_queue_count = 0;
-  uv__io_init(&handle->io_watcher, uv__udp_io, fd);
+  uv__io_init(&handle->io_watcher, UV__UDP_IO, fd);
   uv__queue_init(&handle->write_queue);
   uv__queue_init(&handle->write_completed_queue);
 

@@ -324,7 +324,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         have_signals = 1;
       } else {
         uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, pe->revents);
+        uv__io_cb(loop, w, pe->revents);
       }
 
       nevents++;
@@ -339,7 +339,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (have_signals != 0) {
       uv__metrics_update_idle_time(loop);
-      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+      uv__signal_event(loop, &loop->signal_io_watcher, POLLIN);
     }
 
     loop->watchers[loop->nwatchers] = NULL;
@@ -716,7 +716,7 @@ static int uv__parse_data(char *buf, int *events, uv_fs_event_t* handle) {
 
 
 /* This is the internal callback */
-static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags) {
+void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags) {
   char   result_data[RDWR_BUF_SIZE];
   int bytes, rc = 0;
   uv_fs_event_t* handle;
@@ -828,7 +828,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   /* Setup/Initialize all the libuv routines */
   uv__handle_start(handle);
-  uv__io_init(&handle->event_watcher, uv__ahafs_event, fd);
+  uv__io_init(&handle->event_watcher, UV__AHAFS_EVENT, fd);
   handle->path = uv__strdup(filename);
   handle->cb = cb;
   handle->dir_filename = NULL;

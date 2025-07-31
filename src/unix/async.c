@@ -157,7 +157,7 @@ void uv__async_close(uv_async_t* handle) {
 }
 
 
-static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   char buf[1024];
   ssize_t r;
   struct uv__queue queue;
@@ -308,7 +308,7 @@ static int uv__async_start(uv_loop_t* loop) {
     return err;
 #endif
 
-  err = uv__io_init_start(loop, &loop->async_io_watcher, uv__async_io,
+  err = uv__io_init_start(loop, &loop->async_io_watcher, UV__ASYNC_IO,
                           pipefd[0], POLLIN);
   if (err < 0) {
     uv__close(pipefd[0]);
