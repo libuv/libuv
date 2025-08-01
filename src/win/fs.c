@@ -482,6 +482,8 @@ void fs__open(uv_fs_t* req) {
    */
   if (flags & UV_FS_O_EXLOCK) {
     share = 0;
+  }  else if (flags & UV_FS_O_SHARE_RDONLY) {
+    share = FILE_SHARE_READ;
   } else {
     share = FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE;
   }
