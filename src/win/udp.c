@@ -1158,7 +1158,7 @@ int uv__udp_try_send2(uv_udp_t* handle,
   for (i = 0; i < (int) count; i++) {
     r = uv_udp_try_send(handle, bufs[i], nbufs[i], addrs[i]);
     if (r < 0)
-      return i > 0 ? i : r;  /* Error if first packet, else send count. */
+      return i > 0 ? i : (int) r;  /* Error if first packet, else send count. */
   }
 
   return i;
