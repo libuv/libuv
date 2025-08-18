@@ -28,7 +28,7 @@ jobs:
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2025}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build
         run:
           cmake -S . -B build -DBUILD_TESTING=ON
@@ -79,7 +79,7 @@ jobs:
           - {arch: i686,   server: 2022, libgcc: dw2 }
           - {arch: x86_64, server: 2022, libgcc: seh }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install mingw32 environment
         run: |
           sudo apt update

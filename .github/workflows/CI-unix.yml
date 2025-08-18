@@ -17,7 +17,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: configure
         run: |
           ./autogen.sh
@@ -32,7 +32,7 @@ jobs:
     env:
       ANDROID_AVD_HOME: /root/.android/avd
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Envinfo
         run: npx envinfo
       - name: Enable KVM
@@ -82,7 +82,7 @@ jobs:
       matrix:
         os: [macos-13, macos-14]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Envinfo
         run: npx envinfo
       - name: Disable Firewall
@@ -124,7 +124,7 @@ jobs:
       matrix:
         os: [macos-13, macos-14]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure
         run: |
           cmake -B build-ios -GXcode -DCMAKE_SYSTEM_NAME:STRING=iOS -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED:BOOL=NO -DCMAKE_CONFIGURATION_TYPES:STRING=Release
@@ -159,7 +159,7 @@ jobs:
           - {target: ppc64 (u64 slots),   toolchain: gcc-powerpc64-linux-gnu,     cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64    }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install qemu and ${{ matrix.config.toolchain }}
         run: |
           sudo apt update

@@ -21,7 +21,7 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{matrix.os}}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: setup
         run: cmake -E make_directory ${{runner.workspace}}/libuv/docs/code/build
       - name: configure
