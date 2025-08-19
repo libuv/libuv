@@ -906,7 +906,7 @@ char** uv_setup_args(int argc, char** argv) {
   size = sizeof(exepath);
   if (uv__search_path(argv[0], exepath, &size) == 0) {
     uv_once(&process_title_mutex_once, init_process_title_mutex_once);
-    uv_mutex_lock(&process_title_mutex); 
+    uv_mutex_lock(&process_title_mutex);
     original_exepath = uv__strdup(exepath);
     uv_mutex_unlock(&process_title_mutex);
   }

@@ -260,7 +260,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpu_info->model = uv__malloc(ZOSCPU_MODEL_LENGTH + 1);
     if (cpu_info->model == NULL) {
       uv_free_cpu_info(*cpu_infos, idx);
-      return UV_ENOMEM; 
+      return UV_ENOMEM;
     }
     __get_cpu_model(cpu_info->model, ZOSCPU_MODEL_LENGTH + 1);
     cpu_info->cpu_times.user = cpu_usage_avg;
