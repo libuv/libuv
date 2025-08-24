@@ -19,6 +19,14 @@
  * IN THE SOFTWARE.
  */
 
+/* This blank UV_EXTERN squelches "‘uv_wtf8_to_utf16’ redeclared without
+ * dllimport attribute: previous dllimport ignored" warnings. We neither want
+ * or need dllimport or dllexport, we just include the source file verbatim.
+ * It's kind of sloppy because we end up with duplicate symbols, one in
+ * libuv.dll and one in this translation unit, but it works out fine in
+ * the end.
+ */
+#define UV_EXTERN
 #include "task.h"
 #define uv__malloc malloc
 #include "../src/idna.c"
