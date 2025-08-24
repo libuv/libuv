@@ -69,7 +69,7 @@ struct uv__fd_hash_bucket_s {
 static uv_mutex_t uv__fd_hash_mutex;
 
 static struct uv__fd_hash_entry_group_s
-  uv__fd_hash_entry_initial[UV__FD_HASH_SIZE * UV__FD_HASH_GROUP_SIZE];
+  uv__fd_hash_entry_initial[UV__FD_HASH_SIZE];
 static struct uv__fd_hash_bucket_s uv__fd_hash[UV__FD_HASH_SIZE];
 
 
@@ -82,10 +82,9 @@ static void uv__fd_hash_init(void) {
     uv_fatal_error(err, "uv_mutex_init");
   }
 
-  for (i = 0; i < ARRAY_SIZE(uv__fd_hash); ++i) {
+  for (i = 0; i < ARRAY_SIZE(uv__fd_hash); i++) {
     uv__fd_hash[i].size = 0;
-    uv__fd_hash[i].data =
-        uv__fd_hash_entry_initial + i * UV__FD_HASH_GROUP_SIZE;
+    uv__fd_hash[i].data = &uv__fd_hash_entry_initial[i];
   }
 }
 
