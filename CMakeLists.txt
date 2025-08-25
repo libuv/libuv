@@ -296,11 +296,15 @@ if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|NetBSD|OpenBSD")
 endif()
 
 if(CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
-  list(APPEND uv_sources src/unix/random-getrandom.c)
+  list(APPEND uv_sources
+       src/unix/random-arc4random.c
+       src/unix/random-getrandom.c)
 endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME STREQUAL "OpenBSD")
-  list(APPEND uv_sources src/unix/random-getentropy.c)
+  list(APPEND uv_sources
+       src/unix/random-arc4random.c
+       src/unix/random-getentropy.c)
 endif()
 
 if(APPLE)
@@ -334,7 +338,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "NetBSD")
-  list(APPEND uv_sources src/unix/netbsd.c)
+  list(APPEND uv_sources
+       src/unix/random-arc4random.c
+       src/unix/random-getentropy.c
+       src/unix/netbsd.c)
   list(APPEND uv_libraries kvm)
 endif()
 

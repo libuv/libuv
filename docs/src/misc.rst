@@ -868,10 +868,14 @@ API
     - Linux, Android: :man:`getrandom(2)` if available, or :man:`urandom(4)`
       after reading from `/dev/random` once, or the `KERN_RANDOM`
       :man:`sysctl(2)`.
-    - FreeBSD: `getrandom(2) <https://www.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2>_`,
+    - FreeBSD: `arc4random(3) <https://man.freebsd.org/cgi/man.cgi?query=arc4random&sektion=3>_`,
+      or `getrandom(2) <https://www.freebsd.org/cgi/man.cgi?query=getrandom&sektion=2>_`,
       or `/dev/urandom` after reading from `/dev/random` once.
-    - NetBSD: `KERN_ARND` `sysctl(7) <https://man.netbsd.org/sysctl.7>_`
-    - macOS, OpenBSD: `getentropy(2) <https://man.openbsd.org/getentropy.2>_`
+    - NetBSD: `arc4random(3) <https://man.netbsd.org/arc4random.3>_`,
+      or `getentropy(3) <https://man.netbsd.org/getentropy.3>_` if available,
+      or `KERN_ARND` `sysctl(7) <https://man.netbsd.org/sysctl.7>_`
+    - macOS, OpenBSD: `arc4random(3) <https://man.openbsd.org/arc4random.3>_`,
+      or `getentropy(2) <https://man.openbsd.org/getentropy.2>_`
       if available, or `/dev/urandom` after reading from `/dev/random` once.
     - AIX: `/dev/random`.
     - IBM i: `/dev/urandom`.

@@ -404,6 +404,7 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen);
 void uv__wait_children(uv_loop_t* loop);
 
 /* random */
+int uv__random_arc4random(void* buf, size_t buflen);
 int uv__random_devurandom(void* buf, size_t buflen);
 int uv__random_getrandom(void* buf, size_t buflen);
 int uv__random_getentropy(void* buf, size_t buflen);
