@@ -923,9 +923,6 @@ void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   case UV__POLL_IO:
     uv__poll_io(loop, w, events);
     break;
-  case UV__SIGNAL_EVENT:
-    uv__signal_event(loop, w, events);
-    break;
   case UV__SERVER_IO:
     uv__server_io(loop, w, events);
     break;
