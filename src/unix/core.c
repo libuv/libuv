@@ -923,9 +923,6 @@ void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   case UV__POLL_IO:
     uv__poll_io(loop, w, events);
     break;
-  case UV__SIGNAL_EVENT:
-    uv__signal_event(loop, w, events);
-    break;
   case UV__SERVER_IO:
     uv__server_io(loop, w, events);
     break;
@@ -2048,8 +2045,8 @@ unsigned int uv_available_parallelism(void) {
 #elif defined(__NetBSD__)
   cpuset_t* set = cpuset_create();
   if (set != NULL) {
-    if (0 == sched_getaffinity_np(getpid(), sizeof(set), &set))
-      rc = uv__cpu_count(&set);
+    if (0 == sched_getaffinity_np(getpid(), cpuset_size(set), set))
+      rc = uv__cpu_count(set);
     cpuset_destroy(set);
   }
 #elif defined(__APPLE__)
