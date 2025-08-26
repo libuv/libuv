@@ -18,7 +18,7 @@
 
 #include <string.h> /* memset */
 #ifndef _WIN32
-#include <unistd.h> /* close */
+#  include <unistd.h> /* close */
 #endif
 
 struct thread_ctx {
@@ -58,9 +58,9 @@ static void write_cb(uv_write_t* req, int status) {
 #endif
 
 #ifdef _WIN32
-#define NWRITES (10 << 16)
+#  define NWRITES (10 << 16)
 #else
-#define NWRITES (10 << 20)
+#  define NWRITES (10 << 20)
 #endif
 
 
@@ -100,14 +100,12 @@ TEST_IMPL(pipe_set_non_blocking) {
     n = uv_try_write((uv_stream_t*) &pipe_handle, &buf, 1);
 #ifdef _WIN32
     ASSERT_EQ(n, UV_EAGAIN); /* E_NOTIMPL */
-    ASSERT_OK(uv_write(&write_req,
-                       (uv_stream_t*) &pipe_handle,
-                       &buf,
-                       1,
-                       write_cb));
+    ASSERT_OK(
+        uv_write(&write_req, (uv_stream_t*) &pipe_handle, &buf, 1, write_cb));
     ASSERT_NOT_NULL(write_req.handle);
     ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_ONCE));
-    ASSERT_NULL(write_req.handle); /* check for signaled completion of write_cb */
+    ASSERT_NULL(
+        write_req.handle); /* check for signaled completion of write_cb */
     n = buf.len;
 #endif
     ASSERT_EQ(n, sizeof(data));
@@ -119,9 +117,9 @@ TEST_IMPL(pipe_set_non_blocking) {
 
   ASSERT_OK(uv_thread_join(&thread));
 #ifdef _WIN32
-  ASSERT_OK(_close(fd[0]));  /* fd[1] is closed by uv_close(). */
+  ASSERT_OK(_close(fd[0])); /* fd[1] is closed by uv_close(). */
 #else
-  ASSERT_OK(close(fd[0]));  /* fd[1] is closed by uv_close(). */
+  ASSERT_OK(close(fd[0])); /* fd[1] is closed by uv_close(). */
 #endif
   fd[0] = -1;
   uv_barrier_destroy(&ctx.barrier);

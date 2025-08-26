@@ -26,7 +26,7 @@
 #include <errno.h>
 
 #if !defined(_WIN32) && !defined(_AIX) && !defined(__QNX__)
-#include <poll.h>
+#  include <poll.h>
 #endif
 
 static uv_async_t async;

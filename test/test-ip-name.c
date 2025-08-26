@@ -26,40 +26,40 @@
 #include <string.h>
 
 union TestAddr {
-    struct sockaddr addr;
-    struct sockaddr_in addr4;
-    struct sockaddr_in6 addr6;
+  struct sockaddr addr;
+  struct sockaddr_in addr4;
+  struct sockaddr_in6 addr6;
 };
 
 
 TEST_IMPL(ip_name) {
-    char dst[INET6_ADDRSTRLEN];
-    union TestAddr test_addr;
-    struct sockaddr* addr = &test_addr.addr;
-    struct sockaddr_in* addr4 = &test_addr.addr4;
-    struct sockaddr_in6* addr6 = &test_addr.addr6;
+  char dst[INET6_ADDRSTRLEN];
+  union TestAddr test_addr;
+  struct sockaddr* addr = &test_addr.addr;
+  struct sockaddr_in* addr4 = &test_addr.addr4;
+  struct sockaddr_in6* addr6 = &test_addr.addr6;
 
-    /* test ip4_name */
-    ASSERT_OK(uv_ip4_addr("192.168.0.1", TEST_PORT, addr4));
-    ASSERT_OK(uv_ip4_name(addr4, dst, INET_ADDRSTRLEN));
-    ASSERT_OK(strcmp("192.168.0.1", dst));
+  /* test ip4_name */
+  ASSERT_OK(uv_ip4_addr("192.168.0.1", TEST_PORT, addr4));
+  ASSERT_OK(uv_ip4_name(addr4, dst, INET_ADDRSTRLEN));
+  ASSERT_OK(strcmp("192.168.0.1", dst));
 
-    ASSERT_OK(uv_ip_name(addr, dst, INET_ADDRSTRLEN));
-    ASSERT_OK(strcmp("192.168.0.1", dst));
+  ASSERT_OK(uv_ip_name(addr, dst, INET_ADDRSTRLEN));
+  ASSERT_OK(strcmp("192.168.0.1", dst));
 
-    /* test ip6_name */
-    ASSERT_OK(uv_ip6_addr("fe80::2acf:daff:fedd:342a", TEST_PORT, addr6));
-    ASSERT_OK(uv_ip6_name(addr6, dst, INET6_ADDRSTRLEN));
-    ASSERT_OK(strcmp("fe80::2acf:daff:fedd:342a", dst));
+  /* test ip6_name */
+  ASSERT_OK(uv_ip6_addr("fe80::2acf:daff:fedd:342a", TEST_PORT, addr6));
+  ASSERT_OK(uv_ip6_name(addr6, dst, INET6_ADDRSTRLEN));
+  ASSERT_OK(strcmp("fe80::2acf:daff:fedd:342a", dst));
 
-    ASSERT_OK(uv_ip_name(addr, dst, INET6_ADDRSTRLEN));
-    ASSERT_OK(strcmp("fe80::2acf:daff:fedd:342a", dst));
+  ASSERT_OK(uv_ip_name(addr, dst, INET6_ADDRSTRLEN));
+  ASSERT_OK(strcmp("fe80::2acf:daff:fedd:342a", dst));
 
-    /* test other sa_family */
-    addr->sa_family = AF_UNIX;
-    /* size is not a concern here */
-    ASSERT_EQ(UV_EAFNOSUPPORT, uv_ip_name(addr, dst, INET6_ADDRSTRLEN));
+  /* test other sa_family */
+  addr->sa_family = AF_UNIX;
+  /* size is not a concern here */
+  ASSERT_EQ(UV_EAFNOSUPPORT, uv_ip_name(addr, dst, INET6_ADDRSTRLEN));
 
-    MAKE_VALGRIND_HAPPY(uv_default_loop());
-    return 0;
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
 }

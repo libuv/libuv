@@ -28,29 +28,29 @@ extern "C" {
 #endif
 
 #if defined(BUILDING_UV_SHARED) && defined(USING_UV_SHARED)
-#error "Define either BUILDING_UV_SHARED or USING_UV_SHARED, not both."
+#  error "Define either BUILDING_UV_SHARED or USING_UV_SHARED, not both."
 #endif
 
 #ifndef UV_EXTERN
-#ifdef _WIN32
-  /* Windows - set up dll import/export decorators. */
-# if defined(BUILDING_UV_SHARED)
-    /* Building shared library. */
-#   define UV_EXTERN __declspec(dllexport)
-# elif defined(USING_UV_SHARED)
-    /* Using shared library. */
-#   define UV_EXTERN __declspec(dllimport)
-# else
-    /* Building static library. */
-#   define UV_EXTERN /* nothing */
-# endif
-#elif __GNUC__ >= 4
-# define UV_EXTERN __attribute__((visibility("default")))
-#elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550) /* Sun Studio >= 8 */
-# define UV_EXTERN __global
-#else
-# define UV_EXTERN /* nothing */
-#endif
+#  ifdef _WIN32
+/* Windows - set up dll import/export decorators. */
+#    if defined(BUILDING_UV_SHARED)
+/* Building shared library. */
+#      define UV_EXTERN __declspec(dllexport)
+#    elif defined(USING_UV_SHARED)
+/* Using shared library. */
+#      define UV_EXTERN __declspec(dllimport)
+#    else
+/* Building static library. */
+#      define UV_EXTERN /* nothing */
+#    endif
+#  elif __GNUC__ >= 4
+#    define UV_EXTERN __attribute__((visibility("default")))
+#  elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550) /* Sun Studio >= 8 */
+#    define UV_EXTERN __global
+#  else
+#    define UV_EXTERN /* nothing */
+#  endif
 #endif /* UV_EXTERN */
 
 #include "uv/errno.h"
@@ -67,131 +67,131 @@ struct uv__queue {
 };
 
 #if defined(_WIN32)
-# include "uv/win.h"
+#  include "uv/win.h"
 #else
-# include "uv/unix.h"
+#  include "uv/unix.h"
 #endif
 
 /* Expand this list if necessary. */
-#define UV_ERRNO_MAP(XX)                                                      \
-  XX(E2BIG, "argument list too long")                                         \
-  XX(EACCES, "permission denied")                                             \
-  XX(EADDRINUSE, "address already in use")                                    \
-  XX(EADDRNOTAVAIL, "address not available")                                  \
-  XX(EAFNOSUPPORT, "address family not supported")                            \
-  XX(EAGAIN, "resource temporarily unavailable")                              \
-  XX(EAI_ADDRFAMILY, "address family not supported")                          \
-  XX(EAI_AGAIN, "temporary failure")                                          \
-  XX(EAI_BADFLAGS, "bad ai_flags value")                                      \
-  XX(EAI_BADHINTS, "invalid value for hints")                                 \
-  XX(EAI_CANCELED, "request canceled")                                        \
-  XX(EAI_FAIL, "permanent failure")                                           \
-  XX(EAI_FAMILY, "ai_family not supported")                                   \
-  XX(EAI_MEMORY, "out of memory")                                             \
-  XX(EAI_NODATA, "no address")                                                \
-  XX(EAI_NONAME, "unknown node or service")                                   \
-  XX(EAI_OVERFLOW, "argument buffer overflow")                                \
-  XX(EAI_PROTOCOL, "resolved protocol is unknown")                            \
-  XX(EAI_SERVICE, "service not available for socket type")                    \
-  XX(EAI_SOCKTYPE, "socket type not supported")                               \
-  XX(EALREADY, "connection already in progress")                              \
-  XX(EBADF, "bad file descriptor")                                            \
-  XX(EBUSY, "resource busy or locked")                                        \
-  XX(ECANCELED, "operation canceled")                                         \
-  XX(ECHARSET, "invalid Unicode character")                                   \
-  XX(ECONNABORTED, "software caused connection abort")                        \
-  XX(ECONNREFUSED, "connection refused")                                      \
-  XX(ECONNRESET, "connection reset by peer")                                  \
-  XX(EDESTADDRREQ, "destination address required")                            \
-  XX(EEXIST, "file already exists")                                           \
-  XX(EFAULT, "bad address in system call argument")                           \
-  XX(EFBIG, "file too large")                                                 \
-  XX(EHOSTUNREACH, "host is unreachable")                                     \
-  XX(EINTR, "interrupted system call")                                        \
-  XX(EINVAL, "invalid argument")                                              \
-  XX(EIO, "i/o error")                                                        \
-  XX(EISCONN, "socket is already connected")                                  \
-  XX(EISDIR, "illegal operation on a directory")                              \
-  XX(ELOOP, "too many symbolic links encountered")                            \
-  XX(EMFILE, "too many open files")                                           \
-  XX(EMSGSIZE, "message too long")                                            \
-  XX(ENAMETOOLONG, "name too long")                                           \
-  XX(ENETDOWN, "network is down")                                             \
-  XX(ENETUNREACH, "network is unreachable")                                   \
-  XX(ENFILE, "file table overflow")                                           \
-  XX(ENOBUFS, "no buffer space available")                                    \
-  XX(ENODEV, "no such device")                                                \
-  XX(ENOENT, "no such file or directory")                                     \
-  XX(ENOMEM, "not enough memory")                                             \
-  XX(ENONET, "machine is not on the network")                                 \
-  XX(ENOPROTOOPT, "protocol not available")                                   \
-  XX(ENOSPC, "no space left on device")                                       \
-  XX(ENOSYS, "function not implemented")                                      \
-  XX(ENOTCONN, "socket is not connected")                                     \
-  XX(ENOTDIR, "not a directory")                                              \
-  XX(ENOTEMPTY, "directory not empty")                                        \
-  XX(ENOTSOCK, "socket operation on non-socket")                              \
-  XX(ENOTSUP, "operation not supported on socket")                            \
-  XX(EOVERFLOW, "value too large for defined data type")                      \
-  XX(EPERM, "operation not permitted")                                        \
-  XX(EPIPE, "broken pipe")                                                    \
-  XX(EPROTO, "protocol error")                                                \
-  XX(EPROTONOSUPPORT, "protocol not supported")                               \
-  XX(EPROTOTYPE, "protocol wrong type for socket")                            \
-  XX(ERANGE, "result too large")                                              \
-  XX(EROFS, "read-only file system")                                          \
-  XX(ESHUTDOWN, "cannot send after transport endpoint shutdown")              \
-  XX(ESPIPE, "invalid seek")                                                  \
-  XX(ESRCH, "no such process")                                                \
-  XX(ETIMEDOUT, "connection timed out")                                       \
-  XX(ETXTBSY, "text file is busy")                                            \
-  XX(EXDEV, "cross-device link not permitted")                                \
-  XX(UNKNOWN, "unknown error")                                                \
-  XX(EOF, "end of file")                                                      \
-  XX(ENXIO, "no such device or address")                                      \
-  XX(EMLINK, "too many links")                                                \
-  XX(EHOSTDOWN, "host is down")                                               \
-  XX(EREMOTEIO, "remote I/O error")                                           \
-  XX(ENOTTY, "inappropriate ioctl for device")                                \
-  XX(EFTYPE, "inappropriate file type or format")                             \
-  XX(EILSEQ, "illegal byte sequence")                                         \
-  XX(ESOCKTNOSUPPORT, "socket type not supported")                            \
-  XX(ENODATA, "no data available")                                            \
-  XX(EUNATCH, "protocol driver not attached")                                 \
-  XX(ENOEXEC, "exec format error")                                            \
+#define UV_ERRNO_MAP(XX)                                                       \
+  XX(E2BIG, "argument list too long")                                          \
+  XX(EACCES, "permission denied")                                              \
+  XX(EADDRINUSE, "address already in use")                                     \
+  XX(EADDRNOTAVAIL, "address not available")                                   \
+  XX(EAFNOSUPPORT, "address family not supported")                             \
+  XX(EAGAIN, "resource temporarily unavailable")                               \
+  XX(EAI_ADDRFAMILY, "address family not supported")                           \
+  XX(EAI_AGAIN, "temporary failure")                                           \
+  XX(EAI_BADFLAGS, "bad ai_flags value")                                       \
+  XX(EAI_BADHINTS, "invalid value for hints")                                  \
+  XX(EAI_CANCELED, "request canceled")                                         \
+  XX(EAI_FAIL, "permanent failure")                                            \
+  XX(EAI_FAMILY, "ai_family not supported")                                    \
+  XX(EAI_MEMORY, "out of memory")                                              \
+  XX(EAI_NODATA, "no address")                                                 \
+  XX(EAI_NONAME, "unknown node or service")                                    \
+  XX(EAI_OVERFLOW, "argument buffer overflow")                                 \
+  XX(EAI_PROTOCOL, "resolved protocol is unknown")                             \
+  XX(EAI_SERVICE, "service not available for socket type")                     \
+  XX(EAI_SOCKTYPE, "socket type not supported")                                \
+  XX(EALREADY, "connection already in progress")                               \
+  XX(EBADF, "bad file descriptor")                                             \
+  XX(EBUSY, "resource busy or locked")                                         \
+  XX(ECANCELED, "operation canceled")                                          \
+  XX(ECHARSET, "invalid Unicode character")                                    \
+  XX(ECONNABORTED, "software caused connection abort")                         \
+  XX(ECONNREFUSED, "connection refused")                                       \
+  XX(ECONNRESET, "connection reset by peer")                                   \
+  XX(EDESTADDRREQ, "destination address required")                             \
+  XX(EEXIST, "file already exists")                                            \
+  XX(EFAULT, "bad address in system call argument")                            \
+  XX(EFBIG, "file too large")                                                  \
+  XX(EHOSTUNREACH, "host is unreachable")                                      \
+  XX(EINTR, "interrupted system call")                                         \
+  XX(EINVAL, "invalid argument")                                               \
+  XX(EIO, "i/o error")                                                         \
+  XX(EISCONN, "socket is already connected")                                   \
+  XX(EISDIR, "illegal operation on a directory")                               \
+  XX(ELOOP, "too many symbolic links encountered")                             \
+  XX(EMFILE, "too many open files")                                            \
+  XX(EMSGSIZE, "message too long")                                             \
+  XX(ENAMETOOLONG, "name too long")                                            \
+  XX(ENETDOWN, "network is down")                                              \
+  XX(ENETUNREACH, "network is unreachable")                                    \
+  XX(ENFILE, "file table overflow")                                            \
+  XX(ENOBUFS, "no buffer space available")                                     \
+  XX(ENODEV, "no such device")                                                 \
+  XX(ENOENT, "no such file or directory")                                      \
+  XX(ENOMEM, "not enough memory")                                              \
+  XX(ENONET, "machine is not on the network")                                  \
+  XX(ENOPROTOOPT, "protocol not available")                                    \
+  XX(ENOSPC, "no space left on device")                                        \
+  XX(ENOSYS, "function not implemented")                                       \
+  XX(ENOTCONN, "socket is not connected")                                      \
+  XX(ENOTDIR, "not a directory")                                               \
+  XX(ENOTEMPTY, "directory not empty")                                         \
+  XX(ENOTSOCK, "socket operation on non-socket")                               \
+  XX(ENOTSUP, "operation not supported on socket")                             \
+  XX(EOVERFLOW, "value too large for defined data type")                       \
+  XX(EPERM, "operation not permitted")                                         \
+  XX(EPIPE, "broken pipe")                                                     \
+  XX(EPROTO, "protocol error")                                                 \
+  XX(EPROTONOSUPPORT, "protocol not supported")                                \
+  XX(EPROTOTYPE, "protocol wrong type for socket")                             \
+  XX(ERANGE, "result too large")                                               \
+  XX(EROFS, "read-only file system")                                           \
+  XX(ESHUTDOWN, "cannot send after transport endpoint shutdown")               \
+  XX(ESPIPE, "invalid seek")                                                   \
+  XX(ESRCH, "no such process")                                                 \
+  XX(ETIMEDOUT, "connection timed out")                                        \
+  XX(ETXTBSY, "text file is busy")                                             \
+  XX(EXDEV, "cross-device link not permitted")                                 \
+  XX(UNKNOWN, "unknown error")                                                 \
+  XX(EOF, "end of file")                                                       \
+  XX(ENXIO, "no such device or address")                                       \
+  XX(EMLINK, "too many links")                                                 \
+  XX(EHOSTDOWN, "host is down")                                                \
+  XX(EREMOTEIO, "remote I/O error")                                            \
+  XX(ENOTTY, "inappropriate ioctl for device")                                 \
+  XX(EFTYPE, "inappropriate file type or format")                              \
+  XX(EILSEQ, "illegal byte sequence")                                          \
+  XX(ESOCKTNOSUPPORT, "socket type not supported")                             \
+  XX(ENODATA, "no data available")                                             \
+  XX(EUNATCH, "protocol driver not attached")                                  \
+  XX(ENOEXEC, "exec format error")
 
-#define UV_HANDLE_TYPE_MAP(XX)                                                \
-  XX(ASYNC, async)                                                            \
-  XX(CHECK, check)                                                            \
-  XX(FS_EVENT, fs_event)                                                      \
-  XX(FS_POLL, fs_poll)                                                        \
-  XX(HANDLE, handle)                                                          \
-  XX(IDLE, idle)                                                              \
-  XX(NAMED_PIPE, pipe)                                                        \
-  XX(POLL, poll)                                                              \
-  XX(PREPARE, prepare)                                                        \
-  XX(PROCESS, process)                                                        \
-  XX(STREAM, stream)                                                          \
-  XX(TCP, tcp)                                                                \
-  XX(TIMER, timer)                                                            \
-  XX(TTY, tty)                                                                \
-  XX(UDP, udp)                                                                \
-  XX(SIGNAL, signal)                                                          \
+#define UV_HANDLE_TYPE_MAP(XX)                                                 \
+  XX(ASYNC, async)                                                             \
+  XX(CHECK, check)                                                             \
+  XX(FS_EVENT, fs_event)                                                       \
+  XX(FS_POLL, fs_poll)                                                         \
+  XX(HANDLE, handle)                                                           \
+  XX(IDLE, idle)                                                               \
+  XX(NAMED_PIPE, pipe)                                                         \
+  XX(POLL, poll)                                                               \
+  XX(PREPARE, prepare)                                                         \
+  XX(PROCESS, process)                                                         \
+  XX(STREAM, stream)                                                           \
+  XX(TCP, tcp)                                                                 \
+  XX(TIMER, timer)                                                             \
+  XX(TTY, tty)                                                                 \
+  XX(UDP, udp)                                                                 \
+  XX(SIGNAL, signal)
 
-#define UV_REQ_TYPE_MAP(XX)                                                   \
-  XX(REQ, req)                                                                \
-  XX(CONNECT, connect)                                                        \
-  XX(WRITE, write)                                                            \
-  XX(SHUTDOWN, shutdown)                                                      \
-  XX(UDP_SEND, udp_send)                                                      \
-  XX(FS, fs)                                                                  \
-  XX(WORK, work)                                                              \
-  XX(GETADDRINFO, getaddrinfo)                                                \
-  XX(GETNAMEINFO, getnameinfo)                                                \
-  XX(RANDOM, random)                                                          \
+#define UV_REQ_TYPE_MAP(XX)                                                    \
+  XX(REQ, req)                                                                 \
+  XX(CONNECT, connect)                                                         \
+  XX(WRITE, write)                                                             \
+  XX(SHUTDOWN, shutdown)                                                       \
+  XX(UDP_SEND, udp_send)                                                       \
+  XX(FS, fs)                                                                   \
+  XX(WORK, work)                                                               \
+  XX(GETADDRINFO, getaddrinfo)                                                 \
+  XX(GETNAMEINFO, getnameinfo)                                                 \
+  XX(RANDOM, random)
 
 typedef enum {
-#define XX(code, _) UV_ ## code = UV__ ## code,
+#define XX(code, _) UV_##code = UV__##code,
   UV_ERRNO_MAP(XX)
 #undef XX
   UV_ERRNO_MAX = UV__EOF - 1
@@ -433,14 +433,14 @@ UV_EXTERN const char* uv_err_name(int err);
 UV_EXTERN char* uv_err_name_r(int err, char* buf, size_t buflen);
 
 
-#define UV_REQ_FIELDS                                                         \
-  /* public */                                                                \
-  void* data;                                                                 \
-  /* read-only */                                                             \
-  uv_req_type type;                                                           \
-  /* private */                                                               \
-  void* reserved[6];                                                          \
-  UV_REQ_PRIVATE_FIELDS                                                       \
+#define UV_REQ_FIELDS                                                          \
+  /* public */                                                                 \
+  void* data;                                                                  \
+  /* read-only */                                                              \
+  uv_req_type type;                                                            \
+  /* private */                                                                \
+  void* reserved[6];                                                           \
+  UV_REQ_PRIVATE_FIELDS
 
 /* Abstract base class of all requests. */
 struct uv_req_s {
@@ -464,20 +464,20 @@ struct uv_shutdown_s {
 };
 
 
-#define UV_HANDLE_FIELDS                                                      \
-  /* public */                                                                \
-  void* data;                                                                 \
-  /* read-only */                                                             \
-  uv_loop_t* loop;                                                            \
-  uv_handle_type type;                                                        \
-  /* private */                                                               \
-  uv_close_cb close_cb;                                                       \
-  struct uv__queue handle_queue;                                              \
-  union {                                                                     \
-    int fd;                                                                   \
-    void* reserved[4];                                                        \
-  } u;                                                                        \
-  UV_HANDLE_PRIVATE_FIELDS                                                    \
+#define UV_HANDLE_FIELDS                                                       \
+  /* public */                                                                 \
+  void* data;                                                                  \
+  /* read-only */                                                              \
+  uv_loop_t* loop;                                                             \
+  uv_handle_type type;                                                         \
+  /* private */                                                                \
+  uv_close_cb close_cb;                                                        \
+  struct uv__queue handle_queue;                                               \
+  union {                                                                      \
+    int fd;                                                                    \
+    void* reserved[4];                                                         \
+  } u;                                                                         \
+  UV_HANDLE_PRIVATE_FIELDS
 
 /* The abstract base class of all handles. */
 struct uv_handle_s {
@@ -521,12 +521,12 @@ UV_EXTERN int uv_socketpair(int type,
                             int flags0,
                             int flags1);
 
-#define UV_STREAM_FIELDS                                                      \
-  /* number of bytes queued for writing */                                    \
-  size_t write_queue_size;                                                    \
-  uv_alloc_cb alloc_cb;                                                       \
-  uv_read_cb read_cb;                                                         \
-  /* private */                                                               \
+#define UV_STREAM_FIELDS                                                       \
+  /* number of bytes queued for writing */                                     \
+  size_t write_queue_size;                                                     \
+  uv_alloc_cb alloc_cb;                                                        \
+  uv_read_cb read_cb;                                                          \
+  /* private */                                                                \
   UV_STREAM_PRIVATE_FIELDS
 
 /*
@@ -850,7 +850,6 @@ extern "C++" {
 inline int uv_tty_set_mode(uv_tty_t* handle, int mode) {
   return uv_tty_set_mode(handle, static_cast<uv_tty_mode_t>(mode));
 }
-
 }
 #endif
 
@@ -1010,10 +1009,10 @@ UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
 
 
 /*
-* uv_getnameinfo_t is a subclass of uv_req_t.
-*
-* Request object for uv_getnameinfo.
-*/
+ * uv_getnameinfo_t is a subclass of uv_req_t.
+ *
+ * Request object for uv_getnameinfo.
+ */
 struct uv_getnameinfo_s {
   UV_REQ_FIELDS
   /* read-only */
@@ -1031,9 +1030,9 @@ UV_EXTERN int uv_getnameinfo(uv_loop_t* loop,
 
 /* uv_spawn() options. */
 typedef enum {
-  UV_IGNORE         = 0x00,
-  UV_CREATE_PIPE    = 0x01,
-  UV_INHERIT_FD     = 0x02,
+  UV_IGNORE = 0x00,
+  UV_CREATE_PIPE = 0x01,
+  UV_INHERIT_FD = 0x02,
   UV_INHERIT_STREAM = 0x04,
 
   /*
@@ -1041,8 +1040,8 @@ typedef enum {
    * determine the direction of flow, from the child process' perspective. Both
    * flags may be specified to create a duplex data stream.
    */
-  UV_READABLE_PIPE  = 0x10,
-  UV_WRITABLE_PIPE  = 0x20,
+  UV_READABLE_PIPE = 0x10,
+  UV_WRITABLE_PIPE = 0x20,
 
   /*
    * When UV_CREATE_PIPE is specified, specifying UV_NONBLOCK_PIPE opens the
@@ -1050,7 +1049,7 @@ typedef enum {
    * if the child is not designed to handle to encounter this mode,
    * but can also be significantly more efficient.
    */
-  UV_NONBLOCK_PIPE  = 0x40,
+  UV_NONBLOCK_PIPE = 0x40,
   UV_OVERLAPPED_PIPE = 0x40 /* old name, for compatibility */
 } uv_stdio_flags;
 
@@ -1204,9 +1203,9 @@ UV_EXTERN int uv_cancel(uv_req_t* req);
 struct uv_cpu_times_s {
   uint64_t user; /* milliseconds */
   uint64_t nice; /* milliseconds */
-  uint64_t sys; /* milliseconds */
+  uint64_t sys;  /* milliseconds */
   uint64_t idle; /* milliseconds */
-  uint64_t irq; /* milliseconds */
+  uint64_t irq;  /* milliseconds */
 };
 
 struct uv_cpu_info_s {
@@ -1289,22 +1288,22 @@ UV_EXTERN uv_os_fd_t uv_get_osfhandle(int fd);
 UV_EXTERN int uv_open_osfhandle(uv_os_fd_t os_fd);
 
 typedef struct {
-   uv_timeval_t ru_utime; /* user CPU time used */
-   uv_timeval_t ru_stime; /* system CPU time used */
-   uint64_t ru_maxrss;    /* maximum resident set size */
-   uint64_t ru_ixrss;     /* integral shared memory size */
-   uint64_t ru_idrss;     /* integral unshared data size */
-   uint64_t ru_isrss;     /* integral unshared stack size */
-   uint64_t ru_minflt;    /* page reclaims (soft page faults) */
-   uint64_t ru_majflt;    /* page faults (hard page faults) */
-   uint64_t ru_nswap;     /* swaps */
-   uint64_t ru_inblock;   /* block input operations */
-   uint64_t ru_oublock;   /* block output operations */
-   uint64_t ru_msgsnd;    /* IPC messages sent */
-   uint64_t ru_msgrcv;    /* IPC messages received */
-   uint64_t ru_nsignals;  /* signals received */
-   uint64_t ru_nvcsw;     /* voluntary context switches */
-   uint64_t ru_nivcsw;    /* involuntary context switches */
+  uv_timeval_t ru_utime; /* user CPU time used */
+  uv_timeval_t ru_stime; /* system CPU time used */
+  uint64_t ru_maxrss;    /* maximum resident set size */
+  uint64_t ru_ixrss;     /* integral shared memory size */
+  uint64_t ru_idrss;     /* integral unshared data size */
+  uint64_t ru_isrss;     /* integral unshared stack size */
+  uint64_t ru_minflt;    /* page reclaims (soft page faults) */
+  uint64_t ru_majflt;    /* page faults (hard page faults) */
+  uint64_t ru_nswap;     /* swaps */
+  uint64_t ru_inblock;   /* block input operations */
+  uint64_t ru_oublock;   /* block output operations */
+  uint64_t ru_msgsnd;    /* IPC messages sent */
+  uint64_t ru_msgrcv;    /* IPC messages received */
+  uint64_t ru_nsignals;  /* signals received */
+  uint64_t ru_nvcsw;     /* voluntary context switches */
+  uint64_t ru_nivcsw;    /* involuntary context switches */
 } uv_rusage_t;
 
 UV_EXTERN int uv_getrusage(uv_rusage_t* rusage);
@@ -1322,19 +1321,19 @@ UV_EXTERN uv_pid_t uv_os_getppid(void);
 
 #if defined(__PASE__)
 /* On IBM i PASE, the highest process priority is -10 */
-# define UV_PRIORITY_LOW 39          /* RUNPTY(99) */
-# define UV_PRIORITY_BELOW_NORMAL 15 /* RUNPTY(50) */
-# define UV_PRIORITY_NORMAL 0        /* RUNPTY(20) */
-# define UV_PRIORITY_ABOVE_NORMAL -4 /* RUNTY(12) */
-# define UV_PRIORITY_HIGH -7         /* RUNPTY(6) */
-# define UV_PRIORITY_HIGHEST -10     /* RUNPTY(1) */
+#  define UV_PRIORITY_LOW          39  /* RUNPTY(99) */
+#  define UV_PRIORITY_BELOW_NORMAL 15  /* RUNPTY(50) */
+#  define UV_PRIORITY_NORMAL       0   /* RUNPTY(20) */
+#  define UV_PRIORITY_ABOVE_NORMAL -4  /* RUNTY(12) */
+#  define UV_PRIORITY_HIGH         -7  /* RUNPTY(6) */
+#  define UV_PRIORITY_HIGHEST      -10 /* RUNPTY(1) */
 #else
-# define UV_PRIORITY_LOW 19
-# define UV_PRIORITY_BELOW_NORMAL 10
-# define UV_PRIORITY_NORMAL 0
-# define UV_PRIORITY_ABOVE_NORMAL -7
-# define UV_PRIORITY_HIGH -14
-# define UV_PRIORITY_HIGHEST -20
+#  define UV_PRIORITY_LOW          19
+#  define UV_PRIORITY_BELOW_NORMAL 10
+#  define UV_PRIORITY_NORMAL       0
+#  define UV_PRIORITY_ABOVE_NORMAL -7
+#  define UV_PRIORITY_HIGH         -14
+#  define UV_PRIORITY_HIGHEST      -20
 #endif
 
 UV_EXTERN int uv_os_getpriority(uv_pid_t pid, int* priority);
@@ -1373,14 +1372,14 @@ UV_EXTERN int uv_os_setenv(const char* name, const char* value);
 UV_EXTERN int uv_os_unsetenv(const char* name);
 
 #ifdef MAXHOSTNAMELEN
-# define UV_MAXHOSTNAMESIZE (MAXHOSTNAMELEN + 1)
+#  define UV_MAXHOSTNAMESIZE (MAXHOSTNAMELEN + 1)
 #else
-  /*
-    Fallback for the maximum hostname size, including the null terminator. The
-    Windows gethostname() documentation states that 256 bytes will always be
-    large enough to hold the null-terminated hostname.
-  */
-# define UV_MAXHOSTNAMESIZE 256
+/*
+  Fallback for the maximum hostname size, including the null terminator. The
+  Windows gethostname() documentation states that 256 bytes will always be
+  large enough to hold the null-terminated hostname.
+*/
+#  define UV_MAXHOSTNAMESIZE 256
 #endif
 
 UV_EXTERN int uv_os_gethostname(char* buffer, size_t* size);
@@ -1455,7 +1454,7 @@ struct uv_fs_s {
   ssize_t result;
   void* ptr;
   const char* path;
-  uv_stat_t statbuf;  /* Stores the result of uv_fs_stat() and uv_fs_fstat(). */
+  uv_stat_t statbuf; /* Stores the result of uv_fs_stat() and uv_fs_fstat(). */
   UV_FS_PRIVATE_FIELDS
 };
 
@@ -1499,7 +1498,7 @@ UV_EXTERN int uv_fs_write(uv_loop_t* loop,
  * This flag can be used with uv_fs_copyfile() to return an error if the
  * destination already exists.
  */
-#define UV_FS_COPYFILE_EXCL   0x0001
+#define UV_FS_COPYFILE_EXCL 0x0001
 
 /*
  * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
@@ -1541,8 +1540,7 @@ UV_EXTERN int uv_fs_scandir(uv_loop_t* loop,
                             const char* path,
                             int flags,
                             uv_fs_cb cb);
-UV_EXTERN int uv_fs_scandir_next(uv_fs_t* req,
-                                 uv_dirent_t* ent);
+UV_EXTERN int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent);
 UV_EXTERN int uv_fs_opendir(uv_loop_t* loop,
                             uv_fs_t* req,
                             const char* path,
@@ -1632,13 +1630,13 @@ UV_EXTERN int uv_fs_link(uv_loop_t* loop,
  * This flag can be used with uv_fs_symlink() on Windows to specify whether
  * path argument points to a directory.
  */
-#define UV_FS_SYMLINK_DIR          0x0001
+#define UV_FS_SYMLINK_DIR 0x0001
 
 /*
  * This flag can be used with uv_fs_symlink() on Windows to specify whether
  * the symlink is to be created using junction points.
  */
-#define UV_FS_SYMLINK_JUNCTION     0x0002
+#define UV_FS_SYMLINK_JUNCTION 0x0002
 
 UV_EXTERN int uv_fs_symlink(uv_loop_t* loop,
                             uv_fs_t* req,
@@ -1780,8 +1778,12 @@ UV_EXTERN int uv_fs_event_getpath(uv_fs_event_t* handle,
 UV_EXTERN int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
 UV_EXTERN int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr);
 
-UV_EXTERN int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size);
-UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size);
+UV_EXTERN int uv_ip4_name(const struct sockaddr_in* src,
+                          char* dst,
+                          size_t size);
+UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src,
+                          char* dst,
+                          size_t size);
 UV_EXTERN int uv_ip_name(const struct sockaddr* src, char* dst, size_t size);
 
 UV_EXTERN int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
@@ -1802,17 +1804,17 @@ struct uv_random_s {
 
 UV_EXTERN int uv_random(uv_loop_t* loop,
                         uv_random_t* req,
-                        void *buf,
+                        void* buf,
                         size_t buflen,
-                        unsigned flags,  /* For future extension; must be 0. */
+                        unsigned flags, /* For future extension; must be 0. */
                         uv_random_cb cb);
 
 #if defined(IF_NAMESIZE)
-# define UV_IF_NAMESIZE (IF_NAMESIZE + 1)
+#  define UV_IF_NAMESIZE (IF_NAMESIZE + 1)
 #elif defined(IFNAMSIZ)
-# define UV_IF_NAMESIZE (IFNAMSIZ + 1)
+#  define UV_IF_NAMESIZE (IFNAMSIZ + 1)
 #else
-# define UV_IF_NAMESIZE (16 + 1)
+#  define UV_IF_NAMESIZE (16 + 1)
 #endif
 
 UV_EXTERN int uv_if_indextoname(unsigned int ifindex,
@@ -1920,14 +1922,14 @@ UV_EXTERN int uv_thread_getaffinity(uv_thread_t* tid,
                                     size_t mask_size);
 UV_EXTERN int uv_thread_getcpu(void);
 UV_EXTERN uv_thread_t uv_thread_self(void);
-UV_EXTERN int uv_thread_join(uv_thread_t *tid);
+UV_EXTERN int uv_thread_join(uv_thread_t* tid);
 UV_EXTERN int uv_thread_equal(const uv_thread_t* t1, const uv_thread_t* t2);
 UV_EXTERN int uv_thread_setname(const char* name);
 UV_EXTERN int uv_thread_getname(uv_thread_t* tid, char* name, size_t size);
 
 
 /* The presence of these unions force similar struct layout. */
-#define XX(_, name) uv_ ## name ## _t name;
+#define XX(_, name) uv_##name##_t name;
 union uv_any_handle {
   UV_HANDLE_TYPE_MAP(XX)
 };

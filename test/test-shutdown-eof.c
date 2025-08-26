@@ -46,7 +46,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 
 static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT_PTR_EQ((uv_tcp_t*)t, &tcp);
+  ASSERT_PTR_EQ((uv_tcp_t*) t, &tcp);
 
   if (nread == 0) {
     free(buf->base);
@@ -71,7 +71,7 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
 }
 
 
-static void shutdown_cb(uv_shutdown_t *req, int status) {
+static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT_PTR_EQ(req, &shutdown_req);
 
   ASSERT_EQ(1, called_connect_cb);
@@ -84,18 +84,18 @@ static void shutdown_cb(uv_shutdown_t *req, int status) {
 }
 
 
-static void connect_cb(uv_connect_t *req, int status) {
+static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_OK(status);
   ASSERT_PTR_EQ(req, &connect_req);
 
   /* Start reading from our connection so we can receive the EOF.  */
-  ASSERT_OK(uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &tcp, alloc_cb, read_cb));
 
   /* Check error handling. */
-  ASSERT_EQ(UV_EALREADY, uv_read_start((uv_stream_t*)&tcp, alloc_cb, read_cb));
+  ASSERT_EQ(UV_EALREADY, uv_read_start((uv_stream_t*) &tcp, alloc_cb, read_cb));
   ASSERT_EQ(UV_EINVAL, uv_read_start(NULL, alloc_cb, read_cb));
-  ASSERT_EQ(UV_EINVAL, uv_read_start((uv_stream_t*)&tcp, NULL, read_cb));
-  ASSERT_EQ(UV_EINVAL, uv_read_start((uv_stream_t*)&tcp, alloc_cb, NULL));
+  ASSERT_EQ(UV_EINVAL, uv_read_start((uv_stream_t*) &tcp, NULL, read_cb));
+  ASSERT_EQ(UV_EINVAL, uv_read_start((uv_stream_t*) &tcp, alloc_cb, NULL));
 
   /*
    * Write the letter 'Q' to gracefully kill the echo-server. This will not
@@ -185,4 +185,3 @@ TEST_IMPL(shutdown_eof) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
-

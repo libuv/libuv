@@ -59,7 +59,7 @@
 
 /* Max user name length, from iphlpapi.h */
 #ifndef UNLEN
-# define UNLEN 256
+#  define UNLEN 256
 #endif
 
 
@@ -67,7 +67,7 @@
 extern BOOLEAN NTAPI SystemFunction036(PVOID Buffer, ULONG BufferLength);
 
 /* Cached copy of the process title, plus a mutex guarding it. */
-static char *process_title;
+static char* process_title;
 static CRITICAL_SECTION process_title_lock;
 
 /* Frequency of the high-resolution clock. */
@@ -135,13 +135,13 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
 
   return err;
 
- error:
+error:
   uv__free(utf16_buffer);
   return uv_translate_sys_error(err);
 }
 
 
-static int uv__cwd(WCHAR** buf, DWORD *len) {
+static int uv__cwd(WCHAR** buf, DWORD* len) {
   WCHAR* p;
   DWORD n;
   DWORD t;
@@ -188,7 +188,7 @@ static int uv__cwd(WCHAR** buf, DWORD *len) {
 
 int uv_cwd(char* buffer, size_t* size) {
   DWORD utf16_len;
-  WCHAR *utf16_buffer;
+  WCHAR* utf16_buffer;
   int r;
 
   if (buffer == NULL || size == NULL || *size == 0) {
@@ -208,7 +208,7 @@ int uv_cwd(char* buffer, size_t* size) {
 
 
 int uv_chdir(const char* dir) {
-  WCHAR *utf16_buffer;
+  WCHAR* utf16_buffer;
   DWORD utf16_len;
   WCHAR drive_letter, env_var[4];
   int r;
@@ -281,10 +281,10 @@ uint64_t uv_get_free_memory(void) {
   memory_status.dwLength = sizeof(memory_status);
 
   if (!GlobalMemoryStatusEx(&memory_status)) {
-     return 0;
+    return 0;
   }
 
-  return (uint64_t)memory_status.ullAvailPhys;
+  return (uint64_t) memory_status.ullAvailPhys;
 }
 
 
@@ -296,12 +296,12 @@ uint64_t uv_get_total_memory(void) {
     return 0;
   }
 
-  return (uint64_t)memory_status.ullTotalPhys;
+  return (uint64_t) memory_status.ullTotalPhys;
 }
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return 0; /* Memory constraints are unknown. */
 }
 
 
@@ -320,10 +320,10 @@ uv_pid_t uv_os_getppid(void) {
   PROCESS_BASIC_INFORMATION basic_info;
 
   nt_status = pNtQueryInformationProcess(GetCurrentProcess(),
-    ProcessBasicInformation,
-    &basic_info,
-    sizeof(basic_info),
-    NULL);
+                                         ProcessBasicInformation,
+                                         &basic_info,
+                                         sizeof(basic_info),
+                                         NULL);
   if (NT_SUCCESS(nt_status)) {
     return basic_info.InheritedFromUniqueProcessId;
   } else {
@@ -438,22 +438,22 @@ int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
     return UV_EFAULT;
 
   switch (clock_id) {
-    case UV_CLOCK_MONOTONIC:
-      uv__once_init();
-      t = uv__hrtime(UV__NANOSEC);
-      ts->tv_sec = t / 1000000000;
-      ts->tv_nsec = t % 1000000000;
-      return 0;
-    case UV_CLOCK_REALTIME:
-      GetSystemTimePreciseAsFileTime(&ft);
-      /* In 100-nanosecond increments from 1601-01-01 UTC because why not? */
-      t = (int64_t) ft.dwHighDateTime << 32 | ft.dwLowDateTime;
-      /* Convert to UNIX epoch, 1970-01-01. Still in 100 ns increments. */
-      t -= 116444736000000000ll;
-      /* Now convert to seconds and nanoseconds. */
-      ts->tv_sec = t / 10000000;
-      ts->tv_nsec = t % 10000000 * 100;
-      return 0;
+  case UV_CLOCK_MONOTONIC:
+    uv__once_init();
+    t = uv__hrtime(UV__NANOSEC);
+    ts->tv_sec = t / 1000000000;
+    ts->tv_nsec = t % 1000000000;
+    return 0;
+  case UV_CLOCK_REALTIME:
+    GetSystemTimePreciseAsFileTime(&ft);
+    /* In 100-nanosecond increments from 1601-01-01 UTC because why not? */
+    t = (int64_t) ft.dwHighDateTime << 32 | ft.dwLowDateTime;
+    /* Convert to UNIX epoch, 1970-01-01. Still in 100 ns increments. */
+    t -= 116444736000000000ll;
+    /* Now convert to seconds and nanoseconds. */
+    ts->tv_sec = t / 10000000;
+    ts->tv_nsec = t % 10000000 * 100;
+    return 0;
   }
 
   return UV_EINVAL;
@@ -604,7 +604,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
                            L"~MHz",
                            NULL,
                            NULL,
-                           (BYTE*)&cpu_speed,
+                           (BYTE*) &cpu_speed,
                            &cpu_speed_size);
     if (err != ERROR_SUCCESS) {
       RegCloseKey(processor_key);
@@ -615,7 +615,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
                            L"ProcessorNameString",
                            NULL,
                            NULL,
-                           (BYTE*)&cpu_brand,
+                           (BYTE*) &cpu_brand,
                            &cpu_brand_size);
     RegCloseKey(processor_key);
     if (err != ERROR_SUCCESS)
@@ -624,8 +624,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
     cpu_info = &cpu_infos[i];
     cpu_info->speed = cpu_speed;
     cpu_info->cpu_times.user = sppi[i].UserTime.QuadPart / 10000;
-    cpu_info->cpu_times.sys = (sppi[i].KernelTime.QuadPart -
-        sppi[i].IdleTime.QuadPart) / 10000;
+    cpu_info->cpu_times.sys =
+        (sppi[i].KernelTime.QuadPart - sppi[i].IdleTime.QuadPart) / 10000;
     cpu_info->cpu_times.idle = sppi[i].IdleTime.QuadPart / 10000;
     cpu_info->cpu_times.irq = sppi[i].InterruptTime.QuadPart / 10000;
     cpu_info->cpu_times.nice = 0;
@@ -642,7 +642,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
   return 0;
 
- error:
+error:
   if (cpu_infos != NULL) {
     /* This is safe because the cpu_infos array is zeroed on allocation. */
     for (i = 0; i < cpu_count; i++)
@@ -657,7 +657,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
 
 int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
-    int* count_ptr) {
+                           int* count_ptr) {
   IP_ADAPTER_ADDRESSES* win_address_buf;
   ULONG win_address_buf_size;
   IP_ADAPTER_ADDRESSES* adapter;
@@ -674,7 +674,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   *count_ptr = 0;
 
   flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
-    GAA_FLAG_SKIP_DNS_SERVER;
+          GAA_FLAG_SKIP_DNS_SERVER;
 
   /* Fetch the size of the adapters reported by windows, and then get the list
    * itself. */
@@ -699,46 +699,46 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     uv__free(win_address_buf);
 
     switch (r) {
-      case ERROR_BUFFER_OVERFLOW:
-        /* This happens when win_address_buf is NULL or too small to hold all
-         * adapters. */
-        win_address_buf = uv__malloc(win_address_buf_size);
-        if (win_address_buf == NULL)
-          return UV_ENOMEM;
+    case ERROR_BUFFER_OVERFLOW:
+      /* This happens when win_address_buf is NULL or too small to hold all
+       * adapters. */
+      win_address_buf = uv__malloc(win_address_buf_size);
+      if (win_address_buf == NULL)
+        return UV_ENOMEM;
 
-        continue;
+      continue;
 
-      case ERROR_NO_DATA: {
-        /* No adapters were found. */
-        uv_address_buf = uv__malloc(1);
-        if (uv_address_buf == NULL)
-          return UV_ENOMEM;
+    case ERROR_NO_DATA: {
+      /* No adapters were found. */
+      uv_address_buf = uv__malloc(1);
+      if (uv_address_buf == NULL)
+        return UV_ENOMEM;
 
-        *count_ptr = 0;
-        *addresses_ptr = uv_address_buf;
+      *count_ptr = 0;
+      *addresses_ptr = uv_address_buf;
 
-        return 0;
-      }
+      return 0;
+    }
 
-      case ERROR_ADDRESS_NOT_ASSOCIATED:
-        return UV_EAGAIN;
+    case ERROR_ADDRESS_NOT_ASSOCIATED:
+      return UV_EAGAIN;
 
-      case ERROR_INVALID_PARAMETER:
-        /* MSDN says:
-         *   "This error is returned for any of the following conditions: the
-         *   SizePointer parameter is NULL, the Address parameter is not
-         *   AF_INET, AF_INET6, or AF_UNSPEC, or the address information for
-         *   the parameters requested is greater than ULONG_MAX."
-         * Since the first two conditions are not met, it must be that the
-         * adapter data is too big.
-         */
-        return UV_ENOBUFS;
+    case ERROR_INVALID_PARAMETER:
+      /* MSDN says:
+       *   "This error is returned for any of the following conditions: the
+       *   SizePointer parameter is NULL, the Address parameter is not
+       *   AF_INET, AF_INET6, or AF_UNSPEC, or the address information for
+       *   the parameters requested is greater than ULONG_MAX."
+       * Since the first two conditions are not met, it must be that the
+       * adapter data is too big.
+       */
+      return UV_ENOBUFS;
 
-      default:
-        /* Other (unspecified) errors can happen, but we don't have any special
-         * meaning for them. */
-        assert(r != ERROR_SUCCESS);
-        return uv_translate_sys_error(r);
+    default:
+      /* Other (unspecified) errors can happen, but we don't have any special
+       * meaning for them. */
+      assert(r != ERROR_SUCCESS);
+      return uv_translate_sys_error(r);
     }
   }
 
@@ -747,9 +747,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   count = 0;
   uv_address_buf_size = 0;
 
-  for (adapter = win_address_buf;
-       adapter != NULL;
-       adapter = adapter->Next) {
+  for (adapter = win_address_buf; adapter != NULL; adapter = adapter->Next) {
     IP_ADAPTER_UNICAST_ADDRESS* unicast_address;
     int name_size;
 
@@ -766,8 +764,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
     /* Count the number of addresses associated with this interface, and
      * compute the size. */
-    for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS*)
-                           adapter->FirstUnicastAddress;
+    for (unicast_address =
+             (IP_ADAPTER_UNICAST_ADDRESS*) adapter->FirstUnicastAddress;
          unicast_address != NULL;
          unicast_address = unicast_address->Next) {
       count++;
@@ -788,9 +786,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   name_buf = (char*) (uv_address_buf + count);
 
   /* Fill out the output buffer. */
-  for (adapter = win_address_buf;
-       adapter != NULL;
-       adapter = adapter->Next) {
+  for (adapter = win_address_buf; adapter != NULL; adapter = adapter->Next) {
     IP_ADAPTER_UNICAST_ADDRESS* unicast_address;
     size_t name_size;
     int r;
@@ -801,10 +797,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
     /* Convert the interface name to UTF8. */
     name_size = (char*) uv_address_buf + uv_address_buf_size - name_buf;
-    r = uv__copy_utf16_to_utf8(adapter->FriendlyName,
-                               -1,
-                               name_buf,
-                               &name_size);
+    r = uv__copy_utf16_to_utf8(adapter->FriendlyName, -1, name_buf, &name_size);
     if (r) {
       uv__free(win_address_buf);
       uv__free(uv_address_buf);
@@ -813,8 +806,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     name_size += 1; /* Add NUL byte. */
 
     /* Add an uv_interface_address_t element for every unicast address. */
-    for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS*)
-                           adapter->FirstUnicastAddress;
+    for (unicast_address =
+             (IP_ADAPTER_UNICAST_ADDRESS*) adapter->FirstUnicastAddress;
          unicast_address != NULL;
          unicast_address = unicast_address->Next) {
       struct sockaddr* sa;
@@ -822,8 +815,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
       sa = unicast_address->Address.lpSockaddr;
 
-      prefix_len =
-        ((IP_ADAPTER_UNICAST_ADDRESS_LH*) unicast_address)->OnLinkPrefixLength;
+      prefix_len = ((IP_ADAPTER_UNICAST_ADDRESS_LH*) unicast_address)
+                       ->OnLinkPrefixLength;
 
       memset(uv_address, 0, sizeof *uv_address);
 
@@ -835,14 +828,15 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
                sizeof(uv_address->phys_addr));
       }
 
-      uv_address->is_internal =
-          (adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK);
+      uv_address->is_internal = (adapter->IfType == IF_TYPE_SOFTWARE_LOOPBACK);
 
       if (sa->sa_family == AF_INET6) {
-        uv_address->address.address6 = *((struct sockaddr_in6 *) sa);
+        uv_address->address.address6 = *((struct sockaddr_in6*) sa);
 
         uv_address->netmask.netmask6.sin6_family = AF_INET6;
-        memset(uv_address->netmask.netmask6.sin6_addr.s6_addr, 0xff, prefix_len >> 3);
+        memset(uv_address->netmask.netmask6.sin6_addr.s6_addr,
+               0xff,
+               prefix_len >> 3);
         /* This check ensures that we don't write past the size of the data. */
         if (prefix_len % 8) {
           uv_address->netmask.netmask6.sin6_addr.s6_addr[prefix_len >> 3] =
@@ -850,11 +844,11 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
         }
 
       } else {
-        uv_address->address.address4 = *((struct sockaddr_in *) sa);
+        uv_address->address.address4 = *((struct sockaddr_in*) sa);
 
         uv_address->netmask.netmask4.sin_family = AF_INET;
-        uv_address->netmask.netmask4.sin_addr.s_addr = (prefix_len > 0) ?
-            htonl(0xffffffff << (32 - prefix_len)) : 0;
+        uv_address->netmask.netmask4.sin_addr.s_addr =
+            (prefix_len > 0) ? htonl(0xffffffff << (32 - prefix_len)) : 0;
       }
 
       uv_address++;
@@ -872,7 +866,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 }
 
 
-int uv_getrusage(uv_rusage_t *uv_rusage) {
+int uv_getrusage(uv_rusage_t* uv_rusage) {
   FILETIME create_time, exit_time, kernel_time, user_time;
   SYSTEMTIME kernel_system_time, user_system_time;
   PROCESS_MEMORY_COUNTERS mem_counters;
@@ -1016,7 +1010,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
 int uv_os_tmpdir(char* buffer, size_t* size) {
   int r;
-  wchar_t *path;
+  wchar_t* path;
   size_t len;
 
   if (buffer == NULL || size == NULL || *size == 0)
@@ -1048,8 +1042,7 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
 
   /* The returned directory should not have a trailing slash, unless it points
    * at a drive root, like c:\. Remove it if needed. */
-  if (path[len - 1] == L'\\' &&
-      !(len == 3 && path[1] == L':')) {
+  if (path[len - 1] == L'\\' && !(len == 3 && path[1] == L':')) {
     len--;
     path[len] = L'\0';
   }
@@ -1067,14 +1060,16 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
  * If utf16 is null terminated, utf16len can be set to -1, otherwise it must
  * be specified.
  */
-int uv__convert_utf16_to_utf8(const WCHAR* utf16, size_t utf16len, char** utf8) {
+int uv__convert_utf16_to_utf8(const WCHAR* utf16,
+                              size_t utf16len,
+                              char** utf8) {
   size_t utf8_len = 0;
 
   if (utf16 == NULL)
     return UV_EINVAL;
 
-   *utf8 = NULL;
-   return uv_utf16_to_wtf8(utf16, utf16len, utf8, &utf8_len);
+  *utf8 = NULL;
+  return uv_utf16_to_wtf8(utf16, utf16len, utf8, &utf8_len);
 }
 
 
@@ -1113,7 +1108,10 @@ int uv__convert_utf8_to_utf16(const char* utf8, WCHAR** utf16) {
  * If utf16 is null terminated, utf16len can be set to -1, otherwise it must
  * be specified.
  */
-int uv__copy_utf16_to_utf8(const WCHAR* utf16buffer, size_t utf16len, char* utf8, size_t *size) {
+int uv__copy_utf16_to_utf8(const WCHAR* utf16buffer,
+                           size_t utf16len,
+                           char* utf8,
+                           size_t* size) {
   int r;
 
   if (utf8 == NULL || size == NULL)
@@ -1135,7 +1133,7 @@ int uv__copy_utf16_to_utf8(const WCHAR* utf16buffer, size_t utf16len, char* utf8
 static int uv__getpwuid_r(uv_passwd_t* pwd) {
   HANDLE token;
   wchar_t username[UNLEN + 1];
-  wchar_t *path;
+  wchar_t* path;
   DWORD bufsize;
   int r;
 
@@ -1233,7 +1231,8 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
   if (env == NULL)
     return 0;
 
-  for (penv = env, i = 0; *penv != L'\0'; penv += wcslen(penv) + 1, i++);
+  for (penv = env, i = 0; *penv != L'\0'; penv += wcslen(penv) + 1, i++)
+    ;
 
   *envitems = uv__calloc(i, sizeof(**envitems));
   if (*envitems == NULL) {
@@ -1473,7 +1472,7 @@ int uv_os_getpriority(uv_pid_t pid, int* priority) {
       *priority = UV_PRIORITY_NORMAL;
     else if (r == BELOW_NORMAL_PRIORITY_CLASS)
       *priority = UV_PRIORITY_BELOW_NORMAL;
-    else  /* IDLE_PRIORITY_CLASS */
+    else /* IDLE_PRIORITY_CLASS */
       *priority = UV_PRIORITY_LOW;
 
     r = 0;
@@ -1541,23 +1540,23 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
   int r;
 
   switch (priority) {
-    case UV_THREAD_PRIORITY_HIGHEST:
-      r = SetThreadPriority(tid, THREAD_PRIORITY_HIGHEST);
-      break;
-    case UV_THREAD_PRIORITY_ABOVE_NORMAL:
-      r = SetThreadPriority(tid, THREAD_PRIORITY_ABOVE_NORMAL);
-      break;
-    case UV_THREAD_PRIORITY_NORMAL:
-      r = SetThreadPriority(tid, THREAD_PRIORITY_NORMAL);
-      break;
-    case UV_THREAD_PRIORITY_BELOW_NORMAL:
-      r = SetThreadPriority(tid, THREAD_PRIORITY_BELOW_NORMAL);
-      break;
-    case UV_THREAD_PRIORITY_LOWEST:
-      r = SetThreadPriority(tid, THREAD_PRIORITY_LOWEST);
-      break;
-    default:
-      return 0;
+  case UV_THREAD_PRIORITY_HIGHEST:
+    r = SetThreadPriority(tid, THREAD_PRIORITY_HIGHEST);
+    break;
+  case UV_THREAD_PRIORITY_ABOVE_NORMAL:
+    r = SetThreadPriority(tid, THREAD_PRIORITY_ABOVE_NORMAL);
+    break;
+  case UV_THREAD_PRIORITY_NORMAL:
+    r = SetThreadPriority(tid, THREAD_PRIORITY_NORMAL);
+    break;
+  case UV_THREAD_PRIORITY_BELOW_NORMAL:
+    r = SetThreadPriority(tid, THREAD_PRIORITY_BELOW_NORMAL);
+    break;
+  case UV_THREAD_PRIORITY_LOWEST:
+    r = SetThreadPriority(tid, THREAD_PRIORITY_LOWEST);
+    break;
+  default:
+    return 0;
   }
 
   if (r == 0) {
@@ -1617,11 +1616,12 @@ int uv_os_uname(uv_utsname_t* buffer) {
        *
        * This workaround replaces the ProductName key value
        * from "Windows 10 *" to "Windows 11 *" */
-      if (os_info.dwMajorVersion == 10 &&
-          os_info.dwBuildNumber >= 22000 &&
+      if (os_info.dwMajorVersion == 10 && os_info.dwBuildNumber >= 22000 &&
           product_name_w_size >= ARRAY_SIZE(L"Windows 10")) {
         /* If ProductName starts with "Windows 10" */
-        if (wcsncmp(product_name_w, L"Windows 10", ARRAY_SIZE(L"Windows 10") - 1) == 0) {
+        if (wcsncmp(product_name_w,
+                    L"Windows 10",
+                    ARRAY_SIZE(L"Windows 10") - 1) == 0) {
           /* Bump 10 to 11 */
           product_name_w[9] = '1';
         }
@@ -1643,11 +1643,11 @@ int uv_os_uname(uv_utsname_t* buffer) {
       buffer->version[version_size++] = ' ';
 
     version_size = sizeof(buffer->version) - version_size;
-    r = uv__copy_utf16_to_utf8(os_info.szCSDVersion,
-                               -1,
-                               buffer->version +
-                                 sizeof(buffer->version) - version_size,
-                               &version_size);
+    r = uv__copy_utf16_to_utf8(
+        os_info.szCSDVersion,
+        -1,
+        buffer->version + sizeof(buffer->version) - version_size,
+        &version_size);
     if (r)
       goto error;
   }
@@ -1659,7 +1659,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
                "MINGW32_NT-%u.%u",
                (unsigned int) os_info.dwMajorVersion,
                (unsigned int) os_info.dwMinorVersion);
-  assert((size_t)r < sizeof(buffer->sysname));
+  assert((size_t) r < sizeof(buffer->sysname));
 #else
   uv__strscpy(buffer->sysname, "Windows_NT", sizeof(buffer->sysname));
 #endif
@@ -1671,53 +1671,53 @@ int uv_os_uname(uv_utsname_t* buffer) {
                (unsigned int) os_info.dwMajorVersion,
                (unsigned int) os_info.dwMinorVersion,
                (unsigned int) os_info.dwBuildNumber);
-  assert((size_t)r < sizeof(buffer->release));
+  assert((size_t) r < sizeof(buffer->release));
 
   /* Populate the machine field. */
   GetSystemInfo(&system_info);
 
   switch (system_info.wProcessorArchitecture) {
-    case PROCESSOR_ARCHITECTURE_AMD64:
-      uv__strscpy(buffer->machine, "x86_64", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_IA64:
-      uv__strscpy(buffer->machine, "ia64", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_INTEL:
-      uv__strscpy(buffer->machine, "i386", sizeof(buffer->machine));
+  case PROCESSOR_ARCHITECTURE_AMD64:
+    uv__strscpy(buffer->machine, "x86_64", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_IA64:
+    uv__strscpy(buffer->machine, "ia64", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_INTEL:
+    uv__strscpy(buffer->machine, "i386", sizeof(buffer->machine));
 
-      if (system_info.wProcessorLevel > 3) {
-        processor_level = system_info.wProcessorLevel < 6 ?
-                          system_info.wProcessorLevel : 6;
-        buffer->machine[1] = '0' + processor_level;
-      }
+    if (system_info.wProcessorLevel > 3) {
+      processor_level =
+          system_info.wProcessorLevel < 6 ? system_info.wProcessorLevel : 6;
+      buffer->machine[1] = '0' + processor_level;
+    }
 
-      break;
-    case PROCESSOR_ARCHITECTURE_IA32_ON_WIN64:
-      uv__strscpy(buffer->machine, "i686", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_MIPS:
-      uv__strscpy(buffer->machine, "mips", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_ALPHA:
-    case PROCESSOR_ARCHITECTURE_ALPHA64:
-      uv__strscpy(buffer->machine, "alpha", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_PPC:
-      uv__strscpy(buffer->machine, "powerpc", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_SHX:
-      uv__strscpy(buffer->machine, "sh", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_ARM:
-      uv__strscpy(buffer->machine, "arm", sizeof(buffer->machine));
-      break;
-    case PROCESSOR_ARCHITECTURE_ARM64:
-      uv__strscpy(buffer->machine, "arm64", sizeof(buffer->machine));
-      break;
-    default:
-      uv__strscpy(buffer->machine, "unknown", sizeof(buffer->machine));
-      break;
+    break;
+  case PROCESSOR_ARCHITECTURE_IA32_ON_WIN64:
+    uv__strscpy(buffer->machine, "i686", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_MIPS:
+    uv__strscpy(buffer->machine, "mips", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_ALPHA:
+  case PROCESSOR_ARCHITECTURE_ALPHA64:
+    uv__strscpy(buffer->machine, "alpha", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_PPC:
+    uv__strscpy(buffer->machine, "powerpc", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_SHX:
+    uv__strscpy(buffer->machine, "sh", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_ARM:
+    uv__strscpy(buffer->machine, "arm", sizeof(buffer->machine));
+    break;
+  case PROCESSOR_ARCHITECTURE_ARM64:
+    uv__strscpy(buffer->machine, "arm64", sizeof(buffer->machine));
+    break;
+  default:
+    uv__strscpy(buffer->machine, "unknown", sizeof(buffer->machine));
+    break;
   }
 
   return 0;

@@ -35,8 +35,8 @@ static int uv__random(void* buf, size_t buflen) {
   rc = uv__random_readpath("/dev/urandom", buf, buflen);
 #elif defined(_AIX) || defined(__QNX__)
   rc = uv__random_readpath("/dev/random", buf, buflen);
-#elif defined(__APPLE__) || defined(__OpenBSD__) || \
-     (defined(__ANDROID_API__) && __ANDROID_API__ >= 28)
+#elif defined(__APPLE__) || defined(__OpenBSD__) ||                            \
+    (defined(__ANDROID_API__) && __ANDROID_API__ >= 28)
   rc = uv__random_getentropy(buf, buflen);
   if (rc == UV_ENOSYS)
     rc = uv__random_devurandom(buf, buflen);
@@ -46,19 +46,19 @@ static int uv__random(void* buf, size_t buflen) {
   rc = uv__random_getrandom(buf, buflen);
   if (rc == UV_ENOSYS)
     rc = uv__random_devurandom(buf, buflen);
-# if defined(__linux__)
+#  if defined(__linux__)
   switch (rc) {
-    case UV_EACCES:
-    case UV_EIO:
-    case UV_ELOOP:
-    case UV_EMFILE:
-    case UV_ENFILE:
-    case UV_ENOENT:
-    case UV_EPERM:
-      rc = uv__random_sysctl(buf, buflen);
-      break;
+  case UV_EACCES:
+  case UV_EIO:
+  case UV_ELOOP:
+  case UV_EMFILE:
+  case UV_ENFILE:
+  case UV_ENOENT:
+  case UV_EPERM:
+    rc = uv__random_sysctl(buf, buflen);
+    break;
   }
-# endif
+#  endif
 #elif defined(_WIN32)
   uv__once_init();
   rc = uv__random_winrandom(buf, buflen);
@@ -93,7 +93,7 @@ static void uv__random_done(struct uv__work* w, int status) {
 
 int uv_random(uv_loop_t* loop,
               uv_random_t* req,
-              void *buf,
+              void* buf,
               size_t buflen,
               unsigned flags,
               uv_random_cb cb) {

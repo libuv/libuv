@@ -28,7 +28,7 @@
 
 
 static int udp_options_test(const struct sockaddr* addr) {
-  static int invalid_ttls[] = { -1, 0, 256 };
+  static int invalid_ttls[] = {-1, 0, 256};
   uv_loop_t* loop;
   uv_udp_t h;
   int i, r;
@@ -38,7 +38,7 @@ static int udp_options_test(const struct sockaddr* addr) {
   r = uv_udp_init(loop, &h);
   ASSERT_OK(r);
 
-  uv_unref((uv_handle_t*)&h); /* don't keep the loop alive */
+  uv_unref((uv_handle_t*) &h); /* don't keep the loop alive */
 
   r = uv_udp_bind(&h, addr, 0);
   ASSERT_OK(r);

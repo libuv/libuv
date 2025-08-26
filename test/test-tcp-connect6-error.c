@@ -63,7 +63,7 @@ TEST_IMPL(tcp_connect6_error_fault) {
                      connect_cb);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -93,7 +93,7 @@ TEST_IMPL(tcp_connect6_link_local) {
    * Fixed in https://github.com/qemu/qemu/commit/44cf6731d6b.
    */
   RETURN_SKIP("Test does not currently work in QEMU");
-#endif  /* defined(__QEMU__) */
+#endif /* defined(__QEMU__) */
 
   /* Check there's an interface that routes link-local (fe80::/10) traffic. */
   ASSERT_OK(uv_interface_addresses(&ifs, &n));
@@ -116,10 +116,8 @@ TEST_IMPL(tcp_connect6_link_local) {
    *    connection attempt to the address above, i.e., we don't expect the
    *    connect() system call to fail synchronously.
    */
-  ASSERT_OK(uv_tcp_connect(&req,
-                           &server,
-                           (struct sockaddr*) &addr,
-                           connect_cb));
+  ASSERT_OK(
+      uv_tcp_connect(&req, &server, (struct sockaddr*) &addr, connect_cb));
 
   uv_close((uv_handle_t*) &server, NULL);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));

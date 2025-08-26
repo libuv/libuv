@@ -34,16 +34,26 @@
 
 int uv__getaddrinfo_translate_error(int sys_err) {
   switch (sys_err) {
-    case 0:                       return 0;
-    case WSATRY_AGAIN:            return UV_EAI_AGAIN;
-    case WSAEINVAL:               return UV_EAI_BADFLAGS;
-    case WSANO_RECOVERY:          return UV_EAI_FAIL;
-    case WSAEAFNOSUPPORT:         return UV_EAI_FAMILY;
-    case WSA_NOT_ENOUGH_MEMORY:   return UV_EAI_MEMORY;
-    case WSAHOST_NOT_FOUND:       return UV_EAI_NONAME;
-    case WSATYPE_NOT_FOUND:       return UV_EAI_SERVICE;
-    case WSAESOCKTNOSUPPORT:      return UV_EAI_SOCKTYPE;
-    default:                      return uv_translate_sys_error(sys_err);
+  case 0:
+    return 0;
+  case WSATRY_AGAIN:
+    return UV_EAI_AGAIN;
+  case WSAEINVAL:
+    return UV_EAI_BADFLAGS;
+  case WSANO_RECOVERY:
+    return UV_EAI_FAIL;
+  case WSAEAFNOSUPPORT:
+    return UV_EAI_FAMILY;
+  case WSA_NOT_ENOUGH_MEMORY:
+    return UV_EAI_MEMORY;
+  case WSAHOST_NOT_FOUND:
+    return UV_EAI_NONAME;
+  case WSATYPE_NOT_FOUND:
+    return UV_EAI_SERVICE;
+  case WSAESOCKTNOSUPPORT:
+    return UV_EAI_SOCKTYPE;
+  default:
+    return uv_translate_sys_error(sys_err);
   }
 }
 
@@ -52,23 +62,23 @@ int uv__getaddrinfo_translate_error(int sys_err) {
  * MinGW is missing this
  */
 #if !defined(_MSC_VER) && !defined(__MINGW64_VERSION_MAJOR)
-  typedef struct addrinfoW {
-    int ai_flags;
-    int ai_family;
-    int ai_socktype;
-    int ai_protocol;
-    size_t ai_addrlen;
-    WCHAR* ai_canonname;
-    struct sockaddr* ai_addr;
-    struct addrinfoW* ai_next;
-  } ADDRINFOW, *PADDRINFOW;
+typedef struct addrinfoW {
+  int ai_flags;
+  int ai_family;
+  int ai_socktype;
+  int ai_protocol;
+  size_t ai_addrlen;
+  WCHAR* ai_canonname;
+  struct sockaddr* ai_addr;
+  struct addrinfoW* ai_next;
+} ADDRINFOW, *PADDRINFOW;
 
-  DECLSPEC_IMPORT int WSAAPI GetAddrInfoW(const WCHAR* node,
-                                          const WCHAR* service,
-                                          const ADDRINFOW* hints,
-                                          PADDRINFOW* result);
+DECLSPEC_IMPORT int WSAAPI GetAddrInfoW(const WCHAR* node,
+                                        const WCHAR* service,
+                                        const ADDRINFOW* hints,
+                                        PADDRINFOW* result);
 
-  DECLSPEC_IMPORT void WSAAPI FreeAddrInfoW(PADDRINFOW pAddrInfo);
+DECLSPEC_IMPORT void WSAAPI FreeAddrInfoW(PADDRINFOW pAddrInfo);
 #endif
 
 static size_t align_offset(size_t off, size_t alignment) {
@@ -76,7 +86,7 @@ static size_t align_offset(size_t off, size_t alignment) {
 }
 
 #ifndef NDIS_IF_MAX_STRING_SIZE
-#define NDIS_IF_MAX_STRING_SIZE IF_MAX_STRING_SIZE
+#  define NDIS_IF_MAX_STRING_SIZE IF_MAX_STRING_SIZE
 #endif
 
 static void uv__getaddrinfo_work(struct uv__work* w) {
@@ -124,7 +134,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
       cur_off = align_offset(cur_off, sizeof(void*));
       cur_off += sizeof(struct addrinfo);
       /* TODO: This alignment could be smaller, if we could
-	           portably get the alignment for sockaddr. */
+             portably get the alignment for sockaddr. */
       cur_off = align_offset(cur_off, sizeof(void*));
       cur_off += addrinfow_ptr->ai_addrlen;
       if (addrinfow_ptr->ai_canonname != NULL) {
@@ -145,7 +155,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
 
     /* do conversions */
     if (alloc_ptr != NULL) {
-      struct addrinfo *addrinfo_ptr = (struct addrinfo *)alloc_ptr;
+      struct addrinfo* addrinfo_ptr = (struct addrinfo*) alloc_ptr;
       cur_off = 0;
       addrinfow_ptr = req->addrinfow;
 
@@ -164,12 +174,12 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
 
         /* copy sockaddr */
         if (addrinfo_ptr->ai_addrlen > 0) {
-          cur_off = align_offset(cur_off, sizeof(void *));
-          addrinfo_ptr->ai_addr = (struct sockaddr *)(alloc_ptr + cur_off);
+          cur_off = align_offset(cur_off, sizeof(void*));
+          addrinfo_ptr->ai_addr = (struct sockaddr*) (alloc_ptr + cur_off);
           cur_off += addrinfo_ptr->ai_addrlen;
           assert(cur_off <= addrinfo_len);
           memcpy(addrinfo_ptr->ai_addr,
-	             addrinfow_ptr->ai_addr,
+                 addrinfow_ptr->ai_addr,
                  addrinfo_ptr->ai_addrlen);
         }
 
@@ -180,7 +190,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
           int r = uv__copy_utf16_to_utf8(addrinfow_ptr->ai_canonname,
                                          -1,
                                          addrinfo_ptr->ai_canonname,
-                                         (size_t*)&name_len);
+                                         (size_t*) &name_len);
           assert(r == 0);
           cur_off += name_len + 1;
           assert(cur_off <= addrinfo_len);
@@ -190,12 +200,13 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
         addrinfow_ptr = addrinfow_ptr->ai_next;
         if (addrinfow_ptr == NULL)
           break;
-        cur_off = align_offset(cur_off, sizeof(void *));
-        struct addrinfo *next_addrinfo_ptr = (struct addrinfo *)(alloc_ptr + cur_off);
+        cur_off = align_offset(cur_off, sizeof(void*));
+        struct addrinfo* next_addrinfo_ptr =
+            (struct addrinfo*) (alloc_ptr + cur_off);
         addrinfo_ptr->ai_next = next_addrinfo_ptr;
         addrinfo_ptr = next_addrinfo_ptr;
       }
-      req->addrinfo = (struct addrinfo*)alloc_ptr;
+      req->addrinfo = (struct addrinfo*) alloc_ptr;
     } else {
       req->retcode = UV_EAI_MEMORY;
     }
@@ -217,7 +228,7 @@ complete:
 
 
 void uv_freeaddrinfo(struct addrinfo* ai) {
-  char* alloc_ptr = (char*)ai;
+  char* alloc_ptr = (char*) ai;
 
   /* release copied result memory */
   uv__free(alloc_ptr);
@@ -278,7 +289,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   if (service != NULL) {
     rc = uv_wtf8_length_as_utf16(service);
     if (rc < 0)
-       return rc;
+      return rc;
     servicesize = rc;
     off = align_offset(off, sizeof(WCHAR));
     serviceoff = off;
@@ -286,7 +297,7 @@ int uv_getaddrinfo(uv_loop_t* loop,
   }
 
   if (hints != NULL) {
-    off = align_offset(off, sizeof(void *));
+    off = align_offset(off, sizeof(void*));
     hintoff = off;
     hintssize = sizeof(struct addrinfoW);
     off += hintssize;

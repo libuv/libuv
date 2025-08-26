@@ -40,9 +40,9 @@ static int timer_close_cb_called;
 
 
 static void close_cb(uv_handle_t* handle) {
-  if (handle == (uv_handle_t*)&conn)
+  if (handle == (uv_handle_t*) &conn)
     conn_close_cb_called++;
-  else if (handle == (uv_handle_t*)&timer)
+  else if (handle == (uv_handle_t*) &timer)
     timer_close_cb_called++;
   else
     ASSERT(0 && "bad handle in close_cb");
@@ -62,13 +62,13 @@ static void timer_cb(uv_timer_t* handle) {
   uv_buf_t buf;
   int r;
 
-  uv_close((uv_handle_t*)handle, close_cb);
+  uv_close((uv_handle_t*) handle, close_cb);
 
   buf = uv_buf_init("TEST", 4);
-  r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
+  r = uv_write(&write_req, (uv_stream_t*) &conn, &buf, 1, write_cb);
   ASSERT_OK(r);
 
-  r = uv_shutdown(&shutdown_req, (uv_stream_t*)&conn, shutdown_cb);
+  r = uv_shutdown(&shutdown_req, (uv_stream_t*) &conn, shutdown_cb);
   ASSERT_OK(r);
 }
 
@@ -83,7 +83,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_OK(status);
   connect_cb_called++;
 
-  r = uv_read_start((uv_stream_t*)&conn, alloc_cb, read_cb);
+  r = uv_read_start((uv_stream_t*) &conn, alloc_cb, read_cb);
   ASSERT_OK(r);
 }
 
@@ -97,7 +97,7 @@ static void write_cb(uv_write_t* req, int status) {
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT_OK(status);
   shutdown_cb_called++;
-  uv_close((uv_handle_t*)&conn, close_cb);
+  uv_close((uv_handle_t*) &conn, close_cb);
 }
 
 

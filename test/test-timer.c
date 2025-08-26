@@ -56,7 +56,7 @@ static void once_cb(uv_timer_t* handle) {
 
   once_cb_called++;
 
-  uv_close((uv_handle_t*)handle, once_close_cb);
+  uv_close((uv_handle_t*) handle, once_close_cb);
 
   /* Just call this randomly for the code coverage. */
   uv_update_time(uv_default_loop());
@@ -79,9 +79,8 @@ static void twice_cb(uv_timer_t* handle) {
 
   twice_cb_called++;
 
-  uv_close((uv_handle_t*)handle, twice_close_cb);
+  uv_close((uv_handle_t*) handle, twice_close_cb);
 }
-
 
 
 static void repeat_close_cb(uv_handle_t* handle) {
@@ -102,7 +101,7 @@ static void repeat_cb(uv_timer_t* handle) {
   repeat_cb_called++;
 
   if (repeat_cb_called == 5) {
-    uv_close((uv_handle_t*)handle, repeat_close_cb);
+    uv_close((uv_handle_t*) handle, repeat_close_cb);
   }
 }
 
@@ -114,7 +113,7 @@ static void never_cb(uv_timer_t* handle) {
 
 TEST_IMPL(timer) {
   uv_timer_t once_timers[10];
-  uv_timer_t *once;
+  uv_timer_t* once;
   uv_timer_t repeat, never;
   unsigned int i;
   int r;
@@ -144,7 +143,7 @@ TEST_IMPL(timer) {
   ASSERT_OK(r);
   r = uv_timer_stop(&never);
   ASSERT_OK(r);
-  uv_unref((uv_handle_t*)&never);
+  uv_unref((uv_handle_t*) &never);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -194,13 +193,13 @@ TEST_IMPL(timer_init) {
 }
 
 
-static void order_cb_a(uv_timer_t *handle) {
-  ASSERT_EQ(order_cb_called++, *(int*)handle->data);
+static void order_cb_a(uv_timer_t* handle) {
+  ASSERT_EQ(order_cb_called++, *(int*) handle->data);
 }
 
 
-static void order_cb_b(uv_timer_t *handle) {
-  ASSERT_EQ(order_cb_called++, *(int*)handle->data);
+static void order_cb_b(uv_timer_t* handle) {
+  ASSERT_EQ(order_cb_called++, *(int*) handle->data);
 }
 
 
@@ -257,7 +256,7 @@ TEST_IMPL(timer_zero_timeout) {
   loop = uv_default_loop();
   ASSERT_OK(uv_timer_init(loop, &timer));
   ASSERT_OK(uv_timer_start(&timer, zero_timeout_cb, 0, 0));
-  ASSERT_EQ(1, uv_run(loop, UV_RUN_DEFAULT));  /* because of uv_stop() */
+  ASSERT_EQ(1, uv_run(loop, UV_RUN_DEFAULT)); /* because of uv_stop() */
   ASSERT_EQ(1, zero_timeout_cb_calls);
   uv_close((uv_handle_t*) &timer, NULL);
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
@@ -281,10 +280,7 @@ TEST_IMPL(timer_huge_timeout) {
   ASSERT_OK(uv_timer_init(uv_default_loop(), &huge_timer1));
   ASSERT_OK(uv_timer_init(uv_default_loop(), &huge_timer2));
   ASSERT_OK(uv_timer_start(&tiny_timer, tiny_timer_cb, 1, 0));
-  ASSERT_OK(uv_timer_start(&huge_timer1,
-                           tiny_timer_cb,
-                           0xffffffffffffLL,
-                           0));
+  ASSERT_OK(uv_timer_start(&huge_timer1, tiny_timer_cb, 0xffffffffffffLL, 0));
   ASSERT_OK(uv_timer_start(&huge_timer2, tiny_timer_cb, (uint64_t) -1, 0));
   ASSERT_UINT64_EQ(1, uv_timer_get_due_in(&tiny_timer));
   ASSERT_UINT64_EQ(281474976710655, uv_timer_get_due_in(&huge_timer1));
@@ -353,7 +349,7 @@ TEST_IMPL(timer_is_closing) {
   uv_timer_t handle;
 
   ASSERT_OK(uv_timer_init(uv_default_loop(), &handle));
-  uv_close((uv_handle_t *)&handle, NULL);
+  uv_close((uv_handle_t*) &handle, NULL);
 
   ASSERT_EQ(UV_EINVAL, uv_timer_start(&handle, never_cb, 100, 100));
 
@@ -389,10 +385,7 @@ TEST_IMPL(timer_early_check) {
   timer_early_check_expected_time = uv_now(uv_default_loop()) + timeout_ms;
 
   ASSERT_OK(uv_timer_init(uv_default_loop(), &timer_handle));
-  ASSERT_OK(uv_timer_start(&timer_handle,
-                           timer_early_check_cb,
-                           timeout_ms,
-                           0));
+  ASSERT_OK(uv_timer_start(&timer_handle, timer_early_check_cb, timeout_ms, 0));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
   uv_close((uv_handle_t*) &timer_handle, NULL);

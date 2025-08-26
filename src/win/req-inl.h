@@ -28,57 +28,53 @@
 #include "internal.h"
 
 
-#define SET_REQ_STATUS(req, status)                                     \
-   (req)->u.io.overlapped.Internal = (ULONG_PTR) (status)
+#define SET_REQ_STATUS(req, status)                                            \
+  (req)->u.io.overlapped.Internal = (ULONG_PTR) (status)
 
-#define SET_REQ_ERROR(req, error)                                       \
+#define SET_REQ_ERROR(req, error)                                              \
   SET_REQ_STATUS((req), NTSTATUS_FROM_WIN32((error)))
 
 /* Note: used open-coded in UV_REQ_INIT() because of a circular dependency
  * between src/uv-common.h and src/win/internal.h.
  */
-#define SET_REQ_SUCCESS(req)                                            \
-  SET_REQ_STATUS((req), STATUS_SUCCESS)
+#define SET_REQ_SUCCESS(req) SET_REQ_STATUS((req), STATUS_SUCCESS)
 
-#define GET_REQ_STATUS(req)                                             \
-  ((NTSTATUS) (req)->u.io.overlapped.Internal)
+#define GET_REQ_STATUS(req) ((NTSTATUS) (req)->u.io.overlapped.Internal)
 
-#define REQ_SUCCESS(req)                                                \
-  (NT_SUCCESS(GET_REQ_STATUS((req))))
+#define REQ_SUCCESS(req) (NT_SUCCESS(GET_REQ_STATUS((req))))
 
-#define GET_REQ_ERROR(req)                                              \
-  (pRtlNtStatusToDosError(GET_REQ_STATUS((req))))
+#define GET_REQ_ERROR(req) (pRtlNtStatusToDosError(GET_REQ_STATUS((req))))
 
-#define GET_REQ_SOCK_ERROR(req)                                         \
+#define GET_REQ_SOCK_ERROR(req)                                                \
   (uv__ntstatus_to_winsock_error(GET_REQ_STATUS((req))))
 
 
-#define REGISTER_HANDLE_REQ(loop, handle)                               \
-  do {                                                                  \
-    INCREASE_ACTIVE_COUNT((loop), (handle));                            \
-    uv__req_register((loop));                                           \
+#define REGISTER_HANDLE_REQ(loop, handle)                                      \
+  do {                                                                         \
+    INCREASE_ACTIVE_COUNT((loop), (handle));                                   \
+    uv__req_register((loop));                                                  \
   } while (0)
 
-#define UNREGISTER_HANDLE_REQ(loop, handle)                             \
-  do {                                                                  \
-    DECREASE_ACTIVE_COUNT((loop), (handle));                            \
-    uv__req_unregister((loop));                                         \
+#define UNREGISTER_HANDLE_REQ(loop, handle)                                    \
+  do {                                                                         \
+    DECREASE_ACTIVE_COUNT((loop), (handle));                                   \
+    uv__req_unregister((loop));                                                \
   } while (0)
 
 
-#define UV_SUCCEEDED_WITHOUT_IOCP(result)                               \
+#define UV_SUCCEEDED_WITHOUT_IOCP(result)                                      \
   ((result) && (handle->flags & UV_HANDLE_SYNC_BYPASS_IOCP))
 
-#define UV_SUCCEEDED_WITH_IOCP(result)                                  \
+#define UV_SUCCEEDED_WITH_IOCP(result)                                         \
   ((result) || (GetLastError() == ERROR_IO_PENDING))
 
 
-#define POST_COMPLETION_FOR_REQ(loop, req)                              \
-  if (!PostQueuedCompletionStatus((loop)->iocp,                         \
-                                  0,                                    \
-                                  0,                                    \
-                                  &((req)->u.io.overlapped))) {         \
-    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");       \
+#define POST_COMPLETION_FOR_REQ(loop, req)                                     \
+  if (!PostQueuedCompletionStatus((loop)->iocp,                                \
+                                  0,                                           \
+                                  0,                                           \
+                                  &((req)->u.io.overlapped))) {                \
+    uv_fatal_error(GetLastError(), "PostQueuedCompletionStatus");              \
   }
 
 void uv__insert_pending_req(uv_loop_t* loop, uv_req_t* req);

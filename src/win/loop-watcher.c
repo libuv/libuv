@@ -35,86 +35,86 @@ void uv__loop_watcher_endgame(uv_loop_t* loop, uv_handle_t* handle) {
 }
 
 
-#define UV_LOOP_WATCHER_DEFINE(name, NAME)                                    \
-  int uv_##name##_init(uv_loop_t* loop, uv_##name##_t* handle) {              \
-    uv__handle_init(loop, (uv_handle_t*) handle, UV_##NAME);                  \
-                                                                              \
-    return 0;                                                                 \
-  }                                                                           \
-                                                                              \
-                                                                              \
-  int uv_##name##_start(uv_##name##_t* handle, uv_##name##_cb cb) {           \
-    uv_loop_t* loop = handle->loop;                                           \
-    uv_##name##_t* old_head;                                                  \
-                                                                              \
-    assert(handle->type == UV_##NAME);                                        \
-                                                                              \
-    if (uv__is_active(handle))                                                \
-      return 0;                                                               \
-                                                                              \
-    if (cb == NULL)                                                           \
-      return UV_EINVAL;                                                       \
-                                                                              \
-    old_head = loop->name##_handles;                                          \
-                                                                              \
-    handle->name##_next = old_head;                                           \
-    handle->name##_prev = NULL;                                               \
-                                                                              \
-    if (old_head) {                                                           \
-      old_head->name##_prev = handle;                                         \
-    }                                                                         \
-                                                                              \
-    loop->name##_handles = handle;                                            \
-                                                                              \
-    handle->name##_cb = cb;                                                   \
-    uv__handle_start(handle);                                                 \
-                                                                              \
-    return 0;                                                                 \
-  }                                                                           \
-                                                                              \
-                                                                              \
-  int uv_##name##_stop(uv_##name##_t* handle) {                               \
-    uv_loop_t* loop = handle->loop;                                           \
-                                                                              \
-    assert(handle->type == UV_##NAME);                                        \
-                                                                              \
-    if (!uv__is_active(handle))                                               \
-      return 0;                                                               \
-                                                                              \
-    /* Update loop head if needed */                                          \
-    if (loop->name##_handles == handle) {                                     \
-      loop->name##_handles = handle->name##_next;                             \
-    }                                                                         \
-                                                                              \
-    /* Update the iterator-next pointer of needed */                          \
-    if (loop->next_##name##_handle == handle) {                               \
-      loop->next_##name##_handle = handle->name##_next;                       \
-    }                                                                         \
-                                                                              \
-    if (handle->name##_prev) {                                                \
-      handle->name##_prev->name##_next = handle->name##_next;                 \
-    }                                                                         \
-    if (handle->name##_next) {                                                \
-      handle->name##_next->name##_prev = handle->name##_prev;                 \
-    }                                                                         \
-                                                                              \
-    uv__handle_stop(handle);                                                  \
-                                                                              \
-    return 0;                                                                 \
-  }                                                                           \
-                                                                              \
-                                                                              \
-  void uv__##name##_invoke(uv_loop_t* loop) {                                 \
-    uv_##name##_t* handle;                                                    \
-                                                                              \
-    (loop)->next_##name##_handle = (loop)->name##_handles;                    \
-                                                                              \
-    while ((loop)->next_##name##_handle != NULL) {                            \
-      handle = (loop)->next_##name##_handle;                                  \
-      (loop)->next_##name##_handle = handle->name##_next;                     \
-                                                                              \
-      handle->name##_cb(handle);                                              \
-    }                                                                         \
+#define UV_LOOP_WATCHER_DEFINE(name, NAME)                                     \
+  int uv_##name##_init(uv_loop_t* loop, uv_##name##_t* handle) {               \
+    uv__handle_init(loop, (uv_handle_t*) handle, UV_##NAME);                   \
+                                                                               \
+    return 0;                                                                  \
+  }                                                                            \
+                                                                               \
+                                                                               \
+  int uv_##name##_start(uv_##name##_t* handle, uv_##name##_cb cb) {            \
+    uv_loop_t* loop = handle->loop;                                            \
+    uv_##name##_t* old_head;                                                   \
+                                                                               \
+    assert(handle->type == UV_##NAME);                                         \
+                                                                               \
+    if (uv__is_active(handle))                                                 \
+      return 0;                                                                \
+                                                                               \
+    if (cb == NULL)                                                            \
+      return UV_EINVAL;                                                        \
+                                                                               \
+    old_head = loop->name##_handles;                                           \
+                                                                               \
+    handle->name##_next = old_head;                                            \
+    handle->name##_prev = NULL;                                                \
+                                                                               \
+    if (old_head) {                                                            \
+      old_head->name##_prev = handle;                                          \
+    }                                                                          \
+                                                                               \
+    loop->name##_handles = handle;                                             \
+                                                                               \
+    handle->name##_cb = cb;                                                    \
+    uv__handle_start(handle);                                                  \
+                                                                               \
+    return 0;                                                                  \
+  }                                                                            \
+                                                                               \
+                                                                               \
+  int uv_##name##_stop(uv_##name##_t* handle) {                                \
+    uv_loop_t* loop = handle->loop;                                            \
+                                                                               \
+    assert(handle->type == UV_##NAME);                                         \
+                                                                               \
+    if (!uv__is_active(handle))                                                \
+      return 0;                                                                \
+                                                                               \
+    /* Update loop head if needed */                                           \
+    if (loop->name##_handles == handle) {                                      \
+      loop->name##_handles = handle->name##_next;                              \
+    }                                                                          \
+                                                                               \
+    /* Update the iterator-next pointer of needed */                           \
+    if (loop->next_##name##_handle == handle) {                                \
+      loop->next_##name##_handle = handle->name##_next;                        \
+    }                                                                          \
+                                                                               \
+    if (handle->name##_prev) {                                                 \
+      handle->name##_prev->name##_next = handle->name##_next;                  \
+    }                                                                          \
+    if (handle->name##_next) {                                                 \
+      handle->name##_next->name##_prev = handle->name##_prev;                  \
+    }                                                                          \
+                                                                               \
+    uv__handle_stop(handle);                                                   \
+                                                                               \
+    return 0;                                                                  \
+  }                                                                            \
+                                                                               \
+                                                                               \
+  void uv__##name##_invoke(uv_loop_t* loop) {                                  \
+    uv_##name##_t* handle;                                                     \
+                                                                               \
+    (loop)->next_##name##_handle = (loop)->name##_handles;                     \
+                                                                               \
+    while ((loop)->next_##name##_handle != NULL) {                             \
+      handle = (loop)->next_##name##_handle;                                   \
+      (loop)->next_##name##_handle = handle->name##_next;                      \
+                                                                               \
+      handle->name##_cb(handle);                                               \
+    }                                                                          \
   }
 
 UV_LOOP_WATCHER_DEFINE(prepare, PREPARE)

@@ -26,8 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_HANDLE(handle) \
-  ASSERT_NE((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client, 0)
+#define CHECK_HANDLE(handle)                                                   \
+  ASSERT_NE(                                                                   \
+      (uv_udp_t*) (handle) == &server || (uv_udp_t*) (handle) == &client,      \
+      0)
 
 static uv_udp_t server;
 static uv_udp_t client;
@@ -115,14 +117,14 @@ TEST_IMPL(udp_try_send) {
   uv_buf_t* bufs[] = {&buf, &buf};
   unsigned int nbufs[] = {1, 1};
   struct sockaddr* addrs[] = {
-    (struct sockaddr*) &addr,
-    (struct sockaddr*) &addr,
+      (struct sockaddr*) &addr,
+      (struct sockaddr*) &addr,
   };
 
   ASSERT_EQ(0, sv_recv_cb_called);
 
   buf = uv_buf_init("HELO", 4);
-  r = uv_udp_try_send2(&client, 2, bufs, nbufs, addrs, /*flags*/0);
+  r = uv_udp_try_send2(&client, 2, bufs, nbufs, addrs, /*flags*/ 0);
   ASSERT_EQ(r, 2);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

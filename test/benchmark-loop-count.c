@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define NUM_TICKS (2 * 1000 * 1000)
+#define NUM_TICKS  (2 * 1000 * 1000)
 #define NUM_TICKS2 (2 * 1000 * 1000 * 100)
 
 static unsigned long ticks;
@@ -47,7 +47,7 @@ static void idle_alive_cb(uv_idle_t* handle) {
       abort();
   }
 
-  *(int*)handle->data = ticks;
+  *(int*) handle->data = ticks;
   uv_idle_stop(handle);
 }
 
@@ -76,7 +76,8 @@ BENCHMARK_IMPL(loop_count) {
 
   ASSERT_UINT64_EQ(ticks, NUM_TICKS);
 
-  fprintf(stderr, "loop_count: %d ticks in %.2fs (%.0f/s)\n",
+  fprintf(stderr,
+          "loop_count: %d ticks in %.2fs (%.0f/s)\n",
           NUM_TICKS,
           ns / 1e9,
           NUM_TICKS / (ns / 1e9));
@@ -123,7 +124,8 @@ BENCHMARK_IMPL(loop_alive) {
 
   ASSERT_EQ(ticks, NUM_TICKS2);
 
-  fprintf(stderr, "loop_alive: %d ticks in %.2fs (%.0f/s)\n",
+  fprintf(stderr,
+          "loop_alive: %d ticks in %.2fs (%.0f/s)\n",
           NUM_TICKS2,
           ns / 1e9,
           NUM_TICKS2 / (ns / 1e9));

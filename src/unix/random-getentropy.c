@@ -25,7 +25,7 @@
 #include <stddef.h>
 #include <dlfcn.h>
 
-typedef int (*uv__getentropy_cb)(void *, size_t);
+typedef int (*uv__getentropy_cb)(void*, size_t);
 
 static uv__getentropy_cb uv__getentropy;
 static uv_once_t once = UV_ONCE_INIT;
@@ -47,10 +47,10 @@ int uv__random_getentropy(void* buf, size_t buflen) {
 
   /* getentropy() returns an error for requests > 256 bytes. */
   for (pos = 0, stride = 256; pos + stride < buflen; pos += stride)
-    if (uv__getentropy((char *) buf + pos, stride))
+    if (uv__getentropy((char*) buf + pos, stride))
       return UV__ERR(errno);
 
-  if (uv__getentropy((char *) buf + pos, buflen - pos))
+  if (uv__getentropy((char*) buf + pos, buflen - pos))
     return UV__ERR(errno);
 
   return 0;

@@ -72,7 +72,7 @@ static void check_cb(uv_check_t* handle) {
    * packets can get dropped so don't assume an exact count.
    */
   ASSERT_GE(recv_cnt, 1);
-  ASSERT_LE(recv_cnt, N+1);
+  ASSERT_LE(recv_cnt, N + 1);
   check_cb_called = 1;
 
   /* we are done */
@@ -85,7 +85,7 @@ static void check_cb(uv_check_t* handle) {
 
 TEST_IMPL(udp_recv_in_a_row) {
   int i, r;
-  
+
   ASSERT_OK(uv_check_init(uv_default_loop(), &check_handle));
   ASSERT_OK(uv_check_start(&check_handle, check_cb));
 
@@ -99,24 +99,18 @@ TEST_IMPL(udp_recv_in_a_row) {
 
   /* send N-1 udp packets */
   buf = uv_buf_init(send_data, sizeof(send_data));
-  for (i = 0; i < N - 1; i ++) {
-    r = uv_udp_try_send(&client,
-                        &buf,
-                        1,
-                        (const struct sockaddr*) &addr);
+  for (i = 0; i < N - 1; i++) {
+    r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
     ASSERT_EQ(sizeof(send_data), r);
   }
 
   /* send an empty udp packet */
   buf = uv_buf_init(NULL, 0);
-  r = uv_udp_try_send(&client,
-                      &buf,
-                      1,
-                      (const struct sockaddr*) &addr);
+  r = uv_udp_try_send(&client, &buf, 1, (const struct sockaddr*) &addr);
   ASSERT_OK(r);
 
   /* check_cb() asserts that the N packets can be received
-   * before it gets called. 
+   * before it gets called.
    */
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));

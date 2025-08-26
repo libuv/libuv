@@ -23,11 +23,11 @@
 #include "task.h"
 
 #ifndef MILLISEC
-# define MILLISEC 1000
+#  define MILLISEC 1000
 #endif
 
 #ifndef NANOSEC
-# define NANOSEC ((uint64_t) 1e9)
+#  define NANOSEC ((uint64_t) 1e9)
 #endif
 
 
@@ -59,7 +59,7 @@ TEST_IMPL(clock_gettime) {
   ASSERT_EQ(UV_EFAULT, uv_clock_gettime(1337, NULL));
   ASSERT_OK(uv_clock_gettime(UV_CLOCK_MONOTONIC, &t));
   ASSERT_OK(uv_clock_gettime(UV_CLOCK_REALTIME, &t));
-  ASSERT_GT(1682500000000ll, t.tv_sec);  /* 2023-04-26T09:06:40.000Z */
+  ASSERT_GT(1682500000000ll, t.tv_sec); /* 2023-04-26T09:06:40.000Z */
 
   return 0;
 }

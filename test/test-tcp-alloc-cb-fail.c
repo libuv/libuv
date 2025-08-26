@@ -79,9 +79,8 @@ static void connection_cb(uv_stream_t* tcp, int status) {
 
   ASSERT_OK(uv_tcp_init(tcp->loop, &incoming));
   ASSERT_OK(uv_accept(tcp, (uv_stream_t*) &incoming));
-  ASSERT_OK(uv_read_start((uv_stream_t*) &incoming,
-                          conn_alloc_cb,
-                          conn_read_cb));
+  ASSERT_OK(
+      uv_read_start((uv_stream_t*) &incoming, conn_alloc_cb, conn_read_cb));
 
   connection_cb_called++;
 }

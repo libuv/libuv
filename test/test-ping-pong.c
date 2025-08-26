@@ -29,9 +29,9 @@
 static int completed_pingers = 0;
 
 #if defined(__CYGWIN__) || defined(__MSYS__) || defined(__MVS__)
-#define NUM_PINGS 100 /* fewer pings to avoid timeout */
+#  define NUM_PINGS 100 /* fewer pings to avoid timeout */
 #else
-#define NUM_PINGS 1000
+#  define NUM_PINGS 1000
 #endif
 
 static char PING[] = "PING\n";
@@ -201,13 +201,12 @@ static void pinger_on_connect(uv_connect_t* req, int status) {
 
   ASSERT_EQ(1, uv_is_readable(req->handle));
   ASSERT_EQ(1, uv_is_writable(req->handle));
-  ASSERT_OK(uv_is_closing((uv_handle_t *) req->handle));
+  ASSERT_OK(uv_is_closing((uv_handle_t*) req->handle));
 
   pinger_write_ping(pinger);
 
-  ASSERT_OK(uv_read_start((uv_stream_t*) req->handle,
-                          alloc_cb,
-                          pinger_read_cb));
+  ASSERT_OK(
+      uv_read_start((uv_stream_t*) req->handle, alloc_cb, pinger_read_cb));
 }
 
 
@@ -293,8 +292,10 @@ static void pipe_pinger_new(int vectored_writes) {
 
   /* We are never doing multiple reads/connects at a time anyway, so these
    * handles can be pre-initialized. */
-  uv_pipe_connect(&pinger->connect_req, &pinger->stream.pipe, TEST_PIPENAME,
-      pinger_on_connect);
+  uv_pipe_connect(&pinger->connect_req,
+                  &pinger->stream.pipe,
+                  TEST_PIPENAME,
+                  pinger_on_connect);
 
   /* Synchronous connect callbacks are not allowed. */
   ASSERT_OK(pinger_on_connect_count);
@@ -314,8 +315,9 @@ static void socketpair_pinger_new(int vectored_writes) {
   pinger->pong = PONG;
 
   /* Try to make a socketpair and do NUM_PINGS ping-pongs. */
-  (void)uv_default_loop(); /* ensure WSAStartup has been performed */
-  ASSERT_OK(uv_socketpair(SOCK_STREAM, 0, fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE));
+  (void) uv_default_loop(); /* ensure WSAStartup has been performed */
+  ASSERT_OK(
+      uv_socketpair(SOCK_STREAM, 0, fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE));
 #ifndef _WIN32
   /* On Windows, this is actually a UV_TCP, but libuv doesn't detect that. */
   ASSERT_EQ(uv_guess_handle((uv_file) fds[0]), UV_NAMED_PIPE);
@@ -337,9 +339,7 @@ static void socketpair_pinger_new(int vectored_writes) {
   ASSERT_OK(uv_read_start((uv_stream_t*) &pinger->stream.tcp,
                           alloc_cb,
                           pinger_read_cb));
-  ASSERT_OK(uv_read_start((uv_stream_t*) ponger,
-                          alloc_cb,
-                          ponger_read_cb));
+  ASSERT_OK(uv_read_start((uv_stream_t*) ponger, alloc_cb, ponger_read_cb));
 }
 
 
@@ -367,7 +367,7 @@ static void pipe2_pinger_new(int vectored_writes) {
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pinger->stream.pipe, 0));
   ASSERT_OK(uv_pipe_open(&pinger->stream.pipe, fds[1]));
   pinger->stream.pipe.data = pinger; /* record for close_cb */
-  ponger->data = pinger; /* record for read_cb */
+  ponger->data = pinger;             /* record for read_cb */
 
   pinger_write_ping(pinger);
 

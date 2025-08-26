@@ -26,8 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_HANDLE(handle) \
-  ASSERT_NE((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client, 0)
+#define CHECK_HANDLE(handle)                                                   \
+  ASSERT_NE(                                                                   \
+      (uv_udp_t*) (handle) == &server || (uv_udp_t*) (handle) == &client,      \
+      0)
 
 #define MULTICAST_ADDR "239.255.0.1"
 
@@ -73,7 +75,7 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
 static int do_send(uv_udp_send_t* send_req) {
   uv_buf_t buf;
   struct sockaddr_in addr;
-  
+
   buf = uv_buf_init("PING", 4);
 
   ASSERT_OK(uv_ip4_addr(MULTICAST_ADDR, TEST_PORT, &addr));
@@ -119,21 +121,27 @@ static void cl_recv_cb(uv_udp_t* handle,
     int r;
     char source_addr[64];
 
-    r = uv_ip4_name((const struct sockaddr_in*)addr, source_addr, sizeof(source_addr));
+    r = uv_ip4_name((const struct sockaddr_in*) addr,
+                    source_addr,
+                    sizeof(source_addr));
     ASSERT_OK(r);
 
     r = uv_udp_set_membership(&server, MULTICAST_ADDR, NULL, UV_LEAVE_GROUP);
     ASSERT_OK(r);
 
 #if !defined(__NetBSD__)
-    r = uv_udp_set_source_membership(&server, MULTICAST_ADDR, NULL, source_addr, UV_JOIN_GROUP);
-#if defined(__APPLE__)
+    r = uv_udp_set_source_membership(&server,
+                                     MULTICAST_ADDR,
+                                     NULL,
+                                     source_addr,
+                                     UV_JOIN_GROUP);
+#  if defined(__APPLE__)
     if (r == UV_EBUSY) {
       uv_close((uv_handle_t*) &server, close_cb);
       darwin_ebusy_errors++;
       return;
     }
-#endif
+#  endif
     ASSERT_OK(r);
 #endif
 

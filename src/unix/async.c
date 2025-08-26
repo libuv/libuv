@@ -27,15 +27,15 @@
 
 #include <errno.h>
 #include <stdatomic.h>
-#include <stdio.h>  /* snprintf() */
+#include <stdio.h> /* snprintf() */
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sched.h>  /* sched_yield() */
+#include <sched.h> /* sched_yield() */
 
 #ifdef __linux__
-#include <sys/eventfd.h>
+#  include <sys/eventfd.h>
 #endif
 
 #if UV__KQUEUE_EVFILT_USER
@@ -51,14 +51,22 @@ static void uv__kqueue_runtime_detection(void) {
   /* Perform the runtime detection to ensure that kqueue with
    * EVFILT_USER actually works. */
   kq = kqueue();
-  EV_SET(ev, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
-         EV_ADD | EV_CLEAR, 0, 0, 0);
-  EV_SET(ev + 1, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
-         0, NOTE_TRIGGER, 0, 0);
-  if (kevent(kq, ev, 2, ev, 1, &timeout) < 1 ||
-      ev[0].filter != EVFILT_USER ||
-      ev[0].ident != UV__KQUEUE_EVFILT_USER_IDENT ||
-      ev[0].flags & EV_ERROR)
+  EV_SET(ev,
+         UV__KQUEUE_EVFILT_USER_IDENT,
+         EVFILT_USER,
+         EV_ADD | EV_CLEAR,
+         0,
+         0,
+         0);
+  EV_SET(ev + 1,
+         UV__KQUEUE_EVFILT_USER_IDENT,
+         EVFILT_USER,
+         0,
+         NOTE_TRIGGER,
+         0,
+         0);
+  if (kevent(kq, ev, 2, ev, 1, &timeout) < 1 || ev[0].filter != EVFILT_USER ||
+      ev[0].ident != UV__KQUEUE_EVFILT_USER_IDENT || ev[0].flags & EV_ERROR)
     /* If we wind up here, we can assume that EVFILT_USER is defined but
      * broken on the current system. */
     kqueue_evfilt_user_support = 0;
@@ -78,7 +86,7 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   if (err)
     return err;
 
-  uv__handle_init(loop, (uv_handle_t*)handle, UV_ASYNC);
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_ASYNC);
   handle->async_cb = async_cb;
   handle->pending = 0;
   handle->u.fd = 0; /* This will be used as a busy flag. */
@@ -163,12 +171,12 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   struct uv__queue queue;
   struct uv__queue* q;
   uv_async_t* h;
-  _Atomic int *pending;
+  _Atomic int* pending;
 
   assert(w == &loop->async_io_watcher);
 
 #if UV__KQUEUE_EVFILT_USER
-  for (;!kqueue_evfilt_user_support;) {
+  for (; !kqueue_evfilt_user_support;) {
 #else
   for (;;) {
 #endif
@@ -225,7 +233,7 @@ static void uv__async_send(uv_loop_t* loop) {
     static const uint64_t val = 1;
     buf = &val;
     len = sizeof(val);
-    fd = loop->async_io_watcher.fd;  /* eventfd */
+    fd = loop->async_io_watcher.fd; /* eventfd */
   }
 #elif UV__KQUEUE_EVFILT_USER
   struct kevent ev;
@@ -290,9 +298,9 @@ static int uv__async_start(uv_loop_t* loop) {
     /* When using EVFILT_USER event to wake up the kqueue, this event must be
      * registered beforehand. Otherwise, calling kevent() to issue an
      * unregistered EVFILT_USER event will get an ENOENT.
-     * Since uv__async_send() may happen before uv__io_poll() with multi-threads,
-     * we can't defer this registration of EVFILT_USER event as we did for other
-     * events, but must perform it right away. */
+     * Since uv__async_send() may happen before uv__io_poll() with
+     * multi-threads, we can't defer this registration of EVFILT_USER event as
+     * we did for other events, but must perform it right away. */
     EV_SET(&ev, err, EVFILT_USER, EV_ADD | EV_CLEAR, 0, 0, 0);
     err = kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL);
     if (err < 0)
@@ -308,8 +316,11 @@ static int uv__async_start(uv_loop_t* loop) {
     return err;
 #endif
 
-  err = uv__io_init_start(loop, &loop->async_io_watcher, UV__ASYNC_IO,
-                          pipefd[0], POLLIN);
+  err = uv__io_init_start(loop,
+                          &loop->async_io_watcher,
+                          UV__ASYNC_IO,
+                          pipefd[0],
+                          POLLIN);
   if (err < 0) {
     uv__close(pipefd[0]);
     if (pipefd[1] != -1)
@@ -407,12 +418,13 @@ int uv__async_fork(uv_loop_t* loop) {
 
 static void uv__cpu_relax(void) {
 #if defined(__i386__) || defined(__x86_64__)
-  __asm__ __volatile__ ("rep; nop" ::: "memory");  /* a.k.a. PAUSE */
+  __asm__ __volatile__("rep; nop" ::: "memory"); /* a.k.a. PAUSE */
 #elif (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__)
-  __asm__ __volatile__ ("isb" ::: "memory");
+  __asm__ __volatile__("isb" ::: "memory");
 #elif (defined(__ppc__) || defined(__ppc64__)) && defined(__APPLE__)
-  __asm volatile ("" : : : "memory");
-#elif !defined(__APPLE__) && (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))
-  __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
+  __asm volatile("" : : : "memory");
+#elif !defined(__APPLE__) &&                                                   \
+    (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))
+  __asm__ __volatile__("or 1,1,1; or 2,2,2" ::: "memory");
 #endif
 }

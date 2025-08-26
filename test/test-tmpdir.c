@@ -23,7 +23,7 @@
 #include "task.h"
 #include <string.h>
 
-#define PATHMAX 4096
+#define PATHMAX   4096
 #define SMALLPATH 1
 
 TEST_IMPL(tmpdir) {
@@ -68,8 +68,13 @@ TEST_IMPL(tmpdir) {
   ASSERT_EQ(r, UV_EINVAL);
 
 #ifdef _WIN32
-  const char *name = "TMP";
-  char tmpdir_win[] = "C:\\xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+  const char* name = "TMP";
+  char tmpdir_win[] =
+      "C:"
+      "\\xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
   r = uv_os_setenv(name, tmpdir_win);
   ASSERT_OK(r);
   char tmpdirx[PATHMAX];

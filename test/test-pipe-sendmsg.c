@@ -25,13 +25,13 @@
 
 #ifndef _WIN32
 
-#include <fcntl.h>
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#  include <fcntl.h>
+#  include <errno.h>
+#  include <stdio.h>
+#  include <stdlib.h>
+#  include <string.h>
+#  include <sys/socket.h>
+#  include <unistd.h>
 
 
 /* NOTE: size should be divisible by 2 */
@@ -42,19 +42,17 @@ static unsigned int close_called;
 
 static void set_nonblocking(uv_os_sock_t sock) {
   int r;
-#ifdef _WIN32
+#  ifdef _WIN32
   unsigned long on = 1;
   r = ioctlsocket(sock, FIONBIO, &on);
   ASSERT_OK(r);
-#else
+#  else
   int flags = fcntl(sock, F_GETFL, 0);
   ASSERT_GE(flags, 0);
   r = fcntl(sock, F_SETFL, flags | O_NONBLOCK);
   ASSERT_GE(r, 0);
-#endif
+#  endif
 }
-
-
 
 
 static void close_cb(uv_handle_t* handle) {
@@ -70,9 +68,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 
-static void read_cb(uv_stream_t* handle,
-                    ssize_t nread,
-                    const uv_buf_t* buf) {
+static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   uv_pipe_t* p;
   uv_pipe_t* inc;
   uv_handle_type pending;
@@ -102,16 +98,16 @@ static void read_cb(uv_stream_t* handle,
 
 
 TEST_IMPL(pipe_sendmsg) {
-#if defined(NO_SEND_HANDLE_ON_PIPE)
+#  if defined(NO_SEND_HANDLE_ON_PIPE)
   RETURN_SKIP(NO_SEND_HANDLE_ON_PIPE);
-#endif
+#  endif
   uv_pipe_t p;
   int r;
   int fds[2];
   int send_fds[ARRAY_SIZE(incoming)];
   struct msghdr msg;
   char scratch[64];
-  struct cmsghdr *cmsg;
+  struct cmsghdr* cmsg;
   unsigned int i;
   uv_buf_t buf;
 
@@ -162,11 +158,11 @@ TEST_IMPL(pipe_sendmsg) {
   return 0;
 }
 
-#else  /* !_WIN32 */
+#else /* !_WIN32 */
 
 TEST_IMPL(pipe_sendmsg) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
-#endif  /* _WIN32 */
+#endif /* _WIN32 */

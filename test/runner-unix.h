@@ -33,4 +33,4 @@ typedef struct {
   int terminated;
 } process_info_t;
 
-#endif  /* TEST_RUNNER_UNIX_H */
+#endif /* TEST_RUNNER_UNIX_H */

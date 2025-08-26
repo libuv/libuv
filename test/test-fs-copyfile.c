@@ -22,15 +22,14 @@
 #include "uv.h"
 #include "task.h"
 
-#if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(__sun) || \
-    defined(_AIX) || defined(__MVS__) || \
+#if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__) ||           \
+    defined(__sun) || defined(_AIX) || defined(__MVS__) ||                     \
     defined(__HAIKU__) || defined(__QNX__)
-#include <unistd.h> /* unlink, etc. */
+#  include <unistd.h> /* unlink, etc. */
 #else
-# include <direct.h>
-# include <io.h>
-# define unlink _unlink
+#  include <direct.h>
+#  include <io.h>
+#  define unlink _unlink
 #endif
 
 static const char fixture[] = "test/fixtures/load_error.node";
@@ -80,9 +79,12 @@ static void touch_file(const char* name, unsigned int size) {
   int r;
   unsigned int i;
 
-  r = uv_fs_open(NULL, &req, name,
+  r = uv_fs_open(NULL,
+                 &req,
+                 name,
                  UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_TRUNC,
-                 S_IWUSR | S_IRUSR, NULL);
+                 S_IWUSR | S_IRUSR,
+                 NULL);
   uv_fs_req_cleanup(&req);
   ASSERT_GE(r, 0);
   file = r;
@@ -205,7 +207,11 @@ TEST_IMPL(fs_copyfile) {
 
   /* Copies file using UV_FS_COPYFILE_FICLONE_FORCE. */
   unlink(dst);
-  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE,
+  r = uv_fs_copyfile(NULL,
+                     &req,
+                     fixture,
+                     dst,
+                     UV_FS_COPYFILE_FICLONE_FORCE,
                      NULL);
   ASSERT_LE(r, 0);
 
@@ -216,13 +222,14 @@ TEST_IMPL(fs_copyfile) {
   /* Copying respects permissions/mode. */
   unlink(dst);
   touch_file(dst, 0);
-  chmod(dst, S_IRUSR|S_IRGRP|S_IROTH); /* Sets file mode to 444 (read-only). */
+  chmod(dst,
+        S_IRUSR | S_IRGRP | S_IROTH); /* Sets file mode to 444 (read-only). */
   r = uv_fs_copyfile(NULL, &req, fixture, dst, 0, NULL);
   /* On IBMi PASE, qsecofr users can overwrite read-only files */
-# ifndef __PASE__
+#  ifndef __PASE__
   ASSERT_EQ(req.result, UV_EACCES);
   ASSERT_EQ(r, UV_EACCES);
-# endif
+#  endif
   uv_fs_req_cleanup(&req);
 #endif
 

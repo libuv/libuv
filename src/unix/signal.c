@@ -29,7 +29,7 @@
 #include <unistd.h>
 
 #ifndef SA_RESTART
-# define SA_RESTART 0
+#  define SA_RESTART 0
 #endif
 
 typedef struct {
@@ -53,10 +53,11 @@ static void uv__signal_unregister_handler(int signum);
 static uv_once_t uv__signal_global_init_guard = UV_ONCE_INIT;
 static struct uv__signal_tree_s uv__signal_tree =
     RB_INITIALIZER(uv__signal_tree);
-static int uv__signal_lock_pipefd[2] = { -1, -1 };
+static int uv__signal_lock_pipefd[2] = {-1, -1};
 
 RB_GENERATE_STATIC(uv__signal_tree_s,
-                   uv_signal_s, tree_entry,
+                   uv_signal_s,
+                   tree_entry,
                    uv__signal_compare)
 
 static void uv__signal_global_reinit(void);
@@ -270,8 +271,11 @@ static int uv__signal_loop_once_init(uv_loop_t* loop) {
   if (err)
     return err;
 
-  err = uv__io_init_start(loop, &loop->signal_io_watcher, UV__SIGNAL_EVENT,
-                          pipefd[0], POLLIN);
+  err = uv__io_init_start(loop,
+                          &loop->signal_io_watcher,
+                          UV__SIGNAL_EVENT,
+                          pipefd[0],
+                          POLLIN);
   if (err) {
     uv__close(pipefd[0]);
     uv__close(pipefd[1]);
@@ -506,25 +510,33 @@ static int uv__signal_compare(uv_signal_t* w1, uv_signal_t* w2) {
   /* Compare signums first so all watchers with the same signnum end up
    * adjacent.
    */
-  if (w1->signum < w2->signum) return -1;
-  if (w1->signum > w2->signum) return 1;
+  if (w1->signum < w2->signum)
+    return -1;
+  if (w1->signum > w2->signum)
+    return 1;
 
   /* Handlers without UV_SIGNAL_ONE_SHOT set will come first, so if the first
    * handler returned is a one-shot handler, the rest will be too.
    */
   f1 = w1->flags & UV_SIGNAL_ONE_SHOT;
   f2 = w2->flags & UV_SIGNAL_ONE_SHOT;
-  if (f1 < f2) return -1;
-  if (f1 > f2) return 1;
+  if (f1 < f2)
+    return -1;
+  if (f1 > f2)
+    return 1;
 
   /* Sort by loop pointer, so we can easily look up the first item after
    * { .signum = x, .loop = NULL }.
    */
-  if (w1->loop < w2->loop) return -1;
-  if (w1->loop > w2->loop) return 1;
+  if (w1->loop < w2->loop)
+    return -1;
+  if (w1->loop > w2->loop)
+    return 1;
 
-  if (w1 < w2) return -1;
-  if (w1 > w2) return 1;
+  if (w1 < w2)
+    return -1;
+  if (w1 > w2)
+    return 1;
 
   return 0;
 }
@@ -567,7 +579,7 @@ static void uv__signal_stop(uv_signal_t* handle) {
     if (first_oneshot && !rem_oneshot) {
       ret = uv__signal_register_handler(handle->signum, 1);
       assert(ret == 0);
-      (void)ret;
+      (void) ret;
     }
   }
 

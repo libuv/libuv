@@ -39,7 +39,7 @@ static void close_cb(uv_handle_t* handle) {
 
 static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT_OK(status);
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
   connection_cb_called++;
 }
 
@@ -56,10 +56,10 @@ static void start_server(void) {
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)&server, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &server, 128, connection_cb);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)&server, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &server, 128, connection_cb);
   ASSERT_OK(r);
 }
 
@@ -68,7 +68,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_NOT_NULL(req);
   ASSERT_OK(status);
   free(req);
-  uv_close((uv_handle_t*)&client, close_cb);
+  uv_close((uv_handle_t*) &client, close_cb);
   connect_cb_called++;
 }
 
@@ -90,7 +90,6 @@ static void client_connect(void) {
                      connect_cb);
   ASSERT_OK(r);
 }
-
 
 
 TEST_IMPL(multiple_listen) {

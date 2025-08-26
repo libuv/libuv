@@ -22,17 +22,17 @@
 /* These tests are Unix only. */
 #ifndef _WIN32
 
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/socket.h>
-#include <string.h>
+#  include <unistd.h>
+#  include <sys/wait.h>
+#  include <sys/socket.h>
+#  include <string.h>
 
-#ifdef __APPLE__
-#include <TargetConditionals.h>
-#endif
+#  ifdef __APPLE__
+#    include <TargetConditionals.h>
+#  endif
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
 static int timer_cb_called;
 static int socket_cb_called;
@@ -104,11 +104,11 @@ TEST_IMPL(fork_timer) {
   pid_t child_pid;
 
   run_timer_loop_once();
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#  if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#  else
   child_pid = fork();
-#endif
+#  endif
   ASSERT_NE(child_pid, -1);
 
   if (child_pid != 0) {
@@ -140,11 +140,11 @@ TEST_IMPL(fork_socketpair) {
   /* Create the server watcher in the parent, use it in the child. */
   ASSERT_OK(uv_poll_init(uv_default_loop(), &poll_handle, socket_fds[0]));
 
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#  if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#  else
   child_pid = fork();
-#endif
+#  endif
   ASSERT_NE(child_pid, -1);
 
   if (child_pid != 0) {
@@ -193,17 +193,17 @@ TEST_IMPL(fork_socketpair_started) {
   */
   ASSERT_EQ(1, uv_run(uv_default_loop(), UV_RUN_NOWAIT));
 
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#  if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#  else
   child_pid = fork();
-#endif
+#  endif
   ASSERT_NE(child_pid, -1);
 
   if (child_pid != 0) {
     /* parent */
     ASSERT_OK(uv_poll_stop(&poll_handle));
-    uv_close((uv_handle_t*)&poll_handle, NULL);
+    uv_close((uv_handle_t*) &poll_handle, NULL);
     ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
     ASSERT_OK(socket_cb_called);
     ASSERT_EQ(1, write(sync_pipe[1], "1", 1)); /* alert child */
@@ -236,10 +236,9 @@ TEST_IMPL(fork_socketpair_started) {
 
 static int fork_signal_cb_called;
 
-void fork_signal_to_child_cb(uv_signal_t* handle, int signum)
-{
+void fork_signal_to_child_cb(uv_signal_t* handle, int signum) {
   fork_signal_cb_called = signum;
-  uv_close((uv_handle_t*)handle, NULL);
+  uv_close((uv_handle_t*) handle, NULL);
 }
 
 
@@ -251,7 +250,7 @@ TEST_IMPL(fork_signal_to_child) {
   int sync_pipe[2];
   char sync_buf[1];
 
-  fork_signal_cb_called = 0;    /* reset */
+  fork_signal_cb_called = 0; /* reset */
 
   ASSERT_OK(pipe(sync_pipe));
 
@@ -259,15 +258,13 @@ TEST_IMPL(fork_signal_to_child) {
   run_timer_loop_once();
 
   ASSERT_OK(uv_signal_init(uv_default_loop(), &signal_handle));
-  ASSERT_OK(uv_signal_start(&signal_handle,
-                            fork_signal_to_child_cb,
-                            SIGUSR1));
+  ASSERT_OK(uv_signal_start(&signal_handle, fork_signal_to_child_cb, SIGUSR1));
 
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#  if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#  else
   child_pid = fork();
-#endif
+#  endif
   ASSERT_NE(child_pid, -1);
 
   if (child_pid != 0) {
@@ -276,7 +273,7 @@ TEST_IMPL(fork_signal_to_child) {
     ASSERT_OK(kill(child_pid, SIGUSR1));
     /* Run the loop, make sure we don't get the signal. */
     printf("Running loop in parent\n");
-    uv_unref((uv_handle_t*)&signal_handle);
+    uv_unref((uv_handle_t*) &signal_handle);
     ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_NOWAIT));
     ASSERT_OK(fork_signal_cb_called);
     printf("Waiting for child in parent\n");
@@ -308,7 +305,7 @@ TEST_IMPL(fork_signal_to_child_closed) {
   char sync_buf[1];
   int r;
 
-  fork_signal_cb_called = 0;    /* reset */
+  fork_signal_cb_called = 0; /* reset */
 
   ASSERT_OK(pipe(sync_pipe));
   ASSERT_OK(pipe(sync_pipe2));
@@ -317,15 +314,13 @@ TEST_IMPL(fork_signal_to_child_closed) {
   run_timer_loop_once();
 
   ASSERT_OK(uv_signal_init(uv_default_loop(), &signal_handle));
-  ASSERT_OK(uv_signal_start(&signal_handle,
-                            fork_signal_to_child_cb,
-                            SIGUSR1));
+  ASSERT_OK(uv_signal_start(&signal_handle, fork_signal_to_child_cb, SIGUSR1));
 
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#  if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#  else
   child_pid = fork();
-#endif
+#  endif
   ASSERT_NE(child_pid, -1);
 
   if (child_pid != 0) {
@@ -336,10 +331,11 @@ TEST_IMPL(fork_signal_to_child_closed) {
     ASSERT_OK(kill(child_pid, SIGUSR1));
     /* Run the loop, make sure we don't get the signal. */
     printf("Running loop in parent\n");
-    uv_unref((uv_handle_t*)&signal_handle); /* so the loop can exit;
-                                               we *shouldn't* get any signals */
-    run_timer_loop_once(); /* but while we share a pipe, we do, so
-                              have something active. */
+    uv_unref(
+        (uv_handle_t*) &signal_handle); /* so the loop can exit;
+                                           we *shouldn't* get any signals */
+    run_timer_loop_once();              /* but while we share a pipe, we do, so
+                                           have something active. */
     ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_ONCE));
     printf("Signal in parent %d\n", fork_signal_cb_called);
     ASSERT_OK(fork_signal_cb_called);
@@ -378,7 +374,8 @@ TEST_IMPL(fork_signal_to_child_closed) {
 static void fork_signal_cb(uv_signal_t* h, int s) {
   fork_signal_cb_called = s;
 }
-static void empty_close_cb(uv_handle_t* h){}
+static void empty_close_cb(uv_handle_t* h) {
+}
 
 TEST_IMPL(fork_close_signal_in_child) {
   uv_loop_t loop;
@@ -396,7 +393,7 @@ TEST_IMPL(fork_close_signal_in_child) {
 
   if (!child_pid) {
     uv_loop_fork(&loop);
-    uv_close((uv_handle_t*)&signal_handle, &empty_close_cb);
+    uv_close((uv_handle_t*) &signal_handle, &empty_close_cb);
     uv_run(&loop, UV_RUN_DEFAULT);
     /* Child doesn't receive the signal */
     ASSERT_OK(fork_signal_cb_called);
@@ -406,7 +403,7 @@ TEST_IMPL(fork_close_signal_in_child) {
     ASSERT_EQ(SIGHUP, fork_signal_cb_called);
 
     /* loop should stop after closing the only handle */
-    uv_close((uv_handle_t*)&signal_handle, &empty_close_cb);
+    uv_close((uv_handle_t*) &signal_handle, &empty_close_cb);
     ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
 
     assert_wait_child(child_pid);
@@ -457,7 +454,7 @@ static void touch_file(const char* name) {
 static int timer_cb_touch_called;
 
 static void timer_cb_touch(uv_timer_t* timer) {
-  uv_close((uv_handle_t*)timer, NULL);
+  uv_close((uv_handle_t*) timer, NULL);
   touch_file("watch_file");
   timer_cb_touch_called++;
 }
@@ -472,16 +469,17 @@ static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
   ASSERT_OK(fs_event_cb_called);
   ++fs_event_cb_called;
   ASSERT_OK(status);
-#if defined(__APPLE__) || defined(__linux__)
+#  if defined(__APPLE__) || defined(__linux__)
   ASSERT_OK(strcmp(filename, "watch_file"));
-#else
+#  else
   ASSERT(filename == NULL || strcmp(filename, "watch_file") == 0);
-#endif
-  uv_close((uv_handle_t*)handle, NULL);
+#  endif
+  uv_close((uv_handle_t*) handle, NULL);
 }
 
 
-static void assert_watch_file_current_dir(uv_loop_t* const loop, int file_or_dir) {
+static void assert_watch_file_current_dir(uv_loop_t* const loop,
+                                          int file_or_dir) {
   uv_timer_t timer;
   uv_fs_event_t fs_event;
   int r;
@@ -522,8 +520,8 @@ static void assert_watch_file_current_dir(uv_loop_t* const loop, int file_or_dir
 }
 
 
-#define FS_TEST_FILE 0
-#define FS_TEST_DIR 1
+#  define FS_TEST_FILE 0
+#  define FS_TEST_DIR  1
 
 static int _do_fork_fs_events_child(int file_or_dir) {
   /* basic fsevents work in the child after a fork */
@@ -532,11 +530,11 @@ static int _do_fork_fs_events_child(int file_or_dir) {
 
   /* Watch in the parent, prime the loop and/or threads. */
   assert_watch_file_current_dir(uv_default_loop(), file_or_dir);
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#  if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#  else
   child_pid = fork();
-#endif
+#  endif
   ASSERT_NE(child_pid, -1);
 
   if (child_pid != 0) {
@@ -546,9 +544,9 @@ static int _do_fork_fs_events_child(int file_or_dir) {
     /* child */
     /* Ee can watch in a new loop, but dirs only work
        if we're on linux. */
-#if defined(__APPLE__)
+#  if defined(__APPLE__)
     file_or_dir = FS_TEST_FILE;
-#endif
+#  endif
     printf("Running child\n");
     uv_loop_init(&loop);
     printf("Child first watch\n");
@@ -576,39 +574,38 @@ static int _do_fork_fs_events_child(int file_or_dir) {
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
-
 }
 
 
 TEST_IMPL(fork_fs_events_child) {
-#if defined(NO_FS_EVENTS)
+#  if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);
-#endif
+#  endif
   return _do_fork_fs_events_child(FS_TEST_FILE);
 }
 
 
 TEST_IMPL(fork_fs_events_child_dir) {
-#if defined(NO_FS_EVENTS)
+#  if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);
-#endif
-#if defined(__APPLE__) || defined (__linux__)
+#  endif
+#  if defined(__APPLE__) || defined(__linux__)
   return _do_fork_fs_events_child(FS_TEST_DIR);
-#else
+#  else
   /* You can't spin up a cfrunloop thread on an apple platform
      and then fork. See
      http://objectivistc.tumblr.com/post/16187948939/you-must-exec-a-core-foundation-fork-safety-tale
   */
   return 0;
-#endif
+#  endif
 }
 
 
 TEST_IMPL(fork_fs_events_file_parent_child) {
-#if defined(NO_FS_EVENTS)
+#  if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);
-#endif
-#if defined(__sun) || defined(_AIX) || defined(__MVS__)
+#  endif
+#  if defined(__sun) || defined(_AIX) || defined(__MVS__)
   /* It's not possible to implement this without additional
    * bookkeeping on SunOS. For AIX it is possible, but has to be
    * written. See https://github.com/libuv/libuv/pull/846#issuecomment-287170420
@@ -616,7 +613,7 @@ TEST_IMPL(fork_fs_events_file_parent_child) {
    * same events as the parent.
    */
   return 0;
-#else
+#  else
   /* Establishing a started fs events watcher in the parent should
      still work in the child. */
   uv_timer_t timer;
@@ -642,11 +639,11 @@ TEST_IMPL(fork_fs_events_file_parent_child) {
   r = uv_timer_init(loop, &timer);
   ASSERT_OK(r);
 
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#    if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#    else
   child_pid = fork();
-#endif
+#    endif
   ASSERT_NE(child_pid, -1);
   if (child_pid != 0) {
     /* parent */
@@ -677,7 +674,7 @@ TEST_IMPL(fork_fs_events_file_parent_child) {
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
-#endif
+#  endif
 }
 
 
@@ -717,25 +714,25 @@ static void assert_run_work(uv_loop_t* const loop) {
 }
 
 
-#ifndef __MVS__
+#  ifndef __MVS__
 TEST_IMPL(fork_threadpool_queue_work_simple) {
   /* The threadpool works in a child process. */
 
   pid_t child_pid;
   uv_loop_t loop;
 
-#ifdef __TSAN__
+#    ifdef __TSAN__
   RETURN_SKIP("ThreadSanitizer doesn't support multi-threaded fork");
-#endif
+#    endif
 
   /* Prime the pool and default loop. */
   assert_run_work(uv_default_loop());
 
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+#    if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   child_pid = -1;
-#else
+#    else
   child_pid = fork();
-#endif
+#    endif
   ASSERT_NE(child_pid, -1);
 
   if (child_pid != 0) {
@@ -760,7 +757,7 @@ TEST_IMPL(fork_threadpool_queue_work_simple) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
-#endif /* !__MVS__ */
+#  endif /* !__MVS__ */
 
 #else
 

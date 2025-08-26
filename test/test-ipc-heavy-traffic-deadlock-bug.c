@@ -29,10 +29,10 @@ void spawn_helper(uv_pipe_t* channel,
                   uv_process_t* process,
                   const char* helper);
 
-#define NUM_WRITES 256
+#define NUM_WRITES        256
 #define BUFFERS_PER_WRITE 3
-#define BUFFER_SIZE 0x2000 /* 8 kb. */
-#define BUFFER_CONTENT 42
+#define BUFFER_SIZE       0x2000 /* 8 kb. */
+#define BUFFER_CONTENT    42
 
 #define XFER_SIZE (NUM_WRITES * BUFFERS_PER_WRITE * BUFFER_SIZE)
 
@@ -73,8 +73,11 @@ static void do_write(uv_stream_t* handle) {
     bufs[i] = uv_buf_init(write_info->buffers[i], BUFFER_SIZE);
   }
 
-  r = uv_write(
-      &write_info->write_req, handle, bufs, BUFFERS_PER_WRITE, write_cb);
+  r = uv_write(&write_info->write_req,
+               handle,
+               bufs,
+               BUFFERS_PER_WRITE,
+               write_cb);
   ASSERT_OK(r);
 }
 
@@ -86,8 +89,8 @@ static void alloc_cb(uv_handle_t* handle,
 }
 
 #ifndef _WIN32
-#include <sys/types.h>
-#include <unistd.h>
+#  include <sys/types.h>
+#  include <unistd.h>
 #endif
 
 static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {

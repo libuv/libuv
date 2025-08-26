@@ -26,7 +26,7 @@
 #if defined(__MINGW64_VERSION_MAJOR)
 /* MemoryBarrier expands to __mm_mfence in some cases (x86+sse2), which may
  * require this header in some versions of mingw64. */
-#include <intrin.h>
+#  include <intrin.h>
 #endif
 
 #include "uv.h"
@@ -38,7 +38,9 @@ typedef struct {
   uv__once_cb callback;
 } uv__once_data_t;
 
-static BOOL WINAPI uv__once_inner(INIT_ONCE *once, void* param, void** context) {
+static BOOL WINAPI uv__once_inner(INIT_ONCE* once,
+                                  void* param,
+                                  void** context) {
   uv__once_data_t* data = param;
 
   data->callback();
@@ -47,7 +49,7 @@ static BOOL WINAPI uv__once_inner(INIT_ONCE *once, void* param, void** context) 
 }
 
 void uv_once(uv_once_t* guard, uv__once_cb callback) {
-  uv__once_data_t data = { .callback = callback };
+  uv__once_data_t data = {.callback = callback};
   InitOnceExecuteOnce(&guard->init_once, uv__once_inner, (void*) &data, NULL);
 }
 
@@ -58,8 +60,8 @@ STATIC_ASSERT(sizeof(uv_thread_t) <= sizeof(void*));
 static uv_key_t uv__current_thread_key;
 static uv_once_t uv__current_thread_init_guard = UV_ONCE_INIT;
 static uv_once_t uv__thread_name_once = UV_ONCE_INIT;
-HRESULT (WINAPI *pGetThreadDescription)(HANDLE, PWSTR*);
-HRESULT (WINAPI *pSetThreadDescription)(HANDLE, PCWSTR);
+HRESULT(WINAPI* pGetThreadDescription)(HANDLE, PWSTR*);
+HRESULT(WINAPI* pSetThreadDescription)(HANDLE, PCWSTR);
 
 
 static void uv__init_current_thread_key(void) {
@@ -76,7 +78,7 @@ struct thread_ctx {
 
 
 static UINT __stdcall uv__thread_start(void* arg) {
-  struct thread_ctx *ctx_p;
+  struct thread_ctx* ctx_p;
   struct thread_ctx ctx;
 
   ctx_p = arg;
@@ -92,14 +94,14 @@ static UINT __stdcall uv__thread_start(void* arg) {
 }
 
 
-int uv_thread_create(uv_thread_t *tid, void (*entry)(void *arg), void *arg) {
+int uv_thread_create(uv_thread_t* tid, void (*entry)(void* arg), void* arg) {
   uv_thread_options_t params;
   params.flags = UV_THREAD_NO_FLAGS;
   return uv_thread_create_ex(tid, &params, entry, arg);
 }
 
 
-int uv_thread_detach(uv_thread_t *tid) {
+int uv_thread_detach(uv_thread_t* tid) {
   if (CloseHandle(*tid) == 0)
     return uv_translate_sys_error(GetLastError());
 
@@ -109,8 +111,8 @@ int uv_thread_detach(uv_thread_t *tid) {
 
 int uv_thread_create_ex(uv_thread_t* tid,
                         const uv_thread_options_t* params,
-                        void (*entry)(void *arg),
-                        void *arg) {
+                        void (*entry)(void* arg),
+                        void* arg) {
   struct thread_ctx* ctx;
   int err;
   HANDLE thread;
@@ -123,11 +125,11 @@ int uv_thread_create_ex(uv_thread_t* tid,
 
   if (stack_size != 0) {
     GetNativeSystemInfo(&sysinfo);
-    pagesize = (size_t)sysinfo.dwPageSize;
+    pagesize = (size_t) sysinfo.dwPageSize;
     /* Round up to the nearest page boundary. */
-    stack_size = (stack_size + pagesize - 1) &~ (pagesize - 1);
+    stack_size = (stack_size + pagesize - 1) & ~(pagesize - 1);
 
-    if ((unsigned)stack_size != stack_size)
+    if ((unsigned) stack_size != stack_size)
       return UV_EINVAL;
   }
 
@@ -141,7 +143,7 @@ int uv_thread_create_ex(uv_thread_t* tid,
   /* Create the thread in suspended state so we have a chance to pass
    * its own creation handle to it */
   thread = (HANDLE) _beginthreadex(NULL,
-                                   (unsigned)stack_size,
+                                   (unsigned) stack_size,
                                    uv__thread_start,
                                    ctx,
                                    CREATE_SUSPENDED,
@@ -157,14 +159,14 @@ int uv_thread_create_ex(uv_thread_t* tid,
   }
 
   switch (err) {
-    case 0:
-      return 0;
-    case EACCES:
-      return UV_EACCES;
-    case EAGAIN:
-      return UV_EAGAIN;
-    case EINVAL:
-      return UV_EINVAL;
+  case 0:
+    return 0;
+  case EACCES:
+    return UV_EACCES;
+  case EAGAIN:
+    return UV_EAGAIN;
+  case EINVAL:
+    return UV_EINVAL;
   }
 
   return UV_EIO;
@@ -184,7 +186,7 @@ int uv_thread_setaffinity(uv_thread_t* tid,
 
   cpumasksize = uv_cpumask_size();
   assert(cpumasksize > 0);
-  if (mask_size < (size_t)cpumasksize)
+  if (mask_size < (size_t) cpumasksize)
     return UV_EINVAL;
 
   hproc = GetCurrentProcess();
@@ -213,9 +215,7 @@ int uv_thread_setaffinity(uv_thread_t* tid,
   return 0;
 }
 
-int uv_thread_getaffinity(uv_thread_t* tid,
-                          char* cpumask,
-                          size_t mask_size) {
+int uv_thread_getaffinity(uv_thread_t* tid, char* cpumask, size_t mask_size) {
   int i;
   HANDLE hproc;
   DWORD_PTR procmask;
@@ -225,7 +225,7 @@ int uv_thread_getaffinity(uv_thread_t* tid,
 
   cpumasksize = uv_cpumask_size();
   assert(cpumasksize > 0);
-  if (mask_size < (size_t)cpumasksize)
+  if (mask_size < (size_t) cpumasksize)
     return UV_EINVAL;
 
   hproc = GetCurrentProcess();
@@ -251,26 +251,30 @@ uv_thread_t uv_thread_self(void) {
   uv_once(&uv__current_thread_init_guard, uv__init_current_thread_key);
   key = uv_key_get(&uv__current_thread_key);
   if (key == NULL) {
-      /* If the thread wasn't started by uv_thread_create (such as the main
-       * thread), we assign an id to it now. */
-      if (!DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-                           GetCurrentProcess(), &key, 0,
-                           FALSE, DUPLICATE_SAME_ACCESS)) {
-          uv_fatal_error(GetLastError(), "DuplicateHandle");
-      }
-      uv_key_set(&uv__current_thread_key, key);
+    /* If the thread wasn't started by uv_thread_create (such as the main
+     * thread), we assign an id to it now. */
+    if (!DuplicateHandle(GetCurrentProcess(),
+                         GetCurrentThread(),
+                         GetCurrentProcess(),
+                         &key,
+                         0,
+                         FALSE,
+                         DUPLICATE_SAME_ACCESS)) {
+      uv_fatal_error(GetLastError(), "DuplicateHandle");
+    }
+    uv_key_set(&uv__current_thread_key, key);
   }
   return key;
 }
 
 
-int uv_thread_join(uv_thread_t *tid) {
+int uv_thread_join(uv_thread_t* tid) {
   if (WaitForSingleObject(*tid, INFINITE))
     return uv_translate_sys_error(GetLastError());
   else {
     CloseHandle(*tid);
     *tid = 0;
-    MemoryBarrier();  /* For feature parity with pthread_join(). */
+    MemoryBarrier(); /* For feature parity with pthread_join(). */
     return 0;
   }
 }
@@ -416,8 +420,10 @@ int uv_rwlock_init(uv_rwlock_t* rwlock) {
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
-  /* SRWLock does not need explicit destruction so long as there are no waiting threads
-     See: https://docs.microsoft.com/windows/win32/api/synchapi/nf-synchapi-initializesrwlock#remarks */
+  /* SRWLock does not need explicit destruction so long as there are no waiting
+     threads See:
+     https://docs.microsoft.com/windows/win32/api/synchapi/nf-synchapi-initializesrwlock#remarks
+   */
 }
 
 
@@ -527,7 +533,7 @@ void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
 
 
 int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
-  if (SleepConditionVariableCS(&cond->cond_var, mutex, (DWORD)(timeout / 1e6)))
+  if (SleepConditionVariableCS(&cond->cond_var, mutex, (DWORD) (timeout / 1e6)))
     return 0;
   if (GetLastError() != ERROR_TIMEOUT)
     abort();

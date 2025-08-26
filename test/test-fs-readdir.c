@@ -64,10 +64,7 @@ static void empty_readdir_cb(uv_fs_t* req) {
   ASSERT_OK(req->result);
   dir = req->ptr;
   uv_fs_req_cleanup(req);
-  r = uv_fs_closedir(uv_default_loop(),
-                     &closedir_req,
-                     dir,
-                     empty_closedir_cb);
+  r = uv_fs_closedir(uv_default_loop(), &closedir_req, dir, empty_closedir_cb);
   ASSERT_OK(r);
 }
 
@@ -82,10 +79,7 @@ static void empty_opendir_cb(uv_fs_t* req) {
   dir = req->ptr;
   dir->dirents = dirents;
   dir->nentries = ARRAY_SIZE(dirents);
-  r = uv_fs_readdir(uv_default_loop(),
-                    &readdir_req,
-                    dir,
-                    empty_readdir_cb);
+  r = uv_fs_readdir(uv_default_loop(), &readdir_req, dir, empty_readdir_cb);
   ASSERT_OK(r);
   uv_fs_req_cleanup(req);
   ++empty_opendir_cb_count;
@@ -112,10 +106,7 @@ TEST_IMPL(fs_readdir_empty_dir) {
   memset(&opendir_req, 0xdb, sizeof(opendir_req));
 
   /* Testing the synchronous flavor. */
-  r = uv_fs_opendir(uv_default_loop(),
-                    &opendir_req,
-                    path,
-                    NULL);
+  r = uv_fs_opendir(uv_default_loop(), &opendir_req, path, NULL);
   ASSERT_OK(r);
   ASSERT_EQ(opendir_req.fs_type, UV_FS_OPENDIR);
   ASSERT_OK(opendir_req.result);
@@ -127,10 +118,7 @@ TEST_IMPL(fs_readdir_empty_dir) {
   memset(&readdir_req, 0xdb, sizeof(readdir_req));
   dir->dirents = dirents;
   dir->nentries = ARRAY_SIZE(dirents);
-  nb_entries_read = uv_fs_readdir(uv_default_loop(),
-                                  &readdir_req,
-                                  dir,
-                                  NULL);
+  nb_entries_read = uv_fs_readdir(uv_default_loop(), &readdir_req, dir, NULL);
   ASSERT_OK(nb_entries_read);
   uv_fs_req_cleanup(&readdir_req);
 
@@ -313,10 +301,7 @@ static void non_empty_readdir_cb(uv_fs_t* req) {
     uv_fs_req_cleanup(req);
     dir->dirents = dirents;
     dir->nentries = ARRAY_SIZE(dirents);
-    uv_fs_readdir(uv_default_loop(),
-                  &readdir_req,
-                  dir,
-                  non_empty_readdir_cb);
+    uv_fs_readdir(uv_default_loop(), &readdir_req, dir, non_empty_readdir_cb);
   }
 }
 
@@ -333,10 +318,7 @@ static void non_empty_opendir_cb(uv_fs_t* req) {
   dir->dirents = dirents;
   dir->nentries = ARRAY_SIZE(dirents);
 
-  r = uv_fs_readdir(uv_default_loop(),
-                    &readdir_req,
-                    dir,
-                    non_empty_readdir_cb);
+  r = uv_fs_readdir(uv_default_loop(), &readdir_req, dir, non_empty_readdir_cb);
   ASSERT_OK(r);
   uv_fs_req_cleanup(req);
   ++non_empty_opendir_cb_count;
@@ -360,28 +342,24 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
   r = uv_fs_open(uv_default_loop(),
                  &create_req,
                  "test_dir/file1",
-                 UV_FS_O_WRONLY | UV_FS_O_CREAT, S_IWUSR | S_IRUSR,
+                 UV_FS_O_WRONLY | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT_GE(r, 0);
   uv_fs_req_cleanup(&create_req);
-  r = uv_fs_close(uv_default_loop(),
-                  &close_req,
-                  create_req.result,
-                  NULL);
+  r = uv_fs_close(uv_default_loop(), &close_req, create_req.result, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&close_req);
 
   r = uv_fs_open(uv_default_loop(),
                  &create_req,
                  "test_dir/file2",
-                 UV_FS_O_WRONLY | UV_FS_O_CREAT, S_IWUSR | S_IRUSR,
+                 UV_FS_O_WRONLY | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
                  NULL);
   ASSERT_GE(r, 0);
   uv_fs_req_cleanup(&create_req);
-  r = uv_fs_close(uv_default_loop(),
-                  &close_req,
-                  create_req.result,
-                  NULL);
+  r = uv_fs_close(uv_default_loop(), &close_req, create_req.result, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&close_req);
 
@@ -409,13 +387,10 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
   dir->nentries = ARRAY_SIZE(dirents);
   uv_fs_req_cleanup(&opendir_req);
 
-  while (uv_fs_readdir(uv_default_loop(),
-                       &readdir_req,
-                       dir,
-                       NULL) != 0) {
-  ASSERT(strcmp(dirents[0].name, "file1") == 0 ||
-         strcmp(dirents[0].name, "file2") == 0 ||
-         strcmp(dirents[0].name, "test_subdir") == 0);
+  while (uv_fs_readdir(uv_default_loop(), &readdir_req, dir, NULL) != 0) {
+    ASSERT(strcmp(dirents[0].name, "file1") == 0 ||
+           strcmp(dirents[0].name, "file2") == 0 ||
+           strcmp(dirents[0].name, "test_subdir") == 0);
 #ifdef HAVE_DIRENT_TYPES
     if (!strcmp(dirents[0].name, "test_subdir"))
       ASSERT_EQ(dirents[0].type, UV_DIRENT_DIR);
@@ -460,7 +435,7 @@ TEST_IMPL(fs_readdir_non_empty_dir) {
   cleanup_test_files();
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
- }
+}
 
 static void readdir_symlink_readdir_cb(uv_fs_t* req) {
   uv_dir_t* dir;
@@ -519,23 +494,38 @@ static void cleanup_symlink_test_files(void) {
 }
 
 TEST_IMPL(fs_readdir_symlink) {
-
   uv_fs_t mkdir_req;
   uv_fs_t symlink_req;
   int r;
 
   cleanup_symlink_test_files();
 
-  r = uv_fs_mkdir(uv_default_loop(), &mkdir_req, "test_symlink_dir", 0755, NULL);
+  r = uv_fs_mkdir(uv_default_loop(),
+                  &mkdir_req,
+                  "test_symlink_dir",
+                  0755,
+                  NULL);
   ASSERT_OK(r);
 
-  r = uv_fs_mkdir(uv_default_loop(), &mkdir_req, "test_symlink_dir/test_subdir", 0755, NULL);
+  r = uv_fs_mkdir(uv_default_loop(),
+                  &mkdir_req,
+                  "test_symlink_dir/test_subdir",
+                  0755,
+                  NULL);
   ASSERT_OK(r);
 
-  r = uv_fs_symlink(uv_default_loop(), &symlink_req, "test_symlink_dir/test_subdir", "test_symlink_dir/test_symlink", UV_FS_SYMLINK_DIR, NULL);
+  r = uv_fs_symlink(uv_default_loop(),
+                    &symlink_req,
+                    "test_symlink_dir/test_subdir",
+                    "test_symlink_dir/test_symlink",
+                    UV_FS_SYMLINK_DIR,
+                    NULL);
   ASSERT_OK(r);
 
-  r = uv_fs_opendir(uv_default_loop(), &opendir_req, "test_symlink_dir", readdir_symlink_opendir_cb);
+  r = uv_fs_opendir(uv_default_loop(),
+                    &opendir_req,
+                    "test_symlink_dir",
+                    readdir_symlink_opendir_cb);
   ASSERT_OK(r);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);

@@ -94,4 +94,4 @@ static const int kFSEventStreamEventFlagRootChanged = 32;
 static const int kFSEventStreamEventFlagUnmount = 128;
 static const int kFSEventStreamEventFlagUserDropped = 2;
 
-#endif  /* UV_DARWIN_STUB_H_ */
+#endif /* UV_DARWIN_STUB_H_ */

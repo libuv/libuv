@@ -26,8 +26,8 @@
 
 struct uv__process_title {
   char* str;
-  size_t len;  /* Length of the current process title. */
-  size_t cap;  /* Maximum capacity. Computed once in uv_setup_args(). */
+  size_t len; /* Length of the current process title. */
+  size_t cap; /* Maximum capacity. Computed once in uv_setup_args(). */
 };
 
 extern void uv__set_process_title(const char* title);
@@ -152,6 +152,6 @@ int uv_get_process_title(char* buffer, size_t size) {
 
 
 void uv__process_title_cleanup(void) {
-  uv__free(args_mem);  /* Keep valgrind happy. */
+  uv__free(args_mem); /* Keep valgrind happy. */
   args_mem = NULL;
 }

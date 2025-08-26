@@ -141,7 +141,7 @@ static void poll_cb(uv_fs_poll_t* handle,
     ASSERT_EQ(status, UV_ENOENT);
     ASSERT_NE(0, memcmp(prev, &zero_statbuf, sizeof(zero_statbuf)));
     ASSERT_OK(memcmp(curr, &zero_statbuf, sizeof(zero_statbuf)));
-    uv_close((uv_handle_t*)handle, close_cb);
+    uv_close((uv_handle_t*) handle, close_cb);
     break;
 
   default:

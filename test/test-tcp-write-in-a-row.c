@@ -90,7 +90,8 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   buf->len = sizeof(base);
 }
 
-static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {}
+static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+}
 
 static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT_OK(status);

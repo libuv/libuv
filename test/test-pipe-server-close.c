@@ -36,7 +36,8 @@ static int pipe_client_connect_cb_called = 0;
 
 static void pipe_close_cb(uv_handle_t* handle) {
   ASSERT_NE(handle == (uv_handle_t*) &pipe_client ||
-            handle == (uv_handle_t*) &pipe_server, 0);
+                handle == (uv_handle_t*) &pipe_server,
+            0);
   pipe_close_cb_called++;
 }
 
@@ -82,7 +83,10 @@ TEST_IMPL(pipe_server_close) {
   r = uv_pipe_init(loop, &pipe_client, 0);
   ASSERT_OK(r);
 
-  uv_pipe_connect(&connect_req, &pipe_client, TEST_PIPENAME, pipe_client_connect_cb);
+  uv_pipe_connect(&connect_req,
+                  &pipe_client,
+                  TEST_PIPENAME,
+                  pipe_client_connect_cb);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);

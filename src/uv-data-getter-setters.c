@@ -23,12 +23,16 @@
 
 const char* uv_handle_type_name(uv_handle_type type) {
   switch (type) {
-#define XX(uc,lc) case UV_##uc: return #lc;
-  UV_HANDLE_TYPE_MAP(XX)
+#define XX(uc, lc)                                                             \
+  case UV_##uc:                                                                \
+    return #lc;
+    UV_HANDLE_TYPE_MAP(XX)
 #undef XX
-  case UV_FILE: return "file";
+  case UV_FILE:
+    return "file";
   case UV_HANDLE_TYPE_MAX:
-  case UV_UNKNOWN_HANDLE: return NULL;
+  case UV_UNKNOWN_HANDLE:
+    return NULL;
   }
   return NULL;
 }
@@ -51,8 +55,10 @@ void uv_handle_set_data(uv_handle_t* handle, void* data) {
 
 const char* uv_req_type_name(uv_req_type type) {
   switch (type) {
-#define XX(uc,lc) case UV_##uc: return #lc;
-  UV_REQ_TYPE_MAP(XX)
+#define XX(uc, lc)                                                             \
+  case UV_##uc:                                                                \
+    return #lc;
+    UV_REQ_TYPE_MAP(XX)
 #undef XX
   case UV_REQ_TYPE_MAX:
   case UV_UNKNOWN_REQ:

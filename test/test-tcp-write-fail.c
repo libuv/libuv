@@ -24,7 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #ifndef _WIN32
-# include <unistd.h>
+#  include <unistd.h>
 #endif
 
 
@@ -40,10 +40,10 @@ static void close_socket(uv_tcp_t* sock) {
   uv_os_fd_t fd;
   int r;
 
-  r = uv_fileno((uv_handle_t*)sock, &fd);
+  r = uv_fileno((uv_handle_t*) sock, &fd);
   ASSERT_OK(r);
 #ifdef _WIN32
-  r = closesocket((uv_os_sock_t)fd);
+  r = closesocket((uv_os_sock_t) fd);
 #else
   r = close(fd);
 #endif
@@ -64,7 +64,7 @@ static void write_cb(uv_write_t* req, int status) {
   fprintf(stderr, "uv_write error: %s\n", uv_strerror(status));
   write_cb_called++;
 
-  uv_close((uv_handle_t*)(req->handle), close_cb);
+  uv_close((uv_handle_t*) (req->handle), close_cb);
 }
 
 
@@ -80,7 +80,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   connect_cb_called++;
 
   /* close the socket, the hard way */
-  close_socket((uv_tcp_t*)stream);
+  close_socket((uv_tcp_t*) stream);
 
   buf = uv_buf_init("hello\n", 6);
   r = uv_write(&write_req, stream, &buf, 1, write_cb);

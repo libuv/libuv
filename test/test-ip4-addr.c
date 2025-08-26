@@ -32,8 +32,8 @@ TEST_IMPL(ip4_addr) {
 
   ASSERT_OK(uv_inet_ntop(AF_INET, "\xFF\xFF\xFF\xFF", dst, sizeof(dst)));
   ASSERT_OK(strcmp(dst, "255.255.255.255"));
-  ASSERT_EQ(UV_ENOSPC, uv_inet_ntop(AF_INET, "\xFF\xFF\xFF\xFF",
-                                    dst, sizeof(dst) - 1));
+  ASSERT_EQ(UV_ENOSPC,
+            uv_inet_ntop(AF_INET, "\xFF\xFF\xFF\xFF", dst, sizeof(dst) - 1));
 
   ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
   ASSERT_OK(uv_ip4_addr("255.255.255.255", TEST_PORT, &addr));
@@ -47,8 +47,8 @@ TEST_IMPL(ip4_addr) {
 #endif
 
   /* for broken address family */
-  ASSERT_EQ(UV_EAFNOSUPPORT, uv_inet_pton(42, "127.0.0.1",
-                                          &addr.sin_addr.s_addr));
+  ASSERT_EQ(UV_EAFNOSUPPORT,
+            uv_inet_pton(42, "127.0.0.1", &addr.sin_addr.s_addr));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

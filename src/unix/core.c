@@ -23,7 +23,7 @@
 #include "strtok.h"
 
 #include <stddef.h> /* NULL */
-#include <stdio.h> /* printf */
+#include <stdio.h>  /* printf */
 #include <stdlib.h>
 #include <string.h> /* strerror */
 #include <errno.h>
@@ -31,14 +31,14 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>  /* O_CLOEXEC */
+#include <fcntl.h> /* O_CLOEXEC */
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <limits.h> /* INT_MAX, PATH_MAX, IOV_MAX */
-#include <sys/uio.h> /* writev */
+#include <limits.h>       /* INT_MAX, PATH_MAX, IOV_MAX */
+#include <sys/uio.h>      /* writev */
 #include <sys/resource.h> /* getrusage */
 #include <pwd.h>
 #include <grp.h>
@@ -47,67 +47,65 @@
 #include <time.h> /* clock_gettime */
 
 #ifdef __sun
-# include <sys/filio.h>
-# include <sys/wait.h>
+#  include <sys/filio.h>
+#  include <sys/wait.h>
 #endif
 
 #if defined(__APPLE__)
-# include <mach/mach.h>
-# include <mach/thread_info.h>
-# include <sys/filio.h>
-# include <sys/sysctl.h>
+#  include <mach/mach.h>
+#  include <mach/thread_info.h>
+#  include <sys/filio.h>
+#  include <sys/sysctl.h>
 #endif /* defined(__APPLE__) */
 
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
-# include <crt_externs.h>
-# include <mach-o/dyld.h> /* _NSGetExecutablePath */
-# define environ (*_NSGetEnviron())
-#else /* defined(__APPLE__) && !TARGET_OS_IPHONE */
+#  include <crt_externs.h>
+#  include <mach-o/dyld.h> /* _NSGetExecutablePath */
+#  define environ (*_NSGetEnviron())
+#else  /* defined(__APPLE__) && !TARGET_OS_IPHONE */
 extern char** environ;
 #endif /* !(defined(__APPLE__) && !TARGET_OS_IPHONE) */
 
 
-#if defined(__DragonFly__)      || \
-    defined(__FreeBSD__)        || \
-    defined(__NetBSD__)         || \
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) ||   \
     defined(__OpenBSD__)
-# include <sys/sysctl.h>
-# include <sys/filio.h>
-# include <sys/wait.h>
-# include <sys/param.h>
-# if defined(__FreeBSD__)
-#  include <sys/cpuset.h>
-#  define uv__accept4 accept4
-# endif
-# if defined(__NetBSD__)
-#  define uv__accept4(a, b, c, d) paccept((a), (b), (c), NULL, (d))
-# endif
+#  include <sys/sysctl.h>
+#  include <sys/filio.h>
+#  include <sys/wait.h>
+#  include <sys/param.h>
+#  if defined(__FreeBSD__)
+#    include <sys/cpuset.h>
+#    define uv__accept4 accept4
+#  endif
+#  if defined(__NetBSD__)
+#    define uv__accept4(a, b, c, d) paccept((a), (b), (c), NULL, (d))
+#  endif
 #endif
 
 #if defined(__MVS__)
-# include <sys/ioctl.h>
-# include "zos-sys-info.h"
+#  include <sys/ioctl.h>
+#  include "zos-sys-info.h"
 #endif
 
 #if defined(__linux__)
-# include <sched.h>
-# include <sys/syscall.h>
-# define gettid() syscall(SYS_gettid)
-# define uv__accept4 accept4
+#  include <sched.h>
+#  include <sys/syscall.h>
+#  define gettid()    syscall(SYS_gettid)
+#  define uv__accept4 accept4
 #endif
 
 #if defined(__FreeBSD__)
-# include <sys/param.h>
-# include <sys/cpuset.h>
+#  include <sys/param.h>
+#  include <sys/cpuset.h>
 #endif
 
 #if defined(__NetBSD__)
-# include <sched.h>
+#  include <sched.h>
 #endif
 
 #if defined(__linux__) && defined(__SANITIZE_THREAD__) && defined(__clang__)
-# include <sanitizer/linux_syscall_hooks.h>
+#  include <sanitizer/linux_syscall_hooks.h>
 #endif
 
 static void uv__run_pending(uv_loop_t* loop);
@@ -131,14 +129,14 @@ int uv_clock_gettime(uv_clock_id clock_id, uv_timespec64_t* ts) {
     return UV_EFAULT;
 
   switch (clock_id) {
-    default:
-      return UV_EINVAL;
-    case UV_CLOCK_MONOTONIC:
-      r = clock_gettime(CLOCK_MONOTONIC, &t);
-      break;
-    case UV_CLOCK_REALTIME:
-      r = clock_gettime(CLOCK_REALTIME, &t);
-      break;
+  default:
+    return UV_EINVAL;
+  case UV_CLOCK_MONOTONIC:
+    r = clock_gettime(CLOCK_MONOTONIC, &t);
+    break;
+  case UV_CLOCK_REALTIME:
+    r = clock_gettime(CLOCK_REALTIME, &t);
+    break;
   }
 
   if (r)
@@ -164,47 +162,47 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
   switch (handle->type) {
   case UV_NAMED_PIPE:
-    uv__pipe_close((uv_pipe_t*)handle);
+    uv__pipe_close((uv_pipe_t*) handle);
     break;
 
   case UV_TTY:
-    uv__tty_close((uv_tty_t*)handle);
+    uv__tty_close((uv_tty_t*) handle);
     break;
 
   case UV_TCP:
-    uv__tcp_close((uv_tcp_t*)handle);
+    uv__tcp_close((uv_tcp_t*) handle);
     break;
 
   case UV_UDP:
-    uv__udp_close((uv_udp_t*)handle);
+    uv__udp_close((uv_udp_t*) handle);
     break;
 
   case UV_PREPARE:
-    uv__prepare_close((uv_prepare_t*)handle);
+    uv__prepare_close((uv_prepare_t*) handle);
     break;
 
   case UV_CHECK:
-    uv__check_close((uv_check_t*)handle);
+    uv__check_close((uv_check_t*) handle);
     break;
 
   case UV_IDLE:
-    uv__idle_close((uv_idle_t*)handle);
+    uv__idle_close((uv_idle_t*) handle);
     break;
 
   case UV_ASYNC:
-    uv__async_close((uv_async_t*)handle);
+    uv__async_close((uv_async_t*) handle);
     break;
 
   case UV_TIMER:
-    uv__timer_close((uv_timer_t*)handle);
+    uv__timer_close((uv_timer_t*) handle);
     break;
 
   case UV_PROCESS:
-    uv__process_close((uv_process_t*)handle);
+    uv__process_close((uv_process_t*) handle);
     break;
 
   case UV_FS_EVENT:
-    uv__fs_event_close((uv_fs_event_t*)handle);
+    uv__fs_event_close((uv_fs_event_t*) handle);
 #if defined(__sun) || defined(__MVS__)
     /*
      * On Solaris, illumos, and z/OS we will not be able to dissociate the
@@ -217,11 +215,11 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     break;
 
   case UV_POLL:
-    uv__poll_close((uv_poll_t*)handle);
+    uv__poll_close((uv_poll_t*) handle);
     break;
 
   case UV_FS_POLL:
-    uv__fs_poll_close((uv_fs_poll_t*)handle);
+    uv__fs_poll_close((uv_fs_poll_t*) handle);
     /* Poll handles use file system requests, and one of them may still be
      * running. The poll code will call uv__make_close_pending() for us. */
     return;
@@ -248,7 +246,7 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
   if (handle->type == UV_TCP || handle->type == UV_NAMED_PIPE)
     fd = uv__stream_fd((uv_stream_t*) handle);
   else if (handle->type == UV_UDP)
-    fd = ((uv_udp_t *) handle)->io_watcher.fd;
+    fd = ((uv_udp_t*) handle)->io_watcher.fd;
   else
     return UV_ENOTSUP;
 
@@ -316,44 +314,44 @@ static void uv__finish_close(uv_handle_t* handle) {
   handle->flags |= UV_HANDLE_CLOSED;
 
   switch (handle->type) {
-    case UV_PREPARE:
-    case UV_CHECK:
-    case UV_IDLE:
-    case UV_ASYNC:
-    case UV_TIMER:
-    case UV_PROCESS:
-    case UV_FS_EVENT:
-    case UV_FS_POLL:
-    case UV_POLL:
-      break;
+  case UV_PREPARE:
+  case UV_CHECK:
+  case UV_IDLE:
+  case UV_ASYNC:
+  case UV_TIMER:
+  case UV_PROCESS:
+  case UV_FS_EVENT:
+  case UV_FS_POLL:
+  case UV_POLL:
+    break;
 
-    case UV_SIGNAL:
-      /* If there are any caught signals "trapped" in the signal pipe,
-       * we can't call the close callback yet. Reinserting the handle
-       * into the closing queue makes the event loop spin but that's
-       * okay because we only need to deliver the pending events.
-       */
-      sh = (uv_signal_t*) handle;
-      if (sh->caught_signals > sh->dispatched_signals) {
-        handle->flags ^= UV_HANDLE_CLOSED;
-        uv__make_close_pending(handle);  /* Back into the queue. */
-        return;
-      }
-      break;
+  case UV_SIGNAL:
+    /* If there are any caught signals "trapped" in the signal pipe,
+     * we can't call the close callback yet. Reinserting the handle
+     * into the closing queue makes the event loop spin but that's
+     * okay because we only need to deliver the pending events.
+     */
+    sh = (uv_signal_t*) handle;
+    if (sh->caught_signals > sh->dispatched_signals) {
+      handle->flags ^= UV_HANDLE_CLOSED;
+      uv__make_close_pending(handle); /* Back into the queue. */
+      return;
+    }
+    break;
 
-    case UV_NAMED_PIPE:
-    case UV_TCP:
-    case UV_TTY:
-      uv__stream_destroy((uv_stream_t*)handle);
-      break;
+  case UV_NAMED_PIPE:
+  case UV_TCP:
+  case UV_TTY:
+    uv__stream_destroy((uv_stream_t*) handle);
+    break;
 
-    case UV_UDP:
-      uv__udp_finish_close((uv_udp_t*)handle);
-      break;
+  case UV_UDP:
+    uv__udp_finish_close((uv_udp_t*) handle);
+    break;
 
-    default:
-      assert(0);
-      break;
+  default:
+    assert(0);
+    break;
   }
 
   uv__handle_unref(handle);
@@ -391,8 +389,7 @@ int uv_backend_fd(const uv_loop_t* loop) {
 
 
 static int uv__loop_alive(const uv_loop_t* loop) {
-  return uv__has_active_handles(loop) ||
-         uv__has_active_reqs(loop) ||
+  return uv__has_active_handles(loop) || uv__has_active_reqs(loop) ||
          !uv__queue_empty(&loop->pending_queue) ||
          loop->closing_handles != NULL;
 }
@@ -443,9 +440,8 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   }
 
   while (r != 0 && loop->stop_flag == 0) {
-    can_sleep =
-        uv__queue_empty(&loop->pending_queue) &&
-        uv__queue_empty(&loop->idle_handles);
+    can_sleep = uv__queue_empty(&loop->pending_queue) &&
+                uv__queue_empty(&loop->idle_handles);
 
     uv__run_pending(loop);
     uv__run_idle(loop);
@@ -548,11 +544,11 @@ FILE* uv__open_file(const char* path) {
   if (fd < 0)
     return NULL;
 
-   fp = fdopen(fd, "r");
-   if (fp == NULL)
-     uv__close(fd);
+  fp = fdopen(fd, "r");
+  if (fp == NULL)
+    uv__close(fd);
 
-   return fp;
+  return fp;
 }
 
 
@@ -565,7 +561,7 @@ int uv__accept(int sockfd) {
 
   do
 #ifdef uv__accept4
-    peerfd = uv__accept4(sockfd, NULL, NULL, SOCK_NONBLOCK|SOCK_CLOEXEC);
+    peerfd = uv__accept4(sockfd, NULL, NULL, SOCK_NONBLOCK | SOCK_CLOEXEC);
 #else
     peerfd = accept(sockfd, NULL, NULL);
 #endif
@@ -599,16 +595,16 @@ int uv__accept(int sockfd) {
  */
 int uv__close_nocancel(int fd) {
 #if defined(__APPLE__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
-#if defined(__LP64__) || TARGET_OS_IPHONE
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
+#  if defined(__LP64__) || TARGET_OS_IPHONE
   extern int close$NOCANCEL(int);
   return close$NOCANCEL(fd);
-#else
+#  else
   extern int close$NOCANCEL$UNIX2003(int);
   return close$NOCANCEL$UNIX2003(fd);
-#endif
-#pragma GCC diagnostic pop
+#  endif
+#  pragma GCC diagnostic pop
 #elif defined(__linux__) && defined(__SANITIZE_THREAD__) && defined(__clang__)
   long rc;
   __sanitizer_syscall_pre_close(fd);
@@ -627,14 +623,14 @@ int uv__close_nocheckstdio(int fd) {
   int saved_errno;
   int rc;
 
-  assert(fd > -1);  /* Catch uninitialized io_watcher.fd bugs. */
+  assert(fd > -1); /* Catch uninitialized io_watcher.fd bugs. */
 
   saved_errno = errno;
   rc = uv__close_nocancel(fd);
   if (rc == -1) {
     rc = UV__ERR(errno);
     if (rc == UV_EINTR || rc == UV__ERR(EINPROGRESS))
-      rc = 0;    /* The close is in progress, not an error. */
+      rc = 0; /* The close is in progress, not an error. */
     errno = saved_errno;
   }
 
@@ -643,7 +639,7 @@ int uv__close_nocheckstdio(int fd) {
 
 
 int uv__close(int fd) {
-  assert(fd > STDERR_FILENO);  /* Catch stdio close bugs. */
+  assert(fd > STDERR_FILENO); /* Catch stdio close bugs. */
 #if defined(__MVS__)
   SAVE_ERRNO(epoll_file_close(fd));
 #endif
@@ -717,12 +713,8 @@ int uv__cloexec(int fd, int set) {
 
 
 ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
-#if defined(__ANDROID__)   || \
-    defined(__DragonFly__) || \
-    defined(__FreeBSD__)   || \
-    defined(__NetBSD__)    || \
-    defined(__OpenBSD__)   || \
-    defined(__linux__)
+#if defined(__ANDROID__) || defined(__DragonFly__) || defined(__FreeBSD__) ||  \
+    defined(__NetBSD__) || defined(__OpenBSD__) || defined(__linux__)
   ssize_t rc;
   rc = recvmsg(fd, msg, flags | MSG_CMSG_CLOEXEC);
   if (rc == -1)
@@ -741,7 +733,7 @@ ssize_t uv__recvmsg(int fd, struct msghdr* msg, int flags) {
   for (cmsg = CMSG_FIRSTHDR(msg); cmsg != NULL; cmsg = CMSG_NXTHDR(msg, cmsg))
     if (cmsg->cmsg_type == SCM_RIGHTS)
       for (pfd = (int*) CMSG_DATA(cmsg),
-           end = (int*) ((char*) cmsg + cmsg->cmsg_len);
+          end = (int*) ((char*) cmsg + cmsg->cmsg_len);
            pfd < end;
            pfd += 1)
         uv__cloexec(*pfd, 1);
@@ -803,7 +795,7 @@ void uv_disable_stdio_inheritance(void) {
   /* Set the CLOEXEC flag on all open descriptors. Unconditionally try the
    * first 16 file descriptors. After that, bail out after the first error.
    */
-  for (fd = 0; ; fd++)
+  for (fd = 0;; fd++)
     if (uv__cloexec(fd, 1) && fd > 15)
       break;
 }
@@ -820,11 +812,11 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
     break;
 
   case UV_UDP:
-    fd_out = ((uv_udp_t *) handle)->io_watcher.fd;
+    fd_out = ((uv_udp_t*) handle)->io_watcher.fd;
     break;
 
   case UV_POLL:
-    fd_out = ((uv_poll_t *) handle)->io_watcher.fd;
+    fd_out = ((uv_poll_t*) handle)->io_watcher.fd;
     break;
 
   default:
@@ -887,8 +879,8 @@ static int maybe_resize(uv_loop_t* loop, unsigned int len) {
   }
 
   nwatchers = next_power_of_two(len + 2) - 2;
-  watchers = uv__reallocf(loop->watchers,
-                          (nwatchers + 2) * sizeof(loop->watchers[0]));
+  watchers =
+      uv__reallocf(loop->watchers, (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     return UV_ENOMEM;
@@ -1027,8 +1019,7 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       loop->watchers[w->fd] = NULL;
       loop->nfds--;
     }
-  }
-  else if (uv__queue_empty(&w->watcher_queue))
+  } else if (uv__queue_empty(&w->watcher_queue))
     uv__queue_insert_tail(&loop->watcher_queue, &w->watcher_queue);
 }
 
@@ -1094,9 +1085,9 @@ static int uv__getrusage(int who, uv_rusage_t* rusage) {
    * the outliers because of course they are.
    */
 #if defined(__APPLE__)
-  rusage->ru_maxrss /= 1024;                  /* macOS and iOS report bytes. */
+  rusage->ru_maxrss /= 1024; /* macOS and iOS report bytes. */
 #elif defined(__sun)
-  rusage->ru_maxrss *= getpagesize() / 1024;  /* Solaris reports pages. */
+  rusage->ru_maxrss *= getpagesize() / 1024; /* Solaris reports pages. */
 #endif
 
   return 0;
@@ -1117,10 +1108,7 @@ int uv_getrusage_thread(uv_rusage_t* rusage) {
 
   thread = mach_thread_self();
   count = THREAD_BASIC_INFO_COUNT;
-  kr = thread_info(thread,
-                   THREAD_BASIC_INFO,
-                   (thread_info_t)&info,
-                   &count);
+  kr = thread_info(thread, THREAD_BASIC_INFO, (thread_info_t) &info, &count);
 
   if (kr != KERN_SUCCESS) {
     mach_port_deallocate(mach_task_self(), thread);
@@ -1142,7 +1130,7 @@ int uv_getrusage_thread(uv_rusage_t* rusage) {
   return uv__getrusage(RUSAGE_LWP, rusage);
 #elif defined(RUSAGE_THREAD)
   return uv__getrusage(RUSAGE_THREAD, rusage);
-#endif  /* defined(__APPLE__) */
+#endif /* defined(__APPLE__) */
   return UV_ENOTSUP;
 }
 
@@ -1171,7 +1159,7 @@ int uv__open_cloexec(const char* path, int flags) {
   }
 
   return fd;
-#endif  /* O_CLOEXEC */
+#endif /* O_CLOEXEC */
 }
 
 
@@ -1214,7 +1202,7 @@ int uv__dup2_cloexec(int oldfd, int newfd) {
   int err;
   int r;
 
-  r = dup2(oldfd, newfd);  /* Never retry. */
+  r = dup2(oldfd, newfd); /* Never retry. */
   if (r == -1)
     return UV__ERR(errno);
 
@@ -1272,13 +1260,12 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-#define CHECK_ENV_VAR(name)                                                   \
-  do {                                                                        \
-    buf = getenv(name);                                                       \
-    if (buf != NULL)                                                          \
-      goto return_buffer;                                                     \
-  }                                                                           \
-  while (0)
+#define CHECK_ENV_VAR(name)                                                    \
+  do {                                                                         \
+    buf = getenv(name);                                                        \
+    if (buf != NULL)                                                           \
+      goto return_buffer;                                                      \
+  } while (0)
 
   /* Check the TMPDIR, TMP, TEMP, and TEMPDIR environment variables in order */
   CHECK_ENV_VAR("TMPDIR");
@@ -1288,12 +1275,12 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
 
 #undef CHECK_ENV_VAR
 
-  /* No temp environment variables defined */
-  #if defined(__ANDROID__)
-    buf = "/data/local/tmp";
-  #else
-    buf = "/tmp";
-  #endif
+/* No temp environment variables defined */
+#if defined(__ANDROID__)
+  buf = "/data/local/tmp";
+#else
+  buf = "/tmp";
+#endif
 
 return_buffer:
   len = strlen(buf);
@@ -1316,7 +1303,7 @@ return_buffer:
 }
 
 
-static int uv__getpwuid_r(uv_passwd_t *pwd, uid_t uid) {
+static int uv__getpwuid_r(uv_passwd_t* pwd, uid_t uid) {
   struct passwd pw;
   struct passwd* result;
   char* buf;
@@ -1455,7 +1442,7 @@ int uv_os_get_group(uv_group_t* grp, uv_uid_t gid) {
     strcpy(gr_mem, gp.gr_mem[r]);
     gr_mem += strlen(gr_mem) + 1;
   }
-  assert(gr_mem == (char*)grp->members + mem_size);
+  assert(gr_mem == (char*) grp->members + mem_size);
 
   /* Copy the groupname */
   grp->groupname = gr_mem;
@@ -1495,7 +1482,8 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
   *envitems = NULL;
   *count = 0;
 
-  for (i = 0; environ[i] != NULL; i++);
+  for (i = 0; environ[i] != NULL; i++)
+    ;
 
   *envitems = uv__calloc(i, sizeof(**envitems));
 
@@ -1689,7 +1677,7 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
  * If the function fails, the return value is non-zero.
  * for Linux, when schedule policy is SCHED_OTHER (default), priority is 0.
  * So the output parameter priority is actually the nice value.
-*/
+ */
 int uv_thread_getpriority(uv_thread_t tid, int* priority) {
   int r;
   int policy;
@@ -1725,7 +1713,8 @@ static int set_nice_for_calling_thread(int priority) {
   int r;
   int nice;
 
-  if (priority < UV_THREAD_PRIORITY_LOWEST || priority > UV_THREAD_PRIORITY_HIGHEST)
+  if (priority < UV_THREAD_PRIORITY_LOWEST ||
+      priority > UV_THREAD_PRIORITY_HIGHEST)
     return UV_EINVAL;
 
   pid_t pid = gettid();
@@ -1740,7 +1729,7 @@ static int set_nice_for_calling_thread(int priority) {
 /**
  * If the function succeeds, the return value is 0.
  * If the function fails, the return value is non-zero.
-*/
+ */
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
 #if !defined(__GNU__)
   int r;
@@ -1751,29 +1740,30 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
   int policy;
   struct sched_param param;
 
-  if (priority < UV_THREAD_PRIORITY_LOWEST || priority > UV_THREAD_PRIORITY_HIGHEST)
+  if (priority < UV_THREAD_PRIORITY_LOWEST ||
+      priority > UV_THREAD_PRIORITY_HIGHEST)
     return UV_EINVAL;
 
   r = pthread_getschedparam(tid, &policy, &param);
   if (r != 0)
     return UV__ERR(r);
 
-#ifdef __linux__
-/**
- * for Linux, when schedule policy is SCHED_OTHER (default), priority must be 0,
- * we should set the nice value in this case.
-*/
+#  ifdef __linux__
+  /**
+   * for Linux, when schedule policy is SCHED_OTHER (default), priority must be
+   * 0, we should set the nice value in this case.
+   */
   if (SCHED_OTHER == policy && pthread_equal(tid, pthread_self()))
     return set_nice_for_calling_thread(priority);
-#endif
+#  endif
 
-#ifdef __PASE__
+#  ifdef __PASE__
   min = 1;
   max = 127;
-#else
+#  else
   min = sched_get_priority_min(policy);
   max = sched_get_priority_max(policy);
-#endif
+#  endif
 
   if (min == -1 || max == -1)
     return UV__ERR(errno);
@@ -1781,23 +1771,23 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
   range = max - min;
 
   switch (priority) {
-    case UV_THREAD_PRIORITY_HIGHEST:
-      prio = max;
-      break;
-    case UV_THREAD_PRIORITY_ABOVE_NORMAL:
-      prio = min + range * 3 / 4;
-      break;
-    case UV_THREAD_PRIORITY_NORMAL:
-      prio = min + range / 2;
-      break;
-    case UV_THREAD_PRIORITY_BELOW_NORMAL:
-      prio = min + range / 4;
-      break;
-    case UV_THREAD_PRIORITY_LOWEST:
-      prio = min;
-      break;
-    default:
-      return 0;
+  case UV_THREAD_PRIORITY_HIGHEST:
+    prio = max;
+    break;
+  case UV_THREAD_PRIORITY_ABOVE_NORMAL:
+    prio = min + range * 3 / 4;
+    break;
+  case UV_THREAD_PRIORITY_NORMAL:
+    prio = min + range / 2;
+    break;
+  case UV_THREAD_PRIORITY_BELOW_NORMAL:
+    prio = min + range / 4;
+    break;
+  case UV_THREAD_PRIORITY_LOWEST:
+    prio = min;
+    break;
+  default:
+    return 0;
   }
 
   if (param.sched_priority != prio) {
@@ -1811,7 +1801,7 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
 #else  /* !defined(__GNU__) */
   /* Simulate success on systems where thread priority is not implemented. */
   return 0;
-#endif  /* !defined(__GNU__) */
+#endif /* !defined(__GNU__) */
 }
 
 int uv_os_uname(uv_utsname_t* buffer) {
@@ -1995,8 +1985,8 @@ int uv__search_path(const char* prog, char* buf, size_t* buflen) {
   return UV_EINVAL;
 }
 
-#if defined(__linux__) || defined (__FreeBSD__)
-# define uv__cpu_count(cpuset) CPU_COUNT(cpuset)
+#if defined(__linux__) || defined(__FreeBSD__)
+#  define uv__cpu_count(cpuset) CPU_COUNT(cpuset)
 #elif defined(__NetBSD__)
 static int uv__cpu_count(cpuset_t* set) {
   int rc;
@@ -2040,7 +2030,8 @@ unsigned int uv_available_parallelism(void) {
 
   memset(&set, 0, sizeof(set));
 
-  if (0 == cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, -1, sizeof(set), &set))
+  if (0 ==
+      cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, -1, sizeof(set), &set))
     rc = uv__cpu_count(&set);
 #elif defined(__NetBSD__)
   cpuset_t* set = cpuset_create();
@@ -2053,16 +2044,11 @@ unsigned int uv_available_parallelism(void) {
   int nprocs;
   size_t i;
   size_t len = sizeof(nprocs);
-  static const char *mib[] = {
-    "hw.activecpu",
-    "hw.logicalcpu",
-    "hw.ncpu"
-  };
+  static const char* mib[] = {"hw.activecpu", "hw.logicalcpu", "hw.ncpu"};
 
   for (i = 0; i < ARRAY_SIZE(mib); i++) {
     if (0 == sysctlbyname(mib[i], &nprocs, &len, NULL, 0) &&
-	      len == sizeof(nprocs) &&
-	      nprocs > 0) {
+        len == sizeof(nprocs) && nprocs > 0) {
       rc = nprocs;
       break;
     }
@@ -2072,16 +2058,14 @@ unsigned int uv_available_parallelism(void) {
   size_t i;
   size_t len = sizeof(nprocs);
   static int mib[][2] = {
-# ifdef HW_NCPUONLINE
-    { CTL_HW, HW_NCPUONLINE },
-# endif
-    { CTL_HW, HW_NCPU }
-  };
+#  ifdef HW_NCPUONLINE
+      {CTL_HW, HW_NCPUONLINE},
+#  endif
+      {CTL_HW, HW_NCPU}};
 
   for (i = 0; i < ARRAY_SIZE(mib); i++) {
     if (0 == sysctl(mib[i], ARRAY_SIZE(mib[i]), &nprocs, &len, NULL, 0) &&
-	len == sizeof(nprocs) &&
-        nprocs > 0) {
+        len == sizeof(nprocs) && nprocs > 0) {
       rc = nprocs;
       break;
     }
@@ -2099,7 +2083,7 @@ unsigned int uv_available_parallelism(void) {
       if (quota > 0 && quota < rc)
         rc = quota;
   }
-#endif  /* __linux__ */
+#endif /* __linux__ */
 
   if (rc < 1)
     rc = 1;
@@ -2115,11 +2099,10 @@ int uv__sock_reuseport(int fd) {
    * the SO_REUSEPORTs on Linux and DragonFlyBSD. */
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT_LB, &on, sizeof(on)))
     return UV__ERR(errno);
-#elif (defined(__linux__) || \
-      defined(_AIX73) || \
-      (defined(__DragonFly__) && __DragonFly_version >= 300600) || \
-      (defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4)) && \
-      defined(SO_REUSEPORT)
+#elif (defined(__linux__) || defined(_AIX73) ||                                \
+       (defined(__DragonFly__) && __DragonFly_version >= 300600) ||            \
+       (defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4)) &&                     \
+    defined(SO_REUSEPORT)
   /* On Linux 3.9+, the SO_REUSEPORT implementation distributes connections
    * evenly across all of the threads (or processes) that are blocked in
    * accept() on the same port. As with TCP, SO_REUSEPORT distributes datagrams
@@ -2129,7 +2112,8 @@ int uv__sock_reuseport(int fd) {
    * available sockets, which made it the equivalent of Linux's SO_REUSEPORT.
    *
    * AIX 7.2.5 added the feature that would add the capability to distribute
-   * incoming connections or datagrams across all listening ports for SO_REUSEPORT.
+   * incoming connections or datagrams across all listening ports for
+   * SO_REUSEPORT.
    *
    * Solaris 11 supported SO_REUSEPORT, but it's implemented only for
    * binding to the same address and port, without load balancing.

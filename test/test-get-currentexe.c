@@ -24,7 +24,7 @@
 #include <string.h>
 
 #ifndef _WIN32
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 
 #define PATHMAX 4096

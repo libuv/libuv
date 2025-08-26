@@ -26,7 +26,7 @@
 #include <string.h>
 
 #ifndef _WIN32
-# include <unistd.h>
+#  include <unistd.h>
 #endif
 
 static int shutdown_cb_called = 0;
@@ -44,9 +44,9 @@ static uv_tcp_t client;
 
 static void startup(void) {
 #ifdef _WIN32
-    struct WSAData wsa_data;
-    int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-    ASSERT_OK(r);
+  struct WSAData wsa_data;
+  int r = WSAStartup(MAKEWORD(2, 2), &wsa_data);
+  ASSERT_OK(r);
 #endif
 }
 
@@ -116,10 +116,9 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   if (nread >= 0) {
     ASSERT_EQ(4, nread);
     ASSERT_OK(memcmp("PING", buf->base, nread));
-  }
-  else {
+  } else {
     ASSERT_EQ(nread, UV_EOF);
-    uv_close((uv_handle_t*)tcp, close_cb);
+    uv_close((uv_handle_t*) tcp, close_cb);
   }
 }
 
@@ -134,7 +133,7 @@ static void read1_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
   } else {
     ASSERT_EQ(nread, UV_EOF);
     printf("GOT EOF\n");
-    uv_close((uv_handle_t*)tcp, close_cb);
+    uv_close((uv_handle_t*) tcp, close_cb);
   }
 }
 
@@ -266,8 +265,8 @@ TEST_IMPL(tcp_open) {
 
     uv_close((uv_handle_t*) &client2, NULL);
   }
-#else  /* _WIN32 */
-  (void)client2;
+#else /* _WIN32 */
+  (void) client2;
 #endif
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -343,21 +342,15 @@ TEST_IMPL(tcp_open_connected) {
   startup();
   sock = create_tcp_socket();
 
-  ASSERT_OK(connect(sock, (struct sockaddr*) &addr,  sizeof(addr)));
+  ASSERT_OK(connect(sock, (struct sockaddr*) &addr, sizeof(addr)));
 
   ASSERT_OK(uv_tcp_init(uv_default_loop(), &client));
 
   ASSERT_OK(uv_tcp_open(&client, sock));
 
-  ASSERT_OK(uv_write(&write_req,
-                     (uv_stream_t*) &client,
-                     &buf,
-                     1,
-                     write_cb));
+  ASSERT_OK(uv_write(&write_req, (uv_stream_t*) &client, &buf, 1, write_cb));
 
-  ASSERT_OK(uv_shutdown(&shutdown_req,
-                        (uv_stream_t*) &client,
-                        shutdown_cb));
+  ASSERT_OK(uv_shutdown(&shutdown_req, (uv_stream_t*) &client, shutdown_cb));
 
   ASSERT_OK(uv_read_start((uv_stream_t*) &client, alloc_cb, read_cb));
 

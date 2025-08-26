@@ -30,7 +30,7 @@
 #include <mach-o/dyld.h> /* _NSGetExecutablePath */
 #include <sys/resource.h>
 #include <sys/sysctl.h>
-#include <unistd.h>  /* sysconf */
+#include <unistd.h> /* sysconf */
 
 static uv_once_t once = UV_ONCE_INIT;
 static mach_timebase_info_data_t timebase;
@@ -99,8 +99,10 @@ uint64_t uv_get_free_memory(void) {
   vm_statistics_data_t info;
   mach_msg_type_number_t count = sizeof(info) / sizeof(integer_t);
 
-  if (host_statistics(mach_host_self(), HOST_VM_INFO,
-                      (host_info_t)&info, &count) != KERN_SUCCESS) {
+  if (host_statistics(mach_host_self(),
+                      HOST_VM_INFO,
+                      (host_info_t) &info,
+                      &count) != KERN_SUCCESS) {
     return 0;
   }
 
@@ -121,7 +123,7 @@ uint64_t uv_get_total_memory(void) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return 0; /* Memory constraints are unknown. */
 }
 
 
@@ -135,7 +137,8 @@ void uv_loadavg(double avg[3]) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_LOADAVG};
 
-  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) < 0) return;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) < 0)
+    return;
 
   avg[0] = (double) info.ldavg[0] / info.fscale;
   avg[1] = (double) info.ldavg[1] / info.fscale;
@@ -149,10 +152,8 @@ int uv_resident_set_memory(size_t* rss) {
   kern_return_t err;
 
   count = TASK_BASIC_INFO_COUNT;
-  err = task_info(mach_task_self(),
-                  TASK_BASIC_INFO,
-                  (task_info_t) &info,
-                  &count);
+  err =
+      task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t) &info, &count);
   (void) &err;
   /* task_info(TASK_BASIC_INFO) cannot really fail. Anything other than
    * KERN_SUCCESS implies a libuv bug.
@@ -180,15 +181,15 @@ int uv_uptime(double* uptime) {
 }
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  unsigned int ticks = (unsigned int)sysconf(_SC_CLK_TCK),
-               multiplier = ((uint64_t)1000L / ticks);
+  unsigned int ticks = (unsigned int) sysconf(_SC_CLK_TCK),
+               multiplier = ((uint64_t) 1000L / ticks);
   char model[512];
   uint64_t cpuspeed;
   size_t size;
   unsigned int i;
   natural_t numcpus;
   mach_msg_type_number_t msg_type;
-  processor_cpu_load_info_data_t *info;
+  processor_cpu_load_info_data_t* info;
   uv_cpu_info_t* cpu_info;
 
   size = sizeof(model);
@@ -205,15 +206,17 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
      * from Apple, but we can hard-code it here to a plausible value. */
     cpuspeed = 2400000000U;
 
-  if (host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO, &numcpus,
-                          (processor_info_array_t*)&info,
+  if (host_processor_info(mach_host_self(),
+                          PROCESSOR_CPU_LOAD_INFO,
+                          &numcpus,
+                          (processor_info_array_t*) &info,
                           &msg_type) != KERN_SUCCESS) {
-    return UV_EINVAL;  /* FIXME(bnoordhuis) Translate error. */
+    return UV_EINVAL; /* FIXME(bnoordhuis) Translate error. */
   }
 
   *cpu_infos = uv__malloc(numcpus * sizeof(**cpu_infos));
   if (!(*cpu_infos)) {
-    vm_deallocate(mach_task_self(), (vm_address_t)info, msg_type);
+    vm_deallocate(mach_task_self(), (vm_address_t) info, msg_type);
     return UV_ENOMEM;
   }
 
@@ -222,16 +225,16 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   for (i = 0; i < numcpus; i++) {
     cpu_info = &(*cpu_infos)[i];
 
-    cpu_info->cpu_times.user = (uint64_t)(info[i].cpu_ticks[0]) * multiplier;
-    cpu_info->cpu_times.nice = (uint64_t)(info[i].cpu_ticks[3]) * multiplier;
-    cpu_info->cpu_times.sys = (uint64_t)(info[i].cpu_ticks[1]) * multiplier;
-    cpu_info->cpu_times.idle = (uint64_t)(info[i].cpu_ticks[2]) * multiplier;
+    cpu_info->cpu_times.user = (uint64_t) (info[i].cpu_ticks[0]) * multiplier;
+    cpu_info->cpu_times.nice = (uint64_t) (info[i].cpu_ticks[3]) * multiplier;
+    cpu_info->cpu_times.sys = (uint64_t) (info[i].cpu_ticks[1]) * multiplier;
+    cpu_info->cpu_times.idle = (uint64_t) (info[i].cpu_ticks[2]) * multiplier;
     cpu_info->cpu_times.irq = 0;
 
     cpu_info->model = uv__strdup(model);
-    cpu_info->speed = (int)(cpuspeed / 1000000);
+    cpu_info->speed = (int) (cpuspeed / 1000000);
   }
-  vm_deallocate(mach_task_self(), (vm_address_t)info, msg_type);
+  vm_deallocate(mach_task_self(), (vm_address_t) info, msg_type);
 
   return 0;
 }

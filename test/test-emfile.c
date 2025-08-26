@@ -21,12 +21,12 @@
 
 #if !defined(_WIN32)
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
-#include <errno.h>
-#include <sys/resource.h>
-#include <unistd.h>
+#  include <errno.h>
+#  include <sys/resource.h>
+#  include <unistd.h>
 
 static void connection_cb(uv_stream_t* server_handle, int status);
 static void connect_cb(uv_connect_t* req, int status);
@@ -43,18 +43,18 @@ TEST_IMPL(emfile) {
   uv_connect_t connect_req;
   uv_loop_t* loop;
   int first_fd;
-#if defined(_AIX) || defined(__MVS__)
+#  if defined(_AIX) || defined(__MVS__)
   /* On AIX, if a 'accept' call fails ECONNRESET is set on the socket
    * which causes uv__emfile_trick to not work as intended and this test
    * to fail.
    */
   RETURN_SKIP("uv__emfile_trick does not work on this OS");
-#endif
+#  endif
 
   /* Lower the file descriptor limit and use up all fds save one. */
   limits.rlim_cur = limits.rlim_max = maxfd + 1;
   if (setrlimit(RLIMIT_NOFILE, &limits)) {
-    ASSERT_EQ(errno, EPERM);  /* Valgrind blocks the setrlimit() call. */
+    ASSERT_EQ(errno, EPERM); /* Valgrind blocks the setrlimit() call. */
     RETURN_SKIP("setrlimit(RLIMIT_NOFILE) failed, running under valgrind?");
   }
 
@@ -71,17 +71,18 @@ TEST_IMPL(emfile) {
   while (first_fd == -1 && errno == EINTR);
   ASSERT_GT(first_fd, 0);
 
-  while (dup(0) != -1 || errno == EINTR);
+  while (dup(0) != -1 || errno == EINTR)
+    ;
   ASSERT_EQ(errno, EMFILE);
   close(maxfd);
 
-#if defined(__ANDROID__)
+#  if defined(__ANDROID__)
   /* Android connect syscall requires an extra file descriptor
    *
    * It fails in uv__tcp_connect
    * */
   close(maxfd - 1);
-#endif
+#  endif
 
   /* Now connect and use up the last available file descriptor.  The EMFILE
    * handling logic in src/unix/stream.c should ensure that connect_cb() runs

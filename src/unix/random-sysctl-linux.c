@@ -78,7 +78,7 @@ int uv__random_sysctl(void* buf, size_t buflen) {
 #endif
 
     if (n != sizeof(uuid))
-      return UV_EIO;  /* Can't happen. */
+      return UV_EIO; /* Can't happen. */
 
     /* uuid[] is now a type 4 UUID. Bytes 6 and 8 (counting from zero) contain
      * 4 and 5 bits of entropy, respectively. For ease of use, we skip those

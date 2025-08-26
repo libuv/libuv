@@ -22,28 +22,28 @@
 #include <errno.h>
 
 #ifdef _WIN32
-# include <fcntl.h>
-# define close _close
+#  include <fcntl.h>
+#  define close _close
 #else
-# include <sys/socket.h>
-# include <unistd.h>
+#  include <sys/socket.h>
+#  include <unistd.h>
 #endif
 
 #include "uv.h"
 #include "task.h"
 
 #ifdef __linux__
-# include <sys/epoll.h>
+#  include <sys/epoll.h>
 #endif
 
 #ifdef UV_HAVE_KQUEUE
-# include <sys/types.h>
-# include <sys/event.h>
-# include <sys/time.h>
+#  include <sys/types.h>
+#  include <sys/event.h>
+#  include <sys/time.h>
 #endif
 
 
-#define NUM_CLIENTS 5
+#define NUM_CLIENTS    5
 #define TRANSFER_BYTES (1 << 16)
 
 #undef MIN
@@ -91,17 +91,16 @@ static int got_eagain(void) {
 #ifdef _WIN32
   return WSAGetLastError() == WSAEWOULDBLOCK;
 #else
-  return errno == EAGAIN
-      || errno == EINPROGRESS
-#ifdef EWOULDBLOCK
-      || errno == EWOULDBLOCK;
-#endif
-      ;
+  return errno == EAGAIN || errno == EINPROGRESS
+#  ifdef EWOULDBLOCK
+         || errno == EWOULDBLOCK;
+#  endif
+  ;
 #endif
 }
 
 
-static uv_os_sock_t create_bound_socket (struct sockaddr_in bind_addr) {
+static uv_os_sock_t create_bound_socket(struct sockaddr_in bind_addr) {
   uv_os_sock_t sock;
   int r;
 
@@ -143,7 +142,8 @@ static void close_socket(uv_os_sock_t sock) {
 
 
 static connection_context_t* create_connection_context(
-    uv_os_sock_t sock, int is_server_connection) {
+    uv_os_sock_t sock,
+    int is_server_connection) {
   int r;
   connection_context_t* context;
 
@@ -219,78 +219,78 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
     int action = rand() % 7;
 
     switch (action) {
-      case 0:
-      case 1: {
-        /* Read a couple of bytes. */
-        static char buffer[74];
+    case 0:
+    case 1: {
+      /* Read a couple of bytes. */
+      static char buffer[74];
 
+      do
+        r = recv(context->sock, buffer, sizeof buffer, 0);
+      while (r == -1 && errno == EINTR);
+      ASSERT_GE(r, 0);
+
+      if (r > 0) {
+        context->read += r;
+      } else {
+        /* Got FIN. */
+        context->got_fin = 1;
+        new_events &= ~UV_READABLE;
+      }
+
+      break;
+    }
+
+    case 2:
+    case 3: {
+      /* Read until EAGAIN. */
+      static char buffer[931];
+
+      for (;;) {
         do
           r = recv(context->sock, buffer, sizeof buffer, 0);
         while (r == -1 && errno == EINTR);
-        ASSERT_GE(r, 0);
 
-        if (r > 0) {
-          context->read += r;
-        } else {
-          /* Got FIN. */
-          context->got_fin = 1;
-          new_events &= ~UV_READABLE;
-        }
+        if (r <= 0)
+          break;
 
-        break;
+        context->read += r;
       }
 
-      case 2:
-      case 3: {
-        /* Read until EAGAIN. */
-        static char buffer[931];
-
-        for (;;) {
-          do
-            r = recv(context->sock, buffer, sizeof buffer, 0);
-          while (r == -1 && errno == EINTR);
-
-          if (r <= 0)
-            break;
-
-          context->read += r;
-        }
-
-        if (r == 0) {
-          /* Got FIN. */
-          context->got_fin = 1;
-          new_events &= ~UV_READABLE;
-        } else {
-          ASSERT(got_eagain());
-        }
-
-        break;
-      }
-
-      case 4:
-        /* Ignore. */
-        break;
-
-      case 5:
-        /* Stop reading for a while. Restart in timer callback. */
+      if (r == 0) {
+        /* Got FIN. */
+        context->got_fin = 1;
         new_events &= ~UV_READABLE;
-        if (!uv_is_active((uv_handle_t*) &context->timer_handle)) {
-          context->delayed_events = UV_READABLE;
-          uv_timer_start(&context->timer_handle, delay_timer_cb, 10, 0);
-        } else {
-          context->delayed_events |= UV_READABLE;
-        }
-        break;
+      } else {
+        ASSERT(got_eagain());
+      }
 
-      case 6:
-        /* Fudge with the event mask. */
-        uv_poll_start(&context->poll_handle, UV_WRITABLE, connection_poll_cb);
-        uv_poll_start(&context->poll_handle, UV_READABLE, connection_poll_cb);
-        context->events = UV_READABLE;
-        break;
+      break;
+    }
 
-      default:
-        ASSERT(0);
+    case 4:
+      /* Ignore. */
+      break;
+
+    case 5:
+      /* Stop reading for a while. Restart in timer callback. */
+      new_events &= ~UV_READABLE;
+      if (!uv_is_active((uv_handle_t*) &context->timer_handle)) {
+        context->delayed_events = UV_READABLE;
+        uv_timer_start(&context->timer_handle, delay_timer_cb, 10, 0);
+      } else {
+        context->delayed_events |= UV_READABLE;
+      }
+      break;
+
+    case 6:
+      /* Fudge with the event mask. */
+      uv_poll_start(&context->poll_handle, UV_WRITABLE, connection_poll_cb);
+      uv_poll_start(&context->poll_handle, UV_READABLE, connection_poll_cb);
+      context->events = UV_READABLE;
+      break;
+
+    default:
+      ASSERT(0);
     }
   }
 
@@ -301,99 +301,95 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
       int action = rand() % 7;
 
       switch (action) {
-        case 0:
-        case 1: {
-          /* Send a couple of bytes. */
-          static char buffer[103];
+      case 0:
+      case 1: {
+        /* Send a couple of bytes. */
+        static char buffer[103];
 
-          int send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
+        int send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
+        ASSERT_GT(send_bytes, 0);
+
+        do
+          r = send(context->sock, buffer, send_bytes, 0);
+        while (r == -1 && errno == EINTR);
+
+        if (r < 0) {
+          ASSERT(got_eagain());
+          spurious_writable_wakeups++;
+          break;
+        }
+
+        ASSERT_GT(r, 0);
+        context->sent += r;
+        valid_writable_wakeups++;
+        break;
+      }
+
+      case 2:
+      case 3: {
+        /* Send until EAGAIN. */
+        static char buffer[1234];
+
+        int send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
+        ASSERT_GT(send_bytes, 0);
+
+        do
+          r = send(context->sock, buffer, send_bytes, 0);
+        while (r == -1 && errno == EINTR);
+
+        if (r < 0) {
+          ASSERT(got_eagain());
+          spurious_writable_wakeups++;
+          break;
+        }
+
+        ASSERT_GT(r, 0);
+        valid_writable_wakeups++;
+        context->sent += r;
+
+        while (context->sent < TRANSFER_BYTES) {
+          send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
           ASSERT_GT(send_bytes, 0);
 
           do
             r = send(context->sock, buffer, send_bytes, 0);
           while (r == -1 && errno == EINTR);
+          ASSERT(r);
 
           if (r < 0) {
             ASSERT(got_eagain());
-            spurious_writable_wakeups++;
             break;
           }
 
-          ASSERT_GT(r, 0);
           context->sent += r;
-          valid_writable_wakeups++;
-          break;
         }
+        break;
+      }
 
-        case 2:
-        case 3: {
-          /* Send until EAGAIN. */
-          static char buffer[1234];
+      case 4:
+        /* Ignore. */
+        break;
 
-          int send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
-          ASSERT_GT(send_bytes, 0);
-
-          do
-            r = send(context->sock, buffer, send_bytes, 0);
-          while (r == -1 && errno == EINTR);
-
-          if (r < 0) {
-            ASSERT(got_eagain());
-            spurious_writable_wakeups++;
-            break;
-          }
-
-          ASSERT_GT(r, 0);
-          valid_writable_wakeups++;
-          context->sent += r;
-
-          while (context->sent < TRANSFER_BYTES) {
-            send_bytes = MIN(TRANSFER_BYTES - context->sent, sizeof buffer);
-            ASSERT_GT(send_bytes, 0);
-
-            do
-              r = send(context->sock, buffer, send_bytes, 0);
-            while (r == -1 && errno == EINTR);
-            ASSERT(r);
-
-            if (r < 0) {
-              ASSERT(got_eagain());
-              break;
-            }
-
-            context->sent += r;
-          }
-          break;
+      case 5:
+        /* Stop sending for a while. Restart in timer callback. */
+        new_events &= ~UV_WRITABLE;
+        if (!uv_is_active((uv_handle_t*) &context->timer_handle)) {
+          context->delayed_events = UV_WRITABLE;
+          uv_timer_start(&context->timer_handle, delay_timer_cb, 100, 0);
+        } else {
+          context->delayed_events |= UV_WRITABLE;
         }
+        break;
 
-        case 4:
-          /* Ignore. */
-         break;
+      case 6:
+        /* Fudge with the event mask. */
+        uv_poll_start(&context->poll_handle, UV_READABLE, connection_poll_cb);
+        uv_poll_start(&context->poll_handle, UV_WRITABLE, connection_poll_cb);
+        context->events = UV_WRITABLE;
+        break;
 
-        case 5:
-          /* Stop sending for a while. Restart in timer callback. */
-          new_events &= ~UV_WRITABLE;
-          if (!uv_is_active((uv_handle_t*) &context->timer_handle)) {
-            context->delayed_events = UV_WRITABLE;
-            uv_timer_start(&context->timer_handle, delay_timer_cb, 100, 0);
-          } else {
-            context->delayed_events |= UV_WRITABLE;
-          }
-          break;
-
-        case 6:
-          /* Fudge with the event mask. */
-          uv_poll_start(&context->poll_handle,
-                        UV_READABLE,
-                        connection_poll_cb);
-          uv_poll_start(&context->poll_handle,
-                        UV_WRITABLE,
-                        connection_poll_cb);
-          context->events = UV_WRITABLE;
-          break;
-
-        default:
-          ASSERT(0);
+      default:
+        ASSERT(0);
       }
 
     } else {
@@ -417,7 +413,7 @@ static void connection_poll_cb(uv_poll_t* handle, int status, int events) {
   }
 
   if (context->got_fin && context->sent_fin && context->got_disconnect) {
-#else /* __sun && _AIX  && __MVS__ && __QNX__*/
+#else  /* __sun && _AIX  && __MVS__ && __QNX__*/
   if (context->got_fin && context->sent_fin) {
 #endif /* !__sun && !_AIX && !__MVS__ && !__QNX__ */
     /* Sent and received FIN. Close and destroy context. */
@@ -452,15 +448,12 @@ static void delay_timer_cb(uv_timer_t* timer) {
   context->events |= context->delayed_events;
   context->delayed_events = 0;
 
-  r = uv_poll_start(&context->poll_handle,
-                    context->events,
-                    connection_poll_cb);
+  r = uv_poll_start(&context->poll_handle, context->events, connection_poll_cb);
   ASSERT_OK(r);
 }
 
 
-static server_context_t* create_server_context(
-    uv_os_sock_t sock) {
+static server_context_t* create_server_context(uv_os_sock_t sock) {
   int r;
   server_context_t* context;
 
@@ -490,8 +483,7 @@ static void destroy_server_context(server_context_t* context) {
 
 
 static void server_poll_cb(uv_poll_t* handle, int status, int events) {
-  server_context_t* server_context = (server_context_t*)
-                                          handle->data;
+  server_context_t* server_context = (server_context_t*) handle->data;
   connection_context_t* connection_context;
   struct sockaddr_in addr;
   socklen_t addr_len;
@@ -583,8 +575,10 @@ static void start_poll_test(void) {
 
   /* Assert that at most five percent of the writable wakeups was spurious. */
   ASSERT_NE(spurious_writable_wakeups == 0 ||
-            (valid_writable_wakeups + spurious_writable_wakeups) /
-            spurious_writable_wakeups > 20, 0);
+                (valid_writable_wakeups + spurious_writable_wakeups) /
+                        spurious_writable_wakeups >
+                    20,
+            0);
 
   ASSERT_EQ(closed_connections, NUM_CLIENTS * 2);
 #if !defined(__sun) && !defined(_AIX) && !defined(__MVS__) && !defined(__QNX__)
@@ -593,12 +587,12 @@ static void start_poll_test(void) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
 }
 
- 
+
 /* Issuing a shutdown() on IBM i PASE with parameter SHUT_WR
  * also sends a normal close sequence to the partner program.
  * This leads to timing issues and ECONNRESET failures in the
  * test 'poll_duplex' and 'poll_unidirectional'.
- * 
+ *
  * https://www.ibm.com/support/knowledgecenter/en/ssw_ibm_i_74/apis/shutdn.htm
  */
 TEST_IMPL(poll_duplex) {
@@ -633,34 +627,30 @@ TEST_IMPL(poll_unidirectional) {
  * In addition to regular files, we also disallow FIFOs on Darwin.
  */
 #ifdef __APPLE__
-#define TEST_POLL_FIFO_PATH "uv-test-poll-fifo"
+#  define TEST_POLL_FIFO_PATH "uv-test-poll-fifo"
 #endif
 TEST_IMPL(poll_bad_fdtype) {
-#if !defined(__sun) && \
-    !defined(_AIX) && !defined(__MVS__) && \
+#if !defined(__sun) && !defined(_AIX) && !defined(__MVS__) &&                  \
     !defined(__CYGWIN__) && !defined(__MSYS__) && !defined(__QNX__)
   uv_poll_t poll_handle;
   int fd[2];
 
-#if defined(_WIN32)
+#  if defined(_WIN32)
   fd[0] = _open("test/fixtures/empty_file", UV_FS_O_RDONLY);
-#else
+#  else
   fd[0] = open(".", UV_FS_O_RDONLY);
-#endif
+#  endif
   ASSERT_NE(fd[0], -1);
   ASSERT_NE(0, uv_poll_init(uv_default_loop(), &poll_handle, fd[0]));
   ASSERT_OK(close(fd[0]));
-#if defined(__APPLE__)     || \
-    defined(__DragonFly__) || \
-    defined(__FreeBSD__)   || \
-    defined(__OpenBSD__)   || \
-    defined(__NetBSD__)
+#  if defined(__APPLE__) || defined(__DragonFly__) || defined(__FreeBSD__) ||  \
+      defined(__OpenBSD__) || defined(__NetBSD__)
   fd[0] = open("test/fixtures/empty_file", UV_FS_O_RDONLY);
   ASSERT_NE(fd[0], -1);
   /* Regular files should be banned from kqueue. */
   ASSERT_NE(0, uv_poll_init(uv_default_loop(), &poll_handle, fd[0]));
   ASSERT_OK(close(fd[0]));
-#ifdef __APPLE__
+#    ifdef __APPLE__
   ASSERT_OK(pipe(fd));
   /* Pipes should be permitted in kqueue. */
   ASSERT_EQ(0, uv_poll_init(uv_default_loop(), &poll_handle, fd[0]));
@@ -677,8 +667,8 @@ TEST_IMPL(poll_bad_fdtype) {
   ASSERT_OK(close(fd[0]));
   ASSERT_OK(close(fd[1]));
   unlink(TEST_POLL_FIFO_PATH);
-#endif
-#endif
+#    endif
+#  endif
 #endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -705,7 +695,7 @@ TEST_IMPL(poll_nested_epoll) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
-#endif  /* __linux__ */
+#endif /* __linux__ */
 
 
 #ifdef UV_HAVE_KQUEUE
@@ -727,4 +717,4 @@ TEST_IMPL(poll_nested_kqueue) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
-#endif  /* UV_HAVE_KQUEUE */
+#endif /* UV_HAVE_KQUEUE */

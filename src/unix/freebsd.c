@@ -27,10 +27,10 @@
 
 #include <paths.h>
 #if defined(__DragonFly__)
-# include <sys/event.h>
-# include <sys/kinfo.h>
+#  include <sys/event.h>
+#  include <sys/kinfo.h>
 #else
-# include <sys/user.h>
+#  include <sys/user.h>
 #endif
 #include <sys/types.h>
 #include <sys/resource.h>
@@ -42,14 +42,14 @@
 #include <fcntl.h>
 
 #ifndef CPUSTATES
-# define CPUSTATES 5U
+#  define CPUSTATES 5U
 #endif
 #ifndef CP_USER
-# define CP_USER 0
-# define CP_NICE 1
-# define CP_SYS 2
-# define CP_IDLE 3
-# define CP_INTR 4
+#  define CP_USER 0
+#  define CP_NICE 1
+#  define CP_SYS  2
+#  define CP_IDLE 3
+#  define CP_INTR 4
 #endif
 
 
@@ -99,7 +99,6 @@ uint64_t uv_get_free_memory(void) {
     return 0;
 
   return (uint64_t) freecount * sysconf(_SC_PAGESIZE);
-
 }
 
 
@@ -117,7 +116,7 @@ uint64_t uv_get_total_memory(void) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return 0; /* Memory constraints are unknown. */
 }
 
 
@@ -131,7 +130,8 @@ void uv_loadavg(double avg[3]) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_LOADAVG};
 
-  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) < 0) return;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) < 0)
+    return;
 
   avg[0] = (double) info.ldavg[0] / info.fscale;
   avg[1] = (double) info.ldavg[1] / info.fscale;
@@ -180,8 +180,8 @@ int uv_uptime(double* uptime) {
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  unsigned int ticks = (unsigned int)sysconf(_SC_CLK_TCK),
-               multiplier = ((uint64_t)1000L / ticks), cpuspeed, maxcpus,
+  unsigned int ticks = (unsigned int) sysconf(_SC_CLK_TCK),
+               multiplier = ((uint64_t) 1000L / ticks), cpuspeed, maxcpus,
                cur = 0;
   uv_cpu_info_t* cpu_info;
   const char* maxcpus_key;
@@ -257,16 +257,19 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   for (i = 0; i < numcpus; i++) {
     cpu_info = &(*cpu_infos)[i];
 
-    cpu_info->cpu_times.user = (uint64_t)(cp_times[CP_USER+cur]) * multiplier;
-    cpu_info->cpu_times.nice = (uint64_t)(cp_times[CP_NICE+cur]) * multiplier;
-    cpu_info->cpu_times.sys = (uint64_t)(cp_times[CP_SYS+cur]) * multiplier;
-    cpu_info->cpu_times.idle = (uint64_t)(cp_times[CP_IDLE+cur]) * multiplier;
-    cpu_info->cpu_times.irq = (uint64_t)(cp_times[CP_INTR+cur]) * multiplier;
+    cpu_info->cpu_times.user =
+        (uint64_t) (cp_times[CP_USER + cur]) * multiplier;
+    cpu_info->cpu_times.nice =
+        (uint64_t) (cp_times[CP_NICE + cur]) * multiplier;
+    cpu_info->cpu_times.sys = (uint64_t) (cp_times[CP_SYS + cur]) * multiplier;
+    cpu_info->cpu_times.idle =
+        (uint64_t) (cp_times[CP_IDLE + cur]) * multiplier;
+    cpu_info->cpu_times.irq = (uint64_t) (cp_times[CP_INTR + cur]) * multiplier;
 
     cpu_info->model = uv__strdup(model);
     cpu_info->speed = cpuspeed;
 
-    cur+=CPUSTATES;
+    cur += CPUSTATES;
   }
 
   uv__free(cp_times);
@@ -274,17 +277,15 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 }
 
 
-ssize_t
-uv__fs_copy_file_range(int fd_in,
-                       off_t* off_in,
-                       int fd_out,
-                       off_t* off_out,
-                       size_t len,
-                       unsigned int flags)
-{
+ssize_t uv__fs_copy_file_range(int fd_in,
+                               off_t* off_in,
+                               int fd_out,
+                               off_t* off_out,
+                               size_t len,
+                               unsigned int flags) {
 #if __FreeBSD__ >= 13 && !defined(__DragonFly__)
-	return copy_file_range(fd_in, off_in, fd_out, off_out, len, flags);
+  return copy_file_range(fd_in, off_in, fd_out, off_out, len, flags);
 #else
-	return errno = ENOSYS, -1;
+  return errno = ENOSYS, -1;
 #endif
 }

@@ -39,28 +39,28 @@ uv_handle_type uv_guess_handle(uv_file file) {
   handle = uv__get_osfhandle(file);
 
   switch (GetFileType(handle)) {
-    case FILE_TYPE_CHAR:
-      if (GetConsoleMode(handle, &mode)) {
-        return UV_TTY;
-      } else {
-        return UV_FILE;
-      }
-
-    case FILE_TYPE_PIPE:
-      return UV_NAMED_PIPE;
-
-    case FILE_TYPE_DISK:
+  case FILE_TYPE_CHAR:
+    if (GetConsoleMode(handle, &mode)) {
+      return UV_TTY;
+    } else {
       return UV_FILE;
+    }
 
-    default:
-      return UV_UNKNOWN_HANDLE;
+  case FILE_TYPE_PIPE:
+    return UV_NAMED_PIPE;
+
+  case FILE_TYPE_DISK:
+    return UV_FILE;
+
+  default:
+    return UV_UNKNOWN_HANDLE;
   }
 }
 
 
 int uv_is_active(const uv_handle_t* handle) {
   return (handle->flags & UV_HANDLE_ACTIVE) &&
-        !(handle->flags & UV_HANDLE_CLOSING);
+         !(handle->flags & UV_HANDLE_CLOSING);
 }
 
 
@@ -76,74 +76,74 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
 
   /* Handle-specific close actions */
   switch (handle->type) {
-    case UV_TCP:
-      uv__tcp_close(loop, (uv_tcp_t*)handle);
-      return;
+  case UV_TCP:
+    uv__tcp_close(loop, (uv_tcp_t*) handle);
+    return;
 
-    case UV_NAMED_PIPE:
-      uv__pipe_close(loop, (uv_pipe_t*) handle);
-      return;
+  case UV_NAMED_PIPE:
+    uv__pipe_close(loop, (uv_pipe_t*) handle);
+    return;
 
-    case UV_TTY:
-      uv__tty_close((uv_tty_t*) handle);
-      return;
+  case UV_TTY:
+    uv__tty_close((uv_tty_t*) handle);
+    return;
 
-    case UV_UDP:
-      uv__udp_close(loop, (uv_udp_t*) handle);
-      return;
+  case UV_UDP:
+    uv__udp_close(loop, (uv_udp_t*) handle);
+    return;
 
-    case UV_POLL:
-      uv__poll_close(loop, (uv_poll_t*) handle);
-      return;
+  case UV_POLL:
+    uv__poll_close(loop, (uv_poll_t*) handle);
+    return;
 
-    case UV_TIMER:
-      uv_timer_stop((uv_timer_t*)handle);
-      uv__handle_closing(handle);
-      uv__want_endgame(loop, handle);
-      return;
+  case UV_TIMER:
+    uv_timer_stop((uv_timer_t*) handle);
+    uv__handle_closing(handle);
+    uv__want_endgame(loop, handle);
+    return;
 
-    case UV_PREPARE:
-      uv_prepare_stop((uv_prepare_t*)handle);
-      uv__handle_closing(handle);
-      uv__want_endgame(loop, handle);
-      return;
+  case UV_PREPARE:
+    uv_prepare_stop((uv_prepare_t*) handle);
+    uv__handle_closing(handle);
+    uv__want_endgame(loop, handle);
+    return;
 
-    case UV_CHECK:
-      uv_check_stop((uv_check_t*)handle);
-      uv__handle_closing(handle);
-      uv__want_endgame(loop, handle);
-      return;
+  case UV_CHECK:
+    uv_check_stop((uv_check_t*) handle);
+    uv__handle_closing(handle);
+    uv__want_endgame(loop, handle);
+    return;
 
-    case UV_IDLE:
-      uv_idle_stop((uv_idle_t*)handle);
-      uv__handle_closing(handle);
-      uv__want_endgame(loop, handle);
-      return;
+  case UV_IDLE:
+    uv_idle_stop((uv_idle_t*) handle);
+    uv__handle_closing(handle);
+    uv__want_endgame(loop, handle);
+    return;
 
-    case UV_ASYNC:
-      uv__async_close(loop, (uv_async_t*) handle);
-      return;
+  case UV_ASYNC:
+    uv__async_close(loop, (uv_async_t*) handle);
+    return;
 
-    case UV_SIGNAL:
-      uv__signal_close(loop, (uv_signal_t*) handle);
-      return;
+  case UV_SIGNAL:
+    uv__signal_close(loop, (uv_signal_t*) handle);
+    return;
 
-    case UV_PROCESS:
-      uv__process_close(loop, (uv_process_t*) handle);
-      return;
+  case UV_PROCESS:
+    uv__process_close(loop, (uv_process_t*) handle);
+    return;
 
-    case UV_FS_EVENT:
-      uv__fs_event_close(loop, (uv_fs_event_t*) handle);
-      return;
+  case UV_FS_EVENT:
+    uv__fs_event_close(loop, (uv_fs_event_t*) handle);
+    return;
 
-    case UV_FS_POLL:
-      uv__fs_poll_close((uv_fs_poll_t*) handle);
-      uv__handle_closing(handle);
-      return;
+  case UV_FS_POLL:
+    uv__fs_poll_close((uv_fs_poll_t*) handle);
+    uv__handle_closing(handle);
+    return;
 
-    default:
-      /* Not supported */
-      abort();
+  default:
+    /* Not supported */
+    abort();
   }
 }
 

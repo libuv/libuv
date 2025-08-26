@@ -58,15 +58,12 @@ TEST_IMPL(tcp_bind_error_addrinuse_connect) {
   ASSERT_OK(uv_tcp_bind(&conn, (const struct sockaddr*) &addr, 0));
 
   ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT + 1, &addr));
-  ASSERT_OK(uv_tcp_connect(&req,
-                           &conn,
-                           (const struct sockaddr*) &addr,
-                           connect_cb));
+  ASSERT_OK(
+      uv_tcp_connect(&req, &conn, (const struct sockaddr*) &addr, connect_cb));
 
   addrlen = sizeof(addr);
-  ASSERT_EQ(UV_EADDRINUSE, uv_tcp_getsockname(&conn,
-                                              (struct sockaddr*) &addr,
-                                              &addrlen));
+  ASSERT_EQ(UV_EADDRINUSE,
+            uv_tcp_getsockname(&conn, (struct sockaddr*) &addr, &addrlen));
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(1, connect_cb_called);
@@ -93,13 +90,13 @@ TEST_IMPL(tcp_bind_error_addrinuse_listen) {
   r = uv_tcp_bind(&server2, (const struct sockaddr*) &addr, 0);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)&server1, 128, NULL);
+  r = uv_listen((uv_stream_t*) &server1, 128, NULL);
   ASSERT_OK(r);
-  r = uv_listen((uv_stream_t*)&server2, 128, NULL);
+  r = uv_listen((uv_stream_t*) &server2, 128, NULL);
   ASSERT_EQ(r, UV_EADDRINUSE);
 
-  uv_close((uv_handle_t*)&server1, close_cb);
-  uv_close((uv_handle_t*)&server2, close_cb);
+  uv_close((uv_handle_t*) &server1, close_cb);
+  uv_close((uv_handle_t*) &server2, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -124,7 +121,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_1) {
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT(r == 0 || r == UV_EADDRNOTAVAIL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -147,7 +144,7 @@ TEST_IMPL(tcp_bind_error_addrnotavail_2) {
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT_EQ(r, UV_EADDRNOTAVAIL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -172,7 +169,7 @@ TEST_IMPL(tcp_bind_error_fault) {
   r = uv_tcp_bind(&server, (const struct sockaddr*) garbage_addr, 0);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -200,7 +197,7 @@ TEST_IMPL(tcp_bind_error_inval) {
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr2, 0);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -251,7 +248,7 @@ TEST_IMPL(tcp_listen_without_bind) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT_OK(r);
-  r = uv_listen((uv_stream_t*)&server, 128, NULL);
+  r = uv_listen((uv_stream_t*) &server, 128, NULL);
   ASSERT_OK(r);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -272,7 +269,7 @@ TEST_IMPL(tcp_bind_writable_flags) {
   ASSERT_OK(r);
   r = uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT_OK(r);
-  r = uv_listen((uv_stream_t*)&server, 128, NULL);
+  r = uv_listen((uv_stream_t*) &server, 128, NULL);
   ASSERT_OK(r);
 
   ASSERT_OK(uv_is_writable((uv_stream_t*) &server));
@@ -288,7 +285,7 @@ TEST_IMPL(tcp_bind_writable_flags) {
                     (uv_read_cb) abort);
   ASSERT_EQ(r, UV_ENOTCONN);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

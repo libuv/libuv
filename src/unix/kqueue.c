@@ -31,7 +31,7 @@
 #include <sys/event.h>
 #include <sys/time.h>
 #if defined(__FreeBSD__)
-#include <sys/user.h>
+#  include <sys/user.h>
 #endif
 #include <unistd.h>
 #include <fcntl.h>
@@ -45,7 +45,7 @@
  * http://www.boost.org/doc/libs/1_61_0/boost/asio/detail/kqueue_reactor.hpp
  */
 #ifndef EV_OOBAND
-#define EV_OOBAND  EV_FLAG1
+#  define EV_OOBAND EV_FLAG1
 #endif
 
 
@@ -107,24 +107,25 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   /* On FreeBSD, kqueue only supports EVFILT_READ notification for regular files
    * and always reports ready events for writing, resulting in busy-looping.
    *
-   * On Darwin, DragonFlyBSD, NetBSD and OpenBSD, kqueue reports ready events for
-   * regular files as readable and writable only once, acting like an EV_ONESHOT.
-   * 
+   * On Darwin, DragonFlyBSD, NetBSD and OpenBSD, kqueue reports ready events
+   * for regular files as readable and writable only once, acting like an
+   * EV_ONESHOT.
+   *
    * Neither of the above cases should be added to the kqueue.
    */
   if (S_ISREG(sb.st_mode) || S_ISDIR(sb.st_mode))
     return UV_EINVAL;
 
 #ifdef __APPLE__
-  /* On Darwin (both macOS and iOS), in addition to regular files, FIFOs also don't
-   * work properly with kqueue: the disconnection from the last writer won't trigger
-   * an event for kqueue in spite of what the man pages say. Thus, we also disallow
-   * the case of S_IFIFO. */ 
+  /* On Darwin (both macOS and iOS), in addition to regular files, FIFOs also
+   * don't work properly with kqueue: the disconnection from the last writer
+   * won't trigger an event for kqueue in spite of what the man pages say. Thus,
+   * we also disallow the case of S_IFIFO. */
   if (S_ISFIFO(sb.st_mode)) {
-    /* File descriptors of FIFO, pipe and kqueue share the same type of file, 
+    /* File descriptors of FIFO, pipe and kqueue share the same type of file,
      * therefore there is no way to tell them apart via stat.st_mode&S_IFMT.
-     * Fortunately, FIFO is the only one that has a persisted file on filesystem,
-     * from which we're able to make the distinction for it. */
+     * Fortunately, FIFO is the only one that has a persisted file on
+     * filesystem, from which we're able to make the distinction for it. */
     if (!fcntl(fd, F_GETPATH, path))
       return UV_EINVAL;
   }
@@ -139,7 +140,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-static void uv__kqueue_delete(int kqfd, const struct kevent *ev) {
+static void uv__kqueue_delete(int kqfd, const struct kevent* ev) {
   struct kevent change;
 
   EV_SET(&change, ev->ident, ev->filter, EV_DELETE, 0, 0, 0);
@@ -204,8 +205,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       if (UV__FS_EVENT == uv__io_cb_get(w)) {
         filter = EVFILT_VNODE;
-        fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
-               | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE;
+        fflags = NOTE_ATTRIB | NOTE_WRITE | NOTE_RENAME | NOTE_DELETE |
+                 NOTE_EXTEND | NOTE_REVOKE;
         op = EV_ADD | EV_ONESHOT; /* Stop the event from firing repeatedly. */
       }
 
@@ -228,7 +229,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
     }
 
-   if ((w->events & UV__POLLPRI) == 0 && (w->pevents & UV__POLLPRI) != 0) {
+    if ((w->events & UV__POLLPRI) == 0 && (w->pevents & UV__POLLPRI) != 0) {
       EV_SET(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0, 0, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
@@ -445,7 +446,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = NULL;
 
     if (have_signals != 0)
-      return;  /* Event loop should cycle now so don't poll again. */
+      return; /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -456,7 +457,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       return;
     }
 
-update_timeout:
+  update_timeout:
     if (timeout == 0)
       return;
 
@@ -528,16 +529,17 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   struct kinfo_file kf;
 
   if (handle->event_watcher.fd != -1 &&
-     (!uv__fstat(handle->event_watcher.fd, &statbuf) && !(statbuf.st_mode & S_IFDIR))) {
-     /* we are purposely not using KINFO_FILE_SIZE here
-      * as it is not available on non intl archs
-      * and here it gives 1392 too on intel.
-      * anyway, the man page also mentions we can proceed
-      * this way.
-      */
-     kf.kf_structsize = sizeof(kf);
-     if (fcntl(handle->event_watcher.fd, F_KINFO, &kf) == 0)
-       path = uv__basename_r(kf.kf_path);
+      (!uv__fstat(handle->event_watcher.fd, &statbuf) &&
+       !(statbuf.st_mode & S_IFDIR))) {
+    /* we are purposely not using KINFO_FILE_SIZE here
+     * as it is not available on non intl archs
+     * and here it gives 1392 too on intel.
+     * anyway, the man page also mentions we can proceed
+     * this way.
+     */
+    kf.kf_structsize = sizeof(kf);
+    if (fcntl(handle->event_watcher.fd, F_KINFO, &kf) == 0)
+      path = uv__basename_r(kf.kf_path);
   }
 #endif
   handle->cb(handle, path, events, 0);
@@ -546,8 +548,8 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
     return;
 
   /* Watcher operates in one-shot mode, re-arm it. */
-  fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
-         | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE;
+  fflags = NOTE_ATTRIB | NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_EXTEND |
+           NOTE_REVOKE;
 
   EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags, 0, 0);
 
@@ -557,7 +559,7 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
 
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
-  uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_FS_EVENT);
   return 0;
 }
 

@@ -21,12 +21,12 @@
 
 #if !defined(_WIN32)
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
-#include <errno.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#  include <errno.h>
+#  include <sys/socket.h>
+#  include <unistd.h>
 
 static uv_tcp_t server_handle;
 static uv_tcp_t client_handle;
@@ -56,21 +56,21 @@ static void idle_cb(uv_idle_t* idle) {
 
 
 static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
-#ifdef __MVS__
+#  ifdef __MVS__
   char lbuf[12];
-#endif
+#  endif
   uv_os_fd_t fd;
 
   ASSERT_GE(nread, 0);
-  ASSERT_OK(uv_fileno((uv_handle_t*)handle, &fd));
+  ASSERT_OK(uv_fileno((uv_handle_t*) handle, &fd));
   ASSERT_OK(uv_idle_start(&idle, idle_cb));
 
-#ifdef __MVS__
+#  ifdef __MVS__
   /* Need to flush out the OOB data. Otherwise, this callback will get
    * triggered on every poll with nread = 0.
    */
   ASSERT_NE(-1, recv(fd, lbuf, sizeof(lbuf), MSG_OOB));
-#endif
+#  endif
 }
 
 

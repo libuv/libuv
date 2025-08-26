@@ -31,7 +31,7 @@ typedef void (*signal_func)(struct worker_config* c, int* flag);
 typedef int (*wait_func)(struct worker_config* c, const int* flag);
 
 typedef struct worker_config {
-  uv_sem_t sem_waiting; /* post before waiting. */
+  uv_sem_t sem_waiting;  /* post before waiting. */
   uv_sem_t sem_signaled; /* post after signaling. */
   uv_mutex_t mutex;
   uv_cond_t cond;
@@ -175,7 +175,7 @@ static int condvar_timedwait(worker_config* c, const int* flag) {
 
   /* Wait until I get a non-spurious signal. */
   do {
-    r = uv_cond_timedwait(&c->cond, &c->mutex, (uint64_t)(1 * 1e9)); /* 1 s */
+    r = uv_cond_timedwait(&c->cond, &c->mutex, (uint64_t) (1 * 1e9)); /* 1 s */
     ASSERT_OK(r); /* Should not time out. */
   } while (*flag == 0);
   ASSERT_EQ(1, *flag);
@@ -225,7 +225,8 @@ TEST_IMPL(condvar_4) {
   return 0;
 }
 
-/* uv_cond_timedwait: One thread waits, no signal. Timeout should be delivered. */
+/* uv_cond_timedwait: One thread waits, no signal. Timeout should be delivered.
+ */
 TEST_IMPL(condvar_5) {
   worker_config wc;
   uint64_t timeout;

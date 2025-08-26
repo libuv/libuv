@@ -22,7 +22,7 @@
 #include "uv.h"
 #include "task.h"
 #ifndef _WIN32
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 
 static unsigned int read_cb_called;
@@ -41,7 +41,7 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
     break;
   case 2:
     ASSERT_EQ(nread, UV_EOF);
-    uv_close((uv_handle_t *) handle, NULL);
+    uv_close((uv_handle_t*) handle, NULL);
     break;
   default:
     ASSERT(!"read_cb_called > 2");
@@ -70,14 +70,14 @@ TEST_IMPL(close_fd) {
   ASSERT_OK(close(fd[1]));
 #endif
   fd[1] = -1;
-  ASSERT_OK(uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe_handle, alloc_cb, read_cb));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(1, read_cb_called);
-  ASSERT_OK(uv_is_active((const uv_handle_t *) &pipe_handle));
-  ASSERT_OK(uv_read_start((uv_stream_t *) &pipe_handle, alloc_cb, read_cb));
+  ASSERT_OK(uv_is_active((const uv_handle_t*) &pipe_handle));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe_handle, alloc_cb, read_cb));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(2, read_cb_called);
-  ASSERT_NE(0, uv_is_closing((const uv_handle_t *) &pipe_handle));
+  ASSERT_NE(0, uv_is_closing((const uv_handle_t*) &pipe_handle));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

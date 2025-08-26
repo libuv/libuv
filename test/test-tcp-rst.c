@@ -26,7 +26,7 @@
 TEST_IMPL(tcp_rst) {
   RETURN_SKIP("Unix only test");
 }
-#else  /* !_WIN32 */
+#else /* !_WIN32 */
 static uv_tcp_t tcp;
 static uv_connect_t connect_req;
 static uv_buf_t qbuf;
@@ -57,12 +57,12 @@ static void read_cb(uv_stream_t* t, ssize_t nread, const uv_buf_t* buf) {
   uv_handle_type type = uv_guess_handle(fd);
   ASSERT_EQ(type, UV_TCP);
 
-  uv_close((uv_handle_t *) t, close_cb);
+  uv_close((uv_handle_t*) t, close_cb);
   free(buf->base);
 }
 
 
-static void connect_cb(uv_connect_t *req, int status) {
+static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_OK(status);
   ASSERT_PTR_EQ(req, &connect_req);
 
@@ -84,9 +84,9 @@ TEST_IMPL(tcp_rst) {
   struct sockaddr_in server_addr;
   int r;
 
-#if defined(__OpenBSD__)
+#  if defined(__OpenBSD__)
   RETURN_SKIP("Test does not currently work in OpenBSD");
-#endif
+#  endif
 
   qbuf.base = "QSH";
   qbuf.len = 3;
@@ -110,4 +110,4 @@ TEST_IMPL(tcp_rst) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */

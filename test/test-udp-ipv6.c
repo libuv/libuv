@@ -27,16 +27,16 @@
 #include <string.h>
 
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__QNX__)
-#include <sys/sysctl.h>
+#  include <sys/sysctl.h>
 #endif
 
-#define CHECK_HANDLE(handle)                   \
-  ASSERT_NE((uv_udp_t*)(handle) == &server     \
-         || (uv_udp_t*)(handle) == &client     \
-         || (uv_timer_t*)(handle) == &timeout, 0)
+#define CHECK_HANDLE(handle)                                                   \
+  ASSERT_NE((uv_udp_t*) (handle) == &server ||                                 \
+                (uv_udp_t*) (handle) == &client ||                             \
+                (uv_timer_t*) (handle) == &timeout,                            \
+            0)
 
-#define CHECK_REQ(req) \
-  ASSERT_PTR_EQ((req), &req_);
+#define CHECK_REQ(req) ASSERT_PTR_EQ((req), &req_);
 
 static uv_udp_t client;
 static uv_udp_t server;
@@ -136,9 +136,9 @@ static void ipv6_recv_ok(uv_udp_t* handle,
 
 
 static void timeout_cb(uv_timer_t* timer) {
-  uv_close((uv_handle_t*)&server, close_cb);
-  uv_close((uv_handle_t*)&client, close_cb);
-  uv_close((uv_handle_t*)&timeout, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
+  uv_close((uv_handle_t*) &client, close_cb);
+  uv_close((uv_handle_t*) &timeout, close_cb);
 }
 
 
@@ -160,13 +160,9 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   ASSERT_OK(r);
 
   addr6_len = sizeof(addr6);
-  ASSERT_OK(uv_udp_getsockname(&server,
-                               (struct sockaddr*) &addr6,
-                               &addr6_len));
-  ASSERT_OK(uv_inet_ntop(addr6.sin6_family,
-                         &addr6.sin6_addr,
-                         dst,
-                         sizeof(dst)));
+  ASSERT_OK(uv_udp_getsockname(&server, (struct sockaddr*) &addr6, &addr6_len));
+  ASSERT_OK(
+      uv_inet_ntop(addr6.sin6_family, &addr6.sin6_addr, dst, sizeof(dst)));
   printf("on [%.*s]:%d\n", (int) sizeof(dst), dst, addr6.sin6_port);
 
   r = uv_udp_recv_start(&server, alloc_cb, recv_cb);
@@ -180,10 +176,8 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   printf("to [%.*s]:%d\n", (int) sizeof(dst), dst, addr.sin_port);
 
   /* Create some unique data to send */
-  ASSERT_EQ(9, snprintf(data,
-                        sizeof(data),
-                        "PING%5u",
-                        uv_os_getpid() & 0xFFFF));
+  ASSERT_EQ(9,
+            snprintf(data, sizeof(data), "PING%5u", uv_os_getpid() & 0xFFFF));
   buf = uv_buf_init(data, 9);
   printf("sending %s\n", data);
 

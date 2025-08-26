@@ -132,33 +132,34 @@ TEST_IMPL(utf8_decode1_overrun) {
 /* Doesn't work on z/OS because that platform uses EBCDIC, not ASCII. */
 #ifndef __MVS__
 
-#define F(input, err)                                                         \
-  do {                                                                        \
-    char d[256] = {0};                                                        \
-    static const char s[] = "" input "";                                      \
-    ASSERT_EQ(err, uv__idna_toascii(s, s + sizeof(s) - 1, d, d + sizeof(d))); \
-  } while (0)
+#  define F(input, err)                                                        \
+    do {                                                                       \
+      char d[256] = {0};                                                       \
+      static const char s[] = "" input "";                                     \
+      ASSERT_EQ(err,                                                           \
+                uv__idna_toascii(s, s + sizeof(s) - 1, d, d + sizeof(d)));     \
+    } while (0)
 
-#define T(input, expected)                                                    \
-  do {                                                                        \
-    long n;                                                                   \
-    char d1[256] = {0};                                                       \
-    char d2[256] = {0};                                                       \
-    static const char s[] = "" input "";                                      \
-    n = uv__idna_toascii(s, s + sizeof(s) - 1, d1, d1 + sizeof(d1));          \
-    ASSERT_EQ(n, sizeof(expected));                                           \
-    ASSERT_OK(memcmp(d1, expected, n));                                       \
-    /* Sanity check: encoding twice should not change the output. */          \
-    n = uv__idna_toascii(d1, d1 + strlen(d1), d2, d2 + sizeof(d2));           \
-    ASSERT_EQ(n, sizeof(expected));                                           \
-    ASSERT_OK(memcmp(d2, expected, n));                                       \
-    ASSERT_OK(memcmp(d1, d2, sizeof(d2)));                                    \
-  } while (0)
+#  define T(input, expected)                                                   \
+    do {                                                                       \
+      long n;                                                                  \
+      char d1[256] = {0};                                                      \
+      char d2[256] = {0};                                                      \
+      static const char s[] = "" input "";                                     \
+      n = uv__idna_toascii(s, s + sizeof(s) - 1, d1, d1 + sizeof(d1));         \
+      ASSERT_EQ(n, sizeof(expected));                                          \
+      ASSERT_OK(memcmp(d1, expected, n));                                      \
+      /* Sanity check: encoding twice should not change the output. */         \
+      n = uv__idna_toascii(d1, d1 + strlen(d1), d2, d2 + sizeof(d2));          \
+      ASSERT_EQ(n, sizeof(expected));                                          \
+      ASSERT_OK(memcmp(d2, expected, n));                                      \
+      ASSERT_OK(memcmp(d1, d2, sizeof(d2)));                                   \
+    } while (0)
 
 TEST_IMPL(idna_toascii) {
   /* Illegal inputs. */
-  F("\xC0\x80\xC1\x80", UV_EINVAL);  /* Overlong UTF-8 sequence. */
-  F("\xC0\x80\xC1\x80.com", UV_EINVAL);  /* Overlong UTF-8 sequence. */
+  F("\xC0\x80\xC1\x80", UV_EINVAL);     /* Overlong UTF-8 sequence. */
+  F("\xC0\x80\xC1\x80.com", UV_EINVAL); /* Overlong UTF-8 sequence. */
   F("", UV_EINVAL);
   /* No conversion. */
   T(".", ".");
@@ -223,9 +224,9 @@ TEST_IMPL(idna_toascii) {
   return 0;
 }
 
-#undef T
+#  undef T
 
-#endif  /* __MVS__ */
+#endif /* __MVS__ */
 
 TEST_IMPL(wtf8) {
   static const char input[] = "ᜄȺy𐞲:𞢢𘴇𐀀'¥3̞[<i$";

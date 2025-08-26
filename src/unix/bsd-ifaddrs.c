@@ -28,14 +28,14 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #if !defined(__CYGWIN__) && !defined(__MSYS__) && !defined(__GNU__)
-#include <net/if_dl.h>
+#  include <net/if_dl.h>
 #endif
 
 #if defined(__HAIKU__)
-#define IFF_RUNNING IFF_LINK
+#  define IFF_RUNNING IFF_LINK
 #endif
 
-static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
+static int uv__ifaddr_exclude(struct ifaddrs* ent, int exclude_type) {
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;
   if (ent->ifa_addr == NULL)
@@ -49,7 +49,7 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   if (exclude_type == UV__EXCLUDE_IFPHYS)
     return (ent->ifa_addr->sa_family != AF_LINK);
 #endif
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__) || \
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__DragonFly__) ||    \
     defined(__HAIKU__)
   /*
    * On BSD getifaddrs returns information related to the raw underlying
@@ -143,7 +143,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     for (i = 0; i < *count; i++) {
       if (strcmp(address->name, ent->ifa_name) == 0) {
         struct sockaddr_dl* sa_addr;
-        sa_addr = (struct sockaddr_dl*)(ent->ifa_addr);
+        sa_addr = (struct sockaddr_dl*) (ent->ifa_addr);
         memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
       }
       address++;

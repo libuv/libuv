@@ -70,7 +70,8 @@ void uv__winapi_init(void) {
     sNtQueryDirectoryFile pNtQueryDirectoryFile;
     sNtQuerySystemInformation pNtQuerySystemInformation;
     sNtQueryInformationProcess pNtQueryInformationProcess;
-    sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+    sPowerRegisterSuspendResumeNotification
+        pPowerRegisterSuspendResumeNotification;
     sProcessPrng pProcessPrng;
     sSetWinEventHook pSetWinEventHook;
     uv_sGetHostNameW pGetHostNameW;
@@ -133,9 +134,8 @@ void uv__winapi_init(void) {
     uv_fatal_error(GetLastError(), "GetProcAddress");
   }
 
-  powrprof_module = LoadLibraryExA("powrprof.dll",
-                                   NULL,
-                                   LOAD_LIBRARY_SEARCH_SYSTEM32);
+  powrprof_module =
+      LoadLibraryExA("powrprof.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
   if (powrprof_module != NULL) {
     u.proc = GetProcAddress(powrprof_module,
                             "PowerRegisterSuspendResumeNotification");
@@ -166,8 +166,8 @@ void uv__winapi_init(void) {
   api_win_core_file_module =
       GetModuleHandleW(L"api-ms-win-core-file-l2-1-4.dll");
   if (api_win_core_file_module != NULL) {
-    u.proc = GetProcAddress(api_win_core_file_module,
-                            "GetFileInformationByName");
+    u.proc =
+        GetProcAddress(api_win_core_file_module, "GetFileInformationByName");
     pGetFileInformationByName = u.pGetFileInformationByName;
   }
 }

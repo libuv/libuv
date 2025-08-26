@@ -26,8 +26,8 @@
 #include <string.h>
 
 #ifdef __linux__
-# include <sys/socket.h>
-# include <net/if.h>
+#  include <sys/socket.h>
+#  include <net/if.h>
 #endif
 
 
@@ -72,9 +72,7 @@ TEST_IMPL(ip6_addr_link_local) {
     device_name = address->name;
 
     scoped_addr_len = sizeof(scoped_addr);
-    ASSERT_OK(uv_if_indextoname(iface_index,
-                                scoped_addr,
-                                &scoped_addr_len));
+    ASSERT_OK(uv_if_indextoname(iface_index, scoped_addr, &scoped_addr_len));
 #ifndef _WIN32
     /* This assert fails on Windows, as Windows semantics are different. */
     ASSERT_OK(strcmp(device_name, scoped_addr));
@@ -84,7 +82,8 @@ TEST_IMPL(ip6_addr_link_local) {
     r = uv_if_indextoiid(iface_index, interface_id, &interface_id_len);
     ASSERT_OK(r);
 #ifdef _WIN32
-    /* On Windows, the interface identifier is the numeric string of the index. */
+    /* On Windows, the interface identifier is the numeric string of the index.
+     */
     ASSERT_EQ(strtoul(interface_id, NULL, 10), iface_index);
 #else
     /* On Unix/Linux, the interface identifier is the interface device name. */
@@ -97,7 +96,8 @@ TEST_IMPL(ip6_addr_link_local) {
              string_address,
              interface_id);
 
-    fprintf(stderr, "Testing link-local address %s "
+    fprintf(stderr,
+            "Testing link-local address %s "
             "(iface_index: 0x%02x, device_name: %s)\n",
             scoped_addr,
             iface_index,
@@ -105,7 +105,7 @@ TEST_IMPL(ip6_addr_link_local) {
     fflush(stderr);
 
     ASSERT_OK(uv_ip6_addr(scoped_addr, TEST_PORT, &addr));
-    fprintf(stderr, "Got scope_id 0x%2x\n", (unsigned)addr.sin6_scope_id);
+    fprintf(stderr, "Got scope_id 0x%2x\n", (unsigned) addr.sin6_scope_id);
     fflush(stderr);
     ASSERT_EQ(iface_index, addr.sin6_scope_id);
   }
@@ -113,44 +113,44 @@ TEST_IMPL(ip6_addr_link_local) {
   uv_free_interface_addresses(addresses, count);
 
   scoped_addr_len = sizeof(scoped_addr);
-  ASSERT_NE(0, uv_if_indextoname((unsigned int)-1,
-                                 scoped_addr,
-                                 &scoped_addr_len));
+  ASSERT_NE(
+      0,
+      uv_if_indextoname((unsigned int) -1, scoped_addr, &scoped_addr_len));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
 
-#define GOOD_ADDR_LIST(X)                                                     \
-    X("::")                                                                   \
-    X("::1")                                                                  \
-    X("fe80::1")                                                              \
-    X("fe80::")                                                               \
-    X("fe80::2acf:daff:fedd:342a")                                            \
-    X("fe80:0:0:0:2acf:daff:fedd:342a")                                       \
-    X("fe80:0:0:0:2acf:daff:1.2.3.4")                                         \
-    X("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255")                        \
+#define GOOD_ADDR_LIST(X)                                                      \
+  X("::")                                                                      \
+  X("::1")                                                                     \
+  X("fe80::1")                                                                 \
+  X("fe80::")                                                                  \
+  X("fe80::2acf:daff:fedd:342a")                                               \
+  X("fe80:0:0:0:2acf:daff:fedd:342a")                                          \
+  X("fe80:0:0:0:2acf:daff:1.2.3.4")                                            \
+  X("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255")
 
-#define BAD_ADDR_LIST(X)                                                      \
-    X(":::1")                                                                 \
-    X("abcde::1")                                                             \
-    X("fe80:0:0:0:2acf:daff:fedd:342a:5678")                                  \
-    X("fe80:0:0:0:2acf:daff:abcd:1.2.3.4")                                    \
-    X("fe80:0:0:2acf:daff:1.2.3.4.5")                                         \
-    X("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255.255")                    \
+#define BAD_ADDR_LIST(X)                                                       \
+  X(":::1")                                                                    \
+  X("abcde::1")                                                                \
+  X("fe80:0:0:0:2acf:daff:fedd:342a:5678")                                     \
+  X("fe80:0:0:0:2acf:daff:abcd:1.2.3.4")                                       \
+  X("fe80:0:0:2acf:daff:1.2.3.4.5")                                            \
+  X("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255.255")
 
-#define TEST_GOOD(ADDR)                                                       \
-    ASSERT_OK(uv_inet_pton(AF_INET6, ADDR, &addr));                           \
-    ASSERT_OK(uv_inet_pton(AF_INET6, ADDR "%en1", &addr));                    \
-    ASSERT_OK(uv_inet_pton(AF_INET6, ADDR "%%%%", &addr));                    \
-    ASSERT_OK(uv_inet_pton(AF_INET6, ADDR "%en1:1.2.3.4", &addr));            \
+#define TEST_GOOD(ADDR)                                                        \
+  ASSERT_OK(uv_inet_pton(AF_INET6, ADDR, &addr));                              \
+  ASSERT_OK(uv_inet_pton(AF_INET6, ADDR "%en1", &addr));                       \
+  ASSERT_OK(uv_inet_pton(AF_INET6, ADDR "%%%%", &addr));                       \
+  ASSERT_OK(uv_inet_pton(AF_INET6, ADDR "%en1:1.2.3.4", &addr));
 
-#define TEST_BAD(ADDR)                                                        \
-    ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR, &addr));                        \
-    ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR "%en1", &addr));                 \
-    ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR "%%%%", &addr));                 \
-    ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR "%en1:1.2.3.4", &addr));         \
+#define TEST_BAD(ADDR)                                                         \
+  ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR, &addr));                           \
+  ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR "%en1", &addr));                    \
+  ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR "%%%%", &addr));                    \
+  ASSERT_NE(0, uv_inet_pton(AF_INET6, ADDR "%en1:1.2.3.4", &addr));
 
 TEST_IMPL(ip6_pton) {
   struct in6_addr addr;

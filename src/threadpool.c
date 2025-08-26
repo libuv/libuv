@@ -22,7 +22,7 @@
 #include "uv-common.h"
 
 #if !defined(_WIN32)
-# include "unix/internal.h"
+#  include "unix/internal.h"
 #endif
 
 #include <stdlib.h>
@@ -86,7 +86,7 @@ static void worker(void* arg) {
     }
 
     uv__queue_remove(q);
-    uv__queue_init(q);  /* Signal uv_cancel() that the work req is executing. */
+    uv__queue_init(q); /* Signal uv_cancel() that the work req is executing. */
 
     is_slow_work = 0;
     if (q == &run_slow_work_message) {
@@ -123,8 +123,8 @@ static void worker(void* arg) {
     w->work(w);
 
     uv_mutex_lock(&w->loop->wq_mutex);
-    w->work = NULL;  /* Signal uv_cancel() that the work req is done
-                        executing. */
+    w->work = NULL; /* Signal uv_cancel() that the work req is done
+                       executing. */
     uv__queue_insert_tail(&w->loop->wq, &w->wq);
     uv_async_send(&w->loop->wq_async);
     uv_mutex_unlock(&w->loop->wq_mutex);
@@ -229,7 +229,7 @@ static void init_threads(void) {
     abort();
 
   config.flags = UV_THREAD_HAS_STACK_SIZE;
-  config.stack_size = 8u << 20;  /* 8 MB */
+  config.stack_size = 8u << 20; /* 8 MB */
 
   for (i = 0; i < nthreads; i++)
     if (uv_thread_create_ex(threads + i, &config, worker, &sem))
@@ -282,7 +282,7 @@ void uv__work_submit(uv_loop_t* loop,
 static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   int cancelled;
 
-  uv_once(&once, init_once);  /* Ensure |mutex| is initialized. */
+  uv_once(&once, init_once); /* Ensure |mutex| is initialized. */
   uv_mutex_lock(&mutex);
   uv_mutex_lock(&w->loop->wq_mutex);
 
@@ -392,11 +392,11 @@ int uv_cancel(uv_req_t* req) {
 
   switch (req->type) {
   case UV_FS:
-    loop =  ((uv_fs_t*) req)->loop;
+    loop = ((uv_fs_t*) req)->loop;
     wreq = &((uv_fs_t*) req)->work_req;
     break;
   case UV_GETADDRINFO:
-    loop =  ((uv_getaddrinfo_t*) req)->loop;
+    loop = ((uv_getaddrinfo_t*) req)->loop;
     wreq = &((uv_getaddrinfo_t*) req)->work_req;
     break;
   case UV_GETNAMEINFO:
@@ -408,7 +408,7 @@ int uv_cancel(uv_req_t* req) {
     wreq = &((uv_random_t*) req)->work_req;
     break;
   case UV_WORK:
-    loop =  ((uv_work_t*) req)->loop;
+    loop = ((uv_work_t*) req)->loop;
     wreq = &((uv_work_t*) req)->work_req;
     break;
   default:

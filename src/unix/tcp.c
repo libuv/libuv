@@ -32,7 +32,7 @@
 
 /* ifaddrs is not implemented on AIX and IBM i PASE */
 #if !defined(_AIX)
-#include <ifaddrs.h>
+#  include <ifaddrs.h>
 #endif
 
 static int maybe_bind_socket(int fd) {
@@ -47,11 +47,11 @@ static int maybe_bind_socket(int fd) {
 
   if (s.addr.sa_family == AF_INET)
     if (s.in.sin_port != 0)
-      return 0;  /* Already bound to a port. */
+      return 0; /* Already bound to a port. */
 
   if (s.addr.sa_family == AF_INET6)
     if (s.in6.sin6_port != 0)
-      return 0;  /* Already bound to a port. */
+      return 0; /* Already bound to a port. */
 
   /* Bind to an arbitrary port. */
   if (bind(fd, &s.addr, slen))
@@ -97,7 +97,7 @@ static int maybe_new_socket(uv_tcp_t* handle, int domain, unsigned int flags) {
     goto out;
 
   if (handle->flags & UV_HANDLE_BOUND)
-    goto out;  /* Already bound to a port. */
+    goto out; /* Already bound to a port. */
 
   err = maybe_bind_socket(sockfd);
   if (err)
@@ -122,7 +122,7 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
   if (flags & ~0xFF)
     return UV_EINVAL;
 
-  uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
+  uv__stream_init(loop, (uv_stream_t*) tcp, UV_TCP);
 
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init in uv_stream_init.
@@ -174,7 +174,7 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   }
 
 #ifndef __OpenBSD__
-#ifdef IPV6_V6ONLY
+#  ifdef IPV6_V6ONLY
   if (addr->sa_family == AF_INET6) {
     on = (flags & UV_TCP_IPV6ONLY) != 0;
     if (setsockopt(tcp->io_watcher.fd,
@@ -182,14 +182,14 @@ int uv__tcp_bind(uv_tcp_t* tcp,
                    IPV6_V6ONLY,
                    &on,
                    sizeof on) == -1) {
-#if defined(__MVS__)
+#    if defined(__MVS__)
       if (errno == EOPNOTSUPP)
         return UV_EINVAL;
-#endif
+#    endif
       return UV__ERR(errno);
     }
   }
-#endif
+#  endif
 #endif
 
   errno = 0;
@@ -286,7 +286,7 @@ int uv__tcp_connect(uv_connect_t* req,
   assert(handle->type == UV_TCP);
 
   if (handle->connect_req != NULL)
-    return UV_EALREADY;  /* FIXME(bnoordhuis) UV_EINVAL or maybe UV_EBUSY. */
+    return UV_EALREADY; /* FIXME(bnoordhuis) UV_EINVAL or maybe UV_EBUSY. */
 
   if (handle->delayed_error != 0)
     goto out;
@@ -320,13 +320,13 @@ int uv__tcp_connect(uv_connect_t* req,
       ; /* not an error */
     else if (errno == ECONNREFUSED
 #if defined(__OpenBSD__)
-      || errno == EINVAL
+             || errno == EINVAL
 #endif
-      )
-    /* If we get ECONNREFUSED (Solaris) or EINVAL (OpenBSD) wait until the
-     * next tick to report the error. Solaris and OpenBSD wants to report
-     * immediately -- other unixes want to wait.
-     */
+    )
+      /* If we get ECONNREFUSED (Solaris) or EINVAL (OpenBSD) wait until the
+       * next tick to report the error. Solaris and OpenBSD wants to report
+       * immediately -- other unixes want to wait.
+       */
       handle->delayed_error = UV__ERR(ECONNREFUSED);
     else
       return UV__ERR(errno);
@@ -359,7 +359,7 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
   if (err)
     return err;
 
-  return uv__stream_open((uv_stream_t*)handle,
+  return uv__stream_open((uv_stream_t*) handle,
                          sock,
                          UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 }
@@ -368,7 +368,6 @@ int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock) {
 int uv_tcp_getsockname(const uv_tcp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
-
   if (handle->delayed_error)
     return handle->delayed_error;
 
@@ -382,7 +381,6 @@ int uv_tcp_getsockname(const uv_tcp_t* handle,
 int uv_tcp_getpeername(const uv_tcp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
-
   if (handle->delayed_error)
     return handle->delayed_error;
 
@@ -395,7 +393,7 @@ int uv_tcp_getpeername(const uv_tcp_t* handle,
 
 int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
   int fd;
-  struct linger l = { 1, 0 };
+  struct linger l = {1, 0};
 
   /* Disallow setting SO_LINGER to zero due to some platform inconsistencies */
   if (uv__is_stream_shutting(handle))
@@ -457,13 +455,13 @@ int uv__tcp_nodelay(int fd, int on) {
 }
 
 
-#if (defined(UV__SOLARIS_11_4) && !UV__SOLARIS_11_4) || \
+#if (defined(UV__SOLARIS_11_4) && !UV__SOLARIS_11_4) ||                        \
     (defined(__DragonFly__) && __DragonFly_version < 500702)
 /* DragonFlyBSD <500702 and Solaris <11.4 require millisecond units
  * for TCP keepalive options. */
-#define UV_KEEPALIVE_FACTOR(x) (x *= 1000)
+#  define UV_KEEPALIVE_FACTOR(x) (x *= 1000)
 #else
-#define UV_KEEPALIVE_FACTOR(x)
+#  define UV_KEEPALIVE_FACTOR(x)
 #endif
 int uv__tcp_keepalive(int fd,
                       int on,
@@ -485,21 +483,27 @@ int uv__tcp_keepalive(int fd,
    * Thus, we need to specialize it on Solaris.
    *
    * There are two keep-alive mechanisms on Solaris:
-   * - By default, the first keep-alive probe is sent out after a TCP connection is idle for two hours.
-   * If the peer does not respond to the probe within eight minutes, the TCP connection is aborted.
-   * You can alter the interval for sending out the first probe using the socket option TCP_KEEPALIVE_THRESHOLD
-   * in milliseconds or TCP_KEEPIDLE in seconds.
-   * The system default is controlled by the TCP ndd parameter tcp_keepalive_interval. The minimum value is ten seconds.
-   * The maximum is ten days, while the default is two hours. If you receive no response to the probe,
-   * you can use the TCP_KEEPALIVE_ABORT_THRESHOLD socket option to change the time threshold for aborting a TCP connection.
-   * The option value is an unsigned integer in milliseconds. The value zero indicates that TCP should never time out and
-   * abort the connection when probing. The system default is controlled by the TCP ndd parameter tcp_keepalive_abort_interval.
-   * The default is eight minutes.
+   * - By default, the first keep-alive probe is sent out after a TCP connection
+   * is idle for two hours. If the peer does not respond to the probe within
+   * eight minutes, the TCP connection is aborted. You can alter the interval
+   * for sending out the first probe using the socket option
+   * TCP_KEEPALIVE_THRESHOLD in milliseconds or TCP_KEEPIDLE in seconds. The
+   * system default is controlled by the TCP ndd parameter
+   * tcp_keepalive_interval. The minimum value is ten seconds. The maximum is
+   * ten days, while the default is two hours. If you receive no response to the
+   * probe, you can use the TCP_KEEPALIVE_ABORT_THRESHOLD socket option to
+   * change the time threshold for aborting a TCP connection. The option value
+   * is an unsigned integer in milliseconds. The value zero indicates that TCP
+   * should never time out and abort the connection when probing. The system
+   * default is controlled by the TCP ndd parameter
+   * tcp_keepalive_abort_interval. The default is eight minutes.
    *
-   * - The second implementation is activated if socket option TCP_KEEPINTVL and/or TCP_KEEPCNT are set.
-   * The time between each consequent probes is set by TCP_KEEPINTVL in seconds.
-   * The minimum value is ten seconds. The maximum is ten days, while the default is two hours.
-   * The TCP connection will be aborted after certain amount of probes, which is set by TCP_KEEPCNT, without receiving response.
+   * - The second implementation is activated if socket option TCP_KEEPINTVL
+   * and/or TCP_KEEPCNT are set. The time between each consequent probes is set
+   * by TCP_KEEPINTVL in seconds. The minimum value is ten seconds. The maximum
+   * is ten days, while the default is two hours. The TCP connection will be
+   * aborted after certain amount of probes, which is set by TCP_KEEPCNT,
+   * without receiving response.
    */
 
   /* Kernel expects at least 10 seconds for TCP_KEEPIDLE and TCP_KEEPINTVL. */
@@ -508,16 +512,16 @@ int uv__tcp_keepalive(int fd,
   if (intvl < 10)
     intvl = 10;
   /* Kernel expects at most 10 days for TCP_KEEPIDLE and TCP_KEEPINTVL. */
-  if (idle > 10*24*60*60)
-    idle = 10*24*60*60;
-  if (intvl > 10*24*60*60)
-    intvl = 10*24*60*60;
+  if (idle > 10 * 24 * 60 * 60)
+    idle = 10 * 24 * 60 * 60;
+  if (intvl > 10 * 24 * 60 * 60)
+    intvl = 10 * 24 * 60 * 60;
 
   UV_KEEPALIVE_FACTOR(idle);
 
-  /* `TCP_KEEPIDLE`, `TCP_KEEPINTVL`, and `TCP_KEEPCNT` were not available on Solaris
-   * until version 11.4, but let's take a chance here. */
-#if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
+  /* `TCP_KEEPIDLE`, `TCP_KEEPINTVL`, and `TCP_KEEPCNT` were not available on
+   * Solaris until version 11.4, but let's take a chance here. */
+#  if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)))
     return UV__ERR(errno);
 
@@ -527,45 +531,50 @@ int uv__tcp_keepalive(int fd,
 
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
     return UV__ERR(errno);
-#else
-  /* Fall back to the first implementation of tcp-alive mechanism for older Solaris,
-   * simulate the tcp-alive mechanism on other platforms via `TCP_KEEPALIVE_THRESHOLD` + `TCP_KEEPALIVE_ABORT_THRESHOLD`.
+#  else
+  /* Fall back to the first implementation of tcp-alive mechanism for older
+   * Solaris, simulate the tcp-alive mechanism on other platforms via
+   * `TCP_KEEPALIVE_THRESHOLD` + `TCP_KEEPALIVE_ABORT_THRESHOLD`.
    */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_THRESHOLD, &idle, sizeof(idle)))
     return UV__ERR(errno);
 
-  /* Note that the consequent probes will not be sent at equal intervals on Solaris,
-   * but will be sent using the exponential backoff algorithm. */
+  /* Note that the consequent probes will not be sent at equal intervals on
+   * Solaris, but will be sent using the exponential backoff algorithm. */
   unsigned int time_to_abort = intvl * cnt;
   UV_KEEPALIVE_FACTOR(time_to_abort);
-  if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE_ABORT_THRESHOLD, &time_to_abort, sizeof(time_to_abort)))
+  if (setsockopt(fd,
+                 IPPROTO_TCP,
+                 TCP_KEEPALIVE_ABORT_THRESHOLD,
+                 &time_to_abort,
+                 sizeof(time_to_abort)))
     return UV__ERR(errno);
-#endif
+#  endif
 
-#else  /* !defined(__sun) */
+#else /* !defined(__sun) */
 
   UV_KEEPALIVE_FACTOR(idle);
-#ifdef TCP_KEEPIDLE
+#  ifdef TCP_KEEPIDLE
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &idle, sizeof(idle)))
     return UV__ERR(errno);
-#elif defined(TCP_KEEPALIVE)
+#  elif defined(TCP_KEEPALIVE)
   /* Darwin/macOS uses TCP_KEEPALIVE in place of TCP_KEEPIDLE. */
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPALIVE, &idle, sizeof(idle)))
     return UV__ERR(errno);
-#endif
+#  endif
 
-#ifdef TCP_KEEPINTVL
+#  ifdef TCP_KEEPINTVL
   UV_KEEPALIVE_FACTOR(intvl);
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &intvl, sizeof(intvl)))
     return UV__ERR(errno);
-#endif
+#  endif
 
-#ifdef TCP_KEEPCNT
+#  ifdef TCP_KEEPCNT
   if (setsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &cnt, sizeof(cnt)))
     return UV__ERR(errno);
-#endif
+#  endif
 
-#endif  /* !defined(__sun) */
+#endif /* !defined(__sun) */
   return 0;
 }
 
@@ -625,11 +634,15 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
 
 
 void uv__tcp_close(uv_tcp_t* handle) {
-  uv__stream_close((uv_stream_t*)handle);
+  uv__stream_close((uv_stream_t*) handle);
 }
 
 
-int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int flags1) {
+int uv_socketpair(int type,
+                  int protocol,
+                  uv_os_sock_t fds[2],
+                  int flags0,
+                  int flags1) {
   uv_os_sock_t temp[2];
   int err;
 #if defined(SOCK_NONBLOCK) && defined(SOCK_CLOEXEC)
@@ -659,7 +672,7 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
 
   if (flags0 & UV_NONBLOCK_PIPE)
     if ((err = uv__nonblock(temp[0], 1)))
-        goto fail;
+      goto fail;
   if (flags1 & UV_NONBLOCK_PIPE)
     if ((err = uv__nonblock(temp[1], 1)))
       goto fail;

@@ -29,7 +29,8 @@
 
 RB_HEAD(uv_signal_tree_s, uv_signal_s);
 
-static struct uv_signal_tree_s uv__signal_tree = RB_INITIALIZER(uv__signal_tree);
+static struct uv_signal_tree_s uv__signal_tree =
+    RB_INITIALIZER(uv__signal_tree);
 static CRITICAL_SECTION uv__signal_lock;
 
 static BOOL WINAPI uv__signal_control_handler(DWORD type);
@@ -54,22 +55,31 @@ void uv__signal_cleanup(void) {
 static int uv__signal_compare(uv_signal_t* w1, uv_signal_t* w2) {
   /* Compare signums first so all watchers with the same signnum end up
    * adjacent. */
-  if (w1->signum < w2->signum) return -1;
-  if (w1->signum > w2->signum) return 1;
+  if (w1->signum < w2->signum)
+    return -1;
+  if (w1->signum > w2->signum)
+    return 1;
 
   /* Sort by loop pointer, so we can easily look up the first item after
    * { .signum = x, .loop = NULL }. */
-  if ((uintptr_t) w1->loop < (uintptr_t) w2->loop) return -1;
-  if ((uintptr_t) w1->loop > (uintptr_t) w2->loop) return 1;
+  if ((uintptr_t) w1->loop < (uintptr_t) w2->loop)
+    return -1;
+  if ((uintptr_t) w1->loop > (uintptr_t) w2->loop)
+    return 1;
 
-  if ((uintptr_t) w1 < (uintptr_t) w2) return -1;
-  if ((uintptr_t) w1 > (uintptr_t) w2) return 1;
+  if ((uintptr_t) w1 < (uintptr_t) w2)
+    return -1;
+  if ((uintptr_t) w1 > (uintptr_t) w2)
+    return 1;
 
   return 0;
 }
 
 
-RB_GENERATE_STATIC(uv_signal_tree_s, uv_signal_s, tree_entry, uv__signal_compare)
+RB_GENERATE_STATIC(uv_signal_tree_s,
+                   uv_signal_s,
+                   tree_entry,
+                   uv__signal_compare)
 
 
 /*
@@ -92,8 +102,8 @@ int uv__signal_dispatch(int signum) {
   for (handle = RB_NFIND(uv_signal_tree_s, &uv__signal_tree, &lookup);
        handle != NULL && handle->signum == signum;
        handle = RB_NEXT(uv_signal_tree_s, handle)) {
-    unsigned long previous = InterlockedExchange(
-            (volatile LONG*) &handle->pending_signum, signum);
+    unsigned long previous =
+        InterlockedExchange((volatile LONG*) &handle->pending_signum, signum);
 
     if (handle->flags & UV_SIGNAL_ONE_SHOT_DISPATCHED)
       continue;
@@ -115,31 +125,31 @@ int uv__signal_dispatch(int signum) {
 
 static BOOL WINAPI uv__signal_control_handler(DWORD type) {
   switch (type) {
-    case CTRL_C_EVENT:
-      return uv__signal_dispatch(SIGINT);
+  case CTRL_C_EVENT:
+    return uv__signal_dispatch(SIGINT);
 
-    case CTRL_BREAK_EVENT:
-      return uv__signal_dispatch(SIGBREAK);
+  case CTRL_BREAK_EVENT:
+    return uv__signal_dispatch(SIGBREAK);
 
-    case CTRL_CLOSE_EVENT:
-      if (uv__signal_dispatch(SIGHUP)) {
-        /* Windows will terminate the process after the control handler
-         * returns. After that it will just terminate our process. Therefore
-         * block the signal handler so the main loop has some time to pick up
-         * the signal and do something for a few seconds. */
-        Sleep(INFINITE);
-        return TRUE;
-      }
-      return FALSE;
+  case CTRL_CLOSE_EVENT:
+    if (uv__signal_dispatch(SIGHUP)) {
+      /* Windows will terminate the process after the control handler
+       * returns. After that it will just terminate our process. Therefore
+       * block the signal handler so the main loop has some time to pick up
+       * the signal and do something for a few seconds. */
+      Sleep(INFINITE);
+      return TRUE;
+    }
+    return FALSE;
 
-    case CTRL_LOGOFF_EVENT:
-    case CTRL_SHUTDOWN_EVENT:
-      /* These signals are only sent to services. Services have their own
-       * notification mechanism, so there's no point in handling these. */
+  case CTRL_LOGOFF_EVENT:
+  case CTRL_SHUTDOWN_EVENT:
+    /* These signals are only sent to services. Services have their own
+     * notification mechanism, so there's no point in handling these. */
 
-    default:
-      /* We don't handle these. */
-      return FALSE;
+  default:
+    /* We don't handle these. */
+    return FALSE;
   }
 }
 
@@ -191,9 +201,9 @@ int uv_signal_start_oneshot(uv_signal_t* handle,
 
 
 int uv__signal_start(uv_signal_t* handle,
-                            uv_signal_cb signal_cb,
-                            int signum,
-                            int oneshot) {
+                     uv_signal_cb signal_cb,
+                     int signum,
+                     int oneshot) {
   /* Test for invalid signal values. */
   if (signum <= 0 || signum >= NSIG)
     return UV_EINVAL;
@@ -231,15 +241,16 @@ int uv__signal_start(uv_signal_t* handle,
 }
 
 
-void uv__process_signal_req(uv_loop_t* loop, uv_signal_t* handle,
-    uv_req_t* req) {
+void uv__process_signal_req(uv_loop_t* loop,
+                            uv_signal_t* handle,
+                            uv_req_t* req) {
   long dispatched_signum;
 
   assert(handle->type == UV_SIGNAL);
   assert(req->type == UV_SIGNAL_REQ);
 
-  dispatched_signum = InterlockedExchange(
-          (volatile LONG*) &handle->pending_signum, 0);
+  dispatched_signum =
+      InterlockedExchange((volatile LONG*) &handle->pending_signum, 0);
   assert(dispatched_signum != 0);
 
   /* Check if the pending signal equals the signum that we are watching for.

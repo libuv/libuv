@@ -27,21 +27,19 @@
 #include <string.h>
 
 
-#define CHECK_HANDLE(handle) \
-  ASSERT_NE((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client, 0)
+#define CHECK_HANDLE(handle)                                                   \
+  ASSERT_NE(                                                                   \
+      (uv_udp_t*) (handle) == &server || (uv_udp_t*) (handle) == &client,      \
+      0)
 
-#if defined(__APPLE__)          || \
-    defined(_AIX)               || \
-    defined(__MVS__)            || \
-    defined(__FreeBSD__)        || \
-    defined(__NetBSD__)         || \
-    defined(__OpenBSD__)        || \
+#if defined(__APPLE__) || defined(_AIX) || defined(__MVS__) ||                 \
+    defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__) ||     \
     defined(__QNX__)
-  #define MULTICAST_ADDR "ff02::1%lo0"
-  #define INTERFACE_ADDR "::1%lo0"
+#  define MULTICAST_ADDR "ff02::1%lo0"
+#  define INTERFACE_ADDR "::1%lo0"
 #else
-  #define MULTICAST_ADDR "ff02::1"
-  #define INTERFACE_ADDR NULL
+#  define MULTICAST_ADDR "ff02::1"
+#  define INTERFACE_ADDR NULL
 #endif
 
 static uv_udp_t server;
@@ -87,7 +85,7 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
 static int do_send(uv_udp_send_t* send_req) {
   uv_buf_t buf;
   struct sockaddr_in6 addr;
-  
+
   buf = uv_buf_init("PING", 4);
 
   ASSERT_OK(uv_ip6_addr(MULTICAST_ADDR, TEST_PORT, &addr));
@@ -133,13 +131,22 @@ static void cl_recv_cb(uv_udp_t* handle,
     int r;
     char source_addr[64];
 
-    r = uv_ip6_name((const struct sockaddr_in6*)addr, source_addr, sizeof(source_addr));
+    r = uv_ip6_name((const struct sockaddr_in6*) addr,
+                    source_addr,
+                    sizeof(source_addr));
     ASSERT_OK(r);
 
-    r = uv_udp_set_membership(&server, MULTICAST_ADDR, INTERFACE_ADDR, UV_LEAVE_GROUP);
+    r = uv_udp_set_membership(&server,
+                              MULTICAST_ADDR,
+                              INTERFACE_ADDR,
+                              UV_LEAVE_GROUP);
     ASSERT_OK(r);
 
-    r = uv_udp_set_source_membership(&server, MULTICAST_ADDR, INTERFACE_ADDR, source_addr, UV_JOIN_GROUP);
+    r = uv_udp_set_source_membership(&server,
+                                     MULTICAST_ADDR,
+                                     INTERFACE_ADDR,
+                                     source_addr,
+                                     UV_JOIN_GROUP);
     ASSERT_OK(r);
 
     r = do_send(&req_ss);
@@ -155,7 +162,7 @@ static int can_ipv6_external(void) {
   int i;
 
   if (uv_interface_addresses(&addr, &count))
-    return 0;  /* Assume no IPv6 support on failure. */
+    return 0; /* Assume no IPv6 support on failure. */
 
   supported = 0;
   for (i = 0; supported == 0 && i < count; i += 1)
@@ -189,7 +196,10 @@ TEST_IMPL(udp_multicast_join6) {
   r = uv_udp_bind(&server, (const struct sockaddr*) &addr, 0);
   ASSERT_OK(r);
 
-  r = uv_udp_set_membership(&server, MULTICAST_ADDR, INTERFACE_ADDR, UV_JOIN_GROUP);
+  r = uv_udp_set_membership(&server,
+                            MULTICAST_ADDR,
+                            INTERFACE_ADDR,
+                            UV_JOIN_GROUP);
   if (r == UV_ENODEV) {
     MAKE_VALGRIND_HAPPY(uv_default_loop());
     RETURN_SKIP("No ipv6 multicast route");
@@ -208,7 +218,7 @@ TEST_IMPL(udp_multicast_join6) {
 #endif
   r = uv_udp_recv_start(&server, alloc_cb, cl_recv_cb);
   ASSERT_OK(r);
-  
+
   r = do_send(&req);
   ASSERT_OK(r);
 

@@ -26,8 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_HANDLE(handle) \
-  ASSERT_NE((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client, 0)
+#define CHECK_HANDLE(handle)                                                   \
+  ASSERT_NE(                                                                   \
+      (uv_udp_t*) (handle) == &server || (uv_udp_t*) (handle) == &client,      \
+      0)
 
 static uv_udp_t server;
 static uv_udp_t client;

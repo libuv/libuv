@@ -16,12 +16,12 @@
 #ifndef UV_SRC_HEAP_H_
 #define UV_SRC_HEAP_H_
 
-#include <stddef.h>  /* NULL */
+#include <stddef.h> /* NULL */
 
 #if defined(__GNUC__)
-# define HEAP_EXPORT(declaration) __attribute__((unused)) static declaration
+#  define HEAP_EXPORT(declaration) __attribute__((unused)) static declaration
 #else
-# define HEAP_EXPORT(declaration) static declaration
+#  define HEAP_EXPORT(declaration) static declaration
 #endif
 
 struct heap_node {
@@ -242,4 +242,4 @@ HEAP_EXPORT(void heap_dequeue(struct heap* heap, heap_compare_fn less_than)) {
 
 #undef HEAP_EXPORT
 
-#endif  /* UV_SRC_HEAP_H_ */
+#endif /* UV_SRC_HEAP_H_ */

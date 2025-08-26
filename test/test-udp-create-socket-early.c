@@ -25,9 +25,9 @@
 #include <string.h>
 
 #ifdef _WIN32
-# define INVALID_FD (INVALID_HANDLE_VALUE)
+#  define INVALID_FD (INVALID_HANDLE_VALUE)
 #else
-# define INVALID_FD (-1)
+#  define INVALID_FD (-1)
 #endif
 
 
@@ -63,9 +63,7 @@ TEST_IMPL(udp_create_early) {
   namelen = sizeof sockname;
   r = uv_udp_getsockname(&client, (struct sockaddr*) &sockname, &namelen);
   ASSERT_OK(r);
-  ASSERT_OK(memcmp(&addr.sin_addr,
-                   &sockname.sin_addr,
-                   sizeof(addr.sin_addr)));
+  ASSERT_OK(memcmp(&addr.sin_addr, &sockname.sin_addr, sizeof(addr.sin_addr)));
 
   uv_close((uv_handle_t*) &client, NULL);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -93,9 +91,9 @@ TEST_IMPL(udp_create_early_bad_bind) {
   ASSERT_OK(r);
 
   /* Windows returns WSAEINVAL if the socket is not bound */
-#ifndef _WIN32 
+#ifndef _WIN32
   ASSERT_NE(fd, INVALID_FD);
-  { 
+  {
     int namelen;
     struct sockaddr_in6 sockname;
     namelen = sizeof sockname;
@@ -103,7 +101,7 @@ TEST_IMPL(udp_create_early_bad_bind) {
     ASSERT_OK(r);
     ASSERT_EQ(sockname.sin6_family, AF_INET6);
   }
-#else 
+#else
   ASSERT_PTR_NE(fd, INVALID_FD);
 #endif
 

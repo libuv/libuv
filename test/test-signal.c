@@ -23,7 +23,7 @@
 #include "task.h"
 
 #ifndef _WIN32
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 
 TEST_IMPL(kill_invalid_signum) {
@@ -73,15 +73,15 @@ TEST_IMPL(win32_signum_number) {
   return 0;
 }
 #else
-#include <errno.h>
-#include <signal.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#  include <errno.h>
+#  include <signal.h>
+#  include <stdarg.h>
+#  include <stdio.h>
+#  include <stdlib.h>
+#  include <string.h>
+#  include <unistd.h>
 
-#define NSIGNALS  10
+#  define NSIGNALS 10
 
 struct timer_ctx {
   unsigned int ncalls;
@@ -90,7 +90,11 @@ struct timer_ctx {
 };
 
 struct signal_ctx {
-  enum { CLOSE, STOP, NOOP } stop_or_close;
+  enum {
+    CLOSE,
+    STOP,
+    NOOP
+  } stop_or_close;
   unsigned int ncalls;
   uv_signal_t handle;
   int signum;
@@ -105,7 +109,7 @@ static void signal_cb(uv_signal_t* handle, int signum) {
     if (ctx->stop_or_close == STOP)
       uv_signal_stop(handle);
     else if (ctx->stop_or_close == CLOSE)
-      uv_close((uv_handle_t*)handle, NULL);
+      uv_close((uv_handle_t*) handle, NULL);
     else
       ASSERT(0);
   }
@@ -116,7 +120,7 @@ static void signal_cb_one_shot(uv_signal_t* handle, int signum) {
   ASSERT_EQ(signum, ctx->signum);
   ASSERT_EQ(1, ++ctx->ncalls);
   if (ctx->stop_or_close == CLOSE)
-    uv_close((uv_handle_t*)handle, NULL);
+    uv_close((uv_handle_t*) handle, NULL);
 }
 
 
@@ -126,7 +130,7 @@ static void timer_cb(uv_timer_t* handle) {
   raise(ctx->signum);
 
   if (++ctx->ncalls == NSIGNALS)
-    uv_close((uv_handle_t*)handle, NULL);
+    uv_close((uv_handle_t*) handle, NULL);
 }
 
 
@@ -140,7 +144,8 @@ static void start_watcher(uv_loop_t* loop,
   ctx->one_shot = one_shot;
   ASSERT_OK(uv_signal_init(loop, &ctx->handle));
   if (one_shot)
-    ASSERT_OK(uv_signal_start_oneshot(&ctx->handle, signal_cb_one_shot, signum));
+    ASSERT_OK(
+        uv_signal_start_oneshot(&ctx->handle, signal_cb_one_shot, signum));
   else
     ASSERT_OK(uv_signal_start(&ctx->handle, signal_cb, signum));
 }
@@ -264,7 +269,7 @@ TEST_IMPL(we_get_signals_mixed) {
   sc[0].stop_or_close = CLOSE;
   sc[1].stop_or_close = CLOSE;
   start_watcher(loop, SIGCHLD, sc + 2, 0);
-  uv_close((uv_handle_t*)&(sc[2]).handle, NULL);
+  uv_close((uv_handle_t*) &(sc[2]).handle, NULL);
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(1, sc[0].ncalls);
@@ -278,7 +283,7 @@ TEST_IMPL(we_get_signals_mixed) {
   sc[0].stop_or_close = CLOSE;
   sc[1].stop_or_close = CLOSE;
   start_watcher(loop, SIGCHLD, sc + 2, 1);
-  uv_close((uv_handle_t*)&(sc[2]).handle, NULL);
+  uv_close((uv_handle_t*) &(sc[2]).handle, NULL);
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_EQ(sc[0].ncalls, NSIGNALS);
@@ -293,8 +298,8 @@ TEST_IMPL(we_get_signals_mixed) {
   start_watcher(loop, SIGCHLD, sc + 3, 1);
   sc[2].stop_or_close = CLOSE;
   sc[3].stop_or_close = CLOSE;
-  uv_close((uv_handle_t*)&(sc[0]).handle, NULL);
-  uv_close((uv_handle_t*)&(sc[1]).handle, NULL);
+  uv_close((uv_handle_t*) &(sc[0]).handle, NULL);
+  uv_close((uv_handle_t*) &(sc[1]).handle, NULL);
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_OK(sc[0].ncalls);
@@ -309,8 +314,8 @@ TEST_IMPL(we_get_signals_mixed) {
   start_watcher(loop, SIGCHLD, sc + 2, 0);
   start_watcher(loop, SIGCHLD, sc + 3, 0);
   sc[3].stop_or_close = CLOSE;
-  uv_close((uv_handle_t*)&(sc[0]).handle, NULL);
-  uv_close((uv_handle_t*)&(sc[2]).handle, NULL);
+  uv_close((uv_handle_t*) &(sc[0]).handle, NULL);
+  uv_close((uv_handle_t*) &(sc[2]).handle, NULL);
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(tc.ncalls, NSIGNALS);
   ASSERT_OK(sc[0].ncalls);

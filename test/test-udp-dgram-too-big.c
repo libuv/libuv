@@ -26,11 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_HANDLE(handle) \
-  ASSERT_PTR_EQ((uv_udp_t*)(handle), &handle_)
+#define CHECK_HANDLE(handle) ASSERT_PTR_EQ((uv_udp_t*) (handle), &handle_)
 
-#define CHECK_REQ(req) \
-  ASSERT_PTR_EQ((req), &req_);
+#define CHECK_REQ(req) ASSERT_PTR_EQ((req), &req_);
 
 static uv_udp_t handle_;
 static uv_udp_send_t req_;
@@ -51,7 +49,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
 
   ASSERT_EQ(status, UV_EMSGSIZE);
 
-  uv_close((uv_handle_t*)req->handle, close_cb);
+  uv_close((uv_handle_t*) req->handle, close_cb);
   send_cb_called++;
 }
 

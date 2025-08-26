@@ -34,7 +34,7 @@ static unsigned fastrand(void) {
 
 static void work_cb(uv_work_t* req) {
   req->data = &result;
-  *(unsigned*)req->data = fastrand();
+  *(unsigned*) req->data = fastrand();
 }
 
 static void after_work_cb(uv_work_t* req, int status) {
@@ -43,7 +43,9 @@ static void after_work_cb(uv_work_t* req, int status) {
     ASSERT_OK(uv_queue_work(req->loop, req, work_cb, after_work_cb));
 }
 
-static void timer_cb(uv_timer_t* handle) { done = 1; }
+static void timer_cb(uv_timer_t* handle) {
+  done = 1;
+}
 
 BENCHMARK_IMPL(queue_work) {
   char fmtbuf[2][32];

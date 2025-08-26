@@ -70,9 +70,9 @@
 #include <math.h>
 
 
-#define IDLE_COUNT      7
-#define ITERATIONS      21
-#define TIMEOUT         100
+#define IDLE_COUNT 7
+#define ITERATIONS 21
+#define TIMEOUT    100
 
 
 static uv_prepare_t prepare_1_handle;
@@ -116,7 +116,7 @@ static void idle_2_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "IDLE_2_CLOSE_CB\n");
   fflush(stderr);
 
-  ASSERT_PTR_EQ(handle, (uv_handle_t*)&idle_2_handle);
+  ASSERT_PTR_EQ(handle, (uv_handle_t*) &idle_2_handle);
 
   ASSERT(idle_2_is_active);
 
@@ -133,7 +133,7 @@ static void idle_2_cb(uv_idle_t* handle) {
 
   idle_2_cb_called++;
 
-  uv_close((uv_handle_t*)handle, idle_2_close_cb);
+  uv_close((uv_handle_t*) handle, idle_2_close_cb);
 }
 
 
@@ -147,7 +147,7 @@ static void idle_1_cb(uv_idle_t* handle) {
   ASSERT_GT(idles_1_active, 0);
 
   /* Init idle_2 and make it active */
-  if (!idle_2_is_active && !uv_is_closing((uv_handle_t*)&idle_2_handle)) {
+  if (!idle_2_is_active && !uv_is_closing((uv_handle_t*) &idle_2_handle)) {
     r = uv_idle_init(uv_default_loop(), &idle_2_handle);
     ASSERT_OK(r);
     r = uv_idle_start(&idle_2_handle, idle_2_cb);
@@ -159,7 +159,7 @@ static void idle_1_cb(uv_idle_t* handle) {
   idle_1_cb_called++;
 
   if (idle_1_cb_called % 5 == 0) {
-    r = uv_idle_stop((uv_idle_t*)handle);
+    r = uv_idle_stop((uv_idle_t*) handle);
     ASSERT_OK(r);
     idles_1_active--;
   }
@@ -179,7 +179,7 @@ static void idle_1_close_cb(uv_handle_t* handle) {
 static void prepare_1_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "PREPARE_1_CLOSE_CB");
   fflush(stderr);
-  ASSERT_PTR_EQ(handle, (uv_handle_t*)&prepare_1_handle);
+  ASSERT_PTR_EQ(handle, (uv_handle_t*) &prepare_1_handle);
 
   prepare_1_close_cb_called++;
 }
@@ -188,7 +188,7 @@ static void prepare_1_close_cb(uv_handle_t* handle) {
 static void check_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "CHECK_CLOSE_CB\n");
   fflush(stderr);
-  ASSERT_PTR_EQ(handle, (uv_handle_t*)&check_handle);
+  ASSERT_PTR_EQ(handle, (uv_handle_t*) &check_handle);
 
   check_close_cb_called++;
 }
@@ -197,7 +197,7 @@ static void check_close_cb(uv_handle_t* handle) {
 static void prepare_2_close_cb(uv_handle_t* handle) {
   fprintf(stderr, "%s", "PREPARE_2_CLOSE_CB\n");
   fflush(stderr);
-  ASSERT_PTR_EQ(handle, (uv_handle_t*)&prepare_2_handle);
+  ASSERT_PTR_EQ(handle, (uv_handle_t*) &prepare_2_handle);
 
   prepare_2_close_cb_called++;
 }
@@ -220,18 +220,18 @@ static void check_cb(uv_check_t* handle) {
 
   } else {
     /* End of the test - close all handles */
-    uv_close((uv_handle_t*)&prepare_1_handle, prepare_1_close_cb);
-    uv_close((uv_handle_t*)&check_handle, check_close_cb);
-    uv_close((uv_handle_t*)&prepare_2_handle, prepare_2_close_cb);
+    uv_close((uv_handle_t*) &prepare_1_handle, prepare_1_close_cb);
+    uv_close((uv_handle_t*) &check_handle, check_close_cb);
+    uv_close((uv_handle_t*) &prepare_2_handle, prepare_2_close_cb);
 
     for (i = 0; i < IDLE_COUNT; i++) {
-      uv_close((uv_handle_t*)&idle_1_handles[i], idle_1_close_cb);
+      uv_close((uv_handle_t*) &idle_1_handles[i], idle_1_close_cb);
     }
 
     /* This handle is closed/recreated every time, close it only if it is
      * active. */
     if (idle_2_is_active) {
-      uv_close((uv_handle_t*)&idle_2_handle, idle_2_close_cb);
+      uv_close((uv_handle_t*) &idle_2_handle, idle_2_close_cb);
     }
   }
 
@@ -252,7 +252,7 @@ static void prepare_2_cb(uv_prepare_t* handle) {
    * true. */
   ASSERT_NE(0, loop_iteration % 2);
 
-  r = uv_prepare_stop((uv_prepare_t*)handle);
+  r = uv_prepare_stop((uv_prepare_t*) handle);
   ASSERT_OK(r);
 
   prepare_2_cb_called++;
@@ -310,7 +310,7 @@ TEST_IMPL(loop_handles) {
   ASSERT_OK(r);
   r = uv_timer_start(&timer_handle, timer_cb, TIMEOUT, TIMEOUT);
   ASSERT_OK(r);
-  uv_unref((uv_handle_t*)&timer_handle);
+  uv_unref((uv_handle_t*) &timer_handle);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);

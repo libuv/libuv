@@ -24,10 +24,10 @@
 #include <string.h>
 
 #ifdef _WIN32
-# include <io.h>
-# define read _read
+#  include <io.h>
+#  define read _read
 #else
-# include <unistd.h>
+#  include <unistd.h>
 #endif
 
 #include "uv.h"
@@ -38,7 +38,7 @@
 #include "test-list.h"
 
 #ifdef __MVS__
-#include "zos-base.h"
+#  include "zos-base.h"
 /* Initialize environment and zoslib */
 __attribute__((constructor)) void init(void) {
   zoslib_config_t config;
@@ -58,14 +58,14 @@ void spawn_stdin_stdout(void);
 void process_title_big_argv(void);
 int spawn_tcp_server_helper(void);
 
-static int maybe_run_test(int argc, char **argv);
+static int maybe_run_test(int argc, char** argv);
 
 #ifdef _WIN32
-typedef BOOL (WINAPI *sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
+typedef BOOL(WINAPI* sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
 #endif
 
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
 #ifndef _WIN32
   if (0 == geteuid() && NULL == getenv("UV_RUN_AS_ROOT")) {
     fprintf(stderr, "The libuv test suite cannot be run as root.\n");
@@ -77,10 +77,14 @@ int main(int argc, char **argv) {
   argv = uv_setup_args(argc, argv);
 
   switch (argc) {
-  case 1: return run_tests(0);
-  case 2: return maybe_run_test(argc, argv);
-  case 3: return run_test_part(argv[1], argv[2]);
-  case 4: return maybe_run_test(argc, argv);
+  case 1:
+    return run_tests(0);
+  case 2:
+    return maybe_run_test(argc, argv);
+  case 3:
+    return run_test_part(argv[1], argv[2]);
+  case 4:
+    return maybe_run_test(argc, argv);
   default:
     fprintf(stderr, "Too many arguments.\n");
     fflush(stderr);
@@ -89,7 +93,7 @@ int main(int argc, char **argv) {
 }
 
 
-static int maybe_run_test(int argc, char **argv) {
+static int maybe_run_test(int argc, char** argv) {
   if (strcmp(argv[1], "--list") == 0) {
     print_tests(stdout);
     return 0;
@@ -155,7 +159,8 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "spawn_helper4") == 0) {
     notify_parent_process();
     /* Never surrender, never return! */
-    for (;;) uv_sleep(10000);
+    for (;;)
+      uv_sleep(10000);
   }
 
   if (strcmp(argv[1], "spawn_helper5") == 0) {
@@ -194,7 +199,7 @@ static int maybe_run_test(int argc, char **argv) {
 
   if (strcmp(argv[1], "spawn_helper7") == 0) {
     int r;
-    char *test;
+    char* test;
 
     notify_parent_process();
 
@@ -233,11 +238,11 @@ static int maybe_run_test(int argc, char **argv) {
 #else
     ASSERT_GT(open_fd, 2);
     ASSERT_GT(closed_fd, 2);
-# if defined(__PASE__)  /* On IBMi PASE, write() returns 1 */
+#  if defined(__PASE__) /* On IBMi PASE, write() returns 1 */
     ASSERT_EQ(1, write(closed_fd, "x", 1));
-# else
+#  else
     ASSERT_EQ(-1, write(closed_fd, "x", 1));
-# endif  /* !__PASE__ */
+#  endif /* !__PASE__ */
 #endif
     return 1;
   }
@@ -259,7 +264,7 @@ static int maybe_run_test(int argc, char **argv) {
 
     return 1;
   }
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */
 
   if (strcmp(argv[1], "process_title_big_argv_helper") == 0) {
     notify_parent_process();

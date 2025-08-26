@@ -24,21 +24,35 @@
 
 
 BENCHMARK_IMPL(sizes) {
-  fprintf(stderr, "uv_shutdown_t: %u bytes\n", (unsigned int) sizeof(uv_shutdown_t));
+  fprintf(stderr,
+          "uv_shutdown_t: %u bytes\n",
+          (unsigned int) sizeof(uv_shutdown_t));
   fprintf(stderr, "uv_write_t: %u bytes\n", (unsigned int) sizeof(uv_write_t));
-  fprintf(stderr, "uv_connect_t: %u bytes\n", (unsigned int) sizeof(uv_connect_t));
-  fprintf(stderr, "uv_udp_send_t: %u bytes\n", (unsigned int) sizeof(uv_udp_send_t));
+  fprintf(stderr,
+          "uv_connect_t: %u bytes\n",
+          (unsigned int) sizeof(uv_connect_t));
+  fprintf(stderr,
+          "uv_udp_send_t: %u bytes\n",
+          (unsigned int) sizeof(uv_udp_send_t));
   fprintf(stderr, "uv_tcp_t: %u bytes\n", (unsigned int) sizeof(uv_tcp_t));
   fprintf(stderr, "uv_pipe_t: %u bytes\n", (unsigned int) sizeof(uv_pipe_t));
   fprintf(stderr, "uv_tty_t: %u bytes\n", (unsigned int) sizeof(uv_tty_t));
-  fprintf(stderr, "uv_prepare_t: %u bytes\n", (unsigned int) sizeof(uv_prepare_t));
+  fprintf(stderr,
+          "uv_prepare_t: %u bytes\n",
+          (unsigned int) sizeof(uv_prepare_t));
   fprintf(stderr, "uv_check_t: %u bytes\n", (unsigned int) sizeof(uv_check_t));
   fprintf(stderr, "uv_idle_t: %u bytes\n", (unsigned int) sizeof(uv_idle_t));
   fprintf(stderr, "uv_async_t: %u bytes\n", (unsigned int) sizeof(uv_async_t));
   fprintf(stderr, "uv_timer_t: %u bytes\n", (unsigned int) sizeof(uv_timer_t));
-  fprintf(stderr, "uv_fs_poll_t: %u bytes\n", (unsigned int) sizeof(uv_fs_poll_t));
-  fprintf(stderr, "uv_fs_event_t: %u bytes\n", (unsigned int) sizeof(uv_fs_event_t));
-  fprintf(stderr, "uv_process_t: %u bytes\n", (unsigned int) sizeof(uv_process_t));
+  fprintf(stderr,
+          "uv_fs_poll_t: %u bytes\n",
+          (unsigned int) sizeof(uv_fs_poll_t));
+  fprintf(stderr,
+          "uv_fs_event_t: %u bytes\n",
+          (unsigned int) sizeof(uv_fs_event_t));
+  fprintf(stderr,
+          "uv_process_t: %u bytes\n",
+          (unsigned int) sizeof(uv_process_t));
   fprintf(stderr, "uv_poll_t: %u bytes\n", (unsigned int) sizeof(uv_poll_t));
   fprintf(stderr, "uv_loop_t: %u bytes\n", (unsigned int) sizeof(uv_loop_t));
   fflush(stderr);
