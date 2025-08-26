@@ -206,6 +206,7 @@ typedef enum {
   UV_HANDLE_TYPE_MAX
 } uv_handle_type;
 
+/* clang-format off */
 typedef enum {
   UV_UNKNOWN_REQ = 0,
 #define XX(uc, lc) UV_##uc,
@@ -214,6 +215,7 @@ typedef enum {
   UV_REQ_TYPE_PRIVATE
   UV_REQ_TYPE_MAX
 } uv_req_type;
+/* clang-format on */
 
 
 /* Handle types. */
