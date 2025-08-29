@@ -20,59 +20,61 @@
 
 #include "uv.h"
 #include "internal.h"
+#include <TargetConditionals.h>
+
+#if TARGET_OS_IPHONE
+
+int uv__set_process_title(const char* title) {
+  return uv__thread_setname(title);
+}
+
+#else  /* TARGET_OS_IPHONE */
 
 #include <dlfcn.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <TargetConditionals.h>
-
-#if !TARGET_OS_IPHONE
 #include "darwin-stub.h"
-#endif
 
-int uv__set_process_title(const char* title) {
-#if TARGET_OS_IPHONE
-  return uv__thread_setname(title);
-#else
-  CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
-                                            const char*,
-                                            CFStringEncoding);
+#define S(s) pCFStringCreateWithCString(NULL, (s), kCFStringEncodingUTF8)
+
+static CFStringRef (*pCFStringCreateWithCString)(CFAllocatorRef,
+                                                 const char*,
+                                                 CFStringEncoding);
+static CFTypeRef (*pLSGetCurrentApplicationASN)(void);
+static OSStatus (*pLSSetApplicationInformationItem)(int,
+                                                    CFTypeRef,
+                                                    CFStringRef,
+                                                    CFStringRef,
+                                                    CFDictionaryRef*);
+static CFStringRef* display_name_key;
+static CFDictionaryRef (*pCFBundleGetInfoDictionary)(CFBundleRef);
+static CFBundleRef (*pCFBundleGetMainBundle)(void);
+static CFDictionaryRef (*pLSApplicationCheckIn)(int, CFDictionaryRef);
+static void (*pLSSetApplicationLaunchServicesServerConnectionStatus)(uint64_t,
+                                                                     void*);
+
+static void uv__set_process_title_init_once(void) {
   CFBundleRef (*pCFBundleGetBundleWithIdentifier)(CFStringRef);
+  CFBundleRef launch_services_bundle;
   void *(*pCFBundleGetDataPointerForName)(CFBundleRef, CFStringRef);
   void *(*pCFBundleGetFunctionPointerForName)(CFBundleRef, CFStringRef);
-  CFTypeRef (*pLSGetCurrentApplicationASN)(void);
-  OSStatus (*pLSSetApplicationInformationItem)(int,
-                                               CFTypeRef,
-                                               CFStringRef,
-                                               CFStringRef,
-                                               CFDictionaryRef*);
   void* application_services_handle;
   void* core_foundation_handle;
-  CFBundleRef launch_services_bundle;
-  CFStringRef* display_name_key;
-  CFDictionaryRef (*pCFBundleGetInfoDictionary)(CFBundleRef);
-  CFBundleRef (*pCFBundleGetMainBundle)(void);
-  CFDictionaryRef (*pLSApplicationCheckIn)(int, CFDictionaryRef);
-  void (*pLSSetApplicationLaunchServicesServerConnectionStatus)(uint64_t,
-                                                                void*);
-  CFTypeRef asn;
-  int err;
 
-  err = UV_ENOENT;
   application_services_handle = dlopen("/System/Library/Frameworks/"
                                        "ApplicationServices.framework/"
                                        "Versions/A/ApplicationServices",
                                        RTLD_LAZY | RTLD_LOCAL);
+  if (application_services_handle == NULL)
+    return;
   core_foundation_handle = dlopen("/System/Library/Frameworks/"
                                   "CoreFoundation.framework/"
                                   "Versions/A/CoreFoundation",
                                   RTLD_LAZY | RTLD_LOCAL);
-
-  if (application_services_handle == NULL || core_foundation_handle == NULL)
-    goto out;
+  if (core_foundation_handle == NULL)
+    return;
 
   *(void **)(&pCFStringCreateWithCString) =
       dlsym(core_foundation_handle, "CFStringCreateWithCString");
@@ -87,58 +89,65 @@ int uv__set_process_title(const char* title) {
       pCFBundleGetBundleWithIdentifier == NULL ||
       pCFBundleGetDataPointerForName == NULL ||
       pCFBundleGetFunctionPointerForName == NULL) {
-    goto out;
+    return;
   }
-
-#define S(s) pCFStringCreateWithCString(NULL, (s), kCFStringEncodingUTF8)
 
   launch_services_bundle =
       pCFBundleGetBundleWithIdentifier(S("com.apple.LaunchServices"));
 
   if (launch_services_bundle == NULL)
-    goto out;
+    return;
 
   *(void **)(&pLSGetCurrentApplicationASN) =
       pCFBundleGetFunctionPointerForName(launch_services_bundle,
                                          S("_LSGetCurrentApplicationASN"));
 
   if (pLSGetCurrentApplicationASN == NULL)
-    goto out;
+    return;
 
   *(void **)(&pLSSetApplicationInformationItem) =
       pCFBundleGetFunctionPointerForName(launch_services_bundle,
                                          S("_LSSetApplicationInformationItem"));
 
   if (pLSSetApplicationInformationItem == NULL)
-    goto out;
+    return;
 
   display_name_key = pCFBundleGetDataPointerForName(launch_services_bundle,
                                                     S("_kLSDisplayNameKey"));
 
   if (display_name_key == NULL || *display_name_key == NULL)
-    goto out;
+    return;
 
   *(void **)(&pCFBundleGetInfoDictionary) = dlsym(core_foundation_handle,
                                      "CFBundleGetInfoDictionary");
   *(void **)(&pCFBundleGetMainBundle) = dlsym(core_foundation_handle,
                                  "CFBundleGetMainBundle");
   if (pCFBundleGetInfoDictionary == NULL || pCFBundleGetMainBundle == NULL)
-    goto out;
+    return;
 
   *(void **)(&pLSApplicationCheckIn) = pCFBundleGetFunctionPointerForName(
       launch_services_bundle,
       S("_LSApplicationCheckIn"));
 
   if (pLSApplicationCheckIn == NULL)
-    goto out;
+    return;
 
   *(void **)(&pLSSetApplicationLaunchServicesServerConnectionStatus) =
       pCFBundleGetFunctionPointerForName(
           launch_services_bundle,
           S("_LSSetApplicationLaunchServicesServerConnectionStatus"));
+}
+
+int uv__set_process_title(const char* title) {
+  static uv_once_t once;
+  CFTypeRef asn;
+
+  uv__thread_setname(title);  /* Don't care if it fails. */
+
+  uv_once(&once, uv__set_process_title_init_once);
 
   if (pLSSetApplicationLaunchServicesServerConnectionStatus == NULL)
-    goto out;
+    return 0;
 
   pLSSetApplicationLaunchServicesServerConnectionStatus(0, NULL);
 
@@ -147,30 +156,18 @@ int uv__set_process_title(const char* title) {
                         pCFBundleGetInfoDictionary(pCFBundleGetMainBundle()));
 
   asn = pLSGetCurrentApplicationASN();
-
-  err = UV_EBUSY;
   if (asn == NULL)
-    goto out;
+    return UV_EBUSY;
 
-  err = UV_EINVAL;
   if (pLSSetApplicationInformationItem(-2,  /* Magic value. */
                                        asn,
                                        *display_name_key,
                                        S(title),
                                        NULL) != noErr) {
-    goto out;
+    return UV_EINVAL;
   }
 
-  uv__thread_setname(title);  /* Don't care if it fails. */
-  err = 0;
-
-out:
-  if (core_foundation_handle != NULL)
-    dlclose(core_foundation_handle);
-
-  if (application_services_handle != NULL)
-    dlclose(application_services_handle);
-
-  return err;
-#endif  /* !TARGET_OS_IPHONE */
+  return 0;
 }
+
+#endif  /* TARGET_OS_IPHONE */
