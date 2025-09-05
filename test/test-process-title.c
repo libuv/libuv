@@ -41,6 +41,14 @@ static void set_title(const char* title) {
 }
 
 
+static void uv_set_process_title_edge_cases(void) {
+  /* Test a NULL buffer */
+  ASSERT_EQ(uv_set_process_title(NULL), UV_EINVAL);
+  /* Test an empty string */
+  ASSERT_EQ(uv_set_process_title("\0"), UV_EINVAL);
+
+}
+
 static void uv_get_process_title_edge_cases(void) {
   char buffer[512];
   int r;
@@ -69,8 +77,9 @@ TEST_IMPL(process_title) {
   set_title("%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s");
   set_title("new title");
 
-  /* Check uv_get_process_title() edge cases */
+  /* Check uv_get|set_process_title() edge cases */
   uv_get_process_title_edge_cases();
+  uv_set_process_title_edge_cases();
 
   return 0;
 }

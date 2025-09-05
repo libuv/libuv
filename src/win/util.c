@@ -346,6 +346,9 @@ int uv_set_process_title(const char* title) {
   int length;
   WCHAR* title_w = NULL;
 
+  if (title == NULL || title[0] == '\0')
+    return UV_EINVAL;
+
   uv__once_init();
 
   err = uv__convert_utf8_to_utf16(title, &title_w);

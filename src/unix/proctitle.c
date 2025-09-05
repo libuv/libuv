@@ -97,6 +97,9 @@ int uv_set_process_title(const char* title) {
   struct uv__process_title* pt;
   size_t len;
 
+  if (title == NULL || *title == '\0')
+    return UV_EINVAL;
+
   /* If uv_setup_args wasn't called or failed, we can't continue. */
   if (args_mem == NULL)
     return UV_ENOBUFS;
