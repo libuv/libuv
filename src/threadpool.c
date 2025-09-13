@@ -192,19 +192,56 @@ void uv__threadpool_cleanup(void) {
 
 
 static void init_threads(void) {
+  const char env_name[] = "UV_THREADPOOL_SIZE";
+
   uv_thread_options_t config;
   unsigned int i;
+
+  size_t bufsize;
+  /* a size of 5 should work quite fine, as there won't be many threads 
+   * and the MAX_THREADPOOL_SIZE is 1024
+   */
+  char fastvarbuf[5];
+  char* varbuf;
   const char* val;
+
   uv_sem_t sem;
 
   nthreads = ARRAY_SIZE(default_threads);
-  val = getenv("UV_THREADPOOL_SIZE");
+
+  bufsize = ARRAY_SIZE(fastvarbuf);
+  varbuf = NULL;
+
+  int err = uv_os_getenv(env_name, fastvarbuf, &bufsize);
+  if (err == 0)
+    val = fastvarbuf;
+  else if (err == UV_ENOBUFS) {
+    /* this should not happen, but just in case */
+    varbuf = uv__malloc(bufsize);
+    val = varbuf;
+    err = uv_os_getenv(env_name, varbuf, &bufsize);
+
+    if (err != 0) {
+      /* failed again */
+      val = NULL;
+      uv__free(varbuf);
+    }
+  } else {
+    /* UV_ENOENT and other err */
+    val = NULL;
+  }
+  
   if (val != NULL)
     nthreads = atoi(val);
   if (nthreads == 0)
     nthreads = 1;
   if (nthreads > MAX_THREADPOOL_SIZE)
     nthreads = MAX_THREADPOOL_SIZE;
+
+  if (varbuf != NULL) {
+    uv__free(varbuf);
+    varbuf = NULL;
+  }
 
   threads = default_threads;
   if (nthreads > ARRAY_SIZE(default_threads)) {
