@@ -632,7 +632,7 @@ static int uv__skip_lines(char **p, int n) {
 
   while(n > 0) {
     *p = strchr(*p, '\n');
-    if (!p)
+    if (!*p)
       return lines;
 
     (*p)++;
