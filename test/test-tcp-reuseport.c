@@ -26,8 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(__linux__) && !defined(__FreeBSD__) && \
-    !defined(__DragonFly__) && !defined(__sun) && !defined(_AIX73)
+#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__DragonFly__) && \
+    !defined(__sun) && !defined(_AIX73)
 
 TEST_IMPL(tcp_reuseport) {
   struct sockaddr_in addr;
@@ -53,8 +53,8 @@ TEST_IMPL(tcp_reuseport) {
 
 #else
 
-#define NUM_LISTENING_THREADS 2
-#define MAX_TCP_CLIENTS 10
+#  define NUM_LISTENING_THREADS 2
+#  define MAX_TCP_CLIENTS       10
 
 static uv_tcp_t tcp_connect_handles[MAX_TCP_CLIENTS];
 static uv_connect_t tcp_connect_requests[MAX_TCP_CLIENTS];
@@ -99,13 +99,12 @@ static void ticktack(uv_timer_t* timer) {
   }
 }
 
-static void on_connection(uv_stream_t* server, int status)
-{
+static void on_connection(uv_stream_t* server, int status) {
   ASSERT_OK(status);
-  ASSERT(server == (uv_stream_t*) &thread_handle1 || \
+  ASSERT(server == (uv_stream_t*) &thread_handle1 ||
          server == (uv_stream_t*) &thread_handle2);
 
-  uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
+  uv_tcp_t* client = malloc(sizeof(uv_tcp_t));
   ASSERT_OK(uv_tcp_init(server->loop, client));
   ASSERT_OK(uv_accept(server, (uv_stream_t*) client));
   uv_close((uv_handle_t*) client, on_close);

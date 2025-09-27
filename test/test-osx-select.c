@@ -24,8 +24,8 @@
 
 #ifdef __APPLE__
 
-#include <sys/ioctl.h>
-#include <string.h>
+#  include <sys/ioctl.h>
+#  include <string.h>
 
 static int read_count;
 
@@ -102,7 +102,7 @@ TEST_IMPL(osx_select_many_fds) {
   for (i = 0; i < ARRAY_SIZE(tcps); i++) {
     r = uv_tcp_init(uv_default_loop(), &tcps[i]);
     ASSERT_OK(r);
-    r = uv_tcp_bind(&tcps[i], (const struct sockaddr *) &addr, 0);
+    r = uv_tcp_bind(&tcps[i], (const struct sockaddr*) &addr, 0);
     ASSERT_OK(r);
     uv_unref((uv_handle_t*) &tcps[i]);
   }

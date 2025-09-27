@@ -122,7 +122,7 @@ static void serial_worker(void* data) {
   if (uv_barrier_wait(barrier) > 0)
     uv_barrier_destroy(barrier);
 
-  uv_sleep(100);  /* Wait a bit before terminating. */
+  uv_sleep(100); /* Wait a bit before terminating. */
 }
 
 /* Ensure that uv_barrier_wait returns positive only after all threads have

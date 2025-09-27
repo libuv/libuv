@@ -25,7 +25,7 @@
 #include <stdio.h>
 #include <process.h>
 #if !defined(__MINGW32__)
-# include <crtdbg.h>
+#  include <crtdbg.h>
 #endif
 
 
@@ -37,16 +37,15 @@
  * Define the stuff that MinGW doesn't have
  */
 #ifndef GetFileSizeEx
-  WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile,
-                                       PLARGE_INTEGER lpFileSize);
+WINBASEAPI BOOL WINAPI GetFileSizeEx(HANDLE hFile, PLARGE_INTEGER lpFileSize);
 #endif
 
 
 /* Do platform-specific initialization. */
-void platform_init(int argc, char **argv) {
+void platform_init(int argc, char** argv) {
   /* Disable the "application crashed" popup. */
   SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX |
-      SEM_NOOPENFILEERRORBOX);
+               SEM_NOOPENFILEERRORBOX);
 #if !defined(__MINGW32__)
   _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
   _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_DEBUG);
@@ -70,7 +69,7 @@ void platform_init(int argc, char **argv) {
 }
 
 
-int process_start(char *name, char *part, process_info_t *p, int is_helper) {
+int process_start(char* name, char* part, process_info_t* p, int is_helper) {
   HANDLE file = INVALID_HANDLE_VALUE;
   HANDLE nul = INVALID_HANDLE_VALUE;
   WCHAR path[MAX_PATH], filename[MAX_PATH];
@@ -85,12 +84,12 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
     uv_sleep(250);
   }
 
-  if (GetTempPathW(sizeof(path) / sizeof(WCHAR), (WCHAR*)&path) == 0)
+  if (GetTempPathW(sizeof(path) / sizeof(WCHAR), (WCHAR*) &path) == 0)
     goto error;
-  if (GetTempFileNameW((WCHAR*)&path, L"uv", 0, (WCHAR*)&filename) == 0)
+  if (GetTempFileNameW((WCHAR*) &path, L"uv", 0, (WCHAR*) &filename) == 0)
     goto error;
 
-  file = CreateFileW((WCHAR*)filename,
+  file = CreateFileW((WCHAR*) filename,
                      GENERIC_READ | GENERIC_WRITE,
                      0,
                      NULL,
@@ -116,14 +115,13 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
   if (!SetHandleInformation(nul, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT))
     goto error;
 
-  result = GetModuleFileNameW(NULL,
-                              (WCHAR*) &image,
-                              sizeof(image) / sizeof(WCHAR));
+  result =
+      GetModuleFileNameW(NULL, (WCHAR*) &image, sizeof(image) / sizeof(WCHAR));
   if (result == 0 || result == sizeof(image))
     goto error;
 
   if (part) {
-    if (_snwprintf((WCHAR*)args,
+    if (_snwprintf((WCHAR*) args,
                    sizeof(args) / sizeof(WCHAR),
                    L"\"%s\" %S %S",
                    image,
@@ -132,7 +130,7 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
       goto error;
     }
   } else {
-    if (_snwprintf((WCHAR*)args,
+    if (_snwprintf((WCHAR*) args,
                    sizeof(args) / sizeof(WCHAR),
                    L"\"%s\" %S",
                    image,
@@ -141,15 +139,14 @@ int process_start(char *name, char *part, process_info_t *p, int is_helper) {
     }
   }
 
-  memset((void*)&si, 0, sizeof(si));
+  memset((void*) &si, 0, sizeof(si));
   si.cb = sizeof(si);
   si.dwFlags = STARTF_USESTDHANDLES;
   si.hStdInput = nul;
   si.hStdOutput = file;
   si.hStdError = file;
 
-  if (!CreateProcessW(image, args, NULL, NULL, TRUE,
-                      0, NULL, NULL, &si, &pi))
+  if (!CreateProcessW(image, args, NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi))
     goto error;
 
   CloseHandle(pi.hThread);
@@ -176,7 +173,7 @@ error:
 
 /* Timeout is in msecs. Set timeout < 0 to never time out. Returns 0 when all
  * processes are terminated, -2 on timeout. */
-int process_wait(process_info_t *vec, int n, int timeout) {
+int process_wait(process_info_t* vec, int n, int timeout) {
   int i;
   HANDLE handles[MAXIMUM_WAIT_OBJECTS];
   DWORD timeout_api, result;
@@ -191,7 +188,7 @@ int process_wait(process_info_t *vec, int n, int timeout) {
     handles[i] = vec[i].process;
 
   if (timeout >= 0) {
-    timeout_api = (DWORD)timeout;
+    timeout_api = (DWORD) timeout;
   } else {
     timeout_api = INFINITE;
   }
@@ -209,11 +206,11 @@ int process_wait(process_info_t *vec, int n, int timeout) {
 }
 
 
-long int process_output_size(process_info_t *p) {
+long int process_output_size(process_info_t* p) {
   LARGE_INTEGER size;
   if (!GetFileSizeEx(p->stdio_out, &size))
     return -1;
-  return (long int)size.QuadPart;
+  return (long int) size.QuadPart;
 }
 
 
@@ -222,7 +219,7 @@ int process_copy_output(process_info_t* p, FILE* stream) {
   int partial;
   int fd, r;
 
-  fd = _open_osfhandle((intptr_t)p->stdio_out, _O_RDONLY | _O_TEXT);
+  fd = _open_osfhandle((intptr_t) p->stdio_out, _O_RDONLY | _O_TEXT);
   if (fd == -1)
     return -1;
 
@@ -239,9 +236,7 @@ int process_copy_output(process_info_t* p, FILE* stream) {
 }
 
 
-int process_read_last_line(process_info_t *p,
-                           char * buffer,
-                           size_t buffer_len) {
+int process_read_last_line(process_info_t* p, char* buffer, size_t buffer_len) {
   DWORD size;
   DWORD read;
   DWORD start;
@@ -280,27 +275,27 @@ int process_read_last_line(process_info_t *p,
 }
 
 
-char* process_get_name(process_info_t *p) {
+char* process_get_name(process_info_t* p) {
   return p->name;
 }
 
 
-int process_terminate(process_info_t *p) {
+int process_terminate(process_info_t* p) {
   if (!TerminateProcess(p->process, 1))
     return -1;
   return 0;
 }
 
 
-int process_reap(process_info_t *p) {
+int process_reap(process_info_t* p) {
   DWORD exitCode;
   if (!GetExitCodeProcess(p->process, &exitCode))
     return -1;
-  return (int)exitCode;
+  return (int) exitCode;
 }
 
 
-void process_cleanup(process_info_t *p) {
+void process_cleanup(process_info_t* p) {
   CloseHandle(p->process);
   CloseHandle(p->stdio_in);
 }
@@ -312,7 +307,7 @@ static int clear_line(void) {
   COORD coord;
   DWORD written;
 
-  handle = (HANDLE)_get_osfhandle(_fileno(stderr));
+  handle = (HANDLE) _get_osfhandle(_fileno(stderr));
   if (handle == INVALID_HANDLE_VALUE)
     return -1;
 

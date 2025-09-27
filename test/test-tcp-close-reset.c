@@ -26,9 +26,9 @@
 #include <string.h> /* memset */
 
 #ifdef _WIN32
-# define INVALID_FD (INVALID_HANDLE_VALUE)
+#  define INVALID_FD (INVALID_HANDLE_VALUE)
 #else
-# define INVALID_FD (-1)
+#  define INVALID_FD (-1)
 #endif
 
 static uv_loop_t* loop;
@@ -72,16 +72,14 @@ static void do_close(uv_tcp_t* handle) {
   int r;
 
   if (shutdown_before_close == 1) {
-    ASSERT_OK(uv_shutdown(&shutdown_req,
-                          (uv_stream_t*) handle,
-                          shutdown_cb));
+    ASSERT_OK(uv_shutdown(&shutdown_req, (uv_stream_t*) handle, shutdown_cb));
     ASSERT_EQ(UV_EINVAL, uv_tcp_close_reset(handle, close_cb));
   } else if (shutdown_before_close == 2) {
     r = uv_fileno((const uv_handle_t*) handle, &fd);
     ASSERT_OK(r);
 #ifdef _WIN32
     ASSERT_PTR_NE(fd, INVALID_FD);
-    ASSERT_OK(shutdown((SOCKET)fd, SD_BOTH));
+    ASSERT_OK(shutdown((SOCKET) fd, SD_BOTH));
 #else
     ASSERT_NE(fd, INVALID_FD);
     ASSERT_OK(shutdown(fd, SHUT_RDWR));
@@ -89,8 +87,8 @@ static void do_close(uv_tcp_t* handle) {
     ASSERT_OK(uv_tcp_close_reset(handle, close_cb));
   } else {
     ASSERT_OK(uv_tcp_close_reset(handle, close_cb));
-    ASSERT_EQ(UV_ENOTCONN, uv_shutdown(&shutdown_req, (uv_stream_t*) handle,
-              shutdown_cb));
+    ASSERT_EQ(UV_ENOTCONN,
+              uv_shutdown(&shutdown_req, (uv_stream_t*) handle, shutdown_cb));
   }
 
   uv_close((uv_handle_t*) &tcp_server, NULL);
@@ -103,7 +101,7 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 }
 
 static void read_cb2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT_PTR_EQ((uv_tcp_t*)stream, &tcp_client);
+  ASSERT_PTR_EQ((uv_tcp_t*) stream, &tcp_client);
   if (nread == UV_EOF)
     uv_close((uv_handle_t*) stream, NULL);
 }
@@ -121,7 +119,7 @@ static void connect_cb(uv_connect_t* conn_req, int status) {
 static void write_cb(uv_write_t* req, int status) {
   /* write callbacks should run before the close callback */
   ASSERT_OK(close_cb_called);
-  ASSERT_PTR_EQ(req->handle, (uv_stream_t*)&tcp_client);
+  ASSERT_PTR_EQ(req->handle, (uv_stream_t*) &tcp_client);
   write_cb_called++;
 }
 
@@ -146,7 +144,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
 
 
 static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
-  ASSERT_PTR_EQ((uv_tcp_t*)stream, &tcp_accepted);
+  ASSERT_PTR_EQ((uv_tcp_t*) stream, &tcp_accepted);
   if (nread < 0) {
     uv_close((uv_handle_t*) stream, NULL);
   } else {
@@ -179,7 +177,7 @@ static void start_server(uv_loop_t* loop, uv_tcp_t* handle) {
   r = uv_tcp_bind(handle, (const struct sockaddr*) &addr, 0);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)handle, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) handle, 128, connection_cb);
   ASSERT_OK(r);
 }
 

@@ -20,7 +20,7 @@
  */
 
 #include "strscpy.h"
-#include <limits.h>  /* SSIZE_MAX */
+#include <limits.h> /* SSIZE_MAX */
 
 ssize_t uv__strscpy(char* d, const char* s, size_t n) {
   size_t i;

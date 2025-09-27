@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #if defined(_MSC_VER) || defined(__MINGW64_VERSION_MAJOR)
-#include <crtdbg.h>
+#  include <crtdbg.h>
 #endif
 
 #include "uv.h"
@@ -47,16 +47,18 @@ static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 
 UV_THREAD_LOCAL int uv__crt_assert_enabled = TRUE;
 
-static int uv__crt_dbg_report_handler(int report_type, char *message, int *ret_val) {
+static int uv__crt_dbg_report_handler(int report_type,
+                                      char* message,
+                                      int* ret_val) {
   if (uv__crt_assert_enabled || report_type != _CRT_ASSERT)
     return FALSE;
 
   if (ret_val) {
     /* Set ret_val to 0 to continue with normal execution.
      * Set ret_val to 1 to trigger a breakpoint.
-    */
+     */
 
-    if(IsDebuggerPresent())
+    if (IsDebuggerPresent())
       *ret_val = 1;
     else
       *ret_val = 0;
@@ -72,8 +74,10 @@ UV_THREAD_LOCAL int uv__crt_assert_enabled = FALSE;
 
 #if !defined(__MINGW32__) || __MSVCRT_VERSION__ >= 0x800
 static void uv__crt_invalid_parameter_handler(const wchar_t* expression,
-    const wchar_t* function, const wchar_t * file, unsigned int line,
-    uintptr_t reserved) {
+                                              const wchar_t* function,
+                                              const wchar_t* file,
+                                              unsigned int line,
+                                              uintptr_t reserved) {
   /* No-op. */
 }
 #endif
@@ -399,10 +403,8 @@ int uv_loop_fork(uv_loop_t* loop) {
 
 
 static int uv__loop_alive(const uv_loop_t* loop) {
-  return uv__has_active_handles(loop) ||
-         uv__has_active_reqs(loop) ||
-         loop->pending_reqs_tail != NULL ||
-         loop->endgame_handles != NULL;
+  return uv__has_active_handles(loop) || uv__has_active_reqs(loop) ||
+         loop->pending_reqs_tail != NULL || loop->endgame_handles != NULL;
 }
 
 
@@ -415,8 +417,7 @@ int uv_backend_timeout(const uv_loop_t* loop) {
   if (loop->stop_flag == 0 &&
       /* uv__loop_alive(loop) && */
       (uv__has_active_handles(loop) || uv__has_active_reqs(loop)) &&
-      loop->pending_reqs_tail == NULL &&
-      loop->idle_handles == NULL &&
+      loop->pending_reqs_tail == NULL && loop->idle_handles == NULL &&
       loop->endgame_handles == NULL)
     return uv__next_timeout(loop);
   return 0;
@@ -448,7 +449,7 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
     reset_timeout = 0;
   }
 
-  for (repeat = 0; ; repeat++) {
+  for (repeat = 0;; repeat++) {
     actual_timeout = timeout;
 
     /* Only need to set the provider_entry_time if timeout != 0. The function
@@ -511,7 +512,7 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
        */
       uv_update_time(loop);
       if (timeout_time > loop->time) {
-        timeout = (DWORD)(timeout_time - loop->time);
+        timeout = (DWORD) (timeout_time - loop->time);
         /* The first call to GetQueuedCompletionStatus should return very
          * close to the target time and the second should reach it, but
          * this is not stated in the documentation. To make sure a busy
@@ -527,30 +528,30 @@ static void uv__poll(uv_loop_t* loop, DWORD timeout) {
 }
 
 
-#define DELEGATE_STREAM_REQ(loop, req, method, handle_at)                     \
-  do {                                                                        \
-    switch (((uv_handle_t*) (req)->handle_at)->type) {                        \
-      case UV_TCP:                                                            \
-        uv__process_tcp_##method##_req(loop,                                  \
-                                      (uv_tcp_t*) ((req)->handle_at),         \
-                                      req);                                   \
-        break;                                                                \
-                                                                              \
-      case UV_NAMED_PIPE:                                                     \
-        uv__process_pipe_##method##_req(loop,                                 \
-                                       (uv_pipe_t*) ((req)->handle_at),       \
-                                       req);                                  \
-        break;                                                                \
-                                                                              \
-      case UV_TTY:                                                            \
-        uv__process_tty_##method##_req(loop,                                  \
-                                      (uv_tty_t*) ((req)->handle_at),         \
-                                      req);                                   \
-        break;                                                                \
-                                                                              \
-      default:                                                                \
-        assert(0);                                                            \
-    }                                                                         \
+#define DELEGATE_STREAM_REQ(loop, req, method, handle_at)                      \
+  do {                                                                         \
+    switch (((uv_handle_t*) (req)->handle_at)->type) {                         \
+    case UV_TCP:                                                               \
+      uv__process_tcp_##method##_req(loop,                                     \
+                                     (uv_tcp_t*) ((req)->handle_at),           \
+                                     req);                                     \
+      break;                                                                   \
+                                                                               \
+    case UV_NAMED_PIPE:                                                        \
+      uv__process_pipe_##method##_req(loop,                                    \
+                                      (uv_pipe_t*) ((req)->handle_at),         \
+                                      req);                                    \
+      break;                                                                   \
+                                                                               \
+    case UV_TTY:                                                               \
+      uv__process_tty_##method##_req(loop,                                     \
+                                     (uv_tty_t*) ((req)->handle_at),           \
+                                     req);                                     \
+      break;                                                                   \
+                                                                               \
+    default:                                                                   \
+      assert(0);                                                               \
+    }                                                                          \
   } while (0)
 
 
@@ -571,58 +572,58 @@ static void uv__process_reqs(uv_loop_t* loop) {
     next = req->next_req != first ? req->next_req : NULL;
 
     switch (req->type) {
-      case UV_READ:
-        DELEGATE_STREAM_REQ(loop, req, read, data);
-        break;
+    case UV_READ:
+      DELEGATE_STREAM_REQ(loop, req, read, data);
+      break;
 
-      case UV_WRITE:
-        DELEGATE_STREAM_REQ(loop, (uv_write_t*) req, write, handle);
-        break;
+    case UV_WRITE:
+      DELEGATE_STREAM_REQ(loop, (uv_write_t*) req, write, handle);
+      break;
 
-      case UV_ACCEPT:
-        DELEGATE_STREAM_REQ(loop, req, accept, data);
-        break;
+    case UV_ACCEPT:
+      DELEGATE_STREAM_REQ(loop, req, accept, data);
+      break;
 
-      case UV_CONNECT:
-        DELEGATE_STREAM_REQ(loop, (uv_connect_t*) req, connect, handle);
-        break;
+    case UV_CONNECT:
+      DELEGATE_STREAM_REQ(loop, (uv_connect_t*) req, connect, handle);
+      break;
 
-      case UV_SHUTDOWN:
-        DELEGATE_STREAM_REQ(loop, (uv_shutdown_t*) req, shutdown, handle);
-        break;
+    case UV_SHUTDOWN:
+      DELEGATE_STREAM_REQ(loop, (uv_shutdown_t*) req, shutdown, handle);
+      break;
 
-      case UV_UDP_RECV:
-        uv__process_udp_recv_req(loop, (uv_udp_t*) req->data, req);
-        break;
+    case UV_UDP_RECV:
+      uv__process_udp_recv_req(loop, (uv_udp_t*) req->data, req);
+      break;
 
-      case UV_UDP_SEND:
-        uv__process_udp_send_req(loop,
-                                 ((uv_udp_send_t*) req)->handle,
-                                 (uv_udp_send_t*) req);
-        break;
+    case UV_UDP_SEND:
+      uv__process_udp_send_req(loop,
+                               ((uv_udp_send_t*) req)->handle,
+                               (uv_udp_send_t*) req);
+      break;
 
-      case UV_WAKEUP:
-        uv__process_async_wakeup_req(loop, (uv_async_t*) req->data, req);
-        break;
+    case UV_WAKEUP:
+      uv__process_async_wakeup_req(loop, (uv_async_t*) req->data, req);
+      break;
 
-      case UV_SIGNAL_REQ:
-        uv__process_signal_req(loop, (uv_signal_t*) req->data, req);
-        break;
+    case UV_SIGNAL_REQ:
+      uv__process_signal_req(loop, (uv_signal_t*) req->data, req);
+      break;
 
-      case UV_POLL_REQ:
-        uv__process_poll_req(loop, (uv_poll_t*) req->data, req);
-        break;
+    case UV_POLL_REQ:
+      uv__process_poll_req(loop, (uv_poll_t*) req->data, req);
+      break;
 
-      case UV_PROCESS_EXIT:
-        uv__process_proc_exit(loop, (uv_process_t*) req->data);
-        break;
+    case UV_PROCESS_EXIT:
+      uv__process_proc_exit(loop, (uv_process_t*) req->data);
+      break;
 
-      case UV_FS_EVENT_REQ:
-        uv__process_fs_event_req(loop, req, (uv_fs_event_t*) req->data);
-        break;
+    case UV_FS_EVENT_REQ:
+      uv__process_fs_event_req(loop, req, (uv_fs_event_t*) req->data);
+      break;
 
-      default:
-        assert(0);
+    default:
+      assert(0);
     }
   }
 }
@@ -639,66 +640,66 @@ static void uv__process_endgames(uv_loop_t* loop) {
     handle->flags &= ~UV_HANDLE_ENDGAME_QUEUED;
 
     switch (handle->type) {
-      case UV_TCP:
-        uv__tcp_endgame(loop, (uv_tcp_t*) handle);
-        break;
+    case UV_TCP:
+      uv__tcp_endgame(loop, (uv_tcp_t*) handle);
+      break;
 
-      case UV_NAMED_PIPE:
-        uv__pipe_endgame(loop, (uv_pipe_t*) handle);
-        break;
+    case UV_NAMED_PIPE:
+      uv__pipe_endgame(loop, (uv_pipe_t*) handle);
+      break;
 
-      case UV_TTY:
-        uv__tty_endgame(loop, (uv_tty_t*) handle);
-        break;
+    case UV_TTY:
+      uv__tty_endgame(loop, (uv_tty_t*) handle);
+      break;
 
-      case UV_UDP:
-        uv__udp_endgame(loop, (uv_udp_t*) handle);
-        break;
+    case UV_UDP:
+      uv__udp_endgame(loop, (uv_udp_t*) handle);
+      break;
 
-      case UV_POLL:
-        uv__poll_endgame(loop, (uv_poll_t*) handle);
-        break;
+    case UV_POLL:
+      uv__poll_endgame(loop, (uv_poll_t*) handle);
+      break;
 
-      case UV_TIMER:
-        uv__timer_close((uv_timer_t*) handle);
-        uv__handle_close(handle);
-        break;
+    case UV_TIMER:
+      uv__timer_close((uv_timer_t*) handle);
+      uv__handle_close(handle);
+      break;
 
-      case UV_PREPARE:
-      case UV_CHECK:
-      case UV_IDLE:
-        uv__loop_watcher_endgame(loop, handle);
-        break;
+    case UV_PREPARE:
+    case UV_CHECK:
+    case UV_IDLE:
+      uv__loop_watcher_endgame(loop, handle);
+      break;
 
-      case UV_ASYNC:
-        uv__async_endgame(loop, (uv_async_t*) handle);
-        break;
+    case UV_ASYNC:
+      uv__async_endgame(loop, (uv_async_t*) handle);
+      break;
 
-      case UV_SIGNAL:
-        uv__signal_endgame(loop, (uv_signal_t*) handle);
-        break;
+    case UV_SIGNAL:
+      uv__signal_endgame(loop, (uv_signal_t*) handle);
+      break;
 
-      case UV_PROCESS:
-        uv__process_endgame(loop, (uv_process_t*) handle);
-        break;
+    case UV_PROCESS:
+      uv__process_endgame(loop, (uv_process_t*) handle);
+      break;
 
-      case UV_FS_EVENT:
-        uv__fs_event_endgame(loop, (uv_fs_event_t*) handle);
-        break;
+    case UV_FS_EVENT:
+      uv__fs_event_endgame(loop, (uv_fs_event_t*) handle);
+      break;
 
-      case UV_FS_POLL:
-        uv__fs_poll_endgame(loop, (uv_fs_poll_t*) handle);
-        break;
+    case UV_FS_POLL:
+      uv__fs_poll_endgame(loop, (uv_fs_poll_t*) handle);
+      break;
 
-      default:
-        assert(0);
-        break;
+    default:
+      assert(0);
+      break;
     }
   }
 }
 
 
-int uv_run(uv_loop_t *loop, uv_run_mode mode) {
+int uv_run(uv_loop_t* loop, uv_run_mode mode) {
   DWORD timeout;
   int r;
   int can_sleep;
@@ -769,7 +770,7 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
 
   switch (handle->type) {
   case UV_TCP:
-    fd_out = (uv_os_fd_t)((uv_tcp_t*) handle)->socket;
+    fd_out = (uv_os_fd_t) ((uv_tcp_t*) handle)->socket;
     break;
 
   case UV_NAMED_PIPE:
@@ -781,11 +782,11 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
     break;
 
   case UV_UDP:
-    fd_out = (uv_os_fd_t)((uv_udp_t*) handle)->socket;
+    fd_out = (uv_os_fd_t) ((uv_udp_t*) handle)->socket;
     break;
 
   case UV_POLL:
-    fd_out = (uv_os_fd_t)((uv_poll_t*) handle)->socket;
+    fd_out = (uv_os_fd_t) ((uv_poll_t*) handle)->socket;
     break;
 
   default:
@@ -829,7 +830,7 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
 }
 
 int uv_cpumask_size(void) {
-  return (int)(sizeof(DWORD_PTR) * 8);
+  return (int) (sizeof(DWORD_PTR) * 8);
 }
 
 int uv__getsockpeername(const uv_handle_t* handle,
@@ -837,7 +838,6 @@ int uv__getsockpeername(const uv_handle_t* handle,
                         struct sockaddr* name,
                         int* namelen,
                         int delayed_error) {
-
   int result;
   uv_os_fd_t fd;
 

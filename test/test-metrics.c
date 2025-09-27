@@ -43,7 +43,8 @@ static void timer_spin_cb(uv_timer_t* handle) {
   (*(int*) handle->data)++;
   t = uv_hrtime();
   /* Spin for 500 ms to spin loop time out of the delta check. */
-  while (uv_hrtime() - t < 600 * UV_NS_TO_MS) { }
+  while (uv_hrtime() - t < 600 * UV_NS_TO_MS) {
+  }
 }
 
 
@@ -217,7 +218,8 @@ static void prepare_cb(uv_prepare_t* handle) {
   ASSERT_OK(uv_fs_open(uv_default_loop(),
                        &fs_reqs.open_req,
                        "test_file",
-                       UV_FS_O_WRONLY | UV_FS_O_CREAT, S_IRUSR | S_IWUSR,
+                       UV_FS_O_WRONLY | UV_FS_O_CREAT,
+                       S_IRUSR | S_IWUSR,
                        create_cb));
 }
 
@@ -281,14 +283,10 @@ static void fs_write_cb(uv_fs_t* req) {
 
   uv_fs_req_cleanup(req);
 
-  ASSERT_OK(uv_queue_work(uv_default_loop(),
-                          work1,
-                          fs_work_cb,
-                          fs_after_work_cb));
-  ASSERT_OK(uv_queue_work(uv_default_loop(),
-                          work2,
-                          fs_work_cb,
-                          fs_after_work_cb));
+  ASSERT_OK(
+      uv_queue_work(uv_default_loop(), work1, fs_work_cb, fs_after_work_cb));
+  ASSERT_OK(
+      uv_queue_work(uv_default_loop(), work2, fs_work_cb, fs_after_work_cb));
 }
 
 
@@ -329,34 +327,21 @@ TEST_IMPL(metrics_pool_events) {
 
   pool_events_counter = 0;
   fd = uv_fs_open(NULL,
-                  &open_req, "test_file", UV_FS_O_WRONLY | UV_FS_O_CREAT,
+                  &open_req,
+                  "test_file",
+                  UV_FS_O_WRONLY | UV_FS_O_CREAT,
                   S_IRUSR | S_IWUSR,
                   NULL);
   ASSERT_GT(fd, 0);
   uv_fs_req_cleanup(&open_req);
 
   iov = uv_buf_init(test_buf, sizeof(test_buf));
-  ASSERT_OK(uv_fs_write(uv_default_loop(),
-                        &write_req,
-                        fd,
-                        &iov,
-                        1,
-                        0,
-                        fs_write_cb));
-  ASSERT_OK(uv_fs_stat(uv_default_loop(),
-                       &stat1_req,
-                       "test_file",
-                       fs_stat_cb));
-  ASSERT_OK(uv_fs_stat(uv_default_loop(),
-                       &stat2_req,
-                       "test_file",
-                       fs_stat_cb));
-  ASSERT_OK(uv_random(uv_default_loop(),
-                      &random_req,
-                      &rdata,
-                      1,
-                      0,
-                      fs_random_cb));
+  ASSERT_OK(
+      uv_fs_write(uv_default_loop(), &write_req, fd, &iov, 1, 0, fs_write_cb));
+  ASSERT_OK(uv_fs_stat(uv_default_loop(), &stat1_req, "test_file", fs_stat_cb));
+  ASSERT_OK(uv_fs_stat(uv_default_loop(), &stat2_req, "test_file", fs_stat_cb));
+  ASSERT_OK(
+      uv_random(uv_default_loop(), &random_req, &rdata, 1, 0, fs_random_cb));
   ASSERT_OK(uv_getaddrinfo(uv_default_loop(),
                            &addrinfo_req,
                            fs_addrinfo_cb,

@@ -72,11 +72,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
   reset_me = uv_buf_init(reset_me_cmd, sizeof(reset_me_cmd));
 
-  r = uv_write(&write_req,
-               (uv_stream_t*) &tcp_client,
-               &reset_me,
-               1,
-               write_cb);
+  r = uv_write(&write_req, (uv_stream_t*) &tcp_client, &reset_me, 1, write_cb);
 
   ASSERT_OK(r);
 }

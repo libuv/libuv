@@ -31,7 +31,7 @@
 #include <sys/ioctl.h>
 
 #if defined(__MVS__) && !defined(IMAXBEL)
-#define IMAXBEL 0
+#  define IMAXBEL 0
 #endif
 
 #if defined(__PASE__)
@@ -52,21 +52,21 @@
  */
 static int isreallyatty(int file) {
   int rc;
- 
+
   rc = !ioctl(file, TXISATTY + 0x81, NULL);
   if (!rc && errno != EBADF)
-      errno = ENOTTY;
+    errno = ENOTTY;
 
   return rc;
 }
-#define isatty(fd) isreallyatty(fd)
+#  define isatty(fd) isreallyatty(fd)
 #endif
 
 static int orig_termios_fd = -1;
 static struct termios orig_termios;
 static _Atomic int termios_spinlock;
 
-int uv__tcsetattr(int fd, int how, const struct termios *term) {
+int uv__tcsetattr(int fd, int how, const struct termios* term) {
   int rc;
 
   do
@@ -141,7 +141,7 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, int fd, int unused) {
   int saved_flags;
   int mode;
   char path[256];
-  (void)unused; /* deprecated parameter is no longer needed */
+  (void) unused; /* deprecated parameter is no longer needed */
 
   /* File descriptors that refer to files cannot be monitored with epoll.
    * That restriction also applies to character devices like /dev/random
@@ -316,21 +316,21 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
 
   tmp = tty->orig_termios;
   switch (mode) {
-    case UV_TTY_MODE_NORMAL:
-      break;
-    case UV_TTY_MODE_RAW:
-      tmp.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-      tmp.c_oflag |= (ONLCR);
-      tmp.c_cflag |= (CS8);
-      tmp.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-      tmp.c_cc[VMIN] = 1;
-      tmp.c_cc[VTIME] = 0;
-      break;
-    case UV_TTY_MODE_IO:
-      uv__tty_make_raw(&tmp);
-      break;
-    default:
-      UNREACHABLE();
+  case UV_TTY_MODE_NORMAL:
+    break;
+  case UV_TTY_MODE_RAW:
+    tmp.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    tmp.c_oflag |= (ONLCR);
+    tmp.c_cflag |= (CS8);
+    tmp.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+    tmp.c_cc[VMIN] = 1;
+    tmp.c_cc[VTIME] = 0;
+    break;
+  case UV_TTY_MODE_IO:
+    uv__tty_make_raw(&tmp);
+    break;
+  default:
+    UNREACHABLE();
   }
 
   /* Apply changes after draining */
@@ -426,7 +426,7 @@ uv_handle_type uv_guess_handle(uv_file file) {
     return UV_FILE;
 
   if (S_ISCHR(s.st_mode))
-    return UV_FILE;  /* XXX UV_NAMED_PIPE? */
+    return UV_FILE; /* XXX UV_NAMED_PIPE? */
 
   if (S_ISFIFO(s.st_mode))
     return UV_NAMED_PIPE;
@@ -490,7 +490,7 @@ int uv_tty_reset_mode(void) {
   saved_errno = errno;
 
   if (atomic_exchange(&termios_spinlock, 1))
-    return UV_EBUSY;  /* In uv_tty_set_mode() or uv__tty_close(). */
+    return UV_EBUSY; /* In uv_tty_set_mode() or uv__tty_close(). */
 
   err = 0;
   if (orig_termios_fd != -1)

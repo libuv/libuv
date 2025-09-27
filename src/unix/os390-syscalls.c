@@ -31,10 +31,10 @@ static struct uv__queue global_epoll_queue;
 static uv_mutex_t global_epoll_lock;
 static uv_once_t once = UV_ONCE_INIT;
 
-int scandir(const char* maindir, struct dirent*** namelist,
+int scandir(const char* maindir,
+            struct dirent*** namelist,
             int (*filter)(const struct dirent*),
-            int (*compar)(const struct dirent**,
-            const struct dirent **)) {
+            int (*compar)(const struct dirent**, const struct dirent**)) {
   struct dirent** nl;
   struct dirent** nl_copy;
   struct dirent* dirent;
@@ -71,8 +71,10 @@ int scandir(const char* maindir, struct dirent*** namelist,
     }
   }
 
-  qsort(nl, count, sizeof(struct dirent *),
-       (int (*)(const void *, const void *)) compar);
+  qsort(nl,
+        count,
+        sizeof(struct dirent*),
+        (int (*)(const void*, const void*)) compar);
 
   closedir(mdir);
 
@@ -233,10 +235,7 @@ uv__os390_epoll* epoll_create1(int flags) {
 }
 
 
-int epoll_ctl(uv__os390_epoll* lst,
-              int op,
-              int fd,
-              struct epoll_event *event) {
+int epoll_ctl(uv__os390_epoll* lst, int op, int fd, struct epoll_event* event) {
   uv_mutex_lock(&global_epoll_lock);
 
   if (op == EPOLL_CTL_DEL) {
@@ -247,9 +246,8 @@ int epoll_ctl(uv__os390_epoll* lst,
     }
     lst->items[fd].fd = -1;
   } else if (op == EPOLL_CTL_ADD) {
-
     /* Resizing to 'fd + 1' would expand the list to contain at least
-     * 'fd'. But we need to guarantee that the last index on the list 
+     * 'fd'. But we need to guarantee that the last index on the list
      * is reserved for the message queue. So specify 'fd + 2' instead.
      */
     maybe_resize(lst, fd + 2);
@@ -276,11 +274,13 @@ int epoll_ctl(uv__os390_epoll* lst,
   return 0;
 }
 
-#define EP_MAX_PFDS (ULONG_MAX / sizeof(struct pollfd))
+#define EP_MAX_PFDS   (ULONG_MAX / sizeof(struct pollfd))
 #define EP_MAX_EVENTS (INT_MAX / sizeof(struct epoll_event))
 
-int epoll_wait(uv__os390_epoll* lst, struct epoll_event* events,
-               int maxevents, int timeout) {
+int epoll_wait(uv__os390_epoll* lst,
+               struct epoll_event* events,
+               int maxevents,
+               int timeout) {
   nmsgsfds_t size;
   struct pollfd* pfds;
   int pollret;
@@ -318,12 +318,11 @@ int epoll_wait(uv__os390_epoll* lst, struct epoll_event* events,
 
   reventcount = 0;
   nevents = 0;
-  msg_fd = pfds[lst->size - 1]; /* message queue is always last entry */
+  msg_fd = pfds[lst->size - 1];       /* message queue is always last entry */
   maxevents = maxevents - pollmsgret; /* allow spot for message queue */
   for (i = 0;
-       i < lst->size - 1 &&
-       nevents < maxevents &&
-       reventcount < pollfdret; ++i) {
+       i < lst->size - 1 && nevents < maxevents && reventcount < pollfdret;
+       ++i) {
     struct epoll_event ev;
     struct pollfd* pfd;
 
@@ -384,7 +383,7 @@ void epoll_queue_close(uv__os390_epoll* lst) {
 
 char* mkdtemp(char* path) {
   static const char* tempchars =
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   static const size_t num_chars = 62;
   static const size_t num_x = 6;
   char *ep, *cp;
@@ -421,8 +420,7 @@ char* mkdtemp(char* path) {
     if (mkdir(path, S_IRWXU) == 0) {
       retval = 0;
       break;
-    }
-    else if (errno != EEXIST)
+    } else if (errno != EEXIST)
       break;
   } while (--tries);
 

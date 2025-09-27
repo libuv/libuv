@@ -26,9 +26,9 @@
 
 
 #ifdef _WIN32
-# define BAD_PIPENAME "bad-pipe"
+#  define BAD_PIPENAME "bad-pipe"
 #else
-# define BAD_PIPENAME "/path/to/unix/socket/that/really/should/not/be/there"
+#  define BAD_PIPENAME "/path/to/unix/socket/that/really/should/not/be/there"
 #endif
 
 
@@ -56,13 +56,13 @@ TEST_IMPL(pipe_bind_error_addrinuse) {
   r = uv_pipe_bind(&server2, TEST_PIPENAME);
   ASSERT_EQ(r, UV_EADDRINUSE);
 
-  r = uv_listen((uv_stream_t*)&server1, SOMAXCONN, NULL);
+  r = uv_listen((uv_stream_t*) &server1, SOMAXCONN, NULL);
   ASSERT_OK(r);
-  r = uv_listen((uv_stream_t*)&server2, SOMAXCONN, NULL);
+  r = uv_listen((uv_stream_t*) &server2, SOMAXCONN, NULL);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server1, close_cb);
-  uv_close((uv_handle_t*)&server2, close_cb);
+  uv_close((uv_handle_t*) &server1, close_cb);
+  uv_close((uv_handle_t*) &server2, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -83,7 +83,7 @@ TEST_IMPL(pipe_bind_error_addrnotavail) {
   r = uv_pipe_bind(&server, BAD_PIPENAME);
   ASSERT_EQ(r, UV_EACCES);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -105,7 +105,7 @@ TEST_IMPL(pipe_bind_error_inval) {
   r = uv_pipe_bind(&server, TEST_PIPENAME_2);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -126,10 +126,10 @@ TEST_IMPL(pipe_listen_without_bind) {
   r = uv_pipe_init(uv_default_loop(), &server, 0);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)&server, SOMAXCONN, NULL);
+  r = uv_listen((uv_stream_t*) &server, SOMAXCONN, NULL);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
@@ -182,30 +182,27 @@ TEST_IMPL(pipe_overlong_path) {
    * ref: https://github.com/libuv/libuv/issues/4231#issuecomment-2194612711
    * On AIX the sun_path is larger than the NAME_MAX
    */
-#if defined(_AIX) && !defined(__PASE__)
+#  if defined(_AIX) && !defined(__PASE__)
   ASSERT_EQ(UV_ENAMETOOLONG,
-          uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
+            uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
   /* UV_ENAMETOOLONG is delayed in uv_pipe_connect2 and won't propagate until
-   * uv_run is called and causes timeouts, therefore in this case we skip calling
-   * uv_pipe_connect2
+   * uv_run is called and causes timeouts, therefore in this case we skip
+   * calling uv_pipe_connect2
    */
-#else
+#  else
   ASSERT_EQ(UV_EINVAL,
-          uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
+            uv_pipe_bind2(&pipe, path, sizeof(path), UV_PIPE_NO_TRUNCATE));
   ASSERT_EQ(UV_EINVAL,
-          uv_pipe_connect2(&req,
-                           &pipe,
-                           path,
-                           sizeof(path),
-                           UV_PIPE_NO_TRUNCATE,
-                           (uv_connect_cb) abort));
+            uv_pipe_connect2(&req,
+                             &pipe,
+                             path,
+                             sizeof(path),
+                             UV_PIPE_NO_TRUNCATE,
+                             (uv_connect_cb) abort));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-#endif /*if defined(_AIX) && !defined(__PASE__)*/
-#endif /* ifndef _WIN32 */
-  uv_pipe_connect(&req,
-                  &pipe,
-                  "",
-                  (uv_connect_cb) connect_overlong_cb);
+#  endif /*if defined(_AIX) && !defined(__PASE__)*/
+#endif   /* ifndef _WIN32 */
+  uv_pipe_connect(&req, &pipe, "", (uv_connect_cb) connect_overlong_cb);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(1, connect_cb_called);
   ASSERT_EQ(1, close_cb_called);

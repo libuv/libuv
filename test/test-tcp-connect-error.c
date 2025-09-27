@@ -29,12 +29,10 @@ static int connect_cb_called = 0;
 static int close_cb_called = 0;
 
 
-
 static void connect_cb(uv_connect_t* handle, int status) {
   ASSERT_NOT_NULL(handle);
   connect_cb_called++;
 }
-
 
 
 static void close_cb(uv_handle_t* handle) {
@@ -61,7 +59,7 @@ TEST_IMPL(tcp_connect_error_fault) {
                      connect_cb);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&server, close_cb);
+  uv_close((uv_handle_t*) &server, close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

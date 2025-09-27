@@ -53,9 +53,10 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
  * We could use a static buffer for the path manipulations that we need outside
  * of the function, but this function could be called by multiple consumers and
  * we don't want to potentially create a race condition in the use of snprintf.
- * There is no direct way of getting the exe path in AIX - either through /procfs
- * or through some libc APIs. The below approach is to parse the argv[0]'s pattern
- * and use it in conjunction with PATH environment variable to craft one.
+ * There is no direct way of getting the exe path in AIX - either through
+ * /procfs or through some libc APIs. The below approach is to parse the
+ * argv[0]'s pattern and use it in conjunction with PATH environment variable to
+ * craft one.
  */
 int uv_exepath(char* buffer, size_t* size) {
   int res;

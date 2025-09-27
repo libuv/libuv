@@ -35,11 +35,11 @@ TEST_IMPL(loop_update_time) {
 }
 
 static void cb(uv_timer_t* timer) {
-  uv_close((uv_handle_t*)timer, NULL);
+  uv_close((uv_handle_t*) timer, NULL);
 }
 
 TEST_IMPL(loop_backend_timeout) {
-  uv_loop_t *loop = uv_default_loop();
+  uv_loop_t* loop = uv_default_loop();
   uv_timer_t timer;
   int r;
 

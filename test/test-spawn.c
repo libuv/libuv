@@ -29,15 +29,15 @@
 #include <string.h>
 
 #ifdef _WIN32
-# include <shellapi.h>
-# include <wchar.h>
-  typedef BOOL (WINAPI *sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
-# define unlink _unlink
-# define putenv _putenv
-# define close _close
+#  include <shellapi.h>
+#  include <wchar.h>
+typedef BOOL(WINAPI* sCompareObjectHandles)(_In_ HANDLE, _In_ HANDLE);
+#  define unlink _unlink
+#  define putenv _putenv
+#  define close  _close
 #else
-# include <unistd.h>
-# include <sys/wait.h>
+#  include <unistd.h>
+#  include <sys/wait.h>
 #endif
 
 
@@ -241,8 +241,7 @@ TEST_IMPL(spawn_empty_env) {
    * the empty environment that we're testing here.
    */
   if (NULL != getenv("DYLD_LIBRARY_PATH") ||
-      NULL != getenv("LD_LIBRARY_PATH") ||
-      NULL != getenv("LIBPATH")) {
+      NULL != getenv("LD_LIBRARY_PATH") || NULL != getenv("LIBPATH")) {
     RETURN_SKIP("doesn't work with DYLD_LIBRARY_PATH/LD_LIBRARY_PATH/LIBPATH");
   }
 
@@ -325,8 +324,12 @@ TEST_IMPL(spawn_stdout_to_file) {
 
   init_process_options("spawn_helper2", exit_cb);
 
-  r = uv_fs_open(NULL, &fs_req, "stdout_file", UV_FS_O_CREAT | UV_FS_O_RDWR,
-      S_IRUSR | S_IWUSR, NULL);
+  r = uv_fs_open(NULL,
+                 &fs_req,
+                 "stdout_file",
+                 UV_FS_O_CREAT | UV_FS_O_RDWR,
+                 S_IRUSR | S_IWUSR,
+                 NULL);
   ASSERT_NE(r, -1);
   uv_fs_req_cleanup(&fs_req);
 
@@ -379,8 +382,12 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
 
   init_process_options("spawn_helper6", exit_cb);
 
-  r = uv_fs_open(NULL, &fs_req, "stdout_file", UV_FS_O_CREAT | UV_FS_O_RDWR,
-      S_IRUSR | S_IWUSR, NULL);
+  r = uv_fs_open(NULL,
+                 &fs_req,
+                 "stdout_file",
+                 UV_FS_O_CREAT | UV_FS_O_RDWR,
+                 S_IRUSR | S_IWUSR,
+                 NULL);
   ASSERT_NE(r, -1);
   uv_fs_req_cleanup(&fs_req);
 
@@ -516,8 +523,12 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   ASSERT_NE(stdout_file, -1);
 
   /* open 'stderr_file' and replace STDERR_FILENO with it */
-  r = uv_fs_open(NULL, &fs_req, "stderr_file", O_CREAT | O_RDWR,
-      S_IRUSR | S_IWUSR, NULL);
+  r = uv_fs_open(NULL,
+                 &fs_req,
+                 "stderr_file",
+                 O_CREAT | O_RDWR,
+                 S_IRUSR | S_IWUSR,
+                 NULL);
   ASSERT_NE(r, -1);
   uv_fs_req_cleanup(&fs_req);
   stderr_file = dup2(r, STDERR_FILENO);
@@ -707,7 +718,7 @@ TEST_IMPL(spawn_tcp_server) {
   fd = _open_osfhandle((intptr_t) handle, 0);
 #else
   r = uv_fileno((uv_handle_t*) &tcp_server, &fd);
- #endif
+#endif
   ASSERT_OK(r);
   ASSERT_GT(fd, 0);
 
@@ -1114,14 +1125,15 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
            "\\\\.\\pipe\\uv\\%p-%lu",
            &out,
            GetCurrentProcessId());
-  pipe_handle = CreateNamedPipeA(name,
-                                PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED,
-                                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                                10,
-                                65536,
-                                65536,
-                                0,
-                                NULL);
+  pipe_handle =
+      CreateNamedPipeA(name,
+                       PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED,
+                       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                       10,
+                       65536,
+                       65536,
+                       0,
+                       NULL);
   ASSERT_PTR_NE(pipe_handle, INVALID_HANDLE_VALUE);
 
   r = uv_spawn(uv_default_loop(), &process, &options);
@@ -1143,23 +1155,22 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 }
 
 
-#if !defined(USING_UV_SHARED)
+#  if !defined(USING_UV_SHARED)
 int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr);
-WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target);
+WCHAR* quote_cmd_arg(const WCHAR* source, WCHAR* target);
 
 TEST_IMPL(argument_escaping) {
-  const WCHAR* test_str[] = {
-    L"",
-    L"HelloWorld",
-    L"Hello World",
-    L"Hello\"World",
-    L"Hello World\\",
-    L"Hello\\\"World",
-    L"Hello\\World",
-    L"Hello\\\\World",
-    L"Hello World\\",
-    L"c:\\path\\to\\node.exe --eval \"require('c:\\\\path\\\\to\\\\test.js')\""
-  };
+  const WCHAR* test_str[] = {L"",
+                             L"HelloWorld",
+                             L"Hello World",
+                             L"Hello\"World",
+                             L"Hello World\\",
+                             L"Hello\\\"World",
+                             L"Hello\\World",
+                             L"Hello\\\\World",
+                             L"Hello World\\",
+                             L"c:\\path\\to\\node.exe --eval "
+                             L"\"require('c:\\\\path\\\\to\\\\test.js')\""};
   const int count = sizeof(test_str) / sizeof(*test_str);
   WCHAR** test_output;
   WCHAR* command_line;
@@ -1169,12 +1180,11 @@ TEST_IMPL(argument_escaping) {
   int num_args;
   int result;
 
-  char* verbatim[] = {
-    "cmd.exe",
-    "/c",
-    "c:\\path\\to\\node.exe --eval \"require('c:\\\\path\\\\to\\\\test.js')\"",
-    NULL
-  };
+  char* verbatim[] = {"cmd.exe",
+                      "/c",
+                      "c:\\path\\to\\node.exe --eval "
+                      "\"require('c:\\\\path\\\\to\\\\test.js')\"",
+                      NULL};
   WCHAR* verbatim_output;
   WCHAR* non_verbatim_output;
 
@@ -1235,74 +1245,73 @@ int make_program_env(char** env_block, WCHAR** dst_ptr);
 TEST_IMPL(environment_creation) {
   size_t i;
   char* environment[] = {
-    "FOO=BAR",
-    "SYSTEM=ROOT", /* substring of a supplied var name */
-    "SYSTEMROOTED=OMG", /* supplied var name is a substring */
-    "TEMP=C:\\Temp",
-    "INVALID",
-    "BAZ=QUX",
-    "B_Z=QUX",
-    "B\xe2\x82\xacZ=QUX",
-    "B\xf0\x90\x80\x82Z=QUX",
-    "B\xef\xbd\xa1Z=QUX",
-    "B\xf0\xa3\x91\x96Z=QUX",
-    "BAZ", /* repeat, invalid variable */
-    NULL
-  };
+      "FOO=BAR",
+      "SYSTEM=ROOT",      /* substring of a supplied var name */
+      "SYSTEMROOTED=OMG", /* supplied var name is a substring */
+      "TEMP=C:\\Temp",
+      "INVALID",
+      "BAZ=QUX",
+      "B_Z=QUX",
+      "B\xe2\x82\xacZ=QUX",
+      "B\xf0\x90\x80\x82Z=QUX",
+      "B\xef\xbd\xa1Z=QUX",
+      "B\xf0\xa3\x91\x96Z=QUX",
+      "BAZ", /* repeat, invalid variable */
+      NULL};
   WCHAR* wenvironment[] = {
-    L"BAZ=QUX",
-    L"B_Z=QUX",
-    L"B\x20acZ=QUX",
-    L"B\xd800\xdc02Z=QUX",
-    L"B\xd84d\xdc56Z=QUX",
-    L"B\xff61Z=QUX",
-    L"FOO=BAR",
-    L"SYSTEM=ROOT", /* substring of a supplied var name */
-    L"SYSTEMROOTED=OMG", /* supplied var name is a substring */
-    L"TEMP=C:\\Temp",
+      L"BAZ=QUX",
+      L"B_Z=QUX",
+      L"B\x20acZ=QUX",
+      L"B\xd800\xdc02Z=QUX",
+      L"B\xd84d\xdc56Z=QUX",
+      L"B\xff61Z=QUX",
+      L"FOO=BAR",
+      L"SYSTEM=ROOT",      /* substring of a supplied var name */
+      L"SYSTEMROOTED=OMG", /* supplied var name is a substring */
+      L"TEMP=C:\\Temp",
   };
   WCHAR* from_env[] = {
-    /* list should be kept in sync with list
-     * in process.c, minus variables in wenvironment */
-    L"HOMEDRIVE",
-    L"HOMEPATH",
-    L"LOGONSERVER",
-    L"PATH",
-    L"USERDOMAIN",
-    L"USERNAME",
-    L"USERPROFILE",
-    L"SYSTEMDRIVE",
-    L"SYSTEMROOT",
-    L"WINDIR",
-    /* test for behavior in the absence of a
-     * required-environment variable: */
-    L"ZTHIS_ENV_VARIABLE_DOES_NOT_EXIST",
+      /* list should be kept in sync with list
+       * in process.c, minus variables in wenvironment */
+      L"HOMEDRIVE",
+      L"HOMEPATH",
+      L"LOGONSERVER",
+      L"PATH",
+      L"USERDOMAIN",
+      L"USERNAME",
+      L"USERPROFILE",
+      L"SYSTEMDRIVE",
+      L"SYSTEMROOT",
+      L"WINDIR",
+      /* test for behavior in the absence of a
+       * required-environment variable: */
+      L"ZTHIS_ENV_VARIABLE_DOES_NOT_EXIST",
   };
   int found_in_loc_env[ARRAY_SIZE(wenvironment)] = {0};
   int found_in_usr_env[ARRAY_SIZE(from_env)] = {0};
-  WCHAR *expected[ARRAY_SIZE(from_env)];
+  WCHAR* expected[ARRAY_SIZE(from_env)];
   int result;
   WCHAR* str;
   WCHAR* prev;
   WCHAR* env;
 
   for (i = 0; i < ARRAY_SIZE(from_env); i++) {
-      /* copy expected additions to environment locally */
-      size_t len = GetEnvironmentVariableW(from_env[i], NULL, 0);
-      if (len == 0) {
-        found_in_usr_env[i] = 1;
-        str = malloc(1 * sizeof(WCHAR));
-        *str = 0;
-        expected[i] = str;
-      } else {
-        size_t name_len = wcslen(from_env[i]);
-        str = malloc((name_len+1+len) * sizeof(WCHAR));
-        wmemcpy(str, from_env[i], name_len);
-        expected[i] = str;
-        str += name_len;
-        *str++ = L'=';
-        GetEnvironmentVariableW(from_env[i], str, len);
-     }
+    /* copy expected additions to environment locally */
+    size_t len = GetEnvironmentVariableW(from_env[i], NULL, 0);
+    if (len == 0) {
+      found_in_usr_env[i] = 1;
+      str = malloc(1 * sizeof(WCHAR));
+      *str = 0;
+      expected[i] = str;
+    } else {
+      size_t name_len = wcslen(from_env[i]);
+      str = malloc((name_len + 1 + len) * sizeof(WCHAR));
+      wmemcpy(str, from_env[i], name_len);
+      expected[i] = str;
+      str += name_len;
+      *str++ = L'=';
+      GetEnvironmentVariableW(from_env[i], str, len);
+    }
   }
 
   result = make_program_env(environment, &env);
@@ -1310,10 +1319,10 @@ TEST_IMPL(environment_creation) {
 
   for (str = env, prev = NULL; *str; prev = str, str += wcslen(str) + 1) {
     int found = 0;
-#if 0
+#    if 0
     _cputws(str);
     putchar('\n');
-#endif
+#    endif
     for (i = 0; i < ARRAY_SIZE(wenvironment) && !found; i++) {
       if (!wcscmp(str, wenvironment[i])) {
         ASSERT(!found_in_loc_env[i]);
@@ -1344,14 +1353,14 @@ TEST_IMPL(environment_creation) {
 
   return 0;
 }
-#endif
+#  endif
 
 /* Regression test for issue #909 */
 TEST_IMPL(spawn_with_an_odd_path) {
   int r;
 
   char newpath[2048];
-  char *path = getenv("PATH");
+  char* path = getenv("PATH");
   ASSERT_NOT_NULL(path);
   snprintf(newpath, 2048, ";.;%s", path);
   SetEnvironmentVariable("PATH", newpath);
@@ -1402,7 +1411,9 @@ TEST_IMPL(spawn_no_ext) {
 
   init_process_options("spawn_helper1", exit_cb);
   options.flags |= UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME;
-  snprintf(new_exepath, sizeof(new_exepath), "%.*s_no_ext",
+  snprintf(new_exepath,
+           sizeof(new_exepath),
+           "%.*s_no_ext",
            (int) (exepath_size - sizeof(".exe") + 1),
            exepath);
   options.file = options.args[0] = new_exepath;
@@ -1434,8 +1445,11 @@ TEST_IMPL(spawn_path_no_ext) {
   /* Set up the PATH env variable */
   for (len = strlen(exepath), file_len = 0;
        exepath[len - 1] != '/' && exepath[len - 1] != '\\';
-       len--, file_len++);
-  snprintf(file, sizeof(file), "%.*s_no_ext",
+       len--, file_len++)
+    ;
+  snprintf(file,
+           sizeof(file),
+           "%.*s_no_ext",
            (int) (file_len - sizeof(".exe") + 1),
            exepath + len);
   exepath[len] = 0;
@@ -1508,7 +1522,7 @@ TEST_IMPL(spawn_setuid_fails) {
 
   /* if root, become nobody. */
   /* On IBMi PASE, there is no nobody user. */
-#ifndef __PASE__
+#  ifndef __PASE__
   uv_uid_t uid = getuid();
   if (uid == 0) {
     struct passwd* pw;
@@ -1517,7 +1531,7 @@ TEST_IMPL(spawn_setuid_fails) {
     ASSERT_OK(setgid(pw->pw_gid));
     ASSERT_OK(setuid(pw->pw_uid));
   }
-#endif  /* !__PASE__ */
+#  endif /* !__PASE__ */
 
   init_process_options("spawn_helper1", fail_cb);
 
@@ -1525,11 +1539,11 @@ TEST_IMPL(spawn_setuid_fails) {
   /* On IBMi PASE, there is no root user. User may grant
    * root-like privileges, including setting uid to 0.
    */
-#if defined(__PASE__)
+#  if defined(__PASE__)
   options.uid = -1;
-#else
+#  else
   options.uid = 0;
-#endif
+#  endif
 
   /* These flags should be ignored on Unices. */
   options.flags |= UV_PROCESS_WINDOWS_HIDE;
@@ -1538,11 +1552,11 @@ TEST_IMPL(spawn_setuid_fails) {
   options.flags |= UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-#if defined(__CYGWIN__)
+#  if defined(__CYGWIN__)
   ASSERT_EQ(r, UV_EINVAL);
-#else
+#  else
   ASSERT_EQ(r, UV_EPERM);
-#endif
+#  endif
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
@@ -1559,7 +1573,7 @@ TEST_IMPL(spawn_setgid_fails) {
 
   /* if root, become nobody. */
   /* On IBMi PASE, there is no nobody user. */
-#ifndef __PASE__
+#  ifndef __PASE__
   uv_uid_t uid = getuid();
   if (uid == 0) {
     struct passwd* pw;
@@ -1568,7 +1582,7 @@ TEST_IMPL(spawn_setgid_fails) {
     ASSERT_OK(setgid(pw->pw_gid));
     ASSERT_OK(setuid(pw->pw_uid));
   }
-#endif  /* !__PASE__ */
+#  endif /* !__PASE__ */
 
   init_process_options("spawn_helper1", fail_cb);
 
@@ -1576,18 +1590,18 @@ TEST_IMPL(spawn_setgid_fails) {
   /* On IBMi PASE, there is no root user. User may grant
    * root-like privileges, including setting gid to 0.
    */
-#if defined(__MVS__) || defined(__PASE__)
+#  if defined(__MVS__) || defined(__PASE__)
   options.gid = -1;
-#else
+#  else
   options.gid = 0;
-#endif
+#  endif
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-#if defined(__CYGWIN__) || defined(__MVS__)
+#  if defined(__CYGWIN__) || defined(__MVS__)
   ASSERT_EQ(r, UV_EINVAL);
-#else
+#  else
   ASSERT_EQ(r, UV_EPERM);
-#endif
+#  endif
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_OK(r);
@@ -1702,8 +1716,14 @@ TEST_IMPL(spawn_fs_open) {
 
   /* make an inheritable copy */
 #ifdef _WIN32
-  ASSERT_NE(0, DuplicateHandle(GetCurrentProcess(), fd, GetCurrentProcess(), &dup_fd,
-                               0, /* inherit */ TRUE, DUPLICATE_SAME_ACCESS));
+  ASSERT_NE(0,
+            DuplicateHandle(GetCurrentProcess(),
+                            fd,
+                            GetCurrentProcess(),
+                            &dup_fd,
+                            0,
+                            /* inherit */ TRUE,
+                            DUPLICATE_SAME_ACCESS));
   kernelbase_module = GetModuleHandleW(L"kernelbase.dll");
   u.proc = GetProcAddress(kernelbase_module, "CompareObjectHandles");
   if (u.pCompareObjectHandles != NULL)
@@ -1715,11 +1735,7 @@ TEST_IMPL(spawn_fs_open) {
   ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
 
   buf = uv_buf_init((char*) &fd, sizeof(fd));
-  ASSERT_OK(uv_write(&write_req,
-                     (uv_stream_t*) &in,
-                     &buf,
-                     1,
-                     write_null_cb));
+  ASSERT_OK(uv_write(&write_req, (uv_stream_t*) &in, &buf, 1, write_null_cb));
 
   buf = uv_buf_init((char*) &dup_fd, sizeof(fd));
   ASSERT_OK(uv_write(&write_req2, (uv_stream_t*) &in, &buf, 1, write_cb));
@@ -1728,7 +1744,7 @@ TEST_IMPL(spawn_fs_open) {
   ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
 
   ASSERT_EQ(1, exit_cb_called);
-  ASSERT_EQ(2, close_cb_called);  /* One for `in`, one for process */
+  ASSERT_EQ(2, close_cb_called); /* One for `in`, one for process */
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -1766,9 +1782,7 @@ TEST_IMPL(closed_fd_events) {
   /* uv_pipe_open() takes ownership of the file descriptor. */
   fd[0] = -1;
 
-  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe_handle,
-                          on_alloc,
-                          on_read_once));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe_handle, on_alloc, on_read_once));
 
   ASSERT_EQ(1, uv_fs_write(NULL, &req, fd[1], bufs, 1, -1, NULL));
   ASSERT_EQ(1, req.result);
@@ -1834,7 +1848,8 @@ TEST_IMPL(spawn_reads_child_path) {
   /* Set up the PATH env variable */
   for (len = strlen(exepath);
        exepath[len - 1] != '/' && exepath[len - 1] != '\\';
-       len--);
+       len--)
+    ;
   strcpy(file, exepath + len);
   exepath[len] = 0;
   strcpy(path, "PATH=");
@@ -1921,10 +1936,10 @@ TEST_IMPL(spawn_inherit_streams) {
   ASSERT_EQ(uv_is_writable((uv_stream_t*) &pipe_stdout_parent), bidir);
 
   child_stdio[0].flags = UV_INHERIT_STREAM;
-  child_stdio[0].data.stream = (uv_stream_t *) &pipe_stdin_child;
+  child_stdio[0].data.stream = (uv_stream_t*) &pipe_stdin_child;
 
   child_stdio[1].flags = UV_INHERIT_STREAM;
-  child_stdio[1].data.stream = (uv_stream_t *) &pipe_stdout_child;
+  child_stdio[1].data.stream = (uv_stream_t*) &pipe_stdout_child;
 
   options.stdio = child_stdio;
   options.stdio_count = 2;
@@ -2043,7 +2058,7 @@ void spawn_stdin_stdout(void) {
     pbuf = buf;
     while (c) {
       do {
-        w = write(1, pbuf, (size_t)c);
+        w = write(1, pbuf, (size_t) c);
       } while (w == -1 && errno == EINTR);
       ASSERT_GE(w, 0);
       pbuf = pbuf + w;

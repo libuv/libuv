@@ -23,8 +23,8 @@
 #include "task.h"
 #include <string.h>
 #ifndef _WIN32
-#include <unistd.h>
-#include <sys/types.h>
+#  include <unistd.h>
+#  include <sys/types.h>
 #endif
 
 TEST_IMPL(get_passwd) {
@@ -47,9 +47,9 @@ TEST_IMPL(get_passwd) {
   ASSERT_NULL(pwd.shell);
 #else
   len = strlen(pwd.shell);
-# ifndef __PASE__
+#  ifndef __PASE__
   ASSERT_GT(len, 0);
-# endif
+#  endif
 #endif
 
   len = strlen(pwd.homedir);
@@ -68,11 +68,11 @@ TEST_IMPL(get_passwd) {
 #endif
 
 #ifdef _WIN32
-  ASSERT_EQ(pwd.uid, (unsigned)-1);
-  ASSERT_EQ(pwd.gid, (unsigned)-1);
+  ASSERT_EQ(pwd.uid, (unsigned) -1);
+  ASSERT_EQ(pwd.gid, (unsigned) -1);
 #else
-  ASSERT_NE(pwd.uid, (unsigned)-1);
-  ASSERT_NE(pwd.gid, (unsigned)-1);
+  ASSERT_NE(pwd.uid, (unsigned) -1);
+  ASSERT_NE(pwd.gid, (unsigned) -1);
   ASSERT_EQ(pwd.uid, geteuid());
   if (pwd.uid != 0 && pwd.gid != getgid())
     /* This will be likely true, as only root could have changed it. */
@@ -135,20 +135,20 @@ TEST_IMPL(get_passwd2) {
 
   len = strlen(pwd2.username);
   ASSERT_GT(len, 0);
-#if defined(__PASE__)
+#  if defined(__PASE__)
   // uid 0 is qsecofr on IBM i
   ASSERT_STR_EQ(pwd2.username, "qsecofr");
-#else
+#  else
   ASSERT_STR_EQ(pwd2.username, "root");
-#endif
+#  endif
   len = strlen(pwd2.homedir);
-# ifndef __PASE__
+#  ifndef __PASE__
   ASSERT_GT(len, 0);
-#endif
+#  endif
   len = strlen(pwd2.shell);
-# ifndef __PASE__
+#  ifndef __PASE__
   ASSERT_GT(len, 0);
-# endif
+#  endif
 
   uv_os_free_passwd(&pwd2);
 #endif

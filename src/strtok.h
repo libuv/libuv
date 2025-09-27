@@ -24,4 +24,4 @@
 
 char* uv__strtok(char* str, const char* sep, char** itr);
 
-#endif  /* UV_STRTOK_H_ */
+#endif /* UV_STRTOK_H_ */

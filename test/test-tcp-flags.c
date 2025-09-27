@@ -64,7 +64,7 @@ TEST_IMPL(tcp_flags) {
   r = uv_tcp_keepalive_ex(&handle, 1, 10, 10, 0);
   ASSERT_EQ(r, UV_EINVAL);
 
-  uv_close((uv_handle_t*)&handle, NULL);
+  uv_close((uv_handle_t*) &handle, NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);

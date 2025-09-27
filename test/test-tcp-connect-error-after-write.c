@@ -50,7 +50,7 @@ static void close_cb(uv_handle_t* handle) {
 static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_LT(status, 0);
   connect_cb_called++;
-  uv_close((uv_handle_t*)req->handle, close_cb);
+  uv_close((uv_handle_t*) req->handle, close_cb);
 }
 
 
@@ -79,7 +79,7 @@ TEST_IMPL(tcp_connect_error_after_write) {
   r = uv_tcp_init(uv_default_loop(), &conn);
   ASSERT_OK(r);
 
-  r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
+  r = uv_write(&write_req, (uv_stream_t*) &conn, &buf, 1, write_cb);
   ASSERT_EQ(r, UV_EBADF);
 
   r = uv_tcp_connect(&connect_req,
@@ -88,7 +88,7 @@ TEST_IMPL(tcp_connect_error_after_write) {
                      connect_cb);
   ASSERT_OK(r);
 
-  r = uv_write(&write_req, (uv_stream_t*)&conn, &buf, 1, write_cb);
+  r = uv_write(&write_req, (uv_stream_t*) &conn, &buf, 1, write_cb);
   ASSERT_OK(r);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
@@ -101,4 +101,4 @@ TEST_IMPL(tcp_connect_error_after_write) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */

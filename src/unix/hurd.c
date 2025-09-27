@@ -68,8 +68,7 @@ int uv_resident_set_memory(size_t* rss) {
   mach_msg_type_number_t count;
 
   count = TASK_BASIC_INFO_COUNT;
-  err = task_info(mach_task_self(), TASK_BASIC_INFO,
-		  (task_info_t) &bi, &count);
+  err = task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t) &bi, &count);
 
   if (err)
     return UV__ERR(err);
@@ -82,12 +81,12 @@ int uv_resident_set_memory(size_t* rss) {
 uint64_t uv_get_free_memory(void) {
   kern_return_t err;
   struct vm_statistics vmstats;
-  
+
   err = vm_statistics(mach_task_self(), &vmstats);
 
   if (err)
     return 0;
-  
+
   return vmstats.free_count * vm_page_size;
 }
 
@@ -96,9 +95,9 @@ uint64_t uv_get_total_memory(void) {
   kern_return_t err;
   host_basic_info_data_t hbi;
   mach_msg_type_number_t cnt;
-  
+
   cnt = HOST_BASIC_INFO_COUNT;
-  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt); 
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt);
 
   if (err)
     return 0;
@@ -121,7 +120,7 @@ int uv_uptime(double* uptime) {
 }
 
 void uv_loadavg(double avg[3]) {
-  char buf[128];  /* Large enough to hold all of /proc/loadavg. */
+  char buf[128]; /* Large enough to hold all of /proc/loadavg. */
 
   if (0 == uv__slurp("/proc/loadavg", buf, sizeof(buf)))
     if (3 == sscanf(buf, "%lf %lf %lf", &avg[0], &avg[1], &avg[2]))
@@ -135,10 +134,10 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   kern_return_t err;
   host_basic_info_data_t hbi;
   mach_msg_type_number_t cnt;
-  
+
   /* Get count of cpus  */
   cnt = HOST_BASIC_INFO_COUNT;
-  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt); 
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt);
 
   if (err) {
     err = UV__ERR(err);
@@ -155,15 +154,15 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   *count = hbi.avail_cpus;
 
   return 0;
-  
- abort:
+
+abort:
   *cpu_infos = NULL;
   *count = 0;
   return err;
 }
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return 0; /* Memory constraints are unknown. */
 }
 
 

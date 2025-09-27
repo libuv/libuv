@@ -46,10 +46,10 @@ TEST_IMPL(pipe_pending_instances) {
 
   uv_pipe_pending_instances(&pipe_handle, 16);
 
-  r = uv_listen((uv_stream_t*)&pipe_handle, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &pipe_handle, 128, connection_cb);
   ASSERT_OK(r);
 
-  uv_close((uv_handle_t*)&pipe_handle, NULL);
+  uv_close((uv_handle_t*) &pipe_handle, NULL);
 
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);

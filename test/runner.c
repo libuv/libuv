@@ -29,7 +29,7 @@
 
 /* Refs: https://github.com/libuv/libuv/issues/4369 */
 #if defined(__ANDROID__)
-#include <android/fdsan.h>
+#  include <android/fdsan.h>
 #endif
 
 char executable_path[sizeof(executable_path)];
@@ -55,10 +55,14 @@ char* fmt(char (*buf)[32], double d) {
     *--p = '0';
 
   while (v) {
-    if (v) *--p = '0' + (v % 10), v /= 10;
-    if (v) *--p = '0' + (v % 10), v /= 10;
-    if (v) *--p = '0' + (v % 10), v /= 10;
-    if (v) *--p = ',';
+    if (v)
+      *--p = '0' + (v % 10), v /= 10;
+    if (v)
+      *--p = '0' + (v % 10), v /= 10;
+    if (v)
+      *--p = '0' + (v % 10), v /= 10;
+    if (v)
+      *--p = ',';
   }
 
   return p;
@@ -100,9 +104,12 @@ int run_tests(int benchmark_output) {
 
     test_result = run_test(task->task_name, benchmark_output, current);
     switch (test_result) {
-    case TEST_OK: break;
-    case TEST_SKIP: break;
-    default: failed++;
+    case TEST_OK:
+      break;
+    case TEST_SKIP:
+      break;
+    default:
+      failed++;
     }
     current++;
   }
@@ -143,7 +150,13 @@ void log_tap_result(int test_count,
     reason[0] = '\0';
   }
 
-  fprintf(stdout, "%s %d - %s%s%s\n", result, test_count, test, directive, reason);
+  fprintf(stdout,
+          "%s %d - %s%s%s\n",
+          result,
+          test_count,
+          test,
+          directive,
+          reason);
   fflush(stdout);
 }
 
@@ -155,12 +168,10 @@ void enable_fdsan(void) {
 }
 
 
-int run_test(const char* test,
-             int benchmark_output,
-             int test_count) {
+int run_test(const char* test, int benchmark_output, int test_count) {
   char errmsg[1024] = "";
   process_info_t processes[1024];
-  process_info_t *main_proc;
+  process_info_t* main_proc;
   task_entry_t* task;
   int timeout_multiplier;
   int process_count;
@@ -240,10 +251,7 @@ int run_test(const char* test,
   }
 
   if (main_proc == NULL) {
-    snprintf(errmsg,
-             sizeof errmsg,
-             "No test with that name: %s",
-             test);
+    snprintf(errmsg, sizeof errmsg, "No test with that name: %s", test);
     goto out;
   }
 
@@ -267,18 +275,13 @@ int run_test(const char* test,
     FATAL("process_wait failed");
   } else if (result == -2) {
     /* Don't have to clean up the process, process_wait() has killed it. */
-    snprintf(errmsg,
-             sizeof errmsg,
-             "timeout");
+    snprintf(errmsg, sizeof errmsg, "timeout");
     goto out;
   }
 
   status = process_reap(main_proc);
   if (status != TEST_OK) {
-    snprintf(errmsg,
-             sizeof errmsg,
-             "exit code %d",
-             status);
+    snprintf(errmsg, sizeof errmsg, "exit code %d", status);
     goto out;
   }
 
@@ -293,8 +296,7 @@ out:
     process_terminate(&processes[i]);
   }
 
-  if (process_count > 0 &&
-      process_wait(processes, process_count - 1, -1) < 0) {
+  if (process_count > 0 && process_wait(processes, process_count - 1, -1) < 0) {
     FATAL("process_wait failed");
   }
 
@@ -309,40 +311,44 @@ out:
 
     for (i = 0; i < process_count; i++) {
       switch (process_output_size(&processes[i])) {
-       case -1:
-        fprintf(stdout, "Output from process `%s`: (unavailable)\n",
+      case -1:
+        fprintf(stdout,
+                "Output from process `%s`: (unavailable)\n",
                 process_get_name(&processes[i]));
         fflush(stdout);
         break;
 
-       case 0:
-        fprintf(stdout, "Output from process `%s`: (no output)\n",
+      case 0:
+        fprintf(stdout,
+                "Output from process `%s`: (no output)\n",
                 process_get_name(&processes[i]));
         fflush(stdout);
         break;
 
-       default:
-        fprintf(stdout, "Output from process `%s`:\n", process_get_name(&processes[i]));
+      default:
+        fprintf(stdout,
+                "Output from process `%s`:\n",
+                process_get_name(&processes[i]));
         fflush(stdout);
         process_copy_output(&processes[i], stdout);
         break;
       }
     }
 
-  /* In benchmark mode show concise output from the main process. */
+    /* In benchmark mode show concise output from the main process. */
   } else if (benchmark_output) {
     switch (process_output_size(main_proc)) {
-     case -1:
+    case -1:
       fprintf(stdout, "%s: (unavailable)\n", test);
       fflush(stdout);
       break;
 
-     case 0:
+    case 0:
       fprintf(stdout, "%s: (no output)\n", test);
       fflush(stdout);
       break;
 
-     default:
+    default:
       for (i = 0; i < process_count; i++) {
         process_copy_output(&processes[i], stdout);
       }
@@ -380,7 +386,6 @@ int run_test_part(const char* test, const char* part) {
 }
 
 
-
 static int find_helpers(const task_entry_t* task,
                         const task_entry_t** helpers) {
   const task_entry_t* helper;
@@ -404,7 +409,8 @@ void print_tests(FILE* stream) {
   int n_tasks;
   int i;
 
-  for (n_tasks = 0, task = TASKS; task->main; n_tasks++, task++);
+  for (n_tasks = 0, task = TASKS; task->main; n_tasks++, task++)
+    ;
   qsort(TASKS, n_tasks, sizeof(TASKS[0]), compare_task);
 
   for (task = TASKS; task->main; task++) {
@@ -437,7 +443,7 @@ int print_lines(const char* buffer, size_t size, FILE* stream, int partial) {
     else
       partial = 0;
 
-    fwrite(start, 1, (int)(end - start), stream);
+    fwrite(start, 1, (int) (end - start), stream);
     fputs("\n", stream);
     fflush(stream);
     start = end + 1;
@@ -448,7 +454,7 @@ int print_lines(const char* buffer, size_t size, FILE* stream, int partial) {
     if (partial == 0)
       fputs("# ", stream);
 
-    fwrite(start, 1, (int)(end - start), stream);
+    fwrite(start, 1, (int) (end - start), stream);
     fflush(stream);
     return 1;
   }

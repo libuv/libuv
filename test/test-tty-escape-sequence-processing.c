@@ -21,62 +21,62 @@
 
 #ifdef _WIN32
 
-#include "task.h"
-#include "uv.h"
+#  include "task.h"
+#  include "uv.h"
 
-#include <io.h>
-#include <windows.h>
+#  include <io.h>
+#  include <windows.h>
 
-#include <errno.h>
-#include <string.h>
+#  include <errno.h>
+#  include <string.h>
 
-#define ESC "\033"
-#define CSI ESC "["
-#define ST ESC "\\"
-#define BEL "\x07"
-#define HELLO "Hello"
+#  define ESC   "\033"
+#  define CSI   ESC "["
+#  define ST    ESC "\\"
+#  define BEL   "\x07"
+#  define HELLO "Hello"
 
-#define FOREGROUND_WHITE (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
-#define FOREGROUND_BLACK 0
-#define FOREGROUND_YELLOW (FOREGROUND_RED | FOREGROUND_GREEN)
-#define FOREGROUND_CYAN (FOREGROUND_GREEN | FOREGROUND_BLUE)
-#define FOREGROUND_MAGENTA (FOREGROUND_RED | FOREGROUND_BLUE)
-#define BACKGROUND_WHITE (BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE)
-#define BACKGROUND_BLACK 0
-#define BACKGROUND_YELLOW (BACKGROUND_RED | BACKGROUND_GREEN)
-#define BACKGROUND_CYAN (BACKGROUND_GREEN | BACKGROUND_BLUE)
-#define BACKGROUND_MAGENTA (BACKGROUND_RED | BACKGROUND_BLUE)
+#  define FOREGROUND_WHITE   (FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE)
+#  define FOREGROUND_BLACK   0
+#  define FOREGROUND_YELLOW  (FOREGROUND_RED | FOREGROUND_GREEN)
+#  define FOREGROUND_CYAN    (FOREGROUND_GREEN | FOREGROUND_BLUE)
+#  define FOREGROUND_MAGENTA (FOREGROUND_RED | FOREGROUND_BLUE)
+#  define BACKGROUND_WHITE   (BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE)
+#  define BACKGROUND_BLACK   0
+#  define BACKGROUND_YELLOW  (BACKGROUND_RED | BACKGROUND_GREEN)
+#  define BACKGROUND_CYAN    (BACKGROUND_GREEN | BACKGROUND_BLUE)
+#  define BACKGROUND_MAGENTA (BACKGROUND_RED | BACKGROUND_BLUE)
 
-#define F_INTENSITY      1
-#define FB_INTENSITY     2
-#define B_INTENSITY      5
-#define INVERSE          7
-#define F_INTENSITY_OFF1 21
-#define F_INTENSITY_OFF2 22
-#define B_INTENSITY_OFF  25
-#define INVERSE_OFF      27
-#define F_BLACK          30
-#define F_RED            31
-#define F_GREEN          32
-#define F_YELLOW         33
-#define F_BLUE           34
-#define F_MAGENTA        35
-#define F_CYAN           36
-#define F_WHITE          37
-#define F_DEFAULT        39
-#define B_BLACK          40
-#define B_RED            41
-#define B_GREEN          42
-#define B_YELLOW         43
-#define B_BLUE           44
-#define B_MAGENTA        45
-#define B_CYAN           46
-#define B_WHITE          47
-#define B_DEFAULT        49
+#  define F_INTENSITY      1
+#  define FB_INTENSITY     2
+#  define B_INTENSITY      5
+#  define INVERSE          7
+#  define F_INTENSITY_OFF1 21
+#  define F_INTENSITY_OFF2 22
+#  define B_INTENSITY_OFF  25
+#  define INVERSE_OFF      27
+#  define F_BLACK          30
+#  define F_RED            31
+#  define F_GREEN          32
+#  define F_YELLOW         33
+#  define F_BLUE           34
+#  define F_MAGENTA        35
+#  define F_CYAN           36
+#  define F_WHITE          37
+#  define F_DEFAULT        39
+#  define B_BLACK          40
+#  define B_RED            41
+#  define B_GREEN          42
+#  define B_YELLOW         43
+#  define B_BLUE           44
+#  define B_MAGENTA        45
+#  define B_CYAN           46
+#  define B_WHITE          47
+#  define B_DEFAULT        49
 
-#define CURSOR_SIZE_SMALL     25
-#define CURSOR_SIZE_MIDDLE    50
-#define CURSOR_SIZE_LARGE     100
+#  define CURSOR_SIZE_SMALL  25
+#  define CURSOR_SIZE_MIDDLE 50
+#  define CURSOR_SIZE_LARGE  100
 
 struct screen_info {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -177,8 +177,11 @@ static void setup_screen(uv_tty_t* tty_out) {
   length = info.dwSize.X * (info.srWindow.Bottom - info.srWindow.Top + 1);
   origin.X = 0;
   origin.Y = info.srWindow.Top;
-  ASSERT(FillConsoleOutputCharacter(
-         tty_out->handle, '.', length, origin, &number_of_written));
+  ASSERT(FillConsoleOutputCharacter(tty_out->handle,
+                                    '.',
+                                    length,
+                                    origin,
+                                    &number_of_written));
   ASSERT_EQ(length, number_of_written);
 }
 
@@ -190,11 +193,17 @@ static void clear_screen(uv_tty_t* tty_out, struct screen_info* si) {
   length = (info.srWindow.Bottom - info.srWindow.Top + 1) * info.dwSize.X - 1;
   origin.X = 0;
   origin.Y = info.srWindow.Top;
-  FillConsoleOutputCharacterA(
-      tty_out->handle, ' ', length, origin, &number_of_written);
+  FillConsoleOutputCharacterA(tty_out->handle,
+                              ' ',
+                              length,
+                              origin,
+                              &number_of_written);
   ASSERT_EQ(length, number_of_written);
-  FillConsoleOutputAttribute(
-      tty_out->handle, si->default_attr, length, origin, &number_of_written);
+  FillConsoleOutputAttribute(tty_out->handle,
+                             si->default_attr,
+                             length,
+                             origin,
+                             &number_of_written);
   ASSERT_EQ(length, number_of_written);
 }
 
@@ -215,11 +224,17 @@ static void capture_screen(uv_tty_t* tty_out, struct captured_screen* cs) {
   ASSERT_NOT_NULL(cs->text);
   cs->attributes = (WORD*) malloc(cs->si.length * sizeof(*cs->attributes));
   ASSERT_NOT_NULL(cs->attributes);
-  ASSERT(ReadConsoleOutputCharacter(
-         tty_out->handle, cs->text, cs->si.length, origin, &length));
+  ASSERT(ReadConsoleOutputCharacter(tty_out->handle,
+                                    cs->text,
+                                    cs->si.length,
+                                    origin,
+                                    &length));
   ASSERT_EQ((unsigned int) cs->si.length, length);
-  ASSERT(ReadConsoleOutputAttribute(
-         tty_out->handle, cs->attributes, cs->si.length, origin, &length));
+  ASSERT(ReadConsoleOutputAttribute(tty_out->handle,
+                                    cs->attributes,
+                                    cs->si.length,
+                                    origin,
+                                    &length));
   ASSERT_EQ((unsigned int) cs->si.length, length);
 }
 
@@ -273,8 +288,8 @@ static void make_expect_screen_write(struct captured_screen* cs,
                                      const char* text) {
   /* position of cursor */
   char* start;
-  start = cs->text + cs->si.width * (cursor_position.Y - 1) +
-                cursor_position.X - 1;
+  start =
+      cs->text + cs->si.width * (cursor_position.Y - 1) + cursor_position.X - 1;
   size_t length = strlen(text);
   size_t remain_length = cs->si.length - (cs->text - start);
   length = length > remain_length ? remain_length : length;
@@ -287,7 +302,7 @@ static void make_expect_screen_set_attr(struct captured_screen* cs,
                                         WORD attr) {
   WORD* start;
   start = cs->attributes + cs->si.width * (cursor_position.Y - 1) +
-                cursor_position.X - 1;
+          cursor_position.X - 1;
   size_t remain_length = cs->si.length - (cs->attributes - start);
   length = length > remain_length ? remain_length : length;
   while (length) {
@@ -770,23 +785,35 @@ TEST_IMPL(tty_cursor_move_absolute) {
   ASSERT_EQ(1, cursor_pos.Y);
 
   /* Move the cursor to the middle of the screen */
-  snprintf(
-      buffer, sizeof(buffer), "%s%d;%df", CSI, si.height / 2, si.width / 2);
+  snprintf(buffer,
+           sizeof(buffer),
+           "%s%d;%df",
+           CSI,
+           si.height / 2,
+           si.width / 2);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(si.width / 2, cursor_pos.X);
   ASSERT_EQ(si.height / 2, cursor_pos.Y);
 
   /* Moving out of screen will fit within screen */
-  snprintf(
-      buffer, sizeof(buffer), "%s%d;%df", CSI, si.height / 2, si.width + 1);
+  snprintf(buffer,
+           sizeof(buffer),
+           "%s%d;%df",
+           CSI,
+           si.height / 2,
+           si.width + 1);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(si.width, cursor_pos.X);
   ASSERT_EQ(si.height / 2, cursor_pos.Y);
 
-  snprintf(
-      buffer, sizeof(buffer), "%s%d;%df", CSI, si.height + 1, si.width / 2);
+  snprintf(buffer,
+           sizeof(buffer),
+           "%s%d;%df",
+           CSI,
+           si.height + 1,
+           si.width / 2);
   write_console(&tty_out, buffer);
   get_cursor_position(&tty_out, &cursor_pos);
   ASSERT_EQ(si.width / 2, cursor_pos.X);
@@ -1043,10 +1070,10 @@ TEST_IMPL(tty_set_cursor_shape) {
 
 
 TEST_IMPL(tty_set_style) {
-#if _MSC_VER >= 1920 && _MSC_VER <= 1929
+#  if _MSC_VER >= 1920 && _MSC_VER <= 1929
   RETURN_SKIP("Broken on Microsoft Visual Studio 2019, to be investigated. "
               "See: https://github.com/libuv/libuv/issues/3304");
-#else
+#  else
 
   uv_tty_t tty_out;
   uv_loop_t* loop;
@@ -1094,8 +1121,13 @@ TEST_IMPL(tty_set_style) {
     make_expect_screen_set_attr(&expect, cursor_pos, strlen(HELLO), attr);
 
     set_cursor_position(&tty_out, cursor_pos);
-    snprintf(
-        buffer, sizeof(buffer), "%s%dm%s%sm", CSI, fg_attrs[i][0], HELLO, CSI);
+    snprintf(buffer,
+             sizeof(buffer),
+             "%s%dm%s%sm",
+             CSI,
+             fg_attrs[i][0],
+             HELLO,
+             CSI);
     write_console(&tty_out, buffer);
     capture_screen(&tty_out, &actual);
 
@@ -1113,8 +1145,13 @@ TEST_IMPL(tty_set_style) {
     make_expect_screen_set_attr(&expect, cursor_pos, strlen(HELLO), attr);
 
     set_cursor_position(&tty_out, cursor_pos);
-    snprintf(
-        buffer, sizeof(buffer), "%s%dm%s%sm", CSI, bg_attrs[i][0], HELLO, CSI);
+    snprintf(buffer,
+             sizeof(buffer),
+             "%s%dm%s%sm",
+             CSI,
+             bg_attrs[i][0],
+             HELLO,
+             CSI);
     write_console(&tty_out, buffer);
     capture_screen(&tty_out, &actual);
 
@@ -1239,7 +1276,7 @@ TEST_IMPL(tty_set_style) {
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
-#endif
+#  endif
 }
 
 
@@ -1346,10 +1383,10 @@ TEST_IMPL(tty_full_reset) {
 
 
 TEST_IMPL(tty_escape_sequence_processing) {
-#if _MSC_VER >= 1920 && _MSC_VER <= 1929
+#  if _MSC_VER >= 1920 && _MSC_VER <= 1929
   RETURN_SKIP("Broken on Microsoft Visual Studio 2019, to be investigated. "
               "See: https://github.com/libuv/libuv/issues/3304");
-#else
+#  else
   uv_tty_t tty_out;
   uv_loop_t* loop;
   COORD cursor_pos, cursor_pos_old;
@@ -1622,11 +1659,11 @@ TEST_IMPL(tty_escape_sequence_processing) {
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
-#endif
+#  endif
 }
 
 #else
 
 typedef int file_has_no_tests; /* ISO C forbids an empty translation unit. */
 
-#endif  /* ifdef _WIN32 */
+#endif /* ifdef _WIN32 */

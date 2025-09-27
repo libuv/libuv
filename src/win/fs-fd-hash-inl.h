@@ -39,7 +39,7 @@
  * for the first array in each bucket. */
 
 
-#define UV__FD_HASH_SIZE 256
+#define UV__FD_HASH_SIZE       256
 #define UV__FD_HASH_GROUP_SIZE 16
 
 struct uv__fd_info_s {
@@ -69,7 +69,7 @@ struct uv__fd_hash_bucket_s {
 static uv_mutex_t uv__fd_hash_mutex;
 
 static struct uv__fd_hash_entry_group_s
-  uv__fd_hash_entry_initial[UV__FD_HASH_SIZE];
+    uv__fd_hash_entry_initial[UV__FD_HASH_SIZE];
 static struct uv__fd_hash_bucket_s uv__fd_hash[UV__FD_HASH_SIZE];
 
 
@@ -88,34 +88,33 @@ static void uv__fd_hash_init(void) {
   }
 }
 
-#define FIND_COMMON_VARIABLES                                                \
-  unsigned i;                                                                \
-  unsigned bucket = fd % ARRAY_SIZE(uv__fd_hash);                            \
-  struct uv__fd_hash_entry_s* entry_ptr = NULL;                              \
-  struct uv__fd_hash_entry_group_s* group_ptr;                               \
+#define FIND_COMMON_VARIABLES                                                  \
+  unsigned i;                                                                  \
+  unsigned bucket = fd % ARRAY_SIZE(uv__fd_hash);                              \
+  struct uv__fd_hash_entry_s* entry_ptr = NULL;                                \
+  struct uv__fd_hash_entry_group_s* group_ptr;                                 \
   struct uv__fd_hash_bucket_s* bucket_ptr = &uv__fd_hash[bucket];
 
-#define FIND_IN_GROUP_PTR(group_size)                                        \
-  do {                                                                       \
-    for (i = 0; i < group_size; ++i) {                                       \
-      if (group_ptr->entries[i].fd == fd) {                                  \
-        entry_ptr = &group_ptr->entries[i];                                  \
-        break;                                                               \
-      }                                                                      \
-    }                                                                        \
+#define FIND_IN_GROUP_PTR(group_size)                                          \
+  do {                                                                         \
+    for (i = 0; i < group_size; ++i) {                                         \
+      if (group_ptr->entries[i].fd == fd) {                                    \
+        entry_ptr = &group_ptr->entries[i];                                    \
+        break;                                                                 \
+      }                                                                        \
+    }                                                                          \
   } while (0)
 
-#define FIND_IN_BUCKET_PTR()                                                 \
-  do {                                                                       \
-    size_t first_group_size = bucket_ptr->size % UV__FD_HASH_GROUP_SIZE;     \
-    if (bucket_ptr->size != 0 && first_group_size == 0)                      \
-      first_group_size = UV__FD_HASH_GROUP_SIZE;                             \
-    group_ptr = bucket_ptr->data;                                            \
-    FIND_IN_GROUP_PTR(first_group_size);                                     \
-    for (group_ptr = group_ptr->next;                                        \
-         group_ptr != NULL && entry_ptr == NULL;                             \
-         group_ptr = group_ptr->next)                                        \
-      FIND_IN_GROUP_PTR(UV__FD_HASH_GROUP_SIZE);                             \
+#define FIND_IN_BUCKET_PTR()                                                   \
+  do {                                                                         \
+    size_t first_group_size = bucket_ptr->size % UV__FD_HASH_GROUP_SIZE;       \
+    if (bucket_ptr->size != 0 && first_group_size == 0)                        \
+      first_group_size = UV__FD_HASH_GROUP_SIZE;                               \
+    group_ptr = bucket_ptr->data;                                              \
+    FIND_IN_GROUP_PTR(first_group_size);                                       \
+    for (group_ptr = group_ptr->next; group_ptr != NULL && entry_ptr == NULL;  \
+         group_ptr = group_ptr->next)                                          \
+      FIND_IN_GROUP_PTR(UV__FD_HASH_GROUP_SIZE);                               \
   } while (0)
 
 static int uv__fd_hash_get(int fd, struct uv__fd_info_s* info) {
@@ -145,7 +144,7 @@ static void uv__fd_hash_add(int fd, struct uv__fd_info_s* info) {
 
     if (bucket_ptr->size != 0 && i == 0) {
       struct uv__fd_hash_entry_group_s* new_group_ptr =
-        uv__malloc(sizeof(*new_group_ptr));
+          uv__malloc(sizeof(*new_group_ptr));
       if (new_group_ptr == NULL) {
         uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
       }

@@ -23,16 +23,16 @@
 /* This test does not pretend to be cross-platform. */
 #ifndef _WIN32
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
-#include <errno.h>
-#include <signal.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#  include <errno.h>
+#  include <signal.h>
+#  include <stdarg.h>
+#  include <stdio.h>
+#  include <stdlib.h>
+#  include <string.h>
+#  include <unistd.h>
 
 /* The value of NUM_SIGNAL_HANDLING_THREADS is not arbitrary; it needs to be a
  * multiple of three for reasons that will become clear when you scroll down.
@@ -40,8 +40,8 @@
  * to be divisible by three in order for the numbers in the final check to
  * match up.
  */
-#define NUM_SIGNAL_HANDLING_THREADS 24
-#define NUM_LOOP_CREATING_THREADS 10
+#  define NUM_SIGNAL_HANDLING_THREADS 24
+#  define NUM_LOOP_CREATING_THREADS   10
 
 enum signal_action {
   ONLY_SIGUSR1,
@@ -87,7 +87,7 @@ static void signal_handling_worker(void* context) {
   uv_loop_t loop;
   int r;
 
-  action = (enum signal_action) (uintptr_t) context;
+  action = (enum signal_action)(uintptr_t) context;
 
   ASSERT_OK(uv_loop_init(&loop));
 
@@ -167,7 +167,7 @@ static void loop_creating_worker(void* context) {
   (void) context;
 
   do {
-    uv_loop_t *loop;
+    uv_loop_t* loop;
     uv_signal_t signal;
     int r;
 
@@ -199,28 +199,28 @@ static void loop_creating_worker(void* context) {
 
 
 TEST_IMPL(signal_multiple_loops) {
-#if defined(__CYGWIN__) || defined(__MSYS__)
+#  if defined(__CYGWIN__) || defined(__MSYS__)
   /* FIXME: This test needs more investigation.  Somehow the `read` in
      uv__signal_lock fails spuriously with EACCES or even EAGAIN even
      though it is supposed to be blocking.  Also the test hangs during
      thread setup occasionally.  */
   RETURN_SKIP("FIXME: This test needs more investigation on Cygwin");
-#endif
+#  endif
 /* TODO(gengjiawen): Fix test on QEMU. */
-#if defined(__QEMU__)
+#  if defined(__QEMU__)
   /* See https://github.com/libuv/libuv/issues/2859 */
   RETURN_SKIP("QEMU's signal emulation code is notoriously tricky");
-#endif
-#if defined(__ASAN__) || defined(__MSAN__)
+#  endif
+#  if defined(__ASAN__) || defined(__MSAN__)
   /* See https://github.com/libuv/libuv/issues/3956 */
   RETURN_SKIP("Test is too slow to run under ASan or MSan");
-#endif
-#if defined(__TSAN__)
+#  endif
+#  if defined(__TSAN__)
   /* ThreadSanitizer complains - likely legitimately - about data races
    * in uv__signal_compare() in src/unix/signal.c but that's pre-existing.
    */
   RETURN_SKIP("Fix test under ThreadSanitizer");
-#endif
+#  endif
   uv_thread_t loop_creating_threads[NUM_LOOP_CREATING_THREADS];
   uv_thread_t signal_handling_threads[NUM_SIGNAL_HANDLING_THREADS];
   enum signal_action action;
@@ -236,18 +236,22 @@ TEST_IMPL(signal_multiple_loops) {
 
   /* Create a couple of threads that create a destroy loops continuously. */
   for (i = 0; i < NUM_LOOP_CREATING_THREADS; i++) {
-    r = uv_thread_create(&loop_creating_threads[i],
-                         loop_creating_worker,
-                         NULL);
+    r = uv_thread_create(&loop_creating_threads[i], loop_creating_worker, NULL);
     ASSERT_OK(r);
   }
 
   /* Create a couple of threads that actually handle signals. */
   for (i = 0; i < NUM_SIGNAL_HANDLING_THREADS; i++) {
     switch (i % 3) {
-      case 0: action = ONLY_SIGUSR1; break;
-      case 1: action = ONLY_SIGUSR2; break;
-      case 2: action = SIGUSR1_AND_SIGUSR2; break;
+    case 0:
+      action = ONLY_SIGUSR1;
+      break;
+    case 1:
+      action = ONLY_SIGUSR2;
+      break;
+    case 2:
+      action = SIGUSR1_AND_SIGUSR2;
+      break;
     }
 
     r = uv_thread_create(&signal_handling_threads[i],

@@ -24,7 +24,7 @@
 #include <stdlib.h>
 
 #define CONCURRENT_CALLS 10
-#define TOTAL_CALLS 10000
+#define TOTAL_CALLS      10000
 
 static const char* name = "localhost";
 
@@ -41,8 +41,9 @@ static int64_t end_time;
 static void getaddrinfo_initiate(uv_getaddrinfo_t* handle);
 
 
-static void getaddrinfo_cb(uv_getaddrinfo_t* handle, int status,
-    struct addrinfo* res) {
+static void getaddrinfo_cb(uv_getaddrinfo_t* handle,
+                           int status,
+                           struct addrinfo* res) {
   ASSERT_OK(status);
   calls_completed++;
   if (calls_initiated < TOTAL_CALLS) {
@@ -83,7 +84,8 @@ BENCHMARK_IMPL(getaddrinfo) {
   ASSERT_EQ(calls_initiated, TOTAL_CALLS);
   ASSERT_EQ(calls_completed, TOTAL_CALLS);
 
-  fprintf(stderr, "getaddrinfo: %.0f req/s\n",
+  fprintf(stderr,
+          "getaddrinfo: %.0f req/s\n",
           (double) calls_completed / (double) (end_time - start_time) * 1000.0);
   fflush(stderr);
 

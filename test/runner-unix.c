@@ -41,7 +41,7 @@
 #include <pthread.h>
 
 #ifdef __APPLE__
-#include <TargetConditionals.h>
+#  include <TargetConditionals.h>
 #endif
 
 extern char** environ;
@@ -71,7 +71,7 @@ void notify_parent_process(void) {
 
 
 /* Do platform-specific initialization. */
-void platform_init(int argc, char **argv) {
+void platform_init(int argc, char** argv) {
   /* Disable stdio output buffering. */
   setvbuf(stdout, NULL, _IONBF, 0);
   setvbuf(stderr, NULL, _IONBF, 0);
@@ -208,7 +208,8 @@ static void* dowait(void* data) {
 
   for (i = 0; i < args->n; i++) {
     p = &args->vec[i];
-    if (p->terminated) continue;
+    if (p->terminated)
+      continue;
     r = waitpid(p->pid, &p->status, 0);
     if (r < 0) {
       perror("waitpid");
@@ -263,7 +264,7 @@ int process_wait(process_info_t* vec, int n, int timeout) {
    * we'd need to lock vec.
    */
 
-  r = pipe((int*)&(args.pipe));
+  r = pipe((int*) &(args.pipe));
   if (r) {
     perror("pipe()");
     return -1;
@@ -299,12 +300,10 @@ int process_wait(process_info_t* vec, int n, int timeout) {
     assert(tv.tv_sec > timebase.tv_sec ||
            (tv.tv_sec == timebase.tv_sec && tv.tv_usec >= timebase.tv_usec));
 
-    elapsed_ms =
-        (tv.tv_sec - timebase.tv_sec) * 1000 +
-        (tv.tv_usec / 1000) -
-        (timebase.tv_usec / 1000);
+    elapsed_ms = (tv.tv_sec - timebase.tv_sec) * 1000 + (tv.tv_usec / 1000) -
+                 (timebase.tv_usec / 1000);
 
-    r = 0;  /* Timeout. */
+    r = 0; /* Timeout. */
     if (elapsed_ms >= (unsigned) timeout)
       break;
 
@@ -350,7 +349,7 @@ terminate:
 
 
 /* Returns the number of bytes in the stdio output buffer for process `p`. */
-long int process_output_size(process_info_t *p) {
+long int process_output_size(process_info_t* p) {
   /* Size of the p->stdout_file */
   struct stat buf;
 
@@ -360,7 +359,7 @@ long int process_output_size(process_info_t *p) {
     return -1;
   }
 
-  return (long)buf.st_size;
+  return (long) buf.st_size;
 }
 
 
@@ -390,9 +389,7 @@ int process_copy_output(process_info_t* p, FILE* stream) {
 
 
 /* Copy the last line of the stdio output buffer to `buffer` */
-int process_read_last_line(process_info_t *p,
-                           char* buffer,
-                           size_t buffer_len) {
+int process_read_last_line(process_info_t* p, char* buffer, size_t buffer_len) {
   char* ptr;
 
   int r = fseek(p->stdout_file, 0, SEEK_SET);
@@ -419,29 +416,29 @@ int process_read_last_line(process_info_t *p,
 
 
 /* Return the name that was specified when `p` was started by process_start */
-char* process_get_name(process_info_t *p) {
+char* process_get_name(process_info_t* p) {
   return p->name;
 }
 
 
 /* Terminate process `p`. */
-int process_terminate(process_info_t *p) {
+int process_terminate(process_info_t* p) {
   return kill(p->pid, SIGTERM);
 }
 
 
 /* Return the exit code of process p. On error, return -1. */
-int process_reap(process_info_t *p) {
+int process_reap(process_info_t* p) {
   if (WIFEXITED(p->status)) {
     return WEXITSTATUS(p->status);
-  } else  {
+  } else {
     return p->status; /* ? */
   }
 }
 
 
 /* Clean up after terminating process `p` (e.g. free the output buffer etc.). */
-void process_cleanup(process_info_t *p) {
+void process_cleanup(process_info_t* p) {
   fclose(p->stdout_file);
   free(p->name);
 }

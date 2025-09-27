@@ -41,15 +41,18 @@ int uv_exepath(char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  status = find_path(B_APP_IMAGE_SYMBOL, B_FIND_PATH_IMAGE_PATH, NULL, abspath,
+  status = find_path(B_APP_IMAGE_SYMBOL,
+                     B_FIND_PATH_IMAGE_PATH,
+                     NULL,
+                     abspath,
                      sizeof(abspath));
   if (status != B_OK)
     return UV__ERR(status);
 
   abspath_len = uv__strscpy(buffer, abspath, *size);
   *size -= 1;
-  if (abspath_len >= 0 && *size > (size_t)abspath_len)
-    *size = (size_t)abspath_len;
+  if (abspath_len >= 0 && *size > (size_t) abspath_len)
+    *size = (size_t) abspath_len;
 
   return 0;
 }
@@ -80,7 +83,7 @@ uint64_t uv_get_total_memory(void) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return 0; /* Memory constraints are unknown. */
 }
 
 
@@ -110,7 +113,7 @@ int uv_resident_set_memory(size_t* rss) {
 
 int uv_uptime(double* uptime) {
   /* system_time() returns time since booting in microseconds */
-  *uptime = (double)system_time() / 1000000;
+  *uptime = (double) system_time() / 1000000;
   return 0;
 }
 
@@ -120,7 +123,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   int i;
   status_t status;
   system_info system;
-  uint32 topology_count;  /* Haiku expects address of uint32, not uint32_t */
+  uint32 topology_count; /* Haiku expects address of uint32, not uint32_t */
   uint64_t cpuspeed;
   uv_cpu_info_t* cpu_info;
 
@@ -142,7 +145,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   }
 
   cpuspeed = 0;
-  for (i = 0; i < (int)topology_count; i++) {
+  for (i = 0; i < (int) topology_count; i++) {
     if (topology_infos[i].type == B_TOPOLOGY_CORE) {
       cpuspeed = topology_infos[i].data.core.default_frequency;
       break;
@@ -161,9 +164,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   /* CPU time and model are not exposed by Haiku. */
   cpu_info = *cpu_infos;
-  for (i = 0; i < (int)system.cpu_count; i++) {
+  for (i = 0; i < (int) system.cpu_count; i++) {
     cpu_info->model = uv__strdup("unknown");
-    cpu_info->speed = (int)(cpuspeed / 1000000);
+    cpu_info->speed = (int) (cpuspeed / 1000000);
     cpu_info++;
   }
   *count = system.cpu_count;

@@ -1,23 +1,23 @@
 /* Copyright libuv project contributors. All rights reserved.
-*
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this software and associated documentation files (the "Software"), to
-* deal in the Software without restriction, including without limitation the
-* rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-* sell copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions:
-*
-* The above copyright notice and this permission notice shall be included in
-* all copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-* FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-* IN THE SOFTWARE.
-*/
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 
 
 #include "uv.h"
@@ -26,17 +26,19 @@
 #include <string.h>
 
 #ifdef __APPLE__
-# define NUM_ITERATIONS 5
+#  define NUM_ITERATIONS 5
 #else
-# define NUM_ITERATIONS 50
+#  define NUM_ITERATIONS 50
 #endif
 
-static const char* titles[] = {
-  "8L2NY0Kdj0XyNFZnmUZigIOfcWjyNr0SkMmUhKw99VLUsZFrvCQQC3XIRfNR8pjyMjXObllled",
-  "jUAcscJN49oLSN8GdmXj2Wo34XX2T2vp2j5khfajNQarlOulp57cE130yiY53ipJFnPyTn5i82",
-  "9niCI5icXGFS72XudhXqo5alftmZ1tpE7B3cwUmrq0CCDjC84FzBNB8XAHqvpNQfI2QAQG6ztT",
-  "n8qXVXuG6IEHDpabJgTEiwtpY6LHMZ8MgznnMpdHARu5EywufA6hcBaQfetb0YhEsK0ykDd7JU"
-};
+static const char* titles[] = {"8L2NY0Kdj0XyNFZnmUZigIOfcWjyNr0SkMmUhKw99VLUsZF"
+                               "rvCQQC3XIRfNR8pjyMjXObllled",
+                               "jUAcscJN49oLSN8GdmXj2Wo34XX2T2vp2j5khfajNQarlOu"
+                               "lp57cE130yiY53ipJFnPyTn5i82",
+                               "9niCI5icXGFS72XudhXqo5alftmZ1tpE7B3cwUmrq0CCDjC"
+                               "84FzBNB8XAHqvpNQfI2QAQG6ztT",
+                               "n8qXVXuG6IEHDpabJgTEiwtpY6LHMZ8MgznnMpdHARu5Eyw"
+                               "ufA6hcBaQfetb0YhEsK0ykDd7JU"};
 
 static void getter_thread_body(void* arg) {
   uv_sem_t* getter_sem;
@@ -55,11 +57,10 @@ static void getter_thread_body(void* arg) {
     len = strlen(buffer);
     ASSERT_GT(len, 0);
 
-    ASSERT(
-      0 == strncmp(buffer, titles[0], len) ||
-      0 == strncmp(buffer, titles[1], len) ||
-      0 == strncmp(buffer, titles[2], len) ||
-      0 == strncmp(buffer, titles[3], len));
+    ASSERT(0 == strncmp(buffer, titles[0], len) ||
+           0 == strncmp(buffer, titles[1], len) ||
+           0 == strncmp(buffer, titles[2], len) ||
+           0 == strncmp(buffer, titles[3], len));
 
     uv_sleep(0);
   }
@@ -84,7 +85,7 @@ TEST_IMPL(process_title_threadsafe) {
   uv_sem_t getter_sem;
   int i;
 
-#if defined(__sun) || defined(__CYGWIN__) || defined(__MSYS__) || \
+#if defined(__sun) || defined(__CYGWIN__) || defined(__MSYS__) ||              \
     defined(__MVS__) || defined(__PASE__) || defined(__QNX__)
   RETURN_SKIP("uv_(get|set)_process_title is not implemented.");
 #endif

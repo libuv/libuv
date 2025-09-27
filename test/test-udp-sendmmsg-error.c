@@ -46,7 +46,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
     ASSERT_EQ(status, UV_ECONNREFUSED);
 
   if (++send_cb_called == DATAGRAMS)
-    uv_close((uv_handle_t*)&client, close_cb);
+    uv_close((uv_handle_t*) &client, close_cb);
 }
 
 
@@ -57,7 +57,7 @@ TEST_IMPL(udp_sendmmsg_error) {
 
   ASSERT_OK(uv_udp_init(uv_default_loop(), &client));
   ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
-  ASSERT_OK(uv_udp_connect(&client, (const struct sockaddr*)&addr));
+  ASSERT_OK(uv_udp_connect(&client, (const struct sockaddr*) &addr));
 
   buf = uv_buf_init("TEST", 4);
   for (i = 0; i < DATAGRAMS; ++i)

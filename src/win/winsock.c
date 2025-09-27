@@ -38,8 +38,9 @@ struct sockaddr_in6 uv_addr_ip6_any_;
 /*
  * Retrieves the pointer to a winsock extension function.
  */
-static BOOL uv__get_extension_function(SOCKET socket, GUID guid,
-    void **target) {
+static BOOL uv__get_extension_function(SOCKET socket,
+                                       GUID guid,
+                                       void** target) {
   int result;
   DWORD bytes;
 
@@ -47,7 +48,7 @@ static BOOL uv__get_extension_function(SOCKET socket, GUID guid,
                     SIO_GET_EXTENSION_FUNCTION_POINTER,
                     &guid,
                     sizeof(guid),
-                    (void*)target,
+                    (void*) target,
                     sizeof(*target),
                     &bytes,
                     NULL,
@@ -64,15 +65,14 @@ static BOOL uv__get_extension_function(SOCKET socket, GUID guid,
 
 BOOL uv__get_acceptex_function(SOCKET socket, LPFN_ACCEPTEX* target) {
   const GUID wsaid_acceptex = WSAID_ACCEPTEX;
-  return uv__get_extension_function(socket, wsaid_acceptex, (void**)target);
+  return uv__get_extension_function(socket, wsaid_acceptex, (void**) target);
 }
 
 
 BOOL uv__get_connectex_function(SOCKET socket, LPFN_CONNECTEX* target) {
   const GUID wsaid_connectex = WSAID_CONNECTEX;
-  return uv__get_extension_function(socket, wsaid_connectex, (void**)target);
+  return uv__get_extension_function(socket, wsaid_connectex, (void**) target);
 }
-
 
 
 void uv__winsock_init(void) {
@@ -92,7 +92,8 @@ void uv__winsock_init(void) {
   }
 
   /* Skip initialization in safe mode without network support */
-  if (1 == GetSystemMetrics(SM_CLEANBOOT)) return;
+  if (1 == GetSystemMetrics(SM_CLEANBOOT))
+    return;
 
   /* Initialize winsock */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
@@ -136,117 +137,117 @@ void uv__winsock_init(void) {
 
 int uv__ntstatus_to_winsock_error(NTSTATUS status) {
   switch (status) {
-    case STATUS_SUCCESS:
-      return ERROR_SUCCESS;
+  case STATUS_SUCCESS:
+    return ERROR_SUCCESS;
 
-    case STATUS_PENDING:
-      return ERROR_IO_PENDING;
+  case STATUS_PENDING:
+    return ERROR_IO_PENDING;
 
-    case STATUS_INVALID_HANDLE:
-    case STATUS_OBJECT_TYPE_MISMATCH:
-      return WSAENOTSOCK;
+  case STATUS_INVALID_HANDLE:
+  case STATUS_OBJECT_TYPE_MISMATCH:
+    return WSAENOTSOCK;
 
-    case STATUS_INSUFFICIENT_RESOURCES:
-    case STATUS_PAGEFILE_QUOTA:
-    case STATUS_COMMITMENT_LIMIT:
-    case STATUS_WORKING_SET_QUOTA:
-    case STATUS_NO_MEMORY:
-    case STATUS_QUOTA_EXCEEDED:
-    case STATUS_TOO_MANY_PAGING_FILES:
-    case STATUS_REMOTE_RESOURCES:
-      return WSAENOBUFS;
+  case STATUS_INSUFFICIENT_RESOURCES:
+  case STATUS_PAGEFILE_QUOTA:
+  case STATUS_COMMITMENT_LIMIT:
+  case STATUS_WORKING_SET_QUOTA:
+  case STATUS_NO_MEMORY:
+  case STATUS_QUOTA_EXCEEDED:
+  case STATUS_TOO_MANY_PAGING_FILES:
+  case STATUS_REMOTE_RESOURCES:
+    return WSAENOBUFS;
 
-    case STATUS_TOO_MANY_ADDRESSES:
-    case STATUS_SHARING_VIOLATION:
-    case STATUS_ADDRESS_ALREADY_EXISTS:
-      return WSAEADDRINUSE;
+  case STATUS_TOO_MANY_ADDRESSES:
+  case STATUS_SHARING_VIOLATION:
+  case STATUS_ADDRESS_ALREADY_EXISTS:
+    return WSAEADDRINUSE;
 
-    case STATUS_LINK_TIMEOUT:
-    case STATUS_IO_TIMEOUT:
-    case STATUS_TIMEOUT:
-      return WSAETIMEDOUT;
+  case STATUS_LINK_TIMEOUT:
+  case STATUS_IO_TIMEOUT:
+  case STATUS_TIMEOUT:
+    return WSAETIMEDOUT;
 
-    case STATUS_GRACEFUL_DISCONNECT:
-      return WSAEDISCON;
+  case STATUS_GRACEFUL_DISCONNECT:
+    return WSAEDISCON;
 
-    case STATUS_REMOTE_DISCONNECT:
-    case STATUS_CONNECTION_RESET:
-    case STATUS_LINK_FAILED:
-    case STATUS_CONNECTION_DISCONNECTED:
-    case STATUS_PORT_UNREACHABLE:
-    case STATUS_HOPLIMIT_EXCEEDED:
-      return WSAECONNRESET;
+  case STATUS_REMOTE_DISCONNECT:
+  case STATUS_CONNECTION_RESET:
+  case STATUS_LINK_FAILED:
+  case STATUS_CONNECTION_DISCONNECTED:
+  case STATUS_PORT_UNREACHABLE:
+  case STATUS_HOPLIMIT_EXCEEDED:
+    return WSAECONNRESET;
 
-    case STATUS_LOCAL_DISCONNECT:
-    case STATUS_TRANSACTION_ABORTED:
-    case STATUS_CONNECTION_ABORTED:
-      return WSAECONNABORTED;
+  case STATUS_LOCAL_DISCONNECT:
+  case STATUS_TRANSACTION_ABORTED:
+  case STATUS_CONNECTION_ABORTED:
+    return WSAECONNABORTED;
 
-    case STATUS_BAD_NETWORK_PATH:
-    case STATUS_NETWORK_UNREACHABLE:
-    case STATUS_PROTOCOL_UNREACHABLE:
-      return WSAENETUNREACH;
+  case STATUS_BAD_NETWORK_PATH:
+  case STATUS_NETWORK_UNREACHABLE:
+  case STATUS_PROTOCOL_UNREACHABLE:
+    return WSAENETUNREACH;
 
-    case STATUS_HOST_UNREACHABLE:
-      return WSAEHOSTUNREACH;
+  case STATUS_HOST_UNREACHABLE:
+    return WSAEHOSTUNREACH;
 
-    case STATUS_CANCELLED:
-    case STATUS_REQUEST_ABORTED:
-      return WSAEINTR;
+  case STATUS_CANCELLED:
+  case STATUS_REQUEST_ABORTED:
+    return WSAEINTR;
 
-    case STATUS_BUFFER_OVERFLOW:
-    case STATUS_INVALID_BUFFER_SIZE:
-      return WSAEMSGSIZE;
+  case STATUS_BUFFER_OVERFLOW:
+  case STATUS_INVALID_BUFFER_SIZE:
+    return WSAEMSGSIZE;
 
-    case STATUS_BUFFER_TOO_SMALL:
-    case STATUS_ACCESS_VIOLATION:
-      return WSAEFAULT;
+  case STATUS_BUFFER_TOO_SMALL:
+  case STATUS_ACCESS_VIOLATION:
+    return WSAEFAULT;
 
-    case STATUS_DEVICE_NOT_READY:
-    case STATUS_REQUEST_NOT_ACCEPTED:
-      return WSAEWOULDBLOCK;
+  case STATUS_DEVICE_NOT_READY:
+  case STATUS_REQUEST_NOT_ACCEPTED:
+    return WSAEWOULDBLOCK;
 
-    case STATUS_INVALID_NETWORK_RESPONSE:
-    case STATUS_NETWORK_BUSY:
-    case STATUS_NO_SUCH_DEVICE:
-    case STATUS_NO_SUCH_FILE:
-    case STATUS_OBJECT_PATH_NOT_FOUND:
-    case STATUS_OBJECT_NAME_NOT_FOUND:
-    case STATUS_UNEXPECTED_NETWORK_ERROR:
-      return WSAENETDOWN;
+  case STATUS_INVALID_NETWORK_RESPONSE:
+  case STATUS_NETWORK_BUSY:
+  case STATUS_NO_SUCH_DEVICE:
+  case STATUS_NO_SUCH_FILE:
+  case STATUS_OBJECT_PATH_NOT_FOUND:
+  case STATUS_OBJECT_NAME_NOT_FOUND:
+  case STATUS_UNEXPECTED_NETWORK_ERROR:
+    return WSAENETDOWN;
 
-    case STATUS_INVALID_CONNECTION:
-      return WSAENOTCONN;
+  case STATUS_INVALID_CONNECTION:
+    return WSAENOTCONN;
 
-    case STATUS_REMOTE_NOT_LISTENING:
-    case STATUS_CONNECTION_REFUSED:
-      return WSAECONNREFUSED;
+  case STATUS_REMOTE_NOT_LISTENING:
+  case STATUS_CONNECTION_REFUSED:
+    return WSAECONNREFUSED;
 
-    case STATUS_PIPE_DISCONNECTED:
-      return WSAESHUTDOWN;
+  case STATUS_PIPE_DISCONNECTED:
+    return WSAESHUTDOWN;
 
-    case STATUS_CONFLICTING_ADDRESSES:
-    case STATUS_INVALID_ADDRESS:
-    case STATUS_INVALID_ADDRESS_COMPONENT:
-      return WSAEADDRNOTAVAIL;
+  case STATUS_CONFLICTING_ADDRESSES:
+  case STATUS_INVALID_ADDRESS:
+  case STATUS_INVALID_ADDRESS_COMPONENT:
+    return WSAEADDRNOTAVAIL;
 
-    case STATUS_NOT_SUPPORTED:
-    case STATUS_NOT_IMPLEMENTED:
-      return WSAEOPNOTSUPP;
+  case STATUS_NOT_SUPPORTED:
+  case STATUS_NOT_IMPLEMENTED:
+    return WSAEOPNOTSUPP;
 
-    case STATUS_ACCESS_DENIED:
-      return WSAEACCES;
+  case STATUS_ACCESS_DENIED:
+    return WSAEACCES;
 
-    default:
-      if ((status & (FACILITY_NTWIN32 << 16)) == (FACILITY_NTWIN32 << 16) &&
-          (status & (ERROR_SEVERITY_ERROR | ERROR_SEVERITY_WARNING))) {
-        /* It's a windows error that has been previously mapped to an ntstatus
-         * code. */
-        return (DWORD) (status & 0xffff);
-      } else {
-        /* The default fallback for unmappable ntstatus codes. */
-        return WSAEINVAL;
-      }
+  default:
+    if ((status & (FACILITY_NTWIN32 << 16)) == (FACILITY_NTWIN32 << 16) &&
+        (status & (ERROR_SEVERITY_ERROR | ERROR_SEVERITY_WARNING))) {
+      /* It's a windows error that has been previously mapped to an ntstatus
+       * code. */
+      return (DWORD) (status & 0xffff);
+    } else {
+      /* The default fallback for unmappable ntstatus codes. */
+      return WSAEINVAL;
+    }
   }
 }
 
@@ -267,9 +268,14 @@ int uv__ntstatus_to_winsock_error(NTSTATUS status) {
  * the user to use the default msafd driver, doesn't work when other LSPs are
  * stacked on top of it.
  */
-int WSAAPI uv__wsarecv_workaround(SOCKET socket, WSABUF* buffers,
-    DWORD buffer_count, DWORD* bytes, DWORD* flags, WSAOVERLAPPED *overlapped,
-    LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine) {
+int WSAAPI
+uv__wsarecv_workaround(SOCKET socket,
+                       WSABUF* buffers,
+                       DWORD buffer_count,
+                       DWORD* bytes,
+                       DWORD* flags,
+                       WSAOVERLAPPED* overlapped,
+                       LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine) {
   NTSTATUS status;
   void* apc_context;
   IO_STATUS_BLOCK* iosb = (IO_STATUS_BLOCK*) &overlapped->Internal;
@@ -318,36 +324,36 @@ int WSAAPI uv__wsarecv_workaround(SOCKET socket, WSABUF* buffers,
   *bytes = (DWORD) iosb->Information;
 
   switch (status) {
-    case STATUS_SUCCESS:
-      error = ERROR_SUCCESS;
-      break;
+  case STATUS_SUCCESS:
+    error = ERROR_SUCCESS;
+    break;
 
-    case STATUS_PENDING:
-      error = WSA_IO_PENDING;
-      break;
+  case STATUS_PENDING:
+    error = WSA_IO_PENDING;
+    break;
 
-    case STATUS_BUFFER_OVERFLOW:
-      error = WSAEMSGSIZE;
-      break;
+  case STATUS_BUFFER_OVERFLOW:
+    error = WSAEMSGSIZE;
+    break;
 
-    case STATUS_RECEIVE_EXPEDITED:
-      error = ERROR_SUCCESS;
-      *flags = MSG_OOB;
-      break;
+  case STATUS_RECEIVE_EXPEDITED:
+    error = ERROR_SUCCESS;
+    *flags = MSG_OOB;
+    break;
 
-    case STATUS_RECEIVE_PARTIAL_EXPEDITED:
-      error = ERROR_SUCCESS;
-      *flags = MSG_PARTIAL | MSG_OOB;
-      break;
+  case STATUS_RECEIVE_PARTIAL_EXPEDITED:
+    error = ERROR_SUCCESS;
+    *flags = MSG_PARTIAL | MSG_OOB;
+    break;
 
-    case STATUS_RECEIVE_PARTIAL:
-      error = ERROR_SUCCESS;
-      *flags = MSG_PARTIAL;
-      break;
+  case STATUS_RECEIVE_PARTIAL:
+    error = ERROR_SUCCESS;
+    *flags = MSG_PARTIAL;
+    break;
 
-    default:
-      error = uv__ntstatus_to_winsock_error(status);
-      break;
+  default:
+    error = uv__ntstatus_to_winsock_error(status);
+    break;
   }
 
   WSASetLastError(error);
@@ -361,9 +367,15 @@ int WSAAPI uv__wsarecv_workaround(SOCKET socket, WSABUF* buffers,
 
 
 /* See description of uv__wsarecv_workaround. */
-int WSAAPI uv__wsarecvfrom_workaround(SOCKET socket, WSABUF* buffers,
-    DWORD buffer_count, DWORD* bytes, DWORD* flags, struct sockaddr* addr,
-    int* addr_len, WSAOVERLAPPED *overlapped,
+int WSAAPI uv__wsarecvfrom_workaround(
+    SOCKET socket,
+    WSABUF* buffers,
+    DWORD buffer_count,
+    DWORD* bytes,
+    DWORD* flags,
+    struct sockaddr* addr,
+    int* addr_len,
+    WSAOVERLAPPED* overlapped,
     LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine) {
   NTSTATUS status;
   void* apc_context;
@@ -416,36 +428,36 @@ int WSAAPI uv__wsarecvfrom_workaround(SOCKET socket, WSABUF* buffers,
   *bytes = (DWORD) iosb->Information;
 
   switch (status) {
-    case STATUS_SUCCESS:
-      error = ERROR_SUCCESS;
-      break;
+  case STATUS_SUCCESS:
+    error = ERROR_SUCCESS;
+    break;
 
-    case STATUS_PENDING:
-      error = WSA_IO_PENDING;
-      break;
+  case STATUS_PENDING:
+    error = WSA_IO_PENDING;
+    break;
 
-    case STATUS_BUFFER_OVERFLOW:
-      error = WSAEMSGSIZE;
-      break;
+  case STATUS_BUFFER_OVERFLOW:
+    error = WSAEMSGSIZE;
+    break;
 
-    case STATUS_RECEIVE_EXPEDITED:
-      error = ERROR_SUCCESS;
-      *flags = MSG_OOB;
-      break;
+  case STATUS_RECEIVE_EXPEDITED:
+    error = ERROR_SUCCESS;
+    *flags = MSG_OOB;
+    break;
 
-    case STATUS_RECEIVE_PARTIAL_EXPEDITED:
-      error = ERROR_SUCCESS;
-      *flags = MSG_PARTIAL | MSG_OOB;
-      break;
+  case STATUS_RECEIVE_PARTIAL_EXPEDITED:
+    error = ERROR_SUCCESS;
+    *flags = MSG_PARTIAL | MSG_OOB;
+    break;
 
-    case STATUS_RECEIVE_PARTIAL:
-      error = ERROR_SUCCESS;
-      *flags = MSG_PARTIAL;
-      break;
+  case STATUS_RECEIVE_PARTIAL:
+    error = ERROR_SUCCESS;
+    *flags = MSG_PARTIAL;
+    break;
 
-    default:
-      error = uv__ntstatus_to_winsock_error(status);
-      break;
+  default:
+    error = uv__ntstatus_to_winsock_error(status);
+    break;
   }
 
   WSASetLastError(error);
@@ -458,8 +470,10 @@ int WSAAPI uv__wsarecvfrom_workaround(SOCKET socket, WSABUF* buffers,
 }
 
 
-int WSAAPI uv__msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
-    AFD_POLL_INFO* info_out, OVERLAPPED* overlapped) {
+int WSAAPI uv__msafd_poll(SOCKET socket,
+                          AFD_POLL_INFO* info_in,
+                          AFD_POLL_INFO* info_out,
+                          OVERLAPPED* overlapped) {
   IO_STATUS_BLOCK iosb;
   IO_STATUS_BLOCK* iosb_ptr;
   HANDLE event = NULL;
@@ -474,7 +488,7 @@ int WSAAPI uv__msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
 
     /* Do not report iocp completion if hEvent is tagged. */
     if ((uintptr_t) event & 1) {
-      event = (HANDLE)((uintptr_t) event & ~(uintptr_t) 1);
+      event = (HANDLE) ((uintptr_t) event & ~(uintptr_t) 1);
       apc_context = NULL;
     } else {
       apc_context = overlapped;
@@ -522,17 +536,17 @@ int WSAAPI uv__msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
   }
 
   switch (status) {
-    case STATUS_SUCCESS:
-      error = ERROR_SUCCESS;
-      break;
+  case STATUS_SUCCESS:
+    error = ERROR_SUCCESS;
+    break;
 
-    case STATUS_PENDING:
-      error = WSA_IO_PENDING;
-      break;
+  case STATUS_PENDING:
+    error = WSA_IO_PENDING;
+    break;
 
-    default:
-      error = uv__ntstatus_to_winsock_error(status);
-      break;
+  default:
+    error = uv__ntstatus_to_winsock_error(status);
+    break;
   }
 
   WSASetLastError(error);

@@ -46,13 +46,13 @@ static void connect_cb(uv_connect_t* req, int status) {
 
 static void timer_cb(uv_timer_t* handle) {
   ASSERT_PTR_EQ(handle, &timer);
-  uv_close((uv_handle_t*)&conn, close_cb);
-  uv_close((uv_handle_t*)&timer, close_cb);
+  uv_close((uv_handle_t*) &conn, close_cb);
+  uv_close((uv_handle_t*) &timer, close_cb);
 }
 
 
 static void close_cb(uv_handle_t* handle) {
-  ASSERT(handle == (uv_handle_t*)&conn || handle == (uv_handle_t*)&timer);
+  ASSERT(handle == (uv_handle_t*) &conn || handle == (uv_handle_t*) &timer);
   close_cb_called++;
 }
 

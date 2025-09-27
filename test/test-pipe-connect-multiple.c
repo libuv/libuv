@@ -50,7 +50,7 @@ static void connection_cb(uv_stream_t* server, int status) {
   r = uv_pipe_init(server->loop, conn, 0);
   ASSERT_OK(r);
 
-  r = uv_accept(server, (uv_stream_t*)conn);
+  r = uv_accept(server, (uv_stream_t*) conn);
   ASSERT_OK(r);
 
   if (++connection_cb_called == NUM_CLIENTS &&
@@ -85,7 +85,7 @@ TEST_IMPL(pipe_connect_multiple) {
   r = uv_pipe_bind(&server_handle, TEST_PIPENAME);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)&server_handle, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &server_handle, 128, connection_cb);
   ASSERT_OK(r);
 
   for (i = 0; i < NUM_CLIENTS; i++) {
@@ -116,13 +116,13 @@ static void connection_cb2(uv_stream_t* server, int status) {
   r = uv_pipe_init(server->loop, conn, 0);
   ASSERT_OK(r);
 
-  r = uv_accept(server, (uv_stream_t*)conn);
+  r = uv_accept(server, (uv_stream_t*) conn);
   ASSERT_OK(r);
 
-  uv_close((uv_handle_t*)conn, NULL);
+  uv_close((uv_handle_t*) conn, NULL);
   if (++connection_cb_called == NUM_CLIENTS &&
       connect_cb_called == NUM_CLIENTS) {
-    uv_close((uv_handle_t*)&server_handle, NULL);
+    uv_close((uv_handle_t*) &server_handle, NULL);
   }
 }
 
@@ -130,7 +130,7 @@ static void connect_cb2(uv_connect_t* connect_req, int status) {
   ASSERT_EQ(status, UV_ECANCELED);
   if (++connect_cb_called == NUM_CLIENTS &&
       connection_cb_called == NUM_CLIENTS) {
-    uv_close((uv_handle_t*)&server_handle, NULL);
+    uv_close((uv_handle_t*) &server_handle, NULL);
   }
 }
 
@@ -151,7 +151,7 @@ TEST_IMPL(pipe_connect_close_multiple) {
   r = uv_pipe_bind(&server_handle, TEST_PIPENAME);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)&server_handle, 128, connection_cb2);
+  r = uv_listen((uv_stream_t*) &server_handle, 128, connection_cb2);
   ASSERT_OK(r);
 
   for (i = 0; i < NUM_CLIENTS; i++) {
@@ -164,7 +164,7 @@ TEST_IMPL(pipe_connect_close_multiple) {
   }
 
   for (i = 0; i < NUM_CLIENTS; i++) {
-    uv_close((uv_handle_t*)&clients[i].pipe_handle, NULL);
+    uv_close((uv_handle_t*) &clients[i].pipe_handle, NULL);
   }
 
 

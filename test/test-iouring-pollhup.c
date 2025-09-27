@@ -28,9 +28,9 @@ TEST_IMPL(iouring_pollhup) {
   RETURN_SKIP("Not on Windows.");
 }
 
-#else  /* !_WIN32 */
+#else /* !_WIN32 */
 
-#include <unistd.h>  /* close() */
+#  include <unistd.h> /* close() */
 
 static uv_pipe_t p1;
 static uv_pipe_t p2;
@@ -75,9 +75,7 @@ static void idle_cb(uv_idle_t* handle) {
   }
 }
 
-static void read_data(uv_stream_t* stream,
-                      ssize_t nread,
-                      const uv_buf_t* buf) {
+static void read_data(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   ASSERT_EQ(nread, UV_EOF);
   uv_close((uv_handle_t*) stream, NULL);
   ASSERT_OK(uv_idle_start(&idle_handle, idle_cb));
@@ -99,7 +97,7 @@ TEST_IMPL(iouring_pollhup) {
   ASSERT_NE(duped_fd, -1);
 
   ASSERT_OK(uv_read_start((uv_stream_t*) &p1, alloc_buffer, read_data));
-  ASSERT_OK(close(pipefds[1]));  /* Close write end, generate POLLHUP. */
+  ASSERT_OK(close(pipefds[1])); /* Close write end, generate POLLHUP. */
   pipefds[1] = -1;
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
@@ -108,4 +106,4 @@ TEST_IMPL(iouring_pollhup) {
   return 0;
 }
 
-#endif  /* !_WIN32 */
+#endif /* !_WIN32 */

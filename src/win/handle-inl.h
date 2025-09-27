@@ -29,59 +29,58 @@
 #include "internal.h"
 
 
-#define DECREASE_ACTIVE_COUNT(loop, handle)                             \
-  do {                                                                  \
-    if (--(handle)->activecnt == 0 &&                                   \
-        !((handle)->flags & UV_HANDLE_CLOSING)) {                       \
-      uv__handle_stop((handle));                                        \
-    }                                                                   \
-    assert((handle)->activecnt >= 0);                                   \
+#define DECREASE_ACTIVE_COUNT(loop, handle)                                    \
+  do {                                                                         \
+    if (--(handle)->activecnt == 0 &&                                          \
+        !((handle)->flags & UV_HANDLE_CLOSING)) {                              \
+      uv__handle_stop((handle));                                               \
+    }                                                                          \
+    assert((handle)->activecnt >= 0);                                          \
   } while (0)
 
 
-#define INCREASE_ACTIVE_COUNT(loop, handle)                             \
-  do {                                                                  \
-    if ((handle)->activecnt++ == 0) {                                   \
-      uv__handle_start((handle));                                       \
-    }                                                                   \
-    assert((handle)->activecnt > 0);                                    \
+#define INCREASE_ACTIVE_COUNT(loop, handle)                                    \
+  do {                                                                         \
+    if ((handle)->activecnt++ == 0) {                                          \
+      uv__handle_start((handle));                                              \
+    }                                                                          \
+    assert((handle)->activecnt > 0);                                           \
   } while (0)
 
 
-#define DECREASE_PENDING_REQ_COUNT(handle)                              \
-  do {                                                                  \
-    assert(handle->reqs_pending > 0);                                   \
-    handle->reqs_pending--;                                             \
-                                                                        \
-    if (handle->flags & UV_HANDLE_CLOSING &&                            \
-        handle->reqs_pending == 0) {                                    \
-      uv__want_endgame(loop, (uv_handle_t*)handle);                     \
-    }                                                                   \
+#define DECREASE_PENDING_REQ_COUNT(handle)                                     \
+  do {                                                                         \
+    assert(handle->reqs_pending > 0);                                          \
+    handle->reqs_pending--;                                                    \
+                                                                               \
+    if (handle->flags & UV_HANDLE_CLOSING && handle->reqs_pending == 0) {      \
+      uv__want_endgame(loop, (uv_handle_t*) handle);                           \
+    }                                                                          \
   } while (0)
 
 
-#define uv__handle_closing(handle)                                      \
-  do {                                                                  \
-    assert(!((handle)->flags & UV_HANDLE_CLOSING));                     \
-                                                                        \
-    if (!(((handle)->flags & UV_HANDLE_ACTIVE) &&                       \
-          ((handle)->flags & UV_HANDLE_REF)))                           \
-      uv__active_handle_add((uv_handle_t*) (handle));                   \
-                                                                        \
-    (handle)->flags |= UV_HANDLE_CLOSING;                               \
-    (handle)->flags &= ~UV_HANDLE_ACTIVE;                               \
+#define uv__handle_closing(handle)                                             \
+  do {                                                                         \
+    assert(!((handle)->flags & UV_HANDLE_CLOSING));                            \
+                                                                               \
+    if (!(((handle)->flags & UV_HANDLE_ACTIVE) &&                              \
+          ((handle)->flags & UV_HANDLE_REF)))                                  \
+      uv__active_handle_add((uv_handle_t*) (handle));                          \
+                                                                               \
+    (handle)->flags |= UV_HANDLE_CLOSING;                                      \
+    (handle)->flags &= ~UV_HANDLE_ACTIVE;                                      \
   } while (0)
 
 
-#define uv__handle_close(handle)                                        \
-  do {                                                                  \
-    uv__queue_remove(&(handle)->handle_queue);                          \
-    uv__active_handle_rm((uv_handle_t*) (handle));                      \
-                                                                        \
-    (handle)->flags |= UV_HANDLE_CLOSED;                                \
-                                                                        \
-    if ((handle)->close_cb)                                             \
-      (handle)->close_cb((uv_handle_t*) (handle));                      \
+#define uv__handle_close(handle)                                               \
+  do {                                                                         \
+    uv__queue_remove(&(handle)->handle_queue);                                 \
+    uv__active_handle_rm((uv_handle_t*) (handle));                             \
+                                                                               \
+    (handle)->flags |= UV_HANDLE_CLOSED;                                       \
+                                                                               \
+    if ((handle)->close_cb)                                                    \
+      (handle)->close_cb((uv_handle_t*) (handle));                             \
   } while (0)
 
 
@@ -95,8 +94,7 @@ INLINE static void uv__want_endgame(uv_loop_t* loop, uv_handle_t* handle) {
 }
 
 
-INLINE static HANDLE uv__get_osfhandle(int fd)
-{
+INLINE static HANDLE uv__get_osfhandle(int fd) {
   /* _get_osfhandle() raises an assert in debug builds if the FD is invalid.
    * But it also correctly checks the FD and returns INVALID_HANDLE_VALUE for
    * invalid FDs in release builds (or if you let the assert continue). So this

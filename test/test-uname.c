@@ -24,7 +24,7 @@
 #include <string.h>
 
 #ifndef _WIN32
-# include <sys/utsname.h>
+#  include <sys/utsname.h>
 #endif
 
 TEST_IMPL(uname) {
@@ -50,18 +50,18 @@ TEST_IMPL(uname) {
   ASSERT_OK(strcmp(buffer.sysname, buf.sysname));
   ASSERT_OK(strcmp(buffer.version, buf.version));
 
-# ifdef _AIX
+#  ifdef _AIX
   snprintf(temp, sizeof(temp), "%s.%s", buf.version, buf.release);
   ASSERT_OK(strcmp(buffer.release, temp));
-# else
+#  else
   ASSERT_OK(strcmp(buffer.release, buf.release));
-# endif /* _AIX */
+#  endif /* _AIX */
 
-# if defined(_AIX) || defined(__PASE__)
+#  if defined(_AIX) || defined(__PASE__)
   ASSERT_OK(strcmp(buffer.machine, "ppc64"));
-# else
+#  else
   ASSERT_OK(strcmp(buffer.machine, buf.machine));
-# endif /* defined(_AIX) || defined(__PASE__) */
+#  endif /* defined(_AIX) || defined(__PASE__) */
 
 #endif /* _WIN32 */
 

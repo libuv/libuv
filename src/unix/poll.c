@@ -93,8 +93,9 @@ int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
 }
 
 
-int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
-    uv_os_sock_t socket) {
+int uv_poll_init_socket(uv_loop_t* loop,
+                        uv_poll_t* handle,
+                        uv_os_sock_t socket) {
   return uv_poll_init(loop, handle, socket);
 }
 
@@ -120,8 +121,8 @@ int uv_poll_start(uv_poll_t* handle, int pevents, uv_poll_cb poll_cb) {
   uv__io_t* w;
   int events;
 
-  assert((pevents & ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT |
-                      UV_PRIORITIZED)) == 0);
+  assert((pevents &
+          ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT | UV_PRIORITIZED)) == 0);
   assert(!uv__is_closing(handle));
 
   watchers = handle->loop->watchers;

@@ -1,23 +1,23 @@
 /* Copyright libuv contributors. All rights reserved.
-  *
-  * Permission is hereby granted, free of charge, to any person obtaining a copy
-  * of this software and associated documentation files (the "Software"), to
-  * deal in the Software without restriction, including without limitation the
-  * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-  * sell copies of the Software, and to permit persons to whom the Software is
-  * furnished to do so, subject to the following conditions:
-  *
-  * The above copyright notice and this permission notice shall be included in
-  * all copies or substantial portions of the Software.
-  *
-  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-  * IN THE SOFTWARE.
-  */
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ */
 
 #include "uv.h"
 #include "internal.h"
@@ -32,21 +32,20 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #if __QNX__ >= 800
-#define cpuinfo_val cpuinfo
+#  define cpuinfo_val cpuinfo
 #else
-#define cpuinfo_val new_cpuinfo
+#  define cpuinfo_val new_cpuinfo
 #endif
 
-static void
-get_mem_info(uint64_t* totalmem, uint64_t* freemem) {
+static void get_mem_info(uint64_t* totalmem, uint64_t* freemem) {
   mem_info_t msg;
 
   memset(&msg, 0, sizeof(msg));
   msg.i.type = _MEM_INFO;
   msg.i.fd = -1;
 
-  if (MsgSend(MEMMGR_COID, &msg.i, sizeof(msg.i), &msg.o, sizeof(msg.o))
-      != -1) {
+  if (MsgSend(MEMMGR_COID, &msg.i, sizeof(msg.i), &msg.o, sizeof(msg.o)) !=
+      -1) {
     *totalmem = msg.o.info.__posix_tmi_total;
     *freemem = msg.o.info.posix_tmi_length;
   } else {
@@ -148,16 +147,16 @@ int uv_resident_set_memory(size_t* rss) {
 
 int uv_uptime(double* uptime) {
   struct timespec ts;
-  if(clock_gettime(CLOCK_MONOTONIC, &ts))
+  if (clock_gettime(CLOCK_MONOTONIC, &ts))
     return UV__ERR(errno);
-  *uptime = (double)ts.tv_sec;
+  *uptime = (double) ts.tv_sec;
   return 0;
 }
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   struct cpuinfo_entry* cpuinfo =
-    (struct cpuinfo_entry*)_SYSPAGE_ENTRY(_syspage_ptr, cpuinfo_val);
+      (struct cpuinfo_entry*) _SYSPAGE_ENTRY(_syspage_ptr, cpuinfo_val);
   size_t cpuinfo_size = _SYSPAGE_ELEMENT_SIZE(_syspage_ptr, cpuinfo);
   struct strings_entry* strings = _SYSPAGE_ENTRY(_syspage_ptr, strings);
   int num_cpus = _syspage_ptr->num_cpu;

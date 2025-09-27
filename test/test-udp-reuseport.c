@@ -26,8 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if !defined(__linux__) && !defined(__FreeBSD__) && \
-    !defined(__DragonFly__) && !defined(__sun) && !defined(_AIX73)
+#if !defined(__linux__) && !defined(__FreeBSD__) && !defined(__DragonFly__) && \
+    !defined(__sun) && !defined(_AIX73)
 
 TEST_IMPL(udp_reuseport) {
   struct sockaddr_in addr1, addr2, addr3;
@@ -60,7 +60,8 @@ TEST_IMPL(udp_reuseport) {
   /* For platforms where SO_REUSEPORTs don't have the capability of
    * load balancing, specifying both UV_UDP_REUSEADDR and UV_UDP_REUSEPORT
    * in flags will fail, returning an UV_ENOTSUP error. */
-  r = uv_udp_bind(&handle3, (const struct sockaddr*) &addr3,
+  r = uv_udp_bind(&handle3,
+                  (const struct sockaddr*) &addr3,
                   UV_UDP_REUSEADDR | UV_UDP_REUSEPORT);
   ASSERT_EQ(r, UV_ENOTSUP);
 
@@ -71,8 +72,8 @@ TEST_IMPL(udp_reuseport) {
 
 #else
 
-#define NUM_RECEIVING_THREADS 2
-#define MAX_UDP_DATAGRAMS 10
+#  define NUM_RECEIVING_THREADS 2
+#  define MAX_UDP_DATAGRAMS     10
 
 static uv_udp_t udp_send_handles[MAX_UDP_DATAGRAMS];
 static uv_udp_send_t udp_send_requests[MAX_UDP_DATAGRAMS];
@@ -174,7 +175,8 @@ static void bind_socket_and_prepare_recv(uv_loop_t* loop, uv_udp_t* handle) {
    * load balancing, specifying both UV_UDP_REUSEADDR and
    * UV_UDP_REUSEPORT in flags is allowed and SO_REUSEPORT will
    * always override the behavior of SO_REUSEADDR. */
-  r = uv_udp_bind(handle, (const struct sockaddr*) &addr,
+  r = uv_udp_bind(handle,
+                  (const struct sockaddr*) &addr,
                   UV_UDP_REUSEADDR | UV_UDP_REUSEPORT);
   ASSERT_OK(r);
 

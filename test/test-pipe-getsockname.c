@@ -26,9 +26,9 @@
 #include <string.h>
 
 #ifndef _WIN32
-# include <unistd.h>  /* close */
+#  include <unistd.h> /* close */
 #else
-# include <fcntl.h>
+#  include <fcntl.h>
 #endif
 
 static uv_pipe_t pipe_client;
@@ -41,7 +41,8 @@ static int pipe_client_connect_cb_called = 0;
 
 static void pipe_close_cb(uv_handle_t* handle) {
   ASSERT_NE(handle == (uv_handle_t*) &pipe_client ||
-            handle == (uv_handle_t*) &pipe_server, 0);
+                handle == (uv_handle_t*) &pipe_server,
+            0);
   pipe_close_cb_called++;
 }
 
@@ -58,7 +59,7 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
   r = uv_pipe_getpeername(&pipe_client, buf, &len);
   ASSERT_OK(r);
 
-  if (*buf == '\0') {  /* Linux abstract socket. */
+  if (*buf == '\0') { /* Linux abstract socket. */
     const char expected[] = "\0" TEST_PIPENAME "\0";
     ASSERT_EQ(len, sizeof(expected) - 1);
     ASSERT_MEM_EQ(buf, expected, len);
@@ -80,7 +81,7 @@ static void pipe_client_connect_cb(uv_connect_t* req, int status) {
 
 #if defined(__linux__)
 /* Socket name looks like \0[0-9a-f]{5}, e.g. "\0bad42" */
-static void check_is_autobind_abstract_socket_name(const char *p, size_t len) {
+static void check_is_autobind_abstract_socket_name(const char* p, size_t len) {
   ASSERT_EQ(len, 6);
   ASSERT_EQ(*p, '\0');
 
@@ -105,7 +106,7 @@ static void pipe_client_autobind_connect_cb(uv_connect_t* req, int status) {
   uv_close((uv_handle_t*) &pipe_client, pipe_close_cb);
   uv_close((uv_handle_t*) &pipe_server, pipe_close_cb);
 }
-#endif  /* defined(__linux__) */
+#endif /* defined(__linux__) */
 
 
 static void pipe_server_connection_cb(uv_stream_t* handle, int status) {
@@ -235,9 +236,8 @@ TEST_IMPL(pipe_getsockname_abstract) {
   ASSERT_OK(uv_pipe_getsockname(&pipe_server, buf, &buflen));
   ASSERT_UINT64_EQ(sizeof(name) - 1, buflen);
   ASSERT_MEM_EQ(name, buf, buflen);
-  ASSERT_OK(uv_listen((uv_stream_t*) &pipe_server,
-                      0,
-                      pipe_server_connection_cb));
+  ASSERT_OK(
+      uv_listen((uv_stream_t*) &pipe_server, 0, pipe_server_connection_cb));
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_client, 0));
   ASSERT_OK(uv_pipe_connect2(&connect_req,
                              &pipe_client,
@@ -256,12 +256,13 @@ TEST_IMPL(pipe_getsockname_abstract) {
   ASSERT_EQ(UV_EINVAL, uv_pipe_bind2(&pipe_server, name, sizeof(name), 0));
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_client, 0));
   uv_close((uv_handle_t*) &pipe_server, pipe_close_cb);
-  ASSERT_EQ(UV_EINVAL, uv_pipe_connect2(&connect_req,
-                                        &pipe_client,
-                                        name,
-                                        sizeof(name),
-                                        0,
-                                        (uv_connect_cb) abort));
+  ASSERT_EQ(UV_EINVAL,
+            uv_pipe_connect2(&connect_req,
+                             &pipe_client,
+                             name,
+                             sizeof(name),
+                             0,
+                             (uv_connect_cb) abort));
   uv_close((uv_handle_t*) &pipe_client, pipe_close_cb);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(2, pipe_close_cb_called);
@@ -282,10 +283,11 @@ TEST_IMPL(pipe_getsockname_autobind) {
   ASSERT_OK(uv_pipe_bind2(&pipe_server, "", 0, 0));
   ASSERT_OK(uv_pipe_getsockname(&pipe_server, buf, &buflen));
   check_is_autobind_abstract_socket_name(buf, buflen);
-  ASSERT_OK(uv_listen((uv_stream_t*) &pipe_server, 0,
-                      pipe_server_connection_cb));
+  ASSERT_OK(
+      uv_listen((uv_stream_t*) &pipe_server, 0, pipe_server_connection_cb));
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_client, 0));
-  ASSERT_OK(uv_pipe_connect2(&connect_req, &pipe_client,
+  ASSERT_OK(uv_pipe_connect2(&connect_req,
+                             &pipe_client,
                              buf,
                              1 + strlen(&buf[1]),
                              0,
@@ -321,7 +323,7 @@ TEST_IMPL(pipe_getsockname_blocking) {
 
   r = uv_pipe_init(uv_default_loop(), &pipe_client, 0);
   ASSERT_OK(r);
-  readfd = _open_osfhandle((intptr_t)readh, _O_RDONLY);
+  readfd = _open_osfhandle((intptr_t) readh, _O_RDONLY);
   ASSERT_NE(r, -1);
   r = uv_pipe_open(&pipe_client, readfd);
   ASSERT_OK(r);
@@ -330,15 +332,15 @@ TEST_IMPL(pipe_getsockname_blocking) {
                     (uv_read_cb) abort);
   ASSERT_OK(r);
   Sleep(100);
-  r = uv_read_stop((uv_stream_t*)&pipe_client);
+  r = uv_read_stop((uv_stream_t*) &pipe_client);
   ASSERT_OK(r);
 
   len1 = sizeof buf1;
   r = uv_pipe_getsockname(&pipe_client, buf1, &len1);
   ASSERT_OK(r);
-  ASSERT_OK(len1);  /* It's an annonymous pipe. */
+  ASSERT_OK(len1); /* It's an annonymous pipe. */
 
-  r = uv_read_start((uv_stream_t*)&pipe_client,
+  r = uv_read_start((uv_stream_t*) &pipe_client,
                     (uv_alloc_cb) abort,
                     (uv_read_cb) abort);
   ASSERT_OK(r);
@@ -347,16 +349,16 @@ TEST_IMPL(pipe_getsockname_blocking) {
   len2 = sizeof buf2;
   r = uv_pipe_getsockname(&pipe_client, buf2, &len2);
   ASSERT_OK(r);
-  ASSERT_OK(len2);  /* It's an annonymous pipe. */
+  ASSERT_OK(len2); /* It's an annonymous pipe. */
 
-  r = uv_read_stop((uv_stream_t*)&pipe_client);
+  r = uv_read_stop((uv_stream_t*) &pipe_client);
   ASSERT_OK(r);
 
   ASSERT_EQ(len1, len2);
   ASSERT_OK(memcmp(buf1, buf2, len1));
 
   pipe_close_cb_called = 0;
-  uv_close((uv_handle_t*)&pipe_client, pipe_close_cb);
+  uv_close((uv_handle_t*) &pipe_client, pipe_close_cb);
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 

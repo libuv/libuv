@@ -25,7 +25,6 @@
 static uv_shutdown_t shutdown_req;
 
 static void close_cb(uv_handle_t* handle) {
-
 }
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {

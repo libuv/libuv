@@ -1,0 +1,28 @@
+name: clang-format
+
+on:
+  pull_request:
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          style: file
+          tidy-checks: '-*'
+          files-changed-only: false
+          lines-changed-only: false
+          version: 20
+      - name: Fail fast?!
+        if: steps.linter.outputs.checks-failed > 0
+        run: exit 1

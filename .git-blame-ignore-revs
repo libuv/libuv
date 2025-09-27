@@ -1,0 +1,6 @@
+# .git-blame-ignore-revs
+# This file contains commits that should be ignored by git blame
+# Use with: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# clang-format application - formatting changes only
+729412497ea36a0334fb36c6f48cb24c076f62f6

@@ -26,8 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_OBJECT(handle, type, parent) \
-  ASSERT_PTR_EQ((type*)(handle), &(parent))
+#define CHECK_OBJECT(handle, type, parent)                                     \
+  ASSERT_PTR_EQ((type*) (handle), &(parent))
 
 static uv_udp_t client;
 static uv_idle_t idle_handle;

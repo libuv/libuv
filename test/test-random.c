@@ -54,8 +54,8 @@ TEST_IMPL(random_async) {
   uv_loop_t* loop;
 
   loop = uv_default_loop();
-  ASSERT_EQ(UV_EINVAL, uv_random(loop, &req, scratch, sizeof(scratch), -1,
-                                 random_cb));
+  ASSERT_EQ(UV_EINVAL,
+            uv_random(loop, &req, scratch, sizeof(scratch), -1, random_cb));
   ASSERT_EQ(UV_E2BIG, uv_random(loop, &req, scratch, -1, -1, random_cb));
 
   ASSERT_OK(uv_random(loop, &req, scratch, 0, 0, random_cb));

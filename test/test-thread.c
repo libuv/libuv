@@ -27,7 +27,7 @@
 #include <string.h> /* memset */
 
 #ifdef __POSIX__
-#include <pthread.h>
+#  include <pthread.h>
 #endif
 
 struct getaddrinfo_req {
@@ -138,7 +138,7 @@ static void do_work(void* arg) {
 
 
 static void thread_entry(void* arg) {
-  ASSERT_PTR_EQ(arg, (void *) 42);
+  ASSERT_PTR_EQ(arg, (void*) 42);
   thread_called++;
 }
 
@@ -147,7 +147,7 @@ TEST_IMPL(thread_create) {
   uv_thread_t tid;
   int r;
 
-  r = uv_thread_create(&tid, thread_entry, (void *) 42);
+  r = uv_thread_create(&tid, thread_entry, (void*) 42);
   ASSERT_OK(r);
 
   r = uv_thread_join(&tid);
@@ -167,7 +167,7 @@ TEST_IMPL(threadpool_multiple_event_loops) {
 #if defined(__QEMU__)
   RETURN_SKIP("Test does not currently work in QEMU");
 #endif
-  
+
   struct test_thread threads[8];
   size_t i;
   int r;
@@ -217,7 +217,7 @@ TEST_IMPL(thread_local_storage) {
 static void thread_check_stack(void* arg) {
 #if defined(__APPLE__)
   size_t expected;
-  expected = arg == NULL ? 0 : ((uv_thread_options_t*)arg)->stack_size;
+  expected = arg == NULL ? 0 : ((uv_thread_options_t*) arg)->stack_size;
   /* 512 kB is the default stack size of threads other than the main thread
    * on MacOS. */
   if (expected == 0)
@@ -230,12 +230,12 @@ static void thread_check_stack(void* arg) {
   pthread_attr_t attr;
   ASSERT_OK(getrlimit(RLIMIT_STACK, &lim));
   if (lim.rlim_cur == RLIM_INFINITY)
-    lim.rlim_cur = 2 << 20;  /* glibc default. */
+    lim.rlim_cur = 2 << 20; /* glibc default. */
   ASSERT_OK(pthread_getattr_np(pthread_self(), &attr));
   ASSERT_OK(pthread_attr_getstacksize(&attr, &stack_size));
-  expected = arg == NULL ? 0 : ((uv_thread_options_t*)arg)->stack_size;
+  expected = arg == NULL ? 0 : ((uv_thread_options_t*) arg)->stack_size;
   if (expected == 0)
-    expected = (size_t)lim.rlim_cur;
+    expected = (size_t) lim.rlim_cur;
   ASSERT_GE(stack_size, expected);
   ASSERT_OK(pthread_attr_destroy(&attr));
 #endif
@@ -255,47 +255,48 @@ TEST_IMPL(thread_stack_size_explicit) {
 
   options.flags = UV_THREAD_HAS_STACK_SIZE;
   options.stack_size = 1024 * 1024;
-  ASSERT_OK(uv_thread_create_ex(&thread, &options,
-                                thread_check_stack, &options));
+  ASSERT_OK(
+      uv_thread_create_ex(&thread, &options, thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 
-  options.stack_size = 8 * 1024 * 1024;  /* larger than most default os sizes */
-  ASSERT_OK(uv_thread_create_ex(&thread, &options,
-                                thread_check_stack, &options));
+  options.stack_size = 8 * 1024 * 1024; /* larger than most default os sizes */
+  ASSERT_OK(
+      uv_thread_create_ex(&thread, &options, thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 
   options.stack_size = 0;
-  ASSERT_OK(uv_thread_create_ex(&thread, &options,
-                                thread_check_stack, &options));
+  ASSERT_OK(
+      uv_thread_create_ex(&thread, &options, thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 
   options.stack_size = 42;
-  ASSERT_OK(uv_thread_create_ex(&thread, &options,
-                                thread_check_stack, &options));
+  ASSERT_OK(
+      uv_thread_create_ex(&thread, &options, thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 
 #ifdef PTHREAD_STACK_MIN
-  options.stack_size = PTHREAD_STACK_MIN - 42;  /* unaligned size */
-  ASSERT_OK(uv_thread_create_ex(&thread, &options,
-                                thread_check_stack, &options));
+  options.stack_size = PTHREAD_STACK_MIN - 42; /* unaligned size */
+  ASSERT_OK(
+      uv_thread_create_ex(&thread, &options, thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 
-  options.stack_size = PTHREAD_STACK_MIN / 2 - 42;  /* unaligned size */
-  ASSERT_OK(uv_thread_create_ex(&thread, &options,
-                                thread_check_stack, &options));
+  options.stack_size = PTHREAD_STACK_MIN / 2 - 42; /* unaligned size */
+  ASSERT_OK(
+      uv_thread_create_ex(&thread, &options, thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 #endif
 
   /* unaligned size, should be larger than PTHREAD_STACK_MIN */
   options.stack_size = 1234567;
-  ASSERT_OK(uv_thread_create_ex(&thread, &options,
-                                thread_check_stack, &options));
+  ASSERT_OK(
+      uv_thread_create_ex(&thread, &options, thread_check_stack, &options));
   ASSERT_OK(uv_thread_join(&thread));
 
   return 0;
 }
 
-static void thread_detach_cb(void* arg) {}
+static void thread_detach_cb(void* arg) {
+}
 
 TEST_IMPL(thread_detach) {
   uv_thread_t thread;

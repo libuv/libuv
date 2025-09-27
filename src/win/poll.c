@@ -29,15 +29,22 @@
 
 
 static const GUID uv_msafd_provider_ids[UV_MSAFD_PROVIDER_COUNT] = {
-  {0xe70f1aa0, 0xab8b, 0x11cf,
-      {0x8c, 0xa3, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}},
-  {0xf9eab0c0, 0x26d4, 0x11d0,
-      {0xbb, 0xbf, 0x00, 0xaa, 0x00, 0x6c, 0x34, 0xe4}},
-  {0x9fc48064, 0x7298, 0x43e4,
-      {0xb7, 0xbd, 0x18, 0x1f, 0x20, 0x89, 0x79, 0x2a}},
-  {0xa00943d9, 0x9c2e, 0x4633,
-      {0x9b, 0x59, 0x00, 0x57, 0xa3, 0x16, 0x09, 0x94}}
-};
+    {0xe70f1aa0,
+     0xab8b,
+     0x11cf,
+     {0x8c, 0xa3, 0x00, 0x80, 0x5f, 0x48, 0xa1, 0x92}},
+    {0xf9eab0c0,
+     0x26d4,
+     0x11d0,
+     {0xbb, 0xbf, 0x00, 0xaa, 0x00, 0x6c, 0x34, 0xe4}},
+    {0x9fc48064,
+     0x7298,
+     0x43e4,
+     {0xb7, 0xbd, 0x18, 0x1f, 0x20, 0x89, 0x79, 0x2a}},
+    {0xa00943d9,
+     0x9c2e,
+     0x4633,
+     {0x9b, 0x59, 0x00, 0x57, 0xa3, 0x16, 0x09, 0x94}}};
 
 typedef struct uv_single_fd_set_s {
   unsigned int fd_count;
@@ -111,8 +118,8 @@ static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
   afd_poll_info->Handles[0].Events = 0;
 
   if (handle->events & UV_READABLE) {
-    afd_poll_info->Handles[0].Events |= AFD_POLL_RECEIVE |
-        AFD_POLL_DISCONNECT | AFD_POLL_ACCEPT | AFD_POLL_ABORT;
+    afd_poll_info->Handles[0].Events |= AFD_POLL_RECEIVE | AFD_POLL_DISCONNECT |
+                                        AFD_POLL_ACCEPT | AFD_POLL_ABORT;
   } else {
     if (handle->events & UV_DISCONNECT) {
       afd_poll_info->Handles[0].Events |= AFD_POLL_DISCONNECT;
@@ -136,8 +143,9 @@ static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
 }
 
 
-static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
-    uv_req_t* req) {
+static void uv__fast_poll_process_poll_req(uv_loop_t* loop,
+                                           uv_poll_t* handle,
+                                           uv_req_t* req) {
   unsigned char mask_events;
   AFD_POLL_INFO* afd_poll_info;
 
@@ -165,15 +173,16 @@ static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
   } else if (afd_poll_info->NumberOfHandles >= 1) {
     unsigned char events = 0;
 
-    if ((afd_poll_info->Handles[0].Events & (AFD_POLL_RECEIVE |
-        AFD_POLL_DISCONNECT | AFD_POLL_ACCEPT | AFD_POLL_ABORT)) != 0) {
+    if ((afd_poll_info->Handles[0].Events &
+         (AFD_POLL_RECEIVE | AFD_POLL_DISCONNECT | AFD_POLL_ACCEPT |
+          AFD_POLL_ABORT)) != 0) {
       events |= UV_READABLE;
       if ((afd_poll_info->Handles[0].Events & AFD_POLL_DISCONNECT) != 0) {
         events |= UV_DISCONNECT;
       }
     }
-    if ((afd_poll_info->Handles[0].Events & (AFD_POLL_SEND |
-        AFD_POLL_CONNECT_FAIL)) != 0) {
+    if ((afd_poll_info->Handles[0].Events &
+         (AFD_POLL_SEND | AFD_POLL_CONNECT_FAIL)) != 0) {
       events |= UV_WRITABLE;
     }
 
@@ -191,8 +200,8 @@ static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
     }
   }
 
-  if ((handle->events & ~(handle->submitted_events_1 |
-      handle->submitted_events_2)) != 0) {
+  if ((handle->events &
+       ~(handle->submitted_events_1 | handle->submitted_events_2)) != 0) {
     uv__fast_poll_submit_poll_req(loop, handle);
   } else if ((handle->flags & UV_HANDLE_CLOSING) &&
              handle->submitted_events_1 == 0 &&
@@ -202,7 +211,8 @@ static void uv__fast_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
 }
 
 
-static SOCKET uv__fast_poll_create_peer_socket(HANDLE iocp,
+static SOCKET uv__fast_poll_create_peer_socket(
+    HANDLE iocp,
     WSAPROTOCOL_INFOW* protocol_info) {
   SOCKET sock = 0;
 
@@ -216,23 +226,21 @@ static SOCKET uv__fast_poll_create_peer_socket(HANDLE iocp,
     return INVALID_SOCKET;
   }
 
-  if (CreateIoCompletionPort((HANDLE) sock,
-                             iocp,
-                             (ULONG_PTR) sock,
-                             0) == NULL) {
+  if (CreateIoCompletionPort((HANDLE) sock, iocp, (ULONG_PTR) sock, 0) ==
+      NULL) {
     goto error;
   }
 
   return sock;
 
- error:
+error:
   closesocket(sock);
   return INVALID_SOCKET;
 }
 
 
 static SOCKET uv__fast_poll_get_peer_socket(uv_loop_t* loop,
-    WSAPROTOCOL_INFOW* protocol_info) {
+                                            WSAPROTOCOL_INFOW* protocol_info) {
   int index, i;
   SOCKET peer_socket;
 
@@ -360,9 +368,9 @@ static void uv__slow_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
 }
 
 
-
-static void uv__slow_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
-    uv_req_t* req) {
+static void uv__slow_poll_process_poll_req(uv_loop_t* loop,
+                                           uv_poll_t* handle,
+                                           uv_req_t* req) {
   unsigned char mask_events;
   int err;
 
@@ -386,14 +394,15 @@ static void uv__slow_poll_process_poll_req(uv_loop_t* loop, uv_poll_t* handle,
     }
   } else {
     /* Got some events. */
-    int events = req->u.io.overlapped.InternalHigh & handle->events & ~mask_events;
+    int events =
+        req->u.io.overlapped.InternalHigh & handle->events & ~mask_events;
     if (events != 0) {
       handle->poll_cb(handle, 0, events);
     }
   }
 
-  if ((handle->events & ~(handle->submitted_events_1 |
-      handle->submitted_events_2)) != 0) {
+  if ((handle->events &
+       ~(handle->submitted_events_1 | handle->submitted_events_2)) != 0) {
     uv__slow_poll_submit_poll_req(loop, handle);
   } else if ((handle->flags & UV_HANDLE_CLOSING) &&
              handle->submitted_events_1 == 0 &&
@@ -408,8 +417,9 @@ int uv_poll_init(uv_loop_t* loop, uv_poll_t* handle, int fd) {
 }
 
 
-int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
-    uv_os_sock_t socket) {
+int uv_poll_init_socket(uv_loop_t* loop,
+                        uv_poll_t* handle,
+                        uv_os_sock_t socket) {
   WSAPROTOCOL_INFOW protocol_info;
   int len;
   SOCKET peer_socket, base_socket;
@@ -485,8 +495,8 @@ static int uv__poll_set(uv_poll_t* handle, int events, uv_poll_cb cb) {
 
   assert(handle->type == UV_POLL);
   assert(!(handle->flags & UV_HANDLE_CLOSING));
-  assert((events & ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT |
-                     UV_PRIORITIZED)) == 0);
+  assert((events &
+          ~(UV_READABLE | UV_WRITABLE | UV_DISCONNECT | UV_PRIORITIZED)) == 0);
 
   handle->events = events;
   handle->poll_cb = cb;
@@ -538,8 +548,7 @@ int uv__poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   handle->events = 0;
   uv__handle_closing(handle);
 
-  if (handle->submitted_events_1 == 0 &&
-      handle->submitted_events_2 == 0) {
+  if (handle->submitted_events_1 == 0 && handle->submitted_events_2 == 0) {
     uv__want_endgame(loop, (uv_handle_t*) handle);
     return 0;
   }

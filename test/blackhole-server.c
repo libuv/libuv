@@ -44,7 +44,7 @@ static void connection_cb(uv_stream_t* stream, int status) {
   int r;
 
   ASSERT_OK(status);
-  ASSERT_PTR_EQ(stream, (uv_stream_t*)&tcp_server);
+  ASSERT_PTR_EQ(stream, (uv_stream_t*) &tcp_server);
 
   conn = malloc(sizeof *conn);
   ASSERT_NOT_NULL(conn);
@@ -52,10 +52,10 @@ static void connection_cb(uv_stream_t* stream, int status) {
   r = uv_tcp_init(stream->loop, &conn->handle);
   ASSERT_OK(r);
 
-  r = uv_accept(stream, (uv_stream_t*)&conn->handle);
+  r = uv_accept(stream, (uv_stream_t*) &conn->handle);
   ASSERT_OK(r);
 
-  r = uv_read_start((uv_stream_t*)&conn->handle, alloc_cb, read_cb);
+  r = uv_read_start((uv_stream_t*) &conn->handle, alloc_cb, read_cb);
   ASSERT_OK(r);
 }
 
@@ -87,7 +87,7 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   conn_rec* conn = container_of(req, conn_rec, shutdown_req);
-  uv_close((uv_handle_t*)&conn->handle, close_cb);
+  uv_close((uv_handle_t*) &conn->handle, close_cb);
 }
 
 
@@ -111,7 +111,7 @@ HELPER_IMPL(tcp4_blackhole_server) {
   r = uv_tcp_bind(&tcp_server, (const struct sockaddr*) &addr, 0);
   ASSERT_OK(r);
 
-  r = uv_listen((uv_stream_t*)&tcp_server, 128, connection_cb);
+  r = uv_listen((uv_stream_t*) &tcp_server, 128, connection_cb);
   ASSERT_OK(r);
 
   notify_parent_process();

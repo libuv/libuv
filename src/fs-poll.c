@@ -23,11 +23,11 @@
 #include "uv-common.h"
 
 #ifdef _WIN32
-#include "win/internal.h"
-#include "win/handle-inl.h"
-#define uv__make_close_pending(h) uv__want_endgame((h)->loop, (h))
+#  include "win/internal.h"
+#  include "win/handle-inl.h"
+#  define uv__make_close_pending(h) uv__want_endgame((h)->loop, (h))
 #else
-#include "unix/internal.h"
+#  include "unix/internal.h"
 #endif
 
 #include <assert.h>
@@ -45,7 +45,7 @@ struct poll_ctx {
   uv_fs_t fs_req; /* TODO(bnoordhuis) mark fs_req internal */
   uv_stat_t statbuf;
   struct poll_ctx* previous; /* context from previous start()..stop() period */
-  char path[1]; /* variable length */
+  char path[1];              /* variable length */
 };
 
 static int statbuf_eq(const uv_stat_t* a, const uv_stat_t* b);
@@ -57,7 +57,7 @@ static uv_stat_t zero_statbuf;
 
 
 int uv_fs_poll_init(uv_loop_t* loop, uv_fs_poll_t* handle) {
-  uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_POLL);
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_FS_POLL);
   handle->poll_ctx = NULL;
   return 0;
 }
@@ -72,7 +72,7 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
   size_t len;
   int err;
 
-  if (uv_is_active((uv_handle_t*)handle))
+  if (uv_is_active((uv_handle_t*) handle))
     return 0;
 
   loop = handle->loop;
@@ -116,7 +116,7 @@ error:
 int uv_fs_poll_stop(uv_fs_poll_t* handle) {
   struct poll_ctx* ctx;
 
-  if (!uv_is_active((uv_handle_t*)handle))
+  if (!uv_is_active((uv_handle_t*) handle))
     return 0;
 
   ctx = handle->poll_ctx;
@@ -126,8 +126,8 @@ int uv_fs_poll_stop(uv_fs_poll_t* handle) {
   /* Close the timer if it's active. If it's inactive, there's a stat request
    * in progress and poll_cb will take care of the cleanup.
    */
-  if (uv_is_active((uv_handle_t*)&ctx->timer_handle))
-    uv_close((uv_handle_t*)&ctx->timer_handle, timer_close_cb);
+  if (uv_is_active((uv_handle_t*) &ctx->timer_handle))
+    uv_close((uv_handle_t*) &ctx->timer_handle, timer_close_cb);
 
   uv__handle_stop(handle);
 
@@ -142,7 +142,7 @@ int uv_fs_poll_getpath(uv_fs_poll_t* handle, char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  if (!uv_is_active((uv_handle_t*)handle)) {
+  if (!uv_is_active((uv_handle_t*) handle)) {
     *size = 0;
     return UV_EINVAL;
   }
@@ -168,7 +168,7 @@ void uv__fs_poll_close(uv_fs_poll_t* handle) {
   uv_fs_poll_stop(handle);
 
   if (handle->poll_ctx == NULL)
-    uv__make_close_pending((uv_handle_t*)handle);
+    uv__make_close_pending((uv_handle_t*) handle);
 }
 
 
@@ -194,7 +194,7 @@ static void poll_cb(uv_fs_t* req) {
   ctx = container_of(req, struct poll_ctx, fs_req);
   handle = ctx->parent_handle;
 
-  if (!uv_is_active((uv_handle_t*)handle) || uv__is_closing(handle))
+  if (!uv_is_active((uv_handle_t*) handle) || uv__is_closing(handle))
     goto out;
 
   if (req->result != 0) {
@@ -220,8 +220,8 @@ static void poll_cb(uv_fs_t* req) {
 out:
   uv_fs_req_cleanup(req);
 
-  if (!uv_is_active((uv_handle_t*)handle) || uv__is_closing(handle)) {
-    uv_close((uv_handle_t*)&ctx->timer_handle, timer_close_cb);
+  if (!uv_is_active((uv_handle_t*) handle) || uv__is_closing(handle)) {
+    uv_close((uv_handle_t*) &ctx->timer_handle, timer_close_cb);
     return;
   }
 
@@ -245,10 +245,9 @@ static void timer_close_cb(uv_handle_t* timer) {
   if (ctx == handle->poll_ctx) {
     handle->poll_ctx = ctx->previous;
     if (handle->poll_ctx == NULL && uv__is_closing(handle))
-      uv__make_close_pending((uv_handle_t*)handle);
+      uv__make_close_pending((uv_handle_t*) handle);
   } else {
-    for (last = handle->poll_ctx, it = last->previous;
-         it != ctx;
+    for (last = handle->poll_ctx, it = last->previous; it != ctx;
          last = it, it = it->previous) {
       assert(last->previous != NULL);
     }
@@ -259,27 +258,23 @@ static void timer_close_cb(uv_handle_t* timer) {
 
 
 static int statbuf_eq(const uv_stat_t* a, const uv_stat_t* b) {
-  return a->st_ctim.tv_nsec == b->st_ctim.tv_nsec
-      && a->st_mtim.tv_nsec == b->st_mtim.tv_nsec
-      && a->st_birthtim.tv_nsec == b->st_birthtim.tv_nsec
-      && a->st_ctim.tv_sec == b->st_ctim.tv_sec
-      && a->st_mtim.tv_sec == b->st_mtim.tv_sec
-      && a->st_birthtim.tv_sec == b->st_birthtim.tv_sec
-      && a->st_size == b->st_size
-      && a->st_mode == b->st_mode
-      && a->st_uid == b->st_uid
-      && a->st_gid == b->st_gid
-      && a->st_ino == b->st_ino
-      && a->st_dev == b->st_dev
-      && a->st_flags == b->st_flags
-      && a->st_gen == b->st_gen;
+  return a->st_ctim.tv_nsec == b->st_ctim.tv_nsec &&
+         a->st_mtim.tv_nsec == b->st_mtim.tv_nsec &&
+         a->st_birthtim.tv_nsec == b->st_birthtim.tv_nsec &&
+         a->st_ctim.tv_sec == b->st_ctim.tv_sec &&
+         a->st_mtim.tv_sec == b->st_mtim.tv_sec &&
+         a->st_birthtim.tv_sec == b->st_birthtim.tv_sec &&
+         a->st_size == b->st_size && a->st_mode == b->st_mode &&
+         a->st_uid == b->st_uid && a->st_gid == b->st_gid &&
+         a->st_ino == b->st_ino && a->st_dev == b->st_dev &&
+         a->st_flags == b->st_flags && a->st_gen == b->st_gen;
 }
 
 
 #if defined(_WIN32)
 
-#include "win/internal.h"
-#include "win/handle-inl.h"
+#  include "win/internal.h"
+#  include "win/handle-inl.h"
 
 void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle) {
   assert(handle->flags & UV_HANDLE_CLOSING);

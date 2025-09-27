@@ -21,17 +21,17 @@
 
 #ifdef _WIN32
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
-#include <errno.h>
-#include <io.h>
-#include <string.h>
-#include <windows.h>
+#  include <errno.h>
+#  include <io.h>
+#  include <string.h>
+#  include <windows.h>
 
-#define ESC "\x1b"
-#define EUR_UTF8 "\xe2\x82\xac"
-#define EUR_UNICODE 0x20AC
+#  define ESC         "\x1b"
+#  define EUR_UTF8    "\xe2\x82\xac"
+#  define EUR_UNICODE 0x20AC
 
 
 const char* expect_str = NULL;
@@ -44,8 +44,10 @@ static void dump_str(const char* str, ssize_t len) {
   }
 }
 
-static void print_err_msg(const char* expect, ssize_t expect_len,
-                          const char* found, ssize_t found_len) {
+static void print_err_msg(const char* expect,
+                          ssize_t expect_len,
+                          const char* found,
+                          ssize_t found_len) {
   fprintf(stderr, "expect ");
   dump_str(expect, expect_len);
   fprintf(stderr, ", but found ");
@@ -62,8 +64,10 @@ static void tty_alloc(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
     if (nread != expect_nread) {
-      fprintf(stderr, "expected nread %ld, but found %ld\n",
-              (long)expect_nread, (long)nread);
+      fprintf(stderr,
+              "expected nread %ld, but found %ld\n",
+              (long) expect_nread,
+              (long) nread);
       print_err_msg(expect_str, expect_nread, buf->base, nread);
       ASSERT(FALSE);
     }
@@ -77,9 +81,11 @@ static void tty_read(uv_stream_t* tty_in, ssize_t nread, const uv_buf_t* buf) {
   }
 }
 
-static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
-                                   BOOL is_wsl, INPUT_RECORD* records) {
-# define KEV(I) records[(I)].Event.KeyEvent
+static void make_key_event_records(WORD virt_key,
+                                   DWORD ctr_key_state,
+                                   BOOL is_wsl,
+                                   INPUT_RECORD* records) {
+#  define KEV(I) records[(I)].Event.KeyEvent
   BYTE kb_state[256] = {0};
   WCHAR buf[2];
   int ret;
@@ -90,7 +96,7 @@ static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
   KEV(0).wVirtualKeyCode = KEV(1).wVirtualKeyCode = virt_key;
   KEV(0).wRepeatCount = KEV(1).wRepeatCount = 1;
   KEV(0).wVirtualScanCode = KEV(1).wVirtualScanCode =
-    MapVirtualKeyW(virt_key, MAPVK_VK_TO_VSC);
+      MapVirtualKeyW(virt_key, MAPVK_VK_TO_VSC);
   KEV(0).dwControlKeyState = KEV(1).dwControlKeyState = ctr_key_state;
   if (ctr_key_state & LEFT_ALT_PRESSED) {
     kb_state[VK_LMENU] = 0x01;
@@ -109,9 +115,8 @@ static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
   }
   ret = ToUnicode(virt_key, KEV(0).wVirtualScanCode, kb_state, buf, 2, 0);
   if (ret == 1) {
-    if(!is_wsl &&
-        ((ctr_key_state & LEFT_ALT_PRESSED) ||
-         (ctr_key_state & RIGHT_ALT_PRESSED))) {
+    if (!is_wsl && ((ctr_key_state & LEFT_ALT_PRESSED) ||
+                    (ctr_key_state & RIGHT_ALT_PRESSED))) {
       /*
        * If ALT key is pressed, the UnicodeChar value of the keyup event is
        * set to 0 on nomal console. Emulate this behavior.
@@ -119,7 +124,7 @@ static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
        */
       KEV(0).uChar.UnicodeChar = buf[0];
       KEV(1).uChar.UnicodeChar = 0;
-    } else{
+    } else {
       /*
        * In WSL UnicodeChar is normally set. This behavior cause #2111.
        */
@@ -128,7 +133,7 @@ static void make_key_event_records(WORD virt_key, DWORD ctr_key_state,
   } else {
     KEV(0).uChar.UnicodeChar = KEV(1).uChar.UnicodeChar = 0;
   }
-# undef KEV
+#  undef KEV
 }
 
 TEST_IMPL(tty_duplicate_vt100_fn_key_libuv) {
@@ -155,19 +160,19 @@ TEST_IMPL(tty_duplicate_vt100_fn_key_libuv) {
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
 
-  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
+  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1); /* Readable. */
   ASSERT_OK(r);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
-  r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
+  r = uv_read_start((uv_stream_t*) &tty_in, tty_alloc, tty_read);
   ASSERT_OK(r);
 
   /*
    * libuv has chosen to emit ESC[[A, but other terminals, and even
    * Windows itself use a different escape sequence, see the test below.
    */
-  expect_str = ESC"[[A";
+  expect_str = ESC "[[A";
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
@@ -212,19 +217,19 @@ TEST_IMPL(tty_duplicate_vt100_fn_key_winvt) {
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
 
-  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
+  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1); /* Readable. */
   ASSERT_OK(r);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
-  r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
+  r = uv_read_start((uv_stream_t*) &tty_in, tty_alloc, tty_read);
   ASSERT_OK(r);
 
   /*
    * Some keys, like F1, get are assigned a different value by Windows
    * in ENABLE_VIRTUAL_TERMINAL_INPUT mode vs. libuv in the test above.
    */
-  expect_str = ESC"OP";
+  expect_str = ESC "OP";
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
@@ -269,15 +274,15 @@ TEST_IMPL(tty_duplicate_alt_modifier_key) {
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
 
-  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
+  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1); /* Readable. */
   ASSERT_OK(r);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
-  r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
+  r = uv_read_start((uv_stream_t*) &tty_in, tty_alloc, tty_read);
   ASSERT_OK(r);
 
-  expect_str = ESC"a"ESC"a";
+  expect_str = ESC "a" ESC "a";
   expect_nread = strlen(expect_str);
 
   /* Turn on raw mode. */
@@ -335,12 +340,12 @@ TEST_IMPL(tty_composing_character) {
   ASSERT_GE(ttyin_fd, 0);
   ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
 
-  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1);  /* Readable. */
+  r = uv_tty_init(uv_default_loop(), &tty_in, ttyin_fd, 1); /* Readable. */
   ASSERT_OK(r);
   ASSERT(uv_is_readable((uv_stream_t*) &tty_in));
   ASSERT(!uv_is_writable((uv_stream_t*) &tty_in));
 
-  r = uv_read_start((uv_stream_t*)&tty_in, tty_alloc, tty_read);
+  r = uv_read_start((uv_stream_t*) &tty_in, tty_alloc, tty_read);
   ASSERT_OK(r);
 
   expect_str = EUR_UTF8;
@@ -376,6 +381,6 @@ TEST_IMPL(tty_composing_character) {
 
 #else
 
-typedef int file_has_no_tests;  /* ISO C forbids an empty translation unit. */
+typedef int file_has_no_tests; /* ISO C forbids an empty translation unit. */
 
-#endif  /* ifndef _WIN32 */
+#endif /* ifndef _WIN32 */

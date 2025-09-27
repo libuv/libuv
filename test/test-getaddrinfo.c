@@ -23,7 +23,7 @@
 #include "task.h"
 #include <stdlib.h>
 
-#define CONCURRENT_COUNT    10
+#define CONCURRENT_COUNT 10
 
 static const char* name = "localhost";
 
@@ -39,11 +39,10 @@ static int fail_cb_called;
 static void getaddrinfo_fail_cb(uv_getaddrinfo_t* req,
                                 int status,
                                 struct addrinfo* res) {
-
   ASSERT_OK(fail_cb_called);
   ASSERT_LT(status, 0);
   ASSERT_NULL(res);
-  uv_freeaddrinfo(res);  /* Should not crash. */
+  uv_freeaddrinfo(res); /* Should not crash. */
   fail_cb_called++;
 }
 
@@ -62,7 +61,7 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
                                       int status,
                                       struct addrinfo* res) {
   int i;
-  int* data = (int*)handle->data;
+  int* data = (int*) handle->data;
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     if (&getaddrinfo_handles[i] == handle) {
@@ -72,7 +71,7 @@ static void getaddrinfo_cuncurrent_cb(uv_getaddrinfo_t* handle,
       break;
     }
   }
-  ASSERT (i < CONCURRENT_COUNT);
+  ASSERT(i < CONCURRENT_COUNT);
 
   free(data);
   uv_freeaddrinfo(res);
@@ -86,15 +85,16 @@ TEST_IMPL(getaddrinfo_fail) {
 #if defined(__QEMU__)
   RETURN_SKIP("Test does not currently work in QEMU");
 #endif
-  
+
   uv_getaddrinfo_t req;
 
-  ASSERT_EQ(UV_EINVAL, uv_getaddrinfo(uv_default_loop(),
-                                      &req,
-                                      (uv_getaddrinfo_cb) abort,
-                                      NULL,
-                                      NULL,
-                                      NULL));
+  ASSERT_EQ(UV_EINVAL,
+            uv_getaddrinfo(uv_default_loop(),
+                           &req,
+                           (uv_getaddrinfo_cb) abort,
+                           NULL,
+                           NULL,
+                           NULL));
 
   /* Use a FQDN by ending in a period */
   ASSERT_OK(uv_getaddrinfo(uv_default_loop(),
@@ -119,12 +119,13 @@ TEST_IMPL(getaddrinfo_fail_sync) {
   uv_getaddrinfo_t req;
 
   /* Use a FQDN by ending in a period */
-  ASSERT_GT(0, uv_getaddrinfo(uv_default_loop(),
-                              &req,
-                              NULL,
-                              "example.invalid.",
-                              NULL,
-                              NULL));
+  ASSERT_GT(0,
+            uv_getaddrinfo(uv_default_loop(),
+                           &req,
+                           NULL,
+                           "example.invalid.",
+                           NULL,
+                           NULL));
   uv_freeaddrinfo(req.addrinfo);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -139,7 +140,7 @@ TEST_IMPL(getaddrinfo_basic) {
 #endif
 
   int r;
-  getaddrinfo_handle = (uv_getaddrinfo_t*)malloc(sizeof(uv_getaddrinfo_t));
+  getaddrinfo_handle = (uv_getaddrinfo_t*) malloc(sizeof(uv_getaddrinfo_t));
 
   r = uv_getaddrinfo(uv_default_loop(),
                      getaddrinfo_handle,
@@ -165,12 +166,7 @@ TEST_IMPL(getaddrinfo_basic_sync) {
 #endif
   uv_getaddrinfo_t req;
 
-  ASSERT_OK(uv_getaddrinfo(uv_default_loop(),
-                           &req,
-                           NULL,
-                           name,
-                           NULL,
-                           NULL));
+  ASSERT_OK(uv_getaddrinfo(uv_default_loop(), &req, NULL, name, NULL, NULL));
   uv_freeaddrinfo(req.addrinfo);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -183,14 +179,14 @@ TEST_IMPL(getaddrinfo_concurrent) {
 #if defined(__QEMU__)
   RETURN_SKIP("Test does not currently work in QEMU");
 #endif
-  
+
   int i, r;
   int* data;
 
   for (i = 0; i < CONCURRENT_COUNT; i++) {
     callback_counts[i] = 0;
 
-    data = (int*)malloc(sizeof(int));
+    data = (int*) malloc(sizeof(int));
     ASSERT_NOT_NULL(data);
     *data = i;
     getaddrinfo_handles[i].data = data;

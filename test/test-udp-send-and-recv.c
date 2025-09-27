@@ -26,8 +26,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define CHECK_HANDLE(handle) \
-  ASSERT_NE((uv_udp_t*)(handle) == &server || (uv_udp_t*)(handle) == &client, 0)
+#define CHECK_HANDLE(handle)                                                   \
+  ASSERT_NE(                                                                   \
+      (uv_udp_t*) (handle) == &server || (uv_udp_t*) (handle) == &client,      \
+      0)
 
 static uv_udp_t server;
 static uv_udp_t client;
@@ -140,9 +142,9 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT(!memcmp("PING", rcvbuf->base, nread));
 
   /* FIXME? `uv_udp_recv_stop` does what it says: recv_cb is not called
-    * anymore. That's problematic because the read buffer won't be returned
-    * either... Not sure I like that but it's consistent with `uv_read_stop`.
-    */
+   * anymore. That's problematic because the read buffer won't be returned
+   * either... Not sure I like that but it's consistent with `uv_read_stop`.
+   */
   r = uv_udp_recv_stop(handle);
   ASSERT_OK(r);
 

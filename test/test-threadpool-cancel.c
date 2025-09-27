@@ -23,16 +23,15 @@
 #include "task.h"
 
 #ifdef _WIN32
-# define putenv _putenv
+#  define putenv _putenv
 #endif
 
-#define INIT_CANCEL_INFO(ci, what)                                            \
-  do {                                                                        \
-    (ci)->reqs = (what);                                                      \
-    (ci)->nreqs = ARRAY_SIZE(what);                                           \
-    (ci)->stride = sizeof((what)[0]);                                         \
-  }                                                                           \
-  while (0)
+#define INIT_CANCEL_INFO(ci, what)                                             \
+  do {                                                                         \
+    (ci)->reqs = (what);                                                       \
+    (ci)->nreqs = ARRAY_SIZE(what);                                            \
+    (ci)->stride = sizeof((what)[0]);                                          \
+  } while (0)
 
 struct cancel_info {
   void* reqs;
@@ -72,7 +71,7 @@ static void saturate_threadpool(void) {
   snprintf(buf,
            sizeof(buf),
            "UV_THREADPOOL_SIZE=%lu",
-           (unsigned long)ARRAY_SIZE(pause_reqs));
+           (unsigned long) ARRAY_SIZE(pause_reqs));
   putenv(buf);
 
   loop = uv_default_loop();
@@ -98,23 +97,23 @@ static int known_broken(uv_req_t* req) {
 #ifdef __linux__
   /* TODO(bnoordhuis) make cancellation work with io_uring */
   switch (((uv_fs_t*) req)->fs_type) {
-    case UV_FS_CLOSE:
-    case UV_FS_FDATASYNC:
-    case UV_FS_FSTAT:
-    case UV_FS_FSYNC:
-    case UV_FS_LINK:
-    case UV_FS_LSTAT:
-    case UV_FS_MKDIR:
-    case UV_FS_OPEN:
-    case UV_FS_READ:
-    case UV_FS_RENAME:
-    case UV_FS_STAT:
-    case UV_FS_SYMLINK:
-    case UV_FS_WRITE:
-    case UV_FS_UNLINK:
-      return 1;
-    default:  /* Squelch -Wswitch warnings. */
-      break;
+  case UV_FS_CLOSE:
+  case UV_FS_FDATASYNC:
+  case UV_FS_FSTAT:
+  case UV_FS_FSYNC:
+  case UV_FS_LINK:
+  case UV_FS_LSTAT:
+  case UV_FS_MKDIR:
+  case UV_FS_OPEN:
+  case UV_FS_READ:
+  case UV_FS_RENAME:
+  case UV_FS_STAT:
+  case UV_FS_SYMLINK:
+  case UV_FS_WRITE:
+  case UV_FS_UNLINK:
+    return 1;
+  default: /* Squelch -Wswitch warnings. */
+    break;
   }
 #endif
 
@@ -123,8 +122,7 @@ static int known_broken(uv_req_t* req) {
 
 
 static void fs_cb(uv_fs_t* req) {
-  ASSERT_NE(known_broken((uv_req_t*) req) || \
-      req->result == UV_ECANCELED, 0);
+  ASSERT_NE(known_broken((uv_req_t*) req) || req->result == UV_ECANCELED, 0);
   uv_fs_req_cleanup(req);
   fs_cb_called++;
 }
@@ -135,7 +133,7 @@ static void getaddrinfo_cb(uv_getaddrinfo_t* req,
                            struct addrinfo* res) {
   ASSERT_EQ(status, UV_EAI_CANCELED);
   ASSERT_NULL(res);
-  uv_freeaddrinfo(res);  /* Should not crash. */
+  uv_freeaddrinfo(res); /* Should not crash. */
 }
 
 
@@ -244,16 +242,32 @@ TEST_IMPL(threadpool_cancel_getnameinfo) {
   loop = uv_default_loop();
   saturate_threadpool();
 
-  r = uv_getnameinfo(loop, reqs + 0, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(loop,
+                     reqs + 0,
+                     getnameinfo_cb,
+                     (const struct sockaddr*) &addr4,
+                     0);
   ASSERT_OK(r);
 
-  r = uv_getnameinfo(loop, reqs + 1, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(loop,
+                     reqs + 1,
+                     getnameinfo_cb,
+                     (const struct sockaddr*) &addr4,
+                     0);
   ASSERT_OK(r);
 
-  r = uv_getnameinfo(loop, reqs + 2, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(loop,
+                     reqs + 2,
+                     getnameinfo_cb,
+                     (const struct sockaddr*) &addr4,
+                     0);
   ASSERT_OK(r);
 
-  r = uv_getnameinfo(loop, reqs + 3, getnameinfo_cb, (const struct sockaddr*)&addr4, 0);
+  r = uv_getnameinfo(loop,
+                     reqs + 3,
+                     getnameinfo_cb,
+                     (const struct sockaddr*) &addr4,
+                     0);
   ASSERT_OK(r);
 
   ASSERT_OK(uv_timer_init(loop, &ci.timer_handle));

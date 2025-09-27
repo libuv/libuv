@@ -31,7 +31,7 @@
 
 
 /* Does the file path contain embedded nul bytes? */
-static int includes_invalid_nul(const char *s, size_t n) {
+static int includes_invalid_nul(const char* s, size_t n) {
   if (n == 0)
     return 0;
 #ifdef __linux__
@@ -46,7 +46,7 @@ static int includes_invalid_nul(const char *s, size_t n) {
 
 
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
-  uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
+  uv__stream_init(loop, (uv_stream_t*) handle, UV_NAMED_PIPE);
   handle->shutdown_req = NULL;
   handle->connect_req = NULL;
   handle->pipe_fname = NULL;
@@ -78,9 +78,9 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (name == NULL)
     return UV_EINVAL;
 
-  /* namelen==0 on Linux means autobind the listen socket in the abstract
-   * socket namespace, see `man 7 unix` for details.
-   */
+    /* namelen==0 on Linux means autobind the listen socket in the abstract
+     * socket namespace, see `man 7 unix` for details.
+     */
 #if !defined(__linux__)
   if (namelen == 0)
     return UV_EINVAL;
@@ -128,7 +128,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   memcpy(&saddr.sun_path, name, namelen);
   saddr.sun_family = AF_UNIX;
 
-  if (bind(sockfd, (struct sockaddr*)&saddr, addrlen)) {
+  if (bind(sockfd, (struct sockaddr*) &saddr, addrlen)) {
     err = UV__ERR(errno);
     /* Convert ENOENT to EACCES for compatibility with Windows. */
     if (err == UV_ENOENT)
@@ -184,11 +184,11 @@ void uv__pipe_close(uv_pipe_t* handle) {
      * another thread or process.
      */
     unlink(handle->pipe_fname);
-    uv__free((void*)handle->pipe_fname);
+    uv__free((void*) handle->pipe_fname);
     handle->pipe_fname = NULL;
   }
 
-  uv__stream_close((uv_stream_t*)handle);
+  uv__stream_close((uv_stream_t*) handle);
 }
 
 
@@ -224,14 +224,14 @@ int uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
   if (mode != O_RDONLY)
     flags |= UV_HANDLE_WRITABLE;
 
-  return uv__stream_open((uv_stream_t*)handle, fd, flags);
+  return uv__stream_open((uv_stream_t*) handle, fd, flags);
 }
 
 
 void uv_pipe_connect(uv_connect_t* req,
-                    uv_pipe_t* handle,
-                    const char* name,
-                    uv_connect_cb cb) {
+                     uv_pipe_t* handle,
+                     const char* name,
+                     uv_connect_cb cb) {
   int err;
 
   err = uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
@@ -302,9 +302,8 @@ int uv_pipe_connect2(uv_connect_t* req,
     addrlen = sizeof saddr;
 
   do {
-    r = connect(uv__stream_fd(handle), (struct sockaddr*)&saddr, addrlen);
-  }
-  while (r == -1 && errno == EINTR);
+    r = connect(uv__stream_fd(handle), (struct sockaddr*) &saddr, addrlen);
+  } while (r == -1 && errno == EINTR);
 
   if (r == -1 && errno != EINPROGRESS) {
     err = UV__ERR(errno);
@@ -321,7 +320,7 @@ int uv_pipe_connect2(uv_connect_t* req,
 
   err = 0;
   if (new_sock) {
-    err = uv__stream_open((uv_stream_t*)handle,
+    err = uv__stream_open((uv_stream_t*) handle,
                           uv__stream_fd(handle),
                           UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
   }
@@ -387,7 +386,7 @@ static int uv__pipe_getsockpeername(const uv_pipe_t* handle,
     addrlen = p - sa.sun_path;
   }
 
-  if ((size_t)addrlen + slop > *size) {
+  if ((size_t) addrlen + slop > *size) {
     *size = addrlen + slop;
     return UV_ENOBUFS;
   }
@@ -460,8 +459,7 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
   if (fd == -1)
     return UV_EBADF;
 
-  if (mode != UV_READABLE &&
-      mode != UV_WRITABLE &&
+  if (mode != UV_READABLE && mode != UV_WRITABLE &&
       mode != (UV_WRITABLE | UV_READABLE))
     return UV_EINVAL;
 
@@ -483,7 +481,8 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
     return r;
   name = name_buffer;
 
-  /* On some platforms, getsockname returns an empty string, and we try with pipe_fname. */
+  /* On some platforms, getsockname returns an empty string, and we try with
+   * pipe_fname. */
   if (name_len == 0 && handle->pipe_fname != NULL)
     name = handle->pipe_fname;
 
@@ -497,12 +496,8 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
   uv_os_fd_t temp[2];
   int err;
-#if defined(__linux__) || \
-    defined(__FreeBSD__) || \
-    defined(__OpenBSD__) || \
-    defined(__DragonFly__) || \
-    defined(__NetBSD__) || \
-    defined(__illumos__) || \
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__OpenBSD__) ||      \
+    defined(__DragonFly__) || defined(__NetBSD__) || defined(__illumos__) ||   \
     (defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4)
   int flags = O_CLOEXEC;
 
@@ -548,7 +543,5 @@ fail:
 
 
 int uv__make_pipe(int fds[2], int flags) {
-  return uv_pipe(fds,
-                 flags & UV_NONBLOCK_PIPE,
-                 flags & UV_NONBLOCK_PIPE);
+  return uv_pipe(fds, flags & UV_NONBLOCK_PIPE, flags & UV_NONBLOCK_PIPE);
 }

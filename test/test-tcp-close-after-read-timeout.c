@@ -64,7 +64,8 @@ static void on_client_alloc(uv_handle_t* handle,
 }
 
 
-static void on_client_read(uv_stream_t* stream, ssize_t nread,
+static void on_client_read(uv_stream_t* stream,
+                           ssize_t nread,
                            const uv_buf_t* buf) {
   ASSERT_LT(nread, 0);
   read_cb_called++;
@@ -81,8 +82,8 @@ static void on_client_timeout(uv_timer_t* handle) {
 
 
 static void on_connection_alloc(uv_handle_t* handle,
-                     size_t suggested_size,
-                     uv_buf_t* buf) {
+                                size_t suggested_size,
+                                uv_buf_t* buf) {
   static char slab[8];
   buf->base = slab;
   buf->len = sizeof(slab);
@@ -113,8 +114,9 @@ static void on_connection(uv_stream_t* server, int status) {
 
 static void on_close(uv_handle_t* handle) {
   ASSERT_NE(handle == (uv_handle_t*) &client ||
-            handle == (uv_handle_t*) &connection ||
-            handle == (uv_handle_t*) &timer, 0);
+                handle == (uv_handle_t*) &connection ||
+                handle == (uv_handle_t*) &timer,
+            0);
   on_close_called++;
 }
 

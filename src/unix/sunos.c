@@ -29,7 +29,7 @@
 #include <errno.h>
 
 #ifndef SUNOS_NO_IFADDRS
-# include <ifaddrs.h>
+#  include <ifaddrs.h>
 #endif
 #include <net/if.h>
 #include <net/if_dl.h>
@@ -45,22 +45,22 @@
 #include <sys/port.h>
 #include <port.h>
 
-#define PORT_FIRED 0x69
-#define PORT_UNUSED 0x0
-#define PORT_LOADED 0x99
+#define PORT_FIRED   0x69
+#define PORT_UNUSED  0x0
+#define PORT_LOADED  0x99
 #define PORT_DELETED -1
 
 #if (!defined(_LP64)) && (_FILE_OFFSET_BITS - 0 == 64)
-#define PROCFS_FILE_OFFSET_BITS_HACK 1
-#undef _FILE_OFFSET_BITS
+#  define PROCFS_FILE_OFFSET_BITS_HACK 1
+#  undef _FILE_OFFSET_BITS
 #else
-#define PROCFS_FILE_OFFSET_BITS_HACK 0
+#  define PROCFS_FILE_OFFSET_BITS_HACK 0
 #endif
 
 #include <procfs.h>
 
 #if (PROCFS_FILE_OFFSET_BITS_HACK - 0 == 1)
-#define _FILE_OFFSET_BITS 64
+#  define _FILE_OFFSET_BITS 64
 #endif
 
 
@@ -313,7 +313,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       nevents++;
 
       if (w != loop->watchers[fd])
-        continue;  /* Disabled by callback. */
+        continue; /* Disabled by callback. */
 
       /* Events Ports operates in oneshot mode, rearm timer on next run. */
       if (w->pevents != 0 && uv__queue_empty(&w->watcher_queue))
@@ -336,7 +336,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = NULL;
 
     if (have_signals != 0)
-      return;  /* Event loop should cycle now so don't poll again. */
+      return; /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -358,7 +358,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (timeout == -1)
       continue;
 
-update_timeout:
+  update_timeout:
     assert(timeout > 0);
 
     diff = loop->time - base;
@@ -413,7 +413,7 @@ uint64_t uv_get_total_memory(void) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return 0; /* Memory constraints are unknown. */
 }
 
 
@@ -429,7 +429,7 @@ void uv_loadavg(double avg[3]) {
 
 #if defined(PORT_SOURCE_FILE)
 
-static int uv__fs_event_rearm(uv_fs_event_t *handle) {
+static int uv__fs_event_rearm(uv_fs_event_t* handle) {
   if (handle->fd == PORT_DELETED)
     return UV_EBADF;
 
@@ -447,7 +447,7 @@ static int uv__fs_event_rearm(uv_fs_event_t *handle) {
 
 
 void uv__fs_event_read(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
-  uv_fs_event_t *handle = NULL;
+  uv_fs_event_t* handle = NULL;
   timespec_t timeout;
   port_event_t pe;
   int events;
@@ -470,8 +470,7 @@ void uv__fs_event_read(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
     do {
       memset(&timeout, 0, sizeof timeout);
       r = port_getn(loop->fs_fd, &pe, 1, &n, &timeout);
-    }
-    while (r == -1 && errno == EINTR);
+    } while (r == -1 && errno == EINTR);
 
     if ((r == -1 && errno == ETIME) || n == 0)
       break;
@@ -499,13 +498,12 @@ void uv__fs_event_read(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
       if (r != 0)
         handle->cb(handle, NULL, 0, r);
     }
-  }
-  while (handle->fd != PORT_DELETED);
+  } while (handle->fd != PORT_DELETED);
 }
 
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
-  uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_FS_EVENT);
   return 0;
 }
 
@@ -545,10 +543,10 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   if (first_run) {
     err = uv__io_init_start(handle->loop,
-                             &handle->loop->fs_event_watcher,
-                             UV__FS_EVENT_READ,
-                             portfd,
-                             POLLIN);
+                            &handle->loop->fs_event_watcher,
+                            UV__FS_EVENT_READ,
+                            portfd,
+                            POLLIN);
     if (err)
       uv__handle_stop(handle);
 
@@ -567,8 +565,8 @@ static int uv__fs_event_stop(uv_fs_event_t* handle) {
 
   if (handle->fd == PORT_LOADED) {
     ret = port_dissociate(handle->loop->fs_fd,
-                    PORT_SOURCE_FILE,
-                    (uintptr_t) &handle->fo);
+                          PORT_SOURCE_FILE,
+                          (uintptr_t) &handle->fo);
   }
 
   handle->fd = PORT_DELETED;
@@ -638,7 +636,7 @@ int uv_resident_set_memory(size_t* rss) {
   /* FIXME(bnoordhuis) Handle EINTR. */
   err = UV_EINVAL;
   if (read(fd, &psinfo, sizeof(psinfo)) == sizeof(psinfo)) {
-    *rss = (size_t)psinfo.pr_rssize * 1024;
+    *rss = (size_t) psinfo.pr_rssize * 1024;
     err = 0;
   }
   uv__close(fd);
@@ -648,9 +646,9 @@ int uv_resident_set_memory(size_t* rss) {
 
 
 int uv_uptime(double* uptime) {
-  kstat_ctl_t   *kc;
-  kstat_t       *ksp;
-  kstat_named_t *knp;
+  kstat_ctl_t* kc;
+  kstat_t* ksp;
+  kstat_named_t* knp;
 
   long hz = sysconf(_SC_CLK_TCK);
 
@@ -662,7 +660,7 @@ int uv_uptime(double* uptime) {
   if (kstat_read(kc, ksp, NULL) == -1) {
     *uptime = -1;
   } else {
-    knp = (kstat_named_t*)  kstat_data_lookup(ksp, (char*) "clk_intr");
+    knp = (kstat_named_t*) kstat_data_lookup(ksp, (char*) "clk_intr");
     *uptime = knp->value.ul / hz;
   }
   kstat_close(kc);
@@ -672,10 +670,10 @@ int uv_uptime(double* uptime) {
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  int           lookup_instance;
-  kstat_ctl_t   *kc;
-  kstat_t       *ksp;
-  kstat_named_t *knp;
+  int lookup_instance;
+  kstat_ctl_t* kc;
+  kstat_t* ksp;
+  kstat_named_t* knp;
   uv_cpu_info_t* cpu_info;
 
   kc = kstat_open();
@@ -775,14 +773,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
  */
 static int uv__set_phys_addr(uv_interface_address_t* address,
                              struct ifaddrs* ent) {
-
   struct sockaddr_dl* sa_addr;
   int sockfd;
   size_t i;
   struct arpreq arpreq;
 
   /* This appears to only work as root */
-  sa_addr = (struct sockaddr_dl*)(ent->ifa_addr);
+  sa_addr = (struct sockaddr_dl*) (ent->ifa_addr);
   memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
   for (i = 0; i < sizeof(address->phys_addr); i++) {
     /* Check that all bytes of phys_addr are zero. */
@@ -791,10 +788,10 @@ static int uv__set_phys_addr(uv_interface_address_t* address,
   }
   memset(&arpreq, 0, sizeof(arpreq));
   if (address->address.address4.sin_family == AF_INET) {
-    struct sockaddr_in* sin = ((struct sockaddr_in*)&arpreq.arp_pa);
+    struct sockaddr_in* sin = ((struct sockaddr_in*) &arpreq.arp_pa);
     sin->sin_addr.s_addr = address->address.address4.sin_addr.s_addr;
   } else if (address->address.address4.sin_family == AF_INET6) {
-    struct sockaddr_in6* sin = ((struct sockaddr_in6*)&arpreq.arp_pa);
+    struct sockaddr_in6* sin = ((struct sockaddr_in6*) &arpreq.arp_pa);
     memcpy(sin->sin6_addr.s6_addr,
            address->address.address6.sin6_addr.s6_addr,
            sizeof(address->address.address6.sin6_addr.s6_addr));
@@ -806,7 +803,7 @@ static int uv__set_phys_addr(uv_interface_address_t* address,
   if (sockfd < 0)
     return UV__ERR(errno);
 
-  if (ioctl(sockfd, SIOCGARP, (char*)&arpreq) == -1) {
+  if (ioctl(sockfd, SIOCGARP, (char*) &arpreq) == -1) {
     uv__close(sockfd);
     return UV__ERR(errno);
   }
@@ -816,7 +813,7 @@ static int uv__set_phys_addr(uv_interface_address_t* address,
 }
 
 
-static int uv__ifaddr_exclude(struct ifaddrs *ent) {
+static int uv__ifaddr_exclude(struct ifaddrs* ent) {
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;
   if (ent->ifa_addr == NULL)
@@ -883,8 +880,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
       address->netmask.netmask4 = *((struct sockaddr_in*) ent->ifa_netmask);
     }
 
-    address->is_internal = !!((ent->ifa_flags & IFF_PRIVATE) ||
-                           (ent->ifa_flags & IFF_LOOPBACK));
+    address->is_internal =
+        !!((ent->ifa_flags & IFF_PRIVATE) || (ent->ifa_flags & IFF_LOOPBACK));
 
     uv__set_phys_addr(address, ent);
     address++;
@@ -894,7 +891,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   return 0;
 }
-#endif  /* SUNOS_NO_IFADDRS */
+#endif /* SUNOS_NO_IFADDRS */
 
 
 #if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L

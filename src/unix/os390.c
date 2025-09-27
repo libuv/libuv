@@ -33,14 +33,14 @@
 #include "zos-base.h"
 #include "zos-sys-info.h"
 #if defined(__clang__)
-#include "csrsic.h"
+#  include "csrsic.h"
 #else
-#include "//'SYS1.SAMPLIB(CSRSIC)'"
+#  include "//'SYS1.SAMPLIB(CSRSIC)'"
 #endif
 
-#define CVT_PTR           0x10
-#define PSA_PTR           0x00
-#define CSD_OFFSET        0x294
+#define CVT_PTR    0x10
+#define PSA_PTR    0x00
+#define CSD_OFFSET 0x294
 
 /*
     Long-term average CPU service used by this logical partition,
@@ -51,39 +51,39 @@
     are based on the logical CPU adjustment factor. It is available
     if the hardware supports LPAR cluster.
 */
-#define RCTLACS_OFFSET    0xC4
+#define RCTLACS_OFFSET 0xC4
 
 /* 32-bit count of alive CPUs. This includes both CPs and IFAs */
-#define CSD_NUMBER_ONLINE_CPUS        0xD4
+#define CSD_NUMBER_ONLINE_CPUS 0xD4
 
 /* Address of system resources manager (SRM) control table */
-#define CVTOPCTP_OFFSET   0x25C
+#define CVTOPCTP_OFFSET 0x25C
 
 /* Address of the RCT table */
-#define RMCTRCT_OFFSET    0xE4
+#define RMCTRCT_OFFSET 0xE4
 
 /* Address of the rsm control and enumeration area. */
-#define CVTRCEP_OFFSET    0x490
+#define CVTRCEP_OFFSET 0x490
 
 /* Total number of frames currently on all available frame queues. */
-#define RCEAFC_OFFSET     0x088
+#define RCEAFC_OFFSET 0x088
 
 /* Pointer to the home (current) ASCB. */
-#define PSAAOLD           0x224
+#define PSAAOLD 0x224
 
 /* Pointer to rsm address space block extension. */
-#define ASCBRSME          0x16C
+#define ASCBRSME 0x16C
 
 /*
     NUMBER OF FRAMES CURRENTLY IN USE BY THIS ADDRESS SPACE.
     It does not include 2G frames.
 */
-#define RAXFMCT           0x2C
+#define RAXFMCT 0x2C
 
 /* Thread Entry constants */
-#define PGTH_CURRENT  1
-#define PGTH_LEN      26
-#define PGTHAPATH     0x20
+#define PGTH_CURRENT 1
+#define PGTH_LEN     26
+#define PGTHAPATH    0x20
 #pragma linkage(BPX4GTH, OS)
 #pragma linkage(BPX1GTH, OS)
 
@@ -148,9 +148,10 @@ static int getexe(char* buf, size_t len) {
  * We could use a static buffer for the path manipulations that we need outside
  * of the function, but this function could be called by multiple consumers and
  * we don't want to potentially create a race condition in the use of snprintf.
- * There is no direct way of getting the exe path in zOS - either through /procfs
- * or through some libc APIs. The below approach is to parse the argv[0]'s pattern
- * and use it in conjunction with PATH environment variable to craft one.
+ * There is no direct way of getting the exe path in zOS - either through
+ * /procfs or through some libc APIs. The below approach is to parse the
+ * argv[0]'s pattern and use it in conjunction with PATH environment variable to
+ * craft one.
  */
 int uv_exepath(char* buffer, size_t* size) {
   int res;
@@ -173,16 +174,16 @@ uint64_t uv_get_free_memory(void) {
 
   data_area_ptr cvt = {0};
   data_area_ptr rcep = {0};
-  cvt.assign = *(data_area_ptr_assign_type*)(CVT_PTR);
-  rcep.assign = *(data_area_ptr_assign_type*)(cvt.deref + CVTRCEP_OFFSET);
-  freeram = (uint64_t)*((uint32_t*)(rcep.deref + RCEAFC_OFFSET)) * 4096;
+  cvt.assign = *(data_area_ptr_assign_type*) (CVT_PTR);
+  rcep.assign = *(data_area_ptr_assign_type*) (cvt.deref + CVTRCEP_OFFSET);
+  freeram = (uint64_t) * ((uint32_t*) (rcep.deref + RCEAFC_OFFSET)) * 4096;
   return freeram;
 }
 
 
 uint64_t uv_get_total_memory(void) {
   /* Use CVTRLSTG to get the size of actual real storage online at IPL in K. */
-  return (uint64_t)((int)((char *__ptr32 *__ptr32 *)0)[4][214]) * 1024;
+  return (uint64_t) ((int) ((char* __ptr32* __ptr32*) 0)[4][214]) * 1024;
 }
 
 
@@ -207,9 +208,9 @@ int uv_resident_set_memory(size_t* rss) {
   char* rax;
   size_t nframes;
 
-  ascb  = *(char* __ptr32 *)(PSA_PTR + PSAAOLD);
-  rax = *(char* __ptr32 *)(ascb + ASCBRSME);
-  nframes = *(unsigned int*)(rax + RAXFMCT);
+  ascb = *(char* __ptr32*) (PSA_PTR + PSAAOLD);
+  rax = *(char* __ptr32*) (ascb + ASCBRSME);
+  nframes = *(unsigned int*) (rax + RAXFMCT);
 
   *rss = nframes * sysconf(_SC_PAGESIZE);
   return 0;
@@ -217,8 +218,8 @@ int uv_resident_set_memory(size_t* rss) {
 
 
 int uv_uptime(double* uptime) {
-  struct utmpx u ;
-  struct utmpx *v;
+  struct utmpx u;
+  struct utmpx* v;
   time64_t t;
 
   u.ut_type = BOOT_TIME;
@@ -240,11 +241,13 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   data_area_ptr cvtopctp = {0};
   int cpu_usage_avg;
 
-  cvt.assign = *(data_area_ptr_assign_type*)(CVT_PTR);
+  cvt.assign = *(data_area_ptr_assign_type*) (CVT_PTR);
 
-  csd.assign = *((data_area_ptr_assign_type *) (cvt.deref + CSD_OFFSET));
-  cvtopctp.assign = *((data_area_ptr_assign_type *) (cvt.deref + CVTOPCTP_OFFSET));
-  rmctrct.assign = *((data_area_ptr_assign_type *) (cvtopctp.deref + RMCTRCT_OFFSET));
+  csd.assign = *((data_area_ptr_assign_type*) (cvt.deref + CSD_OFFSET));
+  cvtopctp.assign =
+      *((data_area_ptr_assign_type*) (cvt.deref + CVTOPCTP_OFFSET));
+  rmctrct.assign =
+      *((data_area_ptr_assign_type*) (cvtopctp.deref + RMCTRCT_OFFSET));
 
   *count = *((int*) (csd.deref + CSD_NUMBER_ONLINE_CPUS));
   cpu_usage_avg = *((unsigned short int*) (rmctrct.deref + RCTLACS_OFFSET));
@@ -256,11 +259,11 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   cpu_info = *cpu_infos;
   idx = 0;
   while (idx < *count) {
-    cpu_info->speed = *(int*)(info.siv1v2si22v1.si22v1cpucapability);
+    cpu_info->speed = *(int*) (info.siv1v2si22v1.si22v1cpucapability);
     cpu_info->model = uv__malloc(ZOSCPU_MODEL_LENGTH + 1);
     if (cpu_info->model == NULL) {
       uv_free_cpu_info(*cpu_infos, idx);
-      return UV_ENOMEM; 
+      return UV_ENOMEM;
     }
     __get_cpu_model(cpu_info->model, ZOSCPU_MODEL_LENGTH + 1);
     cpu_info->cpu_times.user = cpu_usage_avg;
@@ -317,10 +320,10 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
     return 0;
   }
 
-  ifr = (__net_ifconf6entry_t*)(ifc.__nif6h_buffer);
-  while ((char*)ifr < (char*)ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
+  ifr = (__net_ifconf6entry_t*) (ifc.__nif6h_buffer);
+  while ((char*) ifr < (char*) ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
     p = ifr;
-    ifr = (__net_ifconf6entry_t*)((char*)ifr + ifc.__nif6h_entrylen);
+    ifr = (__net_ifconf6entry_t*) ((char*) ifr + ifc.__nif6h_entrylen);
 
     if (!(p->__nif6e_addr.sin6_family == AF_INET6))
       continue;
@@ -347,10 +350,10 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   address = *addresses;
 
   count_names = 0;
-  ifr = (__net_ifconf6entry_t*)(ifc.__nif6h_buffer);
-  while ((char*)ifr < (char*)ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
+  ifr = (__net_ifconf6entry_t*) (ifc.__nif6h_buffer);
+  while ((char*) ifr < (char*) ifc.__nif6h_buffer + ifc.__nif6h_buflen) {
     p = ifr;
-    ifr = (__net_ifconf6entry_t*)((char*)ifr + ifc.__nif6h_entrylen);
+    ifr = (__net_ifconf6entry_t*) ((char*) ifr + ifc.__nif6h_entrylen);
 
     if (!(p->__nif6e_addr.sin6_family == AF_INET6))
       continue;
@@ -362,8 +365,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
 
     i = 0;
     /* Ignore EBCDIC space (0x40) padding in name */
-    while (i < ARRAY_SIZE(p->__nif6e_name) &&
-           p->__nif6e_name[i] != 0x40 &&
+    while (i < ARRAY_SIZE(p->__nif6e_name) && p->__nif6e_name[i] != 0x40 &&
            p->__nif6e_name[i] != 0)
       ++i;
     address->name = uv__malloc(i + 1);
@@ -452,15 +454,15 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     return UV__ERR(errno);
   }
 
-#define MAX(a,b) (((a)>(b))?(a):(b))
+#define MAX(a, b)    (((a) > (b)) ? (a) : (b))
 #define ADDR_SIZE(p) MAX((p).sa_len, sizeof(p))
 
   /* Count all up and running ipv4/ipv6 addresses */
   ifr = ifc.ifc_req;
-  while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
+  while ((char*) ifr < (char*) ifc.ifc_req + ifc.ifc_len) {
     p = ifr;
-    ifr = (struct ifreq*)
-      ((char*)ifr + sizeof(ifr->ifr_name) + ADDR_SIZE(ifr->ifr_addr));
+    ifr = (struct ifreq*) ((char*) ifr + sizeof(ifr->ifr_name) +
+                           ADDR_SIZE(ifr->ifr_addr));
 
     if (!(p->ifr_addr.sa_family == AF_INET6 ||
           p->ifr_addr.sa_family == AF_INET))
@@ -488,8 +490,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   }
 
   /* Alloc the return interface structs */
-  *addresses = uv__calloc(1, (*count + count_v6) *
-                          sizeof(uv_interface_address_t));
+  *addresses =
+      uv__calloc(1, (*count + count_v6) * sizeof(uv_interface_address_t));
 
   if (!(*addresses)) {
     if (count_v6)
@@ -511,10 +513,10 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   count_names = *count;
   ifr = ifc.ifc_req;
-  while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
+  while ((char*) ifr < (char*) ifc.ifc_req + ifc.ifc_len) {
     p = ifr;
-    ifr = (struct ifreq*)
-      ((char*)ifr + sizeof(ifr->ifr_name) + ADDR_SIZE(ifr->ifr_addr));
+    ifr = (struct ifreq*) ((char*) ifr + sizeof(ifr->ifr_name) +
+                           ADDR_SIZE(ifr->ifr_addr));
 
     if (!(p->ifr_addr.sa_family == AF_INET6 ||
           p->ifr_addr.sa_family == AF_INET))
@@ -535,8 +537,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     i = 0;
     /* Ignore EBCDIC space (0x40) padding in name */
-    while (i < ARRAY_SIZE(p->ifr_name) &&
-           p->ifr_name[i] != 0x40 &&
+    while (i < ARRAY_SIZE(p->ifr_name) && p->ifr_name[i] != 0x40 &&
            p->ifr_name[i] != 0)
       ++i;
     address->name = uv__malloc(i + 1);
@@ -575,8 +576,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-                                 int count) {
+void uv_free_interface_addresses(uv_interface_address_t* addresses, int count) {
   int i;
   for (i = 0; i < count; ++i)
     uv__free(addresses[i].name);
@@ -629,7 +629,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
-  uv__handle_init(loop, (uv_handle_t*)handle, UV_FS_EVENT);
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_FS_EVENT);
   return 0;
 }
 
@@ -642,8 +642,8 @@ static int os390_regfileint(uv_fs_event_t* handle, char* path) {
   ep = handle->loop->ep;
   assert(ep->msg_queue != -1);
 
-  reg_struct.__rfis_cmd  = _RFIS_REG;
-  reg_struct.__rfis_qid  = ep->msg_queue;
+  reg_struct.__rfis_cmd = _RFIS_REG;
+  reg_struct.__rfis_qid = ep->msg_queue;
   reg_struct.__rfis_type = 1;
   memcpy(reg_struct.__rfis_utok, &handle, sizeof(handle));
 
@@ -651,15 +651,18 @@ static int os390_regfileint(uv_fs_event_t* handle, char* path) {
   if (rc != 0)
     return UV__ERR(errno);
 
-  memcpy(handle->rfis_rftok, reg_struct.__rfis_rftok,
+  memcpy(handle->rfis_rftok,
+         reg_struct.__rfis_rftok,
          sizeof(handle->rfis_rftok));
 
   return 0;
 }
 
 
-int uv_fs_event_start(uv_fs_event_t* handle, uv_fs_event_cb cb,
-                      const char* filename, unsigned int flags) {
+int uv_fs_event_start(uv_fs_event_t* handle,
+                      uv_fs_event_cb cb,
+                      const char* filename,
+                      unsigned int flags) {
   char* path;
   int rc;
 
@@ -695,10 +698,11 @@ int uv__fs_event_stop(uv_fs_event_t* handle) {
   ep = handle->loop->ep;
   assert(ep->msg_queue != -1);
 
-  reg_struct.__rfis_cmd  = _RFIS_UNREG;
-  reg_struct.__rfis_qid  = ep->msg_queue;
+  reg_struct.__rfis_cmd = _RFIS_UNREG;
+  reg_struct.__rfis_qid = ep->msg_queue;
   reg_struct.__rfis_type = 1;
-  memcpy(reg_struct.__rfis_rftok, handle->rfis_rftok,
+  memcpy(reg_struct.__rfis_rftok,
+         handle->rfis_rftok,
          sizeof(handle->rfis_rftok));
 
   /*
@@ -782,7 +786,7 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
    * running in ASCII mode, resulting in an unwanted autoconversion.
    */
   __a2e_l(msg.__rfim_utok, sizeof(msg.__rfim_utok));
-  handle = *(uv_fs_event_t**)(msg.__rfim_utok);
+  handle = *(uv_fs_event_t**) (msg.__rfim_utok);
   assert(handle != NULL);
 
   assert((handle->flags & UV_HANDLE_CLOSED) == 0);
@@ -846,7 +850,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(w->pevents != 0);
     assert(w->fd >= 0);
 
-    stream= container_of(w, uv_stream_t, io_watcher);
+    stream = container_of(w, uv_stream_t, io_watcher);
 
     assert(w->fd < (int) loop->nwatchers);
 
@@ -907,8 +911,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     lfields->current_timeout = timeout;
 
-    nfds = epoll_wait(loop->ep, events,
-                      ARRAY_SIZE(events), timeout);
+    nfds = epoll_wait(loop->ep, events, ARRAY_SIZE(events), timeout);
 
     /* Update loop->time unconditionally. It's tempting to skip the update when
      * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
@@ -937,7 +940,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     if (nfds == -1) {
-
       if (errno != EINTR)
         abort();
 
@@ -1030,7 +1032,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     loop->watchers[loop->nwatchers + 1] = NULL;
 
     if (have_signals != 0)
-      return;  /* Event loop should cycle now so don't poll again. */
+      return; /* Event loop should cycle now so don't poll again. */
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -1047,7 +1049,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (timeout == -1)
       continue;
 
-update_timeout:
+  update_timeout:
     assert(timeout > 0);
 
     real_timeout -= (loop->time - base);

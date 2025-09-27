@@ -154,9 +154,8 @@ static void ipc_connect_cb(uv_connect_t* req, int status) {
   struct ipc_client_ctx* ctx;
   ctx = container_of(req, struct ipc_client_ctx, connect_req);
   ASSERT_OK(status);
-  ASSERT_OK(uv_read_start((uv_stream_t*) &ctx->ipc_pipe,
-                          ipc_alloc_cb,
-                          ipc_read_cb));
+  ASSERT_OK(
+      uv_read_start((uv_stream_t*) &ctx->ipc_pipe, ipc_alloc_cb, ipc_read_cb));
 }
 
 
@@ -215,8 +214,7 @@ static void send_listen_handles(uv_handle_type type,
     ASSERT_OK(uv_tcp_bind((uv_tcp_t*) &ctx.server_handle,
                           (const struct sockaddr*) &listen_addr,
                           0));
-  }
-  else
+  } else
     ASSERT(0);
   /* We need to initialize this pipe with ipc=0 - this is not a uv_pipe we'll
    * be sending handles over, it's just for listening for new connections.
@@ -254,8 +252,8 @@ static void get_listen_handle(uv_loop_t* loop, uv_stream_t* server_handle) {
 }
 
 
-static void server_cb(void *arg) {
-  struct server_ctx *ctx;
+static void server_cb(void* arg) {
+  struct server_ctx* ctx;
   uv_loop_t loop;
 
   ctx = arg;
@@ -270,9 +268,8 @@ static void server_cb(void *arg) {
   uv_sem_post(&ctx->semaphore);
 
   /* Now start the actual benchmark. */
-  ASSERT_OK(uv_listen((uv_stream_t*) &ctx->server_handle,
-                      128,
-                      sv_connection_cb));
+  ASSERT_OK(
+      uv_listen((uv_stream_t*) &ctx->server_handle, 128, sv_connection_cb));
   ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
 
   uv_loop_close(&loop);

@@ -21,7 +21,7 @@
 
 /* Don't complain about write(), fileno() etc. being deprecated. */
 #ifdef _MSC_VER
-#pragma warning(disable : 4996)
+#  pragma warning(disable : 4996)
 #endif
 
 
@@ -37,5 +37,5 @@ typedef struct {
   HANDLE process;
   HANDLE stdio_in;
   HANDLE stdio_out;
-  char *name;
+  char* name;
 } process_info_t;

@@ -21,19 +21,18 @@
 
 #ifdef _WIN32
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
-#if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(__sun) || \
-    defined(_AIX) || defined(__MVS__) || \
-    defined(__HAIKU__)
-# include <unistd.h> /* unlink, rmdir */
-#else
-# include <direct.h>
-# define rmdir _rmdir
-# define unlink _unlink
-#endif
+#  if defined(__unix__) || defined(__POSIX__) || defined(__APPLE__) ||         \
+      defined(__sun) || defined(_AIX) || defined(__MVS__) ||                   \
+      defined(__HAIKU__)
+#    include <unistd.h> /* unlink, rmdir */
+#  else
+#    include <direct.h>
+#    define rmdir  _rmdir
+#    define unlink _unlink
+#  endif
 
 static int flags;
 
@@ -52,7 +51,7 @@ static uv_buf_t iov;
  * with EBUSY, so append an identifier to the file name for each operation */
 static int sid = 0;
 
-#define FILE_NAME_SIZE 128
+#  define FILE_NAME_SIZE 128
 static char absent_file[FILE_NAME_SIZE];
 static char empty_file[FILE_NAME_SIZE];
 static char dummy_file[FILE_NAME_SIZE];
@@ -87,8 +86,12 @@ static void refresh(void) {
   /* empty_file */
   sprintf(empty_file, "test_file_%d", sid++);
 
-  r = uv_fs_open(NULL, &open_req, empty_file,
-    UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_WRONLY, S_IWUSR | S_IRUSR, NULL);
+  r = uv_fs_open(NULL,
+                 &open_req,
+                 empty_file,
+                 UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_WRONLY,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
   ASSERT_GE(r, 0);
   ASSERT_GE(open_req.result, 0);
   uv_fs_req_cleanup(&open_req);
@@ -101,8 +104,12 @@ static void refresh(void) {
   /* dummy_file */
   sprintf(dummy_file, "test_file_%d", sid++);
 
-  r = uv_fs_open(NULL, &open_req, dummy_file,
-    UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_WRONLY, S_IWUSR | S_IRUSR, NULL);
+  r = uv_fs_open(NULL,
+                 &open_req,
+                 dummy_file,
+                 UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_WRONLY,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
   ASSERT_GE(r, 0);
   ASSERT_GE(open_req.result, 0);
   uv_fs_req_cleanup(&open_req);
@@ -125,7 +132,7 @@ static void cleanup(void) {
   unlink(dummy_file);
 }
 
-static void openFail(char *file, int error) {
+static void openFail(char* file, int error) {
   int r;
 
   refresh();
@@ -144,7 +151,7 @@ static void openFail(char *file, int error) {
   cleanup();
 }
 
-static void refreshOpen(char *file) {
+static void refreshOpen(char* file) {
   int r;
 
   refresh();
@@ -155,7 +162,7 @@ static void refreshOpen(char *file) {
   uv_fs_req_cleanup(&open_req);
 }
 
-static void writeExpect(char *file, char *expected, int size) {
+static void writeExpect(char* file, char* expected, int size) {
   int r;
 
   refreshOpen(file);
@@ -178,7 +185,12 @@ static void writeExpect(char *file, char *expected, int size) {
   uv_fs_req_cleanup(&close_req);
 
   /* Check contents */
-  r = uv_fs_open(NULL, &open_req, file, UV_FS_O_RDONLY, S_IWUSR | S_IRUSR, NULL);
+  r = uv_fs_open(NULL,
+                 &open_req,
+                 file,
+                 UV_FS_O_RDONLY,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
   ASSERT_GE(r, 0);
   ASSERT_GE(open_req.result, 0);
   uv_fs_req_cleanup(&open_req);
@@ -198,7 +210,7 @@ static void writeExpect(char *file, char *expected, int size) {
   cleanup();
 }
 
-static void writeFail(char *file, int error) {
+static void writeFail(char* file, int error) {
   int r;
 
   refreshOpen(file);
@@ -223,7 +235,7 @@ static void writeFail(char *file, int error) {
   cleanup();
 }
 
-static void readExpect(char *file, char *expected, int size) {
+static void readExpect(char* file, char* expected, int size) {
   int r;
 
   refreshOpen(file);
@@ -243,7 +255,7 @@ static void readExpect(char *file, char *expected, int size) {
   cleanup();
 }
 
-static void readFail(char *file, int error) {
+static void readFail(char* file, int error) {
   int r;
 
   refreshOpen(file);
@@ -324,8 +336,8 @@ static void fs_open_flags(int add_flags) {
   openFail(empty_dir, UV_EISDIR);
 
   /* wx */
-  flags = add_flags | UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_WRONLY |
-    UV_FS_O_EXCL;
+  flags =
+      add_flags | UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_WRONLY | UV_FS_O_EXCL;
   writeExpect(absent_file, "bc", 2);
   readFail(absent_file, UV_EBADF);
   openFail(empty_file, UV_EEXIST);
@@ -343,8 +355,8 @@ static void fs_open_flags(int add_flags) {
   openFail(empty_dir, UV_EISDIR);
 
   /* wx+ */
-  flags = add_flags | UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_RDWR |
-    UV_FS_O_EXCL;
+  flags =
+      add_flags | UV_FS_O_TRUNC | UV_FS_O_CREAT | UV_FS_O_RDWR | UV_FS_O_EXCL;
   writeExpect(absent_file, "bc", 2);
   readExpect(absent_file, "", 0);
   openFail(empty_file, UV_EEXIST);
@@ -364,7 +376,7 @@ static void fs_open_flags(int add_flags) {
 
   /* ax */
   flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY |
-    UV_FS_O_EXCL;
+          UV_FS_O_EXCL;
   writeExpect(absent_file, "bc", 2);
   readFail(absent_file, UV_EBADF);
   openFail(empty_file, UV_EEXIST);
@@ -373,7 +385,7 @@ static void fs_open_flags(int add_flags) {
 
   /* as */
   flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_WRONLY |
-    UV_FS_O_SYNC;
+          UV_FS_O_SYNC;
   writeExpect(absent_file, "bc", 2);
   readFail(absent_file, UV_EBADF);
   writeExpect(empty_file, "bc", 2);
@@ -395,8 +407,8 @@ static void fs_open_flags(int add_flags) {
   readFail(empty_dir, UV_EISDIR);
 
   /* ax+ */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR |
-    UV_FS_O_EXCL;
+  flags =
+      add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR | UV_FS_O_EXCL;
   writeExpect(absent_file, "bc", 2);
   readExpect(absent_file, "", 0);
   openFail(empty_file, UV_EEXIST);
@@ -404,8 +416,8 @@ static void fs_open_flags(int add_flags) {
   openFail(empty_dir, UV_EEXIST);
 
   /* as+ */
-  flags = add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR |
-    UV_FS_O_SYNC;
+  flags =
+      add_flags | UV_FS_O_APPEND | UV_FS_O_CREAT | UV_FS_O_RDWR | UV_FS_O_SYNC;
   writeExpect(absent_file, "bc", 2);
   readExpect(absent_file, "", 0);
   writeExpect(empty_file, "bc", 2);
@@ -430,6 +442,6 @@ TEST_IMPL(fs_open_flags) {
 
 #else
 
-typedef int file_has_no_tests;  /* ISO C forbids an empty translation unit. */
+typedef int file_has_no_tests; /* ISO C forbids an empty translation unit. */
 
-#endif  /* ifndef _WIN32 */
+#endif /* ifndef _WIN32 */

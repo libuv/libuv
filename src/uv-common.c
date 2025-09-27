@@ -31,10 +31,10 @@
 #include <string.h> /* memset */
 
 #if defined(_WIN32)
-# include <malloc.h> /* malloc */
+#  include <malloc.h> /* malloc */
 #else
-# include <net/if.h> /* if_nametoindex */
-# include <sys/un.h> /* AF_UNIX, sockaddr_un */
+#  include <net/if.h> /* if_nametoindex */
+#  include <sys/un.h> /* AF_UNIX, sockaddr_un */
 #endif
 
 
@@ -46,10 +46,10 @@ typedef struct {
 } uv__allocator_t;
 
 static uv__allocator_t uv__allocator = {
-  malloc,
-  realloc,
-  calloc,
-  free,
+    malloc,
+    realloc,
+    calloc,
+    free,
 };
 
 char* uv__strdup(const char* s) {
@@ -115,8 +115,8 @@ int uv_replace_allocator(uv_malloc_func malloc_func,
                          uv_realloc_func realloc_func,
                          uv_calloc_func calloc_func,
                          uv_free_func free_func) {
-  if (malloc_func == NULL || realloc_func == NULL ||
-      calloc_func == NULL || free_func == NULL) {
+  if (malloc_func == NULL || realloc_func == NULL || calloc_func == NULL ||
+      free_func == NULL) {
     return UV_EINVAL;
   }
 
@@ -147,7 +147,7 @@ void uv_os_free_passwd(uv_passwd_t* pwd) {
 }
 
 
-void uv_os_free_group(uv_group_t *grp) {
+void uv_os_free_group(uv_group_t* grp) {
   if (grp == NULL)
     return;
 
@@ -161,21 +161,23 @@ void uv_os_free_group(uv_group_t *grp) {
 }
 
 
-#define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
+#define XX(uc, lc)                                                             \
+  case UV_##uc:                                                                \
+    return sizeof(uv_##lc##_t);
 
 size_t uv_handle_size(uv_handle_type type) {
   switch (type) {
     UV_HANDLE_TYPE_MAP(XX)
-    default:
-      return -1;
+  default:
+    return -1;
   }
 }
 
 size_t uv_req_size(uv_req_type type) {
-  switch(type) {
+  switch (type) {
     UV_REQ_TYPE_MAP(XX)
-    default:
-      return -1;
+  default:
+    return -1;
   }
 }
 
@@ -205,47 +207,51 @@ static const char* uv__unknown_err_code(int err) {
   return copy != NULL ? copy : "Unknown system error";
 }
 
-#define UV_ERR_NAME_GEN_R(name, _) \
-case UV_## name: \
-  uv__strscpy(buf, #name, buflen); break;
+#define UV_ERR_NAME_GEN_R(name, _)                                             \
+  case UV_##name:                                                              \
+    uv__strscpy(buf, #name, buflen);                                           \
+    break;
 char* uv_err_name_r(int err, char* buf, size_t buflen) {
   switch (err) {
     UV_ERRNO_MAP(UV_ERR_NAME_GEN_R)
-    default: snprintf(buf, buflen, "Unknown system error %d", err);
+  default:
+    snprintf(buf, buflen, "Unknown system error %d", err);
   }
   return buf;
 }
 #undef UV_ERR_NAME_GEN_R
 
 
-#define UV_ERR_NAME_GEN(name, _) case UV_ ## name: return #name;
+#define UV_ERR_NAME_GEN(name, _)                                               \
+  case UV_##name:                                                              \
+    return #name;
 const char* uv_err_name(int err) {
-  switch (err) {
-    UV_ERRNO_MAP(UV_ERR_NAME_GEN)
-  }
+  switch (err) { UV_ERRNO_MAP(UV_ERR_NAME_GEN) }
   return uv__unknown_err_code(err);
 }
 #undef UV_ERR_NAME_GEN
 
 
-#define UV_STRERROR_GEN_R(name, msg) \
-case UV_ ## name: \
-  snprintf(buf, buflen, "%s", msg); break;
+#define UV_STRERROR_GEN_R(name, msg)                                           \
+  case UV_##name:                                                              \
+    snprintf(buf, buflen, "%s", msg);                                          \
+    break;
 char* uv_strerror_r(int err, char* buf, size_t buflen) {
   switch (err) {
     UV_ERRNO_MAP(UV_STRERROR_GEN_R)
-    default: snprintf(buf, buflen, "Unknown system error %d", err);
+  default:
+    snprintf(buf, buflen, "Unknown system error %d", err);
   }
   return buf;
 }
 #undef UV_STRERROR_GEN_R
 
 
-#define UV_STRERROR_GEN(name, msg) case UV_ ## name: return msg;
+#define UV_STRERROR_GEN(name, msg)                                             \
+  case UV_##name:                                                              \
+    return msg;
 const char* uv_strerror(int err) {
-  switch (err) {
-    UV_ERRNO_MAP(UV_STRERROR_GEN)
-  }
+  switch (err) { UV_ERRNO_MAP(UV_STRERROR_GEN) }
   return uv__unknown_err_code(err);
 }
 #undef UV_STRERROR_GEN
@@ -285,7 +291,7 @@ int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
     ip = address_part;
 
     zone_index++; /* skip '%' */
-    /* NOTE: unknown interface (id=0) is silently ignored */
+                  /* NOTE: unknown interface (id=0) is silently ignored */
 #ifdef _WIN32
     addr->sin6_scope_id = atoi(zone_index);
 #else
@@ -307,14 +313,18 @@ int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size) {
 }
 
 
-int uv_ip_name(const struct sockaddr *src, char *dst, size_t size) {
+int uv_ip_name(const struct sockaddr* src, char* dst, size_t size) {
   switch (src->sa_family) {
   case AF_INET:
-    return uv_inet_ntop(AF_INET, &((struct sockaddr_in *)src)->sin_addr,
-                        dst, size);
+    return uv_inet_ntop(AF_INET,
+                        &((struct sockaddr_in*) src)->sin_addr,
+                        dst,
+                        size);
   case AF_INET6:
-    return uv_inet_ntop(AF_INET6, &((struct sockaddr_in6 *)src)->sin6_addr,
-                        dst, size);
+    return uv_inet_ntop(AF_INET6,
+                        &((struct sockaddr_in6*) src)->sin6_addr,
+                        dst,
+                        size);
   default:
     return UV_EAFNOSUPPORT;
   }
@@ -564,7 +574,8 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
     uv__queue_remove(q);
     uv__queue_insert_tail(&loop->handle_queue, q);
 
-    if (h->flags & UV_HANDLE_INTERNAL) continue;
+    if (h->flags & UV_HANDLE_INTERNAL)
+      continue;
     walk_cb(h, arg);
   }
 }
@@ -593,10 +604,14 @@ static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
       continue;
 
     switch (h->type) {
-#define X(uc, lc) case UV_##uc: type = #lc; break;
+#define X(uc, lc)                                                              \
+  case UV_##uc:                                                                \
+    type = #lc;                                                                \
+    break;
       UV_HANDLE_TYPE_MAP(X)
 #undef X
-      default: type = "<unknown>";
+    default:
+      type = "<unknown>";
     }
 
     fprintf(stream,
@@ -605,7 +620,7 @@ static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
             "A-"[!(h->flags & UV_HANDLE_ACTIVE)],
             "I-"[!(h->flags & UV_HANDLE_INTERNAL)],
             type,
-            (void*)h);
+            (void*) h);
   }
 }
 
@@ -645,7 +660,6 @@ uint64_t uv_now(const uv_loop_t* loop) {
 }
 
 
-
 size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
   unsigned int i;
   size_t bytes;
@@ -661,7 +675,7 @@ int uv_recv_buffer_size(uv_handle_t* handle, int* value) {
   return uv__socket_sockopt(handle, SO_RCVBUF, value);
 }
 
-int uv_send_buffer_size(uv_handle_t* handle, int *value) {
+int uv_send_buffer_size(uv_handle_t* handle, int* value) {
   return uv__socket_sockopt(handle, SO_SNDBUF, value);
 }
 
@@ -692,7 +706,7 @@ int uv_fs_event_getpath(uv_fs_event_t* handle, char* buffer, size_t* size) {
 /* The windows implementation does not have the same structure layout as
  * the unix implementation (nbufs is not directly inside req but is
  * contained in a nested union/struct) so this function locates it.
-*/
+ */
 static unsigned int* uv__get_nbufs(uv_fs_t* req) {
 #ifdef _WIN32
   return &req->fs.info.nbufs;
@@ -704,11 +718,11 @@ static unsigned int* uv__get_nbufs(uv_fs_t* req) {
 /* uv_fs_scandir() uses the system allocator to allocate memory on non-Windows
  * systems. So, the memory should be released using free(). On Windows,
  * uv__malloc() is used, so use uv__free() to free memory.
-*/
+ */
 #ifdef _WIN32
-# define uv__fs_scandir_free uv__free
+#  define uv__fs_scandir_free uv__free
 #else
-# define uv__fs_scandir_free free
+#  define uv__fs_scandir_free free
 #endif
 
 void uv__fs_scandir_cleanup(uv_fs_t* req) {
@@ -777,29 +791,29 @@ uv_dirent_type_t uv__fs_get_dirent_type(uv__dirent_t* dent) {
 
 #ifdef HAVE_DIRENT_TYPES
   switch (dent->d_type) {
-    case UV__DT_DIR:
-      type = UV_DIRENT_DIR;
-      break;
-    case UV__DT_FILE:
-      type = UV_DIRENT_FILE;
-      break;
-    case UV__DT_LINK:
-      type = UV_DIRENT_LINK;
-      break;
-    case UV__DT_FIFO:
-      type = UV_DIRENT_FIFO;
-      break;
-    case UV__DT_SOCKET:
-      type = UV_DIRENT_SOCKET;
-      break;
-    case UV__DT_CHAR:
-      type = UV_DIRENT_CHAR;
-      break;
-    case UV__DT_BLOCK:
-      type = UV_DIRENT_BLOCK;
-      break;
-    default:
-      type = UV_DIRENT_UNKNOWN;
+  case UV__DT_DIR:
+    type = UV_DIRENT_DIR;
+    break;
+  case UV__DT_FILE:
+    type = UV_DIRENT_FILE;
+    break;
+  case UV__DT_LINK:
+    type = UV_DIRENT_LINK;
+    break;
+  case UV__DT_FIFO:
+    type = UV_DIRENT_FIFO;
+    break;
+  case UV__DT_SOCKET:
+    type = UV_DIRENT_SOCKET;
+    break;
+  case UV__DT_CHAR:
+    type = UV_DIRENT_CHAR;
+    break;
+  case UV__DT_BLOCK:
+    type = UV_DIRENT_BLOCK;
+    break;
+  default:
+    type = UV_DIRENT_UNKNOWN;
   }
 #else
   type = UV_DIRENT_UNKNOWN;
@@ -912,7 +926,7 @@ void uv_loop_delete(uv_loop_t* loop) {
   default_loop = default_loop_ptr;
 
   err = uv_loop_close(loop);
-  (void) err;    /* Squelch compiler warnings. */
+  (void) err; /* Squelch compiler warnings. */
   assert(err == 0);
   if (loop != default_loop)
     uv__free(loop);
@@ -960,7 +974,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
     uv__free(cpu_infos[i].model);
 
   uv__free(cpu_infos);
-#endif  /* __linux__ */
+#endif /* __linux__ */
 }
 
 
@@ -1031,9 +1045,7 @@ void uv__metrics_set_provider_entry_time(uv_loop_t* loop) {
 
 
 int uv_metrics_info(uv_loop_t* loop, uv_metrics_t* metrics) {
-  memcpy(metrics,
-         &uv__get_loop_metrics(loop)->metrics,
-         sizeof(*metrics));
+  memcpy(metrics, &uv__get_loop_metrics(loop)->metrics, sizeof(*metrics));
 
   return 0;
 }
@@ -1057,8 +1069,7 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
 
 /* OS390 needs a different implementation, already provided in os390.c. */
 #ifndef __MVS__
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-                                 int count) {
+void uv_free_interface_addresses(uv_interface_address_t* addresses, int count) {
   uv__free(addresses);
 }
-#endif  /* !__MVS__ */
+#endif /* !__MVS__ */

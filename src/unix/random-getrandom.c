@@ -24,14 +24,14 @@
 
 #ifdef __linux__
 
-#define uv__random_getrandom_init() 0
+#  define uv__random_getrandom_init() 0
 
-#else  /* !__linux__ */
+#else /* !__linux__ */
 
-#include <stddef.h>
-#include <dlfcn.h>
+#  include <stddef.h>
+#  include <dlfcn.h>
 
-typedef ssize_t (*uv__getrandom_cb)(void *, size_t, unsigned);
+typedef ssize_t (*uv__getrandom_cb)(void*, size_t, unsigned);
 
 static uv__getrandom_cb uv__getrandom;
 static uv_once_t once = UV_ONCE_INIT;
@@ -49,7 +49,7 @@ static int uv__random_getrandom_init(void) {
   return 0;
 }
 
-#endif  /* !__linux__ */
+#endif /* !__linux__ */
 
 int uv__random_getrandom(void* buf, size_t buflen) {
   ssize_t n;
@@ -72,7 +72,7 @@ int uv__random_getrandom(void* buf, size_t buflen) {
       if (n > 256)
         n = 256;
 
-      n = uv__getrandom((char *) buf + pos, n, 0);
+      n = uv__getrandom((char*) buf + pos, n, 0);
     } while (n == -1 && errno == EINTR);
 
     if (n == -1)

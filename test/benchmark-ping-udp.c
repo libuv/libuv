@@ -63,10 +63,11 @@ static void buf_free(const uv_buf_t* buf) {
 static void pinger_close_cb(uv_handle_t* handle) {
   pinger_t* pinger;
 
-  pinger = (pinger_t*)handle->data;
+  pinger = (pinger_t*) handle->data;
 #if DEBUG
-  fprintf(stderr, "ping_pongs: %d roundtrips/s\n",
-	  pinger->pongs / (TIME / 1000));
+  fprintf(stderr,
+          "ping_pongs: %d roundtrips/s\n",
+          pinger->pongs / (TIME / 1000));
 #endif
 
   completed_pings += pinger->pongs;
@@ -79,7 +80,9 @@ static void pinger_write_ping(pinger_t* pinger) {
   int r;
 
   buf = uv_buf_init(PING, sizeof(PING) - 1);
-  r = uv_udp_try_send(&pinger->udp, &buf, 1,
+  r = uv_udp_try_send(&pinger->udp,
+                      &buf,
+                      1,
                       (const struct sockaddr*) &pinger->server_addr);
   if (r < 0)
     FATAL("uv_udp_send failed");
@@ -92,7 +95,7 @@ static void pinger_read_cb(uv_udp_t* udp,
                            unsigned flags) {
   ssize_t i;
   pinger_t* pinger;
-  pinger = (pinger_t*)udp->data;
+  pinger = (pinger_t*) udp->data;
 
   /* No data here means something went wrong */
   ASSERT_GT(nread, 0);
@@ -104,7 +107,7 @@ static void pinger_read_cb(uv_udp_t* udp,
     if (pinger->state == 0) {
       pinger->pongs++;
       if (uv_now(loop) - start_time > TIME) {
-        uv_close((uv_handle_t*)udp, pinger_close_cb);
+        uv_close((uv_handle_t*) udp, pinger_close_cb);
         break;
       }
       pinger_write_ping(pinger);
@@ -126,7 +129,9 @@ static void udp_pinger_new(void) {
   /* Try to do NUM_PINGS ping-pongs (connection-less). */
   r = uv_udp_init(loop, &pinger->udp);
   ASSERT_OK(r);
-  r = uv_udp_bind(&pinger->udp, (const struct sockaddr*) &pinger->server_addr, 0);
+  r = uv_udp_bind(&pinger->udp,
+                  (const struct sockaddr*) &pinger->server_addr,
+                  0);
   ASSERT_OK(r);
 
   pinger->udp.data = pinger;
@@ -150,17 +155,19 @@ static int ping_udp(unsigned pingers) {
   uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_GE(completed_pingers, 1);
 
-  fprintf(stderr, "ping_pongs: %d pingers, ~ %lu roundtrips/s\n",
-          completed_pingers, completed_pings / (TIME/1000));
+  fprintf(stderr,
+          "ping_pongs: %d pingers, ~ %lu roundtrips/s\n",
+          completed_pingers,
+          completed_pings / (TIME / 1000));
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
 
-#define X(PINGERS) \
-BENCHMARK_IMPL(ping_udp##PINGERS) {\
-  return ping_udp(PINGERS); \
-}
+#define X(PINGERS)                                                             \
+  BENCHMARK_IMPL(ping_udp##PINGERS) {                                          \
+    return ping_udp(PINGERS);                                                  \
+  }
 
 X(1)
 X(10)

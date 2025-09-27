@@ -22,11 +22,11 @@
 /* this test is Unix only */
 #ifndef _WIN32
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
-#include <stdio.h>
-#include <string.h>
+#  include <stdio.h>
+#  include <string.h>
 
 static struct sockaddr_in addr;
 static uv_tcp_t tcp_server;

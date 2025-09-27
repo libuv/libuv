@@ -22,14 +22,14 @@
 #include "uv.h"
 #include "uv-common.h"
 
-#define UV__INET_ADDRSTRLEN         16
-#define UV__INET6_ADDRSTRLEN        46
+#define UV__INET_ADDRSTRLEN  16
+#define UV__INET6_ADDRSTRLEN 46
 
 
-static int inet_ntop4(const unsigned char *src, char *dst, size_t size);
-static int inet_ntop6(const unsigned char *src, char *dst, size_t size);
-static int inet_pton4(const char *src, unsigned char *dst);
-static int inet_pton6(const char *src, unsigned char *dst);
+static int inet_ntop4(const unsigned char* src, char* dst, size_t size);
+static int inet_ntop6(const unsigned char* src, char* dst, size_t size);
+static int inet_pton4(const char* src, unsigned char* dst);
+static int inet_pton6(const char* src, unsigned char* dst);
 
 
 int uv_inet_ntop(int af, const void* src, char* dst, size_t size) {
@@ -45,7 +45,7 @@ int uv_inet_ntop(int af, const void* src, char* dst, size_t size) {
 }
 
 
-static int inet_ntop4(const unsigned char *src, char *dst, size_t size) {
+static int inet_ntop4(const unsigned char* src, char* dst, size_t size) {
   static const char fmt[] = "%u.%u.%u.%u";
   char tmp[UV__INET_ADDRSTRLEN];
   int l;
@@ -59,7 +59,7 @@ static int inet_ntop4(const unsigned char *src, char *dst, size_t size) {
 }
 
 
-static int inet_ntop6(const unsigned char *src, char *dst, size_t size) {
+static int inet_ntop6(const unsigned char* src, char* dst, size_t size) {
   /*
    * Note that int32_t and int16_t need only be "at least" large enough
    * to contain a value of the specified size.  On some systems, like
@@ -68,7 +68,9 @@ static int inet_ntop6(const unsigned char *src, char *dst, size_t size) {
    * to use pointer overlays.  All the world's not a VAX.
    */
   char tmp[UV__INET6_ADDRSTRLEN], *tp;
-  struct { int base, len; } best, cur;
+  struct {
+    int base, len;
+  } best, cur;
   unsigned int words[sizeof(struct in6_addr) / sizeof(uint16_t)];
   int i;
 
@@ -111,8 +113,7 @@ static int inet_ntop6(const unsigned char *src, char *dst, size_t size) {
   tp = tmp;
   for (i = 0; i < (int) ARRAY_SIZE(words); i++) {
     /* Are we inside the best run of 0x00's? */
-    if (best.base != -1 && i >= best.base &&
-        i < (best.base + best.len)) {
+    if (best.base != -1 && i >= best.base && i < (best.base + best.len)) {
       if (i == best.base)
         *tp++ = ':';
       continue;
@@ -121,10 +122,10 @@ static int inet_ntop6(const unsigned char *src, char *dst, size_t size) {
     if (i != 0)
       *tp++ = ':';
     /* Is this address an encapsulated IPv4? */
-    if (i == 6 && best.base == 0 && (best.len == 6 ||
-        (best.len == 7 && words[7] != 0x0001) ||
-        (best.len == 5 && words[5] == 0xffff))) {
-      int err = inet_ntop4(src+12, tp, sizeof tmp - (tp - tmp));
+    if (i == 6 && best.base == 0 &&
+        (best.len == 6 || (best.len == 7 && words[7] != 0x0001) ||
+         (best.len == 5 && words[5] == 0xffff))) {
+      int err = inet_ntop4(src + 12, tp, sizeof tmp - (tp - tmp));
       if (err)
         return err;
       tp += strlen(tp);
@@ -158,7 +159,7 @@ int uv_inet_pton(int af, const char* src, void* dst) {
     if (p != NULL) {
       s = tmp;
       len = p - src;
-      if (len > UV__INET6_ADDRSTRLEN-1)
+      if (len > UV__INET6_ADDRSTRLEN - 1)
         return UV_EINVAL;
       memcpy(s, src, len);
       s[len] = '\0';
@@ -172,7 +173,7 @@ int uv_inet_pton(int af, const char* src, void* dst) {
 }
 
 
-static int inet_pton4(const char *src, unsigned char *dst) {
+static int inet_pton4(const char* src, unsigned char* dst) {
   static const char digits[] = "0123456789";
   int saw_digit, octets, ch;
   unsigned char tmp[sizeof(struct in_addr)], *tp;
@@ -181,7 +182,7 @@ static int inet_pton4(const char *src, unsigned char *dst) {
   octets = 0;
   *(tp = tmp) = 0;
   while ((ch = *src++) != '\0') {
-    const char *pch;
+    const char* pch;
 
     if ((pch = strchr(digits, ch)) != NULL) {
       unsigned int nw = *tp * 10 + (pch - digits);
@@ -211,7 +212,7 @@ static int inet_pton4(const char *src, unsigned char *dst) {
 }
 
 
-static int inet_pton6(const char *src, unsigned char *dst) {
+static int inet_pton6(const char* src, unsigned char* dst) {
   static const char xdigits_l[] = "0123456789abcdef",
                     xdigits_u[] = "0123456789ABCDEF";
   unsigned char tmp[sizeof(struct in6_addr)], *tp, *endp, *colonp;
@@ -230,7 +231,7 @@ static int inet_pton6(const char *src, unsigned char *dst) {
   seen_xdigits = 0;
   val = 0;
   while ((ch = *src++) != '\0') {
-    const char *pch;
+    const char* pch;
 
     if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
       pch = strchr((xdigits = xdigits_u), ch);
@@ -264,7 +265,7 @@ static int inet_pton6(const char *src, unsigned char *dst) {
       if (err == 0) {
         tp += sizeof(struct in_addr);
         seen_xdigits = 0;
-        break;  /*%< '\\0' was seen by inet_pton4(). */
+        break; /*%< '\\0' was seen by inet_pton4(). */
       }
     }
     return UV_EINVAL;
@@ -286,7 +287,7 @@ static int inet_pton6(const char *src, unsigned char *dst) {
     if (tp == endp)
       return UV_EINVAL;
     for (i = 1; i <= n; i++) {
-      endp[- i] = colonp[n - i];
+      endp[-i] = colonp[n - i];
       colonp[n - i] = 0;
     }
     tp = endp;

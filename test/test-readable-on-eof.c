@@ -58,12 +58,12 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   ASSERT_EQ(1, uv_is_writable(handle));
 
   if (++read_cb_called == 3) {
-      uv_close((uv_handle_t*) handle, close_cb);
-      ASSERT_OK(uv_is_readable(handle));
-      ASSERT_OK(uv_is_writable(handle));
+    uv_close((uv_handle_t*) handle, close_cb);
+    ASSERT_OK(uv_is_readable(handle));
+    ASSERT_OK(uv_is_writable(handle));
   } else {
-      r = uv_read_start((uv_stream_t*) &tcp_client, alloc_cb, read_cb);
-      ASSERT_OK(r);
+    r = uv_read_start((uv_stream_t*) &tcp_client, alloc_cb, read_cb);
+    ASSERT_OK(r);
   }
 }
 
@@ -78,11 +78,7 @@ static void connect_cb(uv_connect_t* req, int status) {
 
   close_me = uv_buf_init(close_me_cmd, sizeof(close_me_cmd));
 
-  r = uv_write(&write_req,
-               (uv_stream_t*) &tcp_client,
-               &close_me,
-               1,
-               write_cb);
+  r = uv_write(&write_req, (uv_stream_t*) &tcp_client, &close_me, 1, write_cb);
 
   ASSERT_OK(r);
 }

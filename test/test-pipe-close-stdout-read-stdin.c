@@ -21,30 +21,28 @@
 
 #ifndef _WIN32
 
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/types.h>
+#  include <stdlib.h>
+#  include <unistd.h>
+#  include <sys/wait.h>
+#  include <sys/types.h>
 
-#ifdef __APPLE__
-#include <TargetConditionals.h>
-#endif
+#  ifdef __APPLE__
+#    include <TargetConditionals.h>
+#  endif
 
-#include "uv.h"
-#include "task.h"
+#  include "uv.h"
+#  include "task.h"
 
-void alloc_buffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t* buf)
-{
+void alloc_buffer(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
   static char buffer[1024];
 
   buf->base = buffer;
   buf->len = sizeof(buffer);
 }
 
-void read_stdin(uv_stream_t *stream, ssize_t nread, const uv_buf_t* buf)
-{
+void read_stdin(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   if (nread < 0) {
-    uv_close((uv_handle_t*)stream, NULL);
+    uv_close((uv_handle_t*) stream, NULL);
     return;
   }
 }
@@ -62,18 +60,18 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
 
   r = pipe(fd);
   ASSERT_OK(r);
-    
-#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+
+#  if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   pid = -1;
-#else
+#  else
   pid = fork();
-#endif
+#  endif
 
   if (pid == 0) {
     /*
      * Make the read side of the pipe our stdin.
      * The write side will be closed by the parent process.
-    */
+     */
     close(fd[1]);
     /* block until write end of pipe is closed */
     r = read(fd[0], &buf, 1);
@@ -83,13 +81,13 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
     ASSERT_NE(r, -1);
 
     /* Create a stream that reads from the pipe. */
-    r = uv_pipe_init(uv_default_loop(), (uv_pipe_t *)&stdin_pipe, 0);
+    r = uv_pipe_init(uv_default_loop(), (uv_pipe_t*) &stdin_pipe, 0);
     ASSERT_OK(r);
 
-    r = uv_pipe_open((uv_pipe_t *)&stdin_pipe, 0);
+    r = uv_pipe_open((uv_pipe_t*) &stdin_pipe, 0);
     ASSERT_OK(r);
 
-    r = uv_read_start((uv_stream_t *)&stdin_pipe, alloc_buffer, read_stdin);
+    r = uv_read_start((uv_stream_t*) &stdin_pipe, alloc_buffer, read_stdin);
     ASSERT_OK(r);
 
     /*
@@ -104,8 +102,8 @@ TEST_IMPL(pipe_close_stdout_read_stdin) {
      * get a POLLHUP event when it tries to read from
      * the other end.
      */
-     close(fd[1]);
-     close(fd[0]);
+    close(fd[1]);
+    close(fd[0]);
 
     waitpid(pid, &status, 0);
     ASSERT(WIFEXITED(status) && WEXITSTATUS(status) == 0);

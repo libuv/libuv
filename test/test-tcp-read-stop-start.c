@@ -35,7 +35,7 @@ static void on_read2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf);
 static void on_write_close_immediately(uv_write_t* req, int status) {
   ASSERT_OK(status);
 
-  uv_close((uv_handle_t*)req->handle, NULL); /* Close immediately */
+  uv_close((uv_handle_t*) req->handle, NULL); /* Close immediately */
   free(req);
 }
 
@@ -79,8 +79,8 @@ static void on_read1(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
 static void on_read2(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   ASSERT_LT(nread, 0);
 
-  uv_close((uv_handle_t*)stream, NULL);
-  uv_close((uv_handle_t*)&server, NULL);
+  uv_close((uv_handle_t*) stream, NULL);
+  uv_close((uv_handle_t*) &server, NULL);
 
   read_cb_called++;
 }
@@ -90,15 +90,15 @@ static void on_connection(uv_stream_t* server, int status) {
 
   ASSERT_OK(uv_tcp_init(server->loop, &connection));
 
-  ASSERT_OK(uv_accept(server, (uv_stream_t* )&connection));
+  ASSERT_OK(uv_accept(server, (uv_stream_t*) &connection));
 
-  ASSERT_OK(uv_read_start((uv_stream_t*)&connection, on_alloc, on_read1));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &connection, on_alloc, on_read1));
 }
 
 static void on_connect(uv_connect_t* req, int status) {
   ASSERT_OK(status);
 
-  do_write((uv_stream_t*)&client, on_write_close_immediately);
+  do_write((uv_stream_t*) &client, on_write_close_immediately);
 }
 
 TEST_IMPL(tcp_read_stop_start) {
@@ -111,9 +111,9 @@ TEST_IMPL(tcp_read_stop_start) {
 
     ASSERT_OK(uv_tcp_init(loop, &server));
 
-    ASSERT_OK(uv_tcp_bind(&server, (struct sockaddr*) & addr, 0));
+    ASSERT_OK(uv_tcp_bind(&server, (struct sockaddr*) &addr, 0));
 
-    ASSERT_OK(uv_listen((uv_stream_t*)&server, 10, on_connection));
+    ASSERT_OK(uv_listen((uv_stream_t*) &server, 10, on_connection));
   }
 
   { /* Client */
@@ -123,8 +123,10 @@ TEST_IMPL(tcp_read_stop_start) {
 
     ASSERT_OK(uv_tcp_init(loop, &client));
 
-    ASSERT_OK(uv_tcp_connect(&connect_req, &client,
-                             (const struct sockaddr*) & addr, on_connect));
+    ASSERT_OK(uv_tcp_connect(&connect_req,
+                             &client,
+                             (const struct sockaddr*) &addr,
+                             on_connect));
   }
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));

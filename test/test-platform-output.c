@@ -101,7 +101,7 @@ TEST_IMPL(platform_output) {
   if (file) {
     if (fscanf(file, "%lu %lu", &quota, &period) == 2 && quota > 0) {
       cgroup_version = 2;
-      cgroup_par = (unsigned int)(quota / period);
+      cgroup_par = (unsigned int) (quota / period);
     }
     fclose(file);
   }
@@ -115,17 +115,20 @@ TEST_IMPL(platform_output) {
         file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_period_us", "r");
         if (file && fscanf(file, "%lu", &period) == 1) {
           cgroup_version = 1;
-          cgroup_par = (unsigned int)(quota / period);
+          cgroup_par = (unsigned int) (quota / period);
         }
       }
-      if (file) fclose(file);
+      if (file)
+        fclose(file);
     }
   }
 
   // If we found cgroup parallelism constraints, assert and print them
   if (cgroup_par > 0) {
     ASSERT_GE(par, cgroup_par);
-    printf("cgroup v%d available parallelism: %u\n", cgroup_version, cgroup_par);
+    printf("cgroup v%d available parallelism: %u\n",
+           cgroup_version,
+           cgroup_par);
   }
 #endif
 
@@ -140,13 +143,10 @@ TEST_IMPL(platform_output) {
     printf("  model: %s\n", cpus[i].model);
     printf("  speed: %d\n", cpus[i].speed);
     printf("  times.sys: %llu\n", (unsigned long long) cpus[i].cpu_times.sys);
-    printf("  times.user: %llu\n",
-           (unsigned long long) cpus[i].cpu_times.user);
-    printf("  times.idle: %llu\n",
-           (unsigned long long) cpus[i].cpu_times.idle);
-    printf("  times.irq: %llu\n",  (unsigned long long) cpus[i].cpu_times.irq);
-    printf("  times.nice: %llu\n",
-           (unsigned long long) cpus[i].cpu_times.nice);
+    printf("  times.user: %llu\n", (unsigned long long) cpus[i].cpu_times.user);
+    printf("  times.idle: %llu\n", (unsigned long long) cpus[i].cpu_times.idle);
+    printf("  times.irq: %llu\n", (unsigned long long) cpus[i].cpu_times.irq);
+    printf("  times.nice: %llu\n", (unsigned long long) cpus[i].cpu_times.nice);
   }
 #endif
   uv_free_cpu_info(cpus, count);
@@ -160,12 +160,12 @@ TEST_IMPL(platform_output) {
     printf("  internal: %d\n", interfaces[i].is_internal);
     printf("  physical address: ");
     printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
-           (unsigned char)interfaces[i].phys_addr[0],
-           (unsigned char)interfaces[i].phys_addr[1],
-           (unsigned char)interfaces[i].phys_addr[2],
-           (unsigned char)interfaces[i].phys_addr[3],
-           (unsigned char)interfaces[i].phys_addr[4],
-           (unsigned char)interfaces[i].phys_addr[5]);
+           (unsigned char) interfaces[i].phys_addr[0],
+           (unsigned char) interfaces[i].phys_addr[1],
+           (unsigned char) interfaces[i].phys_addr[2],
+           (unsigned char) interfaces[i].phys_addr[3],
+           (unsigned char) interfaces[i].phys_addr[4],
+           (unsigned char) interfaces[i].phys_addr[5]);
 
     if (interfaces[i].address.address4.sin_family == AF_INET) {
       uv_ip4_name(&interfaces[i].address.address4, buffer, sizeof(buffer));
@@ -245,14 +245,14 @@ TEST_IMPL(platform_output) {
     ASSERT_UINT64_GE(rusage.ru_stime.tv_usec, 0);
     printf("uv_getrusage_thread:\n");
     printf("  user: %llu sec %llu microsec\n",
-          (unsigned long long) rusage.ru_utime.tv_sec,
-          (unsigned long long) rusage.ru_utime.tv_usec);
+           (unsigned long long) rusage.ru_utime.tv_sec,
+           (unsigned long long) rusage.ru_utime.tv_usec);
     printf("  system: %llu sec %llu microsec\n",
-          (unsigned long long) rusage.ru_stime.tv_sec,
-          (unsigned long long) rusage.ru_stime.tv_usec);
+           (unsigned long long) rusage.ru_stime.tv_sec,
+           (unsigned long long) rusage.ru_stime.tv_usec);
     printf("  page faults: %llu\n", (unsigned long long) rusage.ru_majflt);
     printf("  maximum resident set size: %llu\n",
-          (unsigned long long) rusage.ru_maxrss);
+           (unsigned long long) rusage.ru_maxrss);
   }
 
   return 0;

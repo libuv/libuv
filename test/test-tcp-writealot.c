@@ -25,15 +25,16 @@
 #include <stdlib.h>
 
 
-#define WRITES            3
-#if defined(__arm__) /* Decrease the chunks so the test passes on arm CI bots */
-#define CHUNKS_PER_WRITE  2048
+#define WRITES 3
+#if defined(__arm__) /* Decrease the chunks so the test passes on arm CI bots  \
+                      */
+#  define CHUNKS_PER_WRITE 2048
 #else
-#define CHUNKS_PER_WRITE  4096
+#  define CHUNKS_PER_WRITE 4096
 #endif
-#define CHUNK_SIZE        10024 /* 10 kb */
+#define CHUNK_SIZE 10024 /* 10 kb */
 
-#define TOTAL_BYTES       (WRITES * CHUNKS_PER_WRITE * CHUNK_SIZE)
+#define TOTAL_BYTES (WRITES * CHUNKS_PER_WRITE * CHUNK_SIZE)
 
 static char* send_buffer;
 
@@ -68,7 +69,7 @@ static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT_PTR_EQ(req, &shutdown_req);
   ASSERT_OK(status);
 
-  tcp = (uv_tcp_t*)(req->handle);
+  tcp = (uv_tcp_t*) (req->handle);
 
   /* The write buffer should be empty by now. */
   ASSERT_OK(tcp->write_queue_size);
@@ -86,11 +87,10 @@ static void read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
 
   if (nread >= 0) {
     bytes_received_done += nread;
-  }
-  else {
+  } else {
     ASSERT_EQ(nread, UV_EOF);
     printf("GOT EOF\n");
-    uv_close((uv_handle_t*)tcp, close_cb);
+    uv_close((uv_handle_t*) tcp, close_cb);
   }
 
   free(buf->base);

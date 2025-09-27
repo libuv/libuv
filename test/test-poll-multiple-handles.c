@@ -22,9 +22,9 @@
 #include <errno.h>
 
 #ifndef _WIN32
-# include <fcntl.h>
-# include <sys/socket.h>
-# include <unistd.h>
+#  include <fcntl.h>
+#  include <sys/socket.h>
+#  include <unistd.h>
 #endif
 
 #include "uv.h"
@@ -39,7 +39,8 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 static void poll_cb(uv_poll_t* handle, int status, int events) {
-  /* Not a bound socket, linux immediately reports UV_READABLE, other OS do not */
+  /* Not a bound socket, linux immediately reports UV_READABLE, other OS do not
+   */
   ASSERT_EQ(events, UV_READABLE);
 }
 
@@ -61,12 +62,8 @@ TEST_IMPL(poll_multiple_handles) {
 #else
   ASSERT_NE(sock, -1);
 #endif
-  ASSERT_OK(uv_poll_init_socket(uv_default_loop(),
-                                &first_poll_handle,
-                                sock));
-  ASSERT_OK(uv_poll_init_socket(uv_default_loop(),
-                                &second_poll_handle,
-                                sock));
+  ASSERT_OK(uv_poll_init_socket(uv_default_loop(), &first_poll_handle, sock));
+  ASSERT_OK(uv_poll_init_socket(uv_default_loop(), &second_poll_handle, sock));
 
   ASSERT_OK(uv_poll_start(&first_poll_handle, UV_READABLE, poll_cb));
 

@@ -25,10 +25,10 @@
 #include "uv.h"
 #include "task.h"
 
-#ifdef _MSC_VER  /* msvc */
-# define NO_INLINE __declspec(noinline)
-#else  /* gcc */
-# define NO_INLINE __attribute__ ((noinline))
+#ifdef _MSC_VER /* msvc */
+#  define NO_INLINE __declspec(noinline)
+#else /* gcc */
+#  define NO_INLINE __attribute__((noinline))
 #endif
 
 #ifdef _WIN32

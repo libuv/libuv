@@ -33,10 +33,10 @@
 #include "req-inl.h"
 #include <dbghelp.h>
 #include <shlobj.h>
-#include <psapi.h>     /* GetModuleBaseNameW */
+#include <psapi.h> /* GetModuleBaseNameW */
 
 
-#define SIGKILL         9
+#define SIGKILL 9
 
 
 typedef struct env_var {
@@ -45,20 +45,22 @@ typedef struct env_var {
   const size_t len; /* including null or '=' */
 } env_var_t;
 
-#define E_V(str) { L##str, L##str L"=", sizeof(str) }
+#define E_V(str)                                                               \
+  { L##str, L##str L"=", sizeof(str) }
 
-static const env_var_t required_vars[] = { /* keep me sorted */
-  E_V("HOMEDRIVE"),
-  E_V("HOMEPATH"),
-  E_V("LOGONSERVER"),
-  E_V("PATH"),
-  E_V("SYSTEMDRIVE"),
-  E_V("SYSTEMROOT"),
-  E_V("TEMP"),
-  E_V("USERDOMAIN"),
-  E_V("USERNAME"),
-  E_V("USERPROFILE"),
-  E_V("WINDIR"),
+static const env_var_t required_vars[] = {
+    /* keep me sorted */
+    E_V("HOMEDRIVE"),
+    E_V("HOMEPATH"),
+    E_V("LOGONSERVER"),
+    E_V("PATH"),
+    E_V("SYSTEMDRIVE"),
+    E_V("SYSTEMROOT"),
+    E_V("TEMP"),
+    E_V("USERDOMAIN"),
+    E_V("USERNAME"),
+    E_V("USERPROFILE"),
+    E_V("WINDIR"),
 };
 
 
@@ -90,8 +92,7 @@ static void uv__init_global_job_handle(void) {
 
   memset(&info, 0, sizeof info);
   info.BasicLimitInformation.LimitFlags =
-      JOB_OBJECT_LIMIT_BREAKAWAY_OK |
-      JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK |
+      JOB_OBJECT_LIMIT_BREAKAWAY_OK | JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK |
       JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION |
       JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
@@ -158,16 +159,15 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
                                     size_t cwd_len) {
   WCHAR *result, *result_pos;
   DWORD attrs;
-  if (dir_len > 2 &&
-      ((dir[0] == L'\\' || dir[0] == L'/') &&
-       (dir[1] == L'\\' || dir[1] == L'/'))) {
+  if (dir_len > 2 && ((dir[0] == L'\\' || dir[0] == L'/') &&
+                      (dir[1] == L'\\' || dir[1] == L'/'))) {
     /* It's a UNC path so ignore cwd */
     cwd_len = 0;
   } else if (dir_len >= 1 && (dir[0] == L'/' || dir[0] == L'\\')) {
     /* It's a full path without drive letter, use cwd's drive letter only */
     cwd_len = 2;
   } else if (dir_len >= 2 && dir[1] == L':' &&
-      (dir_len < 3 || (dir[2] != L'/' && dir[2] != L'\\'))) {
+             (dir_len < 3 || (dir[2] != L'/' && dir[2] != L'\\'))) {
     /* It's a relative path with drive letter (ext.g. D:../some/file)
      * Replace drive letter in dir by full cwd if it points to the same drive,
      * otherwise use the dir only.
@@ -186,8 +186,8 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   }
 
   /* Allocate buffer for output */
-  result = result_pos = (WCHAR*)uv__malloc(sizeof(WCHAR) *
-      (cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1));
+  result = result_pos = (WCHAR*) uv__malloc(
+      sizeof(WCHAR) * (cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1));
 
   /* Copy cwd */
   wcsncpy(result_pos, cwd, cwd_len);
@@ -230,8 +230,7 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
 
   attrs = GetFileAttributesW(result);
 
-  if (attrs != INVALID_FILE_ATTRIBUTES &&
-      !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+  if (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
     return result;
   }
 
@@ -243,40 +242,52 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
 /*
  * Helper function for search_path
  */
-static WCHAR* path_search_walk_ext(const WCHAR *dir,
+static WCHAR* path_search_walk_ext(const WCHAR* dir,
                                    size_t dir_len,
-                                   const WCHAR *name,
+                                   const WCHAR* name,
                                    size_t name_len,
-                                   WCHAR *cwd,
+                                   WCHAR* cwd,
                                    size_t cwd_len,
                                    int name_has_ext) {
   WCHAR* result;
 
   /* If the name itself has a nonempty extension, try this extension first */
   if (name_has_ext) {
-    result = search_path_join_test(dir, dir_len,
-                                   name, name_len,
-                                   L"", 0,
-                                   cwd, cwd_len);
+    result = search_path_join_test(dir,
+                                   dir_len,
+                                   name,
+                                   name_len,
+                                   L"",
+                                   0,
+                                   cwd,
+                                   cwd_len);
     if (result != NULL) {
       return result;
     }
   }
 
   /* Try .com extension */
-  result = search_path_join_test(dir, dir_len,
-                                 name, name_len,
-                                 L"com", 3,
-                                 cwd, cwd_len);
+  result = search_path_join_test(dir,
+                                 dir_len,
+                                 name,
+                                 name_len,
+                                 L"com",
+                                 3,
+                                 cwd,
+                                 cwd_len);
   if (result != NULL) {
     return result;
   }
 
   /* Try .exe extension */
-  result = search_path_join_test(dir, dir_len,
-                                 name, name_len,
-                                 L"exe", 3,
-                                 cwd, cwd_len);
+  result = search_path_join_test(dir,
+                                 dir_len,
+                                 name,
+                                 name_len,
+                                 L"exe",
+                                 3,
+                                 cwd,
+                                 cwd_len);
   if (result != NULL) {
     return result;
   }
@@ -329,14 +340,14 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
  * really a pointless restriction.
  *
  */
-static WCHAR* search_path(const WCHAR *file,
-                            WCHAR *cwd,
-                            const WCHAR *path,
-                            unsigned int flags) {
+static WCHAR* search_path(const WCHAR* file,
+                          WCHAR* cwd,
+                          const WCHAR* path,
+                          unsigned int flags) {
   int file_has_dir;
   WCHAR* result = NULL;
-  WCHAR *file_name_start;
-  WCHAR *dot;
+  WCHAR* file_name_start;
+  WCHAR* dot;
   const WCHAR *dir_start, *dir_end, *dir_path;
   size_t dir_len;
   int name_has_ext;
@@ -347,19 +358,17 @@ static WCHAR* search_path(const WCHAR *file,
   /* If the caller supplies an empty filename,
    * we're not gonna return c:\windows\.exe -- GFY!
    */
-  if (file_len == 0
-      || (file_len == 1 && file[0] == L'.')) {
+  if (file_len == 0 || (file_len == 1 && file[0] == L'.')) {
     return NULL;
   }
 
   /* Find the start of the filename so we can split the directory from the
    * name. */
-  for (file_name_start = (WCHAR*)file + file_len;
-       file_name_start > file
-           && file_name_start[-1] != L'\\'
-           && file_name_start[-1] != L'/'
-           && file_name_start[-1] != L':';
-       file_name_start--);
+  for (file_name_start = (WCHAR*) file + file_len;
+       file_name_start > file && file_name_start[-1] != L'\\' &&
+       file_name_start[-1] != L'/' && file_name_start[-1] != L':';
+       file_name_start--)
+    ;
 
   file_has_dir = file_name_start != file;
 
@@ -370,9 +379,12 @@ static WCHAR* search_path(const WCHAR *file,
   if (file_has_dir) {
     /* The file has a path inside, don't use path */
     result = path_search_walk_ext(
-        file, file_name_start - file,
-        file_name_start, file_len - (file_name_start - file),
-        cwd, cwd_len,
+        file,
+        file_name_start - file,
+        file_name_start,
+        file_len - (file_name_start - file),
+        cwd,
+        cwd_len,
         name_has_ext || (flags & UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME));
 
   } else {
@@ -380,9 +392,12 @@ static WCHAR* search_path(const WCHAR *file,
 
     if (NeedCurrentDirectoryForExePathW(L"")) {
       /* The file is really only a name; look in cwd first, then scan path */
-      result = path_search_walk_ext(L"", 0,
-                                    file, file_len,
-                                    cwd, cwd_len,
+      result = path_search_walk_ext(L"",
+                                    0,
+                                    file,
+                                    file_len,
+                                    cwd,
+                                    cwd_len,
                                     name_has_ext);
     }
 
@@ -430,9 +445,12 @@ static WCHAR* search_path(const WCHAR *file,
         --dir_len;
       }
 
-      result = path_search_walk_ext(dir_path, dir_len,
-                                    file, file_len,
-                                    cwd, cwd_len,
+      result = path_search_walk_ext(dir_path,
+                                    dir_len,
+                                    file,
+                                    file_len,
+                                    cwd,
+                                    cwd_len,
                                     name_has_ext);
     }
   }
@@ -445,7 +463,7 @@ static WCHAR* search_path(const WCHAR *file,
  * Quotes command line arguments
  * Returns a pointer to the end (next char to be written) of the buffer
  */
-WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
+WCHAR* quote_cmd_arg(const WCHAR* source, WCHAR* target) {
   size_t len = wcslen(source);
   size_t i;
   int quote_hit;
@@ -504,7 +522,7 @@ WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target) {
 
     if (quote_hit && source[i - 1] == L'\\') {
       *(target++) = L'\\';
-    } else if(source[i - 1] == L'"') {
+    } else if (source[i - 1] == L'"') {
       quote_hit = 1;
       *(target++) = L'\\';
     } else {
@@ -606,7 +624,7 @@ static int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   if (na < 0) {
     a_eq = wcschr(a, L'=');
     assert(a_eq);
-    na = (int)(long)(a_eq - a);
+    na = (int) (long) (a_eq - a);
   } else {
     na--;
   }
@@ -614,14 +632,14 @@ static int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   assert(b_eq);
   nb = b_eq - b;
 
-  r = CompareStringOrdinal(a, na, b, nb, /*case insensitive*/TRUE);
+  r = CompareStringOrdinal(a, na, b, nb, /*case insensitive*/ TRUE);
   return r - CSTR_EQUAL;
 }
 
 
-static int qsort_wcscmp(const void *a, const void *b) {
-  wchar_t* astr = *(wchar_t* const*)a;
-  wchar_t* bstr = *(wchar_t* const*)b;
+static int qsort_wcscmp(const void* a, const void* b) {
+  wchar_t* astr = *(wchar_t* const*) a;
+  wchar_t* bstr = *(wchar_t* const*) b;
   return env_strncmp(astr, -1, bstr);
 }
 
@@ -695,10 +713,10 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   assert(env_len == 0 || env_len == (size_t) (ptr - dst_copy));
 
   /* sort our (UTF-16) copy */
-  qsort(env_copy, env_block_count-1, sizeof(wchar_t*), qsort_wcscmp);
+  qsort(env_copy, env_block_count - 1, sizeof(wchar_t*), qsort_wcscmp);
 
   /* third pass: check for required variables */
-  for (ptr_copy = env_copy, i = 0; i < ARRAY_SIZE(required_vars); ) {
+  for (ptr_copy = env_copy, i = 0; i < ARRAY_SIZE(required_vars);) {
     int cmp;
     if (!*ptr_copy) {
       cmp = -1;
@@ -724,7 +742,7 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   }
 
   /* final pass: copy, in sort order, and inserting required variables */
-  dst = uv__malloc((1+env_len) * sizeof(WCHAR));
+  dst = uv__malloc((1 + env_len) * sizeof(WCHAR));
   if (!dst) {
     uv__free(p);
     return UV_ENOMEM;
@@ -782,13 +800,12 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
  *
  * If found, a pointer into `env` is returned. If not found, NULL is returned.
  */
-static WCHAR* find_path(WCHAR *env) {
+static WCHAR* find_path(WCHAR* env) {
   for (; env != NULL && *env != 0; env += wcslen(env) + 1) {
     if ((env[0] == L'P' || env[0] == L'p') &&
         (env[1] == L'A' || env[1] == L'a') &&
         (env[2] == L'T' || env[2] == L't') &&
-        (env[3] == L'H' || env[3] == L'h') &&
-        (env[4] == L'=')) {
+        (env[3] == L'H' || env[3] == L'h') && (env[4] == L'=')) {
       return &env[5];
     }
   }
@@ -870,7 +887,7 @@ void uv__process_close(uv_loop_t* loop, uv_process_t* handle) {
   }
 
   if (!handle->exit_cb_pending) {
-    uv__want_endgame(loop, (uv_handle_t*)handle);
+    uv__want_endgame(loop, (uv_handle_t*) handle);
   }
 }
 
@@ -892,10 +909,10 @@ int uv_spawn(uv_loop_t* loop,
              const uv_process_options_t* options) {
   int i;
   int err = 0;
-  WCHAR* path = NULL, *alloc_path = NULL;
+  WCHAR *path = NULL, *alloc_path = NULL;
   BOOL result;
-  WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
-         *env = NULL, *cwd = NULL;
+  WCHAR *application_path = NULL, *application = NULL, *arguments = NULL,
+        *env = NULL, *cwd = NULL;
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;
   DWORD process_flags, cwd_len;
@@ -909,36 +926,32 @@ int uv_spawn(uv_loop_t* loop,
     return UV_ENOTSUP;
   }
 
-  if (options->file == NULL ||
-      options->args == NULL) {
+  if (options->file == NULL || options->args == NULL) {
     return UV_EINVAL;
   }
 
   assert(options->file != NULL);
-  assert(!(options->flags & ~(UV_PROCESS_DETACHED |
-                              UV_PROCESS_SETGID |
-                              UV_PROCESS_SETUID |
-                              UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
-                              UV_PROCESS_WINDOWS_HIDE |
-                              UV_PROCESS_WINDOWS_HIDE_CONSOLE |
-                              UV_PROCESS_WINDOWS_HIDE_GUI |
-                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
+  assert(!(options->flags &
+           ~(UV_PROCESS_DETACHED | UV_PROCESS_SETGID | UV_PROCESS_SETUID |
+             UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME | UV_PROCESS_WINDOWS_HIDE |
+             UV_PROCESS_WINDOWS_HIDE_CONSOLE | UV_PROCESS_WINDOWS_HIDE_GUI |
+             UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);
   if (err)
     goto done_uv;
 
-  err = make_program_args(
-      options->args,
-      options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS,
-      &arguments);
+  err =
+      make_program_args(options->args,
+                        options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS,
+                        &arguments);
   if (err)
     goto done_uv;
 
   if (options->env) {
-     err = make_program_env(options->env, &env);
-     if (err)
-       goto done_uv;
+    err = make_program_env(options->env, &env);
+    if (err)
+      goto done_uv;
   }
 
   if (options->cwd) {
@@ -1006,10 +1019,7 @@ int uv_spawn(uv_loop_t* loop,
   if (err)
     goto done;
 
-  application_path = search_path(application,
-                                 cwd,
-                                 path,
-                                 options->flags);
+  application_path = search_path(application, cwd, path, options->flags);
   if (application_path == NULL) {
     /* Not found. */
     err = ERROR_FILE_NOT_FOUND;
@@ -1065,15 +1075,15 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   if (!CreateProcessW(application_path,
-                     arguments,
-                     NULL,
-                     NULL,
-                     1,
-                     process_flags,
-                     env,
-                     cwd,
-                     &startup,
-                     &info)) {
+                      arguments,
+                      NULL,
+                      NULL,
+                      1,
+                      process_flags,
+                      env,
+                      cwd,
+                      &startup,
+                      &info)) {
     /* CreateProcessW failed. */
     err = GetLastError();
     goto done;
@@ -1102,7 +1112,7 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   if (process_flags & CREATE_SUSPENDED) {
-    if (ResumeThread(info.hThread) == ((DWORD)-1)) {
+    if (ResumeThread(info.hThread) == ((DWORD) -1)) {
       err = GetLastError();
       TerminateProcess(info.hProcess, 1);
       goto done;
@@ -1126,9 +1136,13 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   /* Setup notifications for when the child process exits. */
-  result = RegisterWaitForSingleObject(&process->wait_handle,
-      process->process_handle, exit_wait_callback, (void*)process, INFINITE,
-      WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
+  result =
+      RegisterWaitForSingleObject(&process->wait_handle,
+                                  process->process_handle,
+                                  exit_wait_callback,
+                                  (void*) process,
+                                  INFINITE,
+                                  WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
   if (!result) {
     uv_fatal_error(GetLastError(), "RegisterWaitForSingleObject");
   }
@@ -1144,10 +1158,10 @@ int uv_spawn(uv_loop_t* loop,
   goto done_uv;
 
   /* Cleanup, whether we succeeded or failed. */
- done:
+done:
   err = uv_translate_sys_error(err);
 
- done_uv:
+done_uv:
   uv__free(application);
   uv__free(application_path);
   uv__free(arguments);
@@ -1176,7 +1190,9 @@ static int uv__kill(HANDLE process_handle, int signum) {
    * sub-key, which has a default value of `%LOCALAPPDATA%\CrashDumps`, see [0]
    * for more detail.  Note that if the dump folder does not exist, we attempt
    * to create it, to match behavior with WER itself.
-   * [0]: https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps */
+   * [0]:
+   * https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps
+   */
   if (signum == SIGQUIT) {
     HKEY registry_key;
     DWORD pid, ret;
@@ -1209,9 +1225,10 @@ static int uv__kill(HANDLE process_handle, int signum) {
       if (ret != ERROR_SUCCESS) {
         /* Workaround for missing uuid.dll on MinGW. */
         static const GUID FOLDERID_LocalAppData_libuv = {
-          0xf1b32785, 0x6fba, 0x4fcf,
-              {0x9d, 0x55, 0x7b, 0x8e, 0x7f, 0x15, 0x70, 0x91}
-        };
+            0xf1b32785,
+            0x6fba,
+            0x4fcf,
+            {0x9d, 0x55, 0x7b, 0x8e, 0x7f, 0x15, 0x70, 0x91}};
 
         /* Default value for `dump_folder` is `%LOCALAPPDATA%\CrashDumps`. */
         WCHAR* localappdata;
@@ -1249,7 +1266,7 @@ static int uv__kill(HANDLE process_handle, int signum) {
                               NULL);
       if (hDumpFile != INVALID_HANDLE_VALUE) {
         DWORD dump_options, sym_options;
-        FILE_DISPOSITION_INFO DeleteOnClose = { TRUE };
+        FILE_DISPOSITION_INFO DeleteOnClose = {TRUE};
 
         /* If something goes wrong while writing it out, delete the file. */
         SetFileInformationByHandle(hDumpFile,
@@ -1263,7 +1280,7 @@ static int uv__kill(HANDLE process_handle, int signum) {
 
 /* MiniDumpWithAvxXStateContext might be undef in server2012r2 or mingw < 12 */
 #ifndef MiniDumpWithAvxXStateContext
-#define MiniDumpWithAvxXStateContext 0x00200000
+#  define MiniDumpWithAvxXStateContext 0x00200000
 #endif
         /* We default to a fairly complete dump.  In the future, we may want to
          * allow clients to customize what kind of dump to create. */
@@ -1279,7 +1296,7 @@ static int uv__kill(HANDLE process_handle, int signum) {
                               NULL,
                               NULL)) {
           /* Don't delete the file on close if we successfully wrote it out. */
-          FILE_DISPOSITION_INFO DontDeleteOnClose = { FALSE };
+          FILE_DISPOSITION_INFO DontDeleteOnClose = {FALSE};
           SetFileInformationByHandle(hDumpFile,
                                      FileDispositionInfo,
                                      &DontDeleteOnClose,
@@ -1292,71 +1309,71 @@ static int uv__kill(HANDLE process_handle, int signum) {
   }
 
   switch (signum) {
-    case SIGQUIT:
-    case SIGTERM:
-    case SIGKILL:
-    case SIGINT: {
-      /* Unconditionally terminate the process. On Windows, killed processes
-       * normally return 1. */
-      int err;
-      DWORD status;
+  case SIGQUIT:
+  case SIGTERM:
+  case SIGKILL:
+  case SIGINT: {
+    /* Unconditionally terminate the process. On Windows, killed processes
+     * normally return 1. */
+    int err;
+    DWORD status;
 
-      if (TerminateProcess(process_handle, 1))
-        return 0;
+    if (TerminateProcess(process_handle, 1))
+      return 0;
 
-      /* If the process already exited before TerminateProcess was called,
-       * TerminateProcess will fail with ERROR_ACCESS_DENIED. */
-      err = GetLastError();
-      if (err == ERROR_ACCESS_DENIED) {
-        /* First check using GetExitCodeProcess() with status different from
-         * STILL_ACTIVE (259). This check can be set incorrectly by the process,
-         * though that is uncommon. */
-        if (GetExitCodeProcess(process_handle, &status) &&
-            status != STILL_ACTIVE) {
-          return UV_ESRCH;
-        }
-
-        /* But the process could have exited with code == STILL_ACTIVE, use then
-         * WaitForSingleObject with timeout zero. This is prone to a race
-         * condition as it could return WAIT_TIMEOUT because the handle might
-         * not have been signaled yet.That would result in returning the wrong
-         * error code here (UV_EACCES instead of UV_ESRCH), but we cannot fix
-         * the kernel synchronization issue that TerminateProcess is
-         * inconsistent with WaitForSingleObject with just the APIs available to
-         * us in user space. */
-        if (WaitForSingleObject(process_handle, 0) == WAIT_OBJECT_0) {
-          return UV_ESRCH;
-        }
-      }
-
-      return uv_translate_sys_error(err);
-    }
-
-    case 0: {
-      /* Health check: is the process still alive? */
-      DWORD status;
-
-      if (!GetExitCodeProcess(process_handle, &status))
-        return uv_translate_sys_error(GetLastError());
-
-      if (status != STILL_ACTIVE)
+    /* If the process already exited before TerminateProcess was called,
+     * TerminateProcess will fail with ERROR_ACCESS_DENIED. */
+    err = GetLastError();
+    if (err == ERROR_ACCESS_DENIED) {
+      /* First check using GetExitCodeProcess() with status different from
+       * STILL_ACTIVE (259). This check can be set incorrectly by the process,
+       * though that is uncommon. */
+      if (GetExitCodeProcess(process_handle, &status) &&
+          status != STILL_ACTIVE) {
         return UV_ESRCH;
+      }
 
-      switch (WaitForSingleObject(process_handle, 0)) {
-        case WAIT_OBJECT_0:
-          return UV_ESRCH;
-        case WAIT_FAILED:
-          return uv_translate_sys_error(GetLastError());
-        case WAIT_TIMEOUT:
-          return 0;
-        default:
-          return UV_UNKNOWN;
+      /* But the process could have exited with code == STILL_ACTIVE, use then
+       * WaitForSingleObject with timeout zero. This is prone to a race
+       * condition as it could return WAIT_TIMEOUT because the handle might
+       * not have been signaled yet.That would result in returning the wrong
+       * error code here (UV_EACCES instead of UV_ESRCH), but we cannot fix
+       * the kernel synchronization issue that TerminateProcess is
+       * inconsistent with WaitForSingleObject with just the APIs available to
+       * us in user space. */
+      if (WaitForSingleObject(process_handle, 0) == WAIT_OBJECT_0) {
+        return UV_ESRCH;
       }
     }
 
+    return uv_translate_sys_error(err);
+  }
+
+  case 0: {
+    /* Health check: is the process still alive? */
+    DWORD status;
+
+    if (!GetExitCodeProcess(process_handle, &status))
+      return uv_translate_sys_error(GetLastError());
+
+    if (status != STILL_ACTIVE)
+      return UV_ESRCH;
+
+    switch (WaitForSingleObject(process_handle, 0)) {
+    case WAIT_OBJECT_0:
+      return UV_ESRCH;
+    case WAIT_FAILED:
+      return uv_translate_sys_error(GetLastError());
+    case WAIT_TIMEOUT:
+      return 0;
     default:
-      /* Unsupported signal. */
-      return UV_ENOSYS;
+      return UV_UNKNOWN;
+    }
+  }
+
+  default:
+    /* Unsupported signal. */
+    return UV_ENOSYS;
   }
 }
 
@@ -1370,7 +1387,7 @@ int uv_process_kill(uv_process_t* process, int signum) {
 
   err = uv__kill(process->process_handle, signum);
   if (err) {
-    return err;  /* err is already translated. */
+    return err; /* err is already translated. */
   }
 
   process->exit_signal = signum;
@@ -1386,9 +1403,10 @@ int uv_kill(int pid, int signum) {
   if (pid == 0) {
     process_handle = GetCurrentProcess();
   } else {
-    process_handle = OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
-                                 FALSE,
-                                 pid);
+    process_handle =
+        OpenProcess(PROCESS_TERMINATE | PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
+                    FALSE,
+                    pid);
   }
 
   if (process_handle == NULL) {
@@ -1403,5 +1421,5 @@ int uv_kill(int pid, int signum) {
   err = uv__kill(process_handle, signum);
   CloseHandle(process_handle);
 
-  return err;  /* err is already translated. */
+  return err; /* err is already translated. */
 }

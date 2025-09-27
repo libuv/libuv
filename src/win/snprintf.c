@@ -21,11 +21,11 @@
 
 #if defined(_MSC_VER) && _MSC_VER < 1900
 
-#include <stdio.h>
-#include <stdarg.h>
+#  include <stdio.h>
+#  include <stdarg.h>
 
-/* Emulate snprintf() on MSVC<2015, _snprintf() doesn't zero-terminate the buffer
- * on overflow...
+/* Emulate snprintf() on MSVC<2015, _snprintf() doesn't zero-terminate the
+ * buffer on overflow...
  */
 int snprintf(char* buf, size_t len, const char* fmt, ...) {
   int n;

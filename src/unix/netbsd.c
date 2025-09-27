@@ -55,7 +55,8 @@ void uv_loadavg(double avg[3]) {
   size_t size = sizeof(info);
   int which[] = {CTL_VM, VM_LOADAVG};
 
-  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) == -1) return;
+  if (sysctl(which, ARRAY_SIZE(which), &info, &size, NULL, 0) == -1)
+    return;
 
   avg[0] = (double) info.ldavg[0] / info.fscale;
   avg[1] = (double) info.ldavg[1] / info.fscale;
@@ -127,7 +128,7 @@ uint64_t uv_get_total_memory(void) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return 0; /* Memory constraints are unknown. */
 }
 
 
@@ -137,8 +138,8 @@ uint64_t uv_get_available_memory(void) {
 
 
 int uv_resident_set_memory(size_t* rss) {
-  kvm_t *kd = NULL;
-  struct kinfo_proc2 *kinfo = NULL;
+  kvm_t* kd = NULL;
+  struct kinfo_proc2* kinfo = NULL;
   pid_t pid;
   int nprocs;
   int max_size = sizeof(struct kinfo_proc2);
@@ -149,10 +150,12 @@ int uv_resident_set_memory(size_t* rss) {
 
   kd = kvm_open(NULL, NULL, NULL, KVM_NO_FILES, "kvm_open");
 
-  if (kd == NULL) goto error;
+  if (kd == NULL)
+    goto error;
 
   kinfo = kvm_getproc2(kd, KERN_PROC_PID, pid, max_size, &nprocs);
-  if (kinfo == NULL) goto error;
+  if (kinfo == NULL)
+    goto error;
 
   *rss = kinfo->p_vm_rssize * page_size;
 
@@ -161,7 +164,8 @@ int uv_resident_set_memory(size_t* rss) {
   return 0;
 
 error:
-  if (kd) kvm_close(kd);
+  if (kd)
+    kvm_close(kd);
   return UV_EPERM;
 }
 
@@ -177,14 +181,14 @@ int uv_uptime(double* uptime) {
 
   now = time(NULL);
 
-  *uptime = (double)(now - info.tv_sec);
+  *uptime = (double) (now - info.tv_sec);
   return 0;
 }
 
 
 int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
-  unsigned int ticks = (unsigned int)sysconf(_SC_CLK_TCK);
-  unsigned int multiplier = ((uint64_t)1000L / ticks);
+  unsigned int ticks = (unsigned int) sysconf(_SC_CLK_TCK);
+  unsigned int multiplier = ((uint64_t) 1000L / ticks);
   unsigned int cur = 0;
   uv_cpu_info_t* cpu_info;
   u_int64_t* cp_times;
@@ -227,13 +231,16 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
   for (i = 0; i < numcpus; i++) {
     cpu_info = &(*cpu_infos)[i];
-    cpu_info->cpu_times.user = (uint64_t)(cp_times[CP_USER+cur]) * multiplier;
-    cpu_info->cpu_times.nice = (uint64_t)(cp_times[CP_NICE+cur]) * multiplier;
-    cpu_info->cpu_times.sys = (uint64_t)(cp_times[CP_SYS+cur]) * multiplier;
-    cpu_info->cpu_times.idle = (uint64_t)(cp_times[CP_IDLE+cur]) * multiplier;
-    cpu_info->cpu_times.irq = (uint64_t)(cp_times[CP_INTR+cur]) * multiplier;
+    cpu_info->cpu_times.user =
+        (uint64_t) (cp_times[CP_USER + cur]) * multiplier;
+    cpu_info->cpu_times.nice =
+        (uint64_t) (cp_times[CP_NICE + cur]) * multiplier;
+    cpu_info->cpu_times.sys = (uint64_t) (cp_times[CP_SYS + cur]) * multiplier;
+    cpu_info->cpu_times.idle =
+        (uint64_t) (cp_times[CP_IDLE + cur]) * multiplier;
+    cpu_info->cpu_times.irq = (uint64_t) (cp_times[CP_INTR + cur]) * multiplier;
     cpu_info->model = uv__strdup(model);
-    cpu_info->speed = (int)(cpuspeed/(uint64_t) 1e6);
+    cpu_info->speed = (int) (cpuspeed / (uint64_t) 1e6);
     cur += CPUSTATES;
   }
   uv__free(cp_times);
@@ -254,7 +261,7 @@ int uv__random_sysctl(void* buf, size_t len) {
       return UV__ERR(errno);
 
     if (count != req)
-      return UV_EIO;  /* Can't happen. */
+      return UV_EIO; /* Can't happen. */
 
     p += count;
     len -= count;

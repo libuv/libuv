@@ -100,7 +100,8 @@ static void synchronize(void) {
 
   synchronize_nowait();
   /* Wait for the other thread.  Guard against spurious wakeups. */
-  for (current = step; current == step; uv_cond_wait(&condvar, &mutex));
+  for (current = step; current == step; uv_cond_wait(&condvar, &mutex))
+    ;
   ASSERT_EQ(step, current + 1);
 }
 
@@ -131,7 +132,7 @@ static void thread_rwlock_trylock_peer(void* unused) {
   synchronize();
 
   uv_rwlock_rdunlock(&rwlock);
-  synchronize_nowait();  /* Signal main thread we're going away. */
+  synchronize_nowait(); /* Signal main thread we're going away. */
   uv_mutex_unlock(&mutex);
 }
 
@@ -148,7 +149,7 @@ TEST_IMPL(thread_rwlock_trylock) {
 
   /* Hold write lock. */
   ASSERT_OK(uv_rwlock_trywrlock(&rwlock));
-  synchronize();  /* Releases the mutex to the other thread. */
+  synchronize(); /* Releases the mutex to the other thread. */
 
   /* Release write lock and acquire read lock.  Pthreads doesn't support
    * the notion of upgrading or downgrading rwlocks, so neither do we.

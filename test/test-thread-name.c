@@ -66,10 +66,8 @@ TEST_IMPL(thread_name) {
   char long_thread_name[UV_PTHREAD_MAX_NAMELEN_NP + 1];
   struct semaphores sem;
 
-#if defined(__ANDROID_API__) && __ANDROID_API__ < 26 || \
-    defined(_AIX) || \
-    defined(__MVS__) || \
-    defined(__PASE__)
+#if defined(__ANDROID_API__) && __ANDROID_API__ < 26 || defined(_AIX) ||       \
+    defined(__MVS__) || defined(__PASE__)
   RETURN_SKIP("API not available on this platform");
 #endif
 
@@ -142,7 +140,7 @@ TEST_IMPL(thread_name) {
 
 #define MAX_THREADS 4
 
-static void* executedThreads[MAX_THREADS] = { NULL };
+static void* executedThreads[MAX_THREADS] = {NULL};
 static int size;
 static uv_loop_t* loop;
 
@@ -178,7 +176,6 @@ static void after_work_cb(uv_work_t* req, int status) {
 }
 
 TEST_IMPL(thread_name_threadpool) {
-
 #if defined(_AIX) || defined(__PASE__)
   RETURN_SKIP("API not available on this platform");
 #endif
