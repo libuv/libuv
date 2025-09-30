@@ -905,9 +905,11 @@ static int maybe_resize(uv_loop_t* loop, unsigned int len) {
 
 void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   switch (uv__io_cb_get(w)) {
+  #if ! defined(__PASE__)
   case UV__AHAFS_EVENT:
     uv__ahafs_event(loop, w, events);
     break;
+  #endif
   case UV__ASYNC_IO:
     uv__async_io(loop, w, events);
     break;
