@@ -204,7 +204,7 @@ static int uv__udp_maybe_bind(uv_udp_t* handle,
    * so we just return an error directly when UV_UDP_REUSEPORT is requested
    * for binding the socket. */
   if (flags & UV_UDP_REUSEPORT)
-    return ERROR_NOT_SUPPORTED;
+    return UV_ENOTSUP;
 
   if ((flags & UV_UDP_IPV6ONLY) && addr->sa_family != AF_INET6) {
     /* UV_UDP_IPV6ONLY is supported only for IPV6 sockets */
@@ -908,10 +908,14 @@ int uv__udp_is_bound(uv_udp_t* handle) {
 }
 
 
-int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
+int uv_udp_open_ex(uv_udp_t* handle, uv_os_sock_t sock, unsigned int flags) {
   WSAPROTOCOL_INFOW protocol_info;
   int opt_len;
   int err;
+
+  /* Check for bad flags. */
+  if (flags & ~(UV_UDP_REUSEADDR | UV_UDP_REUSEPORT))
+    return UV_EINVAL;
 
   /* Detect the address family of the socket. */
   opt_len = (int) sizeof protocol_info;
@@ -930,6 +934,25 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
   if (err)
     return uv_translate_sys_error(err);
 
+  /* There is no SO_REUSEPORT on Windows, Windows only knows SO_REUSEADDR.
+   * so we just return an error directly when UV_UDP_REUSEPORT is requested
+   * for binding the socket. */
+  if (flags & UV_UDP_REUSEPORT)
+    return UV_ENOTSUP;
+
+  if (flags & UV_UDP_REUSEADDR) {
+    DWORD yes = 1;
+    /* Set SO_REUSEADDR on the socket. */
+    if (setsockopt(handle->socket,
+                   SOL_SOCKET,
+                   SO_REUSEADDR,
+                   (char*) &yes,
+                   sizeof yes) == SOCKET_ERROR) {
+      err = WSAGetLastError();
+      return uv_translate_sys_error(err);
+    }
+  }
+
   if (uv__udp_is_bound(handle))
     handle->flags |= UV_HANDLE_BOUND;
 
@@ -937,6 +960,11 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
     handle->flags |= UV_HANDLE_UDP_CONNECTED;
 
   return 0;
+}
+
+
+int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
+  return uv_udp_open_ex(handle, sock, 0);
 }
 
 

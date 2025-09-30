@@ -897,8 +897,12 @@ int uv_udp_using_recvmmsg(const uv_udp_t* handle) {
 }
 
 
-int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
+int uv_udp_open_ex(uv_udp_t* handle, uv_os_sock_t sock, unsigned int flags) {
   int err;
+
+  /* Check for bad flags. */
+  if (flags & ~(UV_UDP_REUSEADDR | UV_UDP_REUSEPORT))
+    return UV_EINVAL;
 
   /* Check for already active socket. */
   if (handle->io_watcher.fd != -1)
@@ -911,15 +915,32 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
   if (err)
     return err;
 
-  err = uv__sock_reuseaddr(sock);
-  if (err)
-    return err;
+  if (flags & UV_UDP_REUSEADDR) {
+    err = uv__sock_reuseaddr(sock);
+    if (err)
+      return err;
+  }
+
+  if (flags & UV_UDP_REUSEPORT) {
+    err = uv__sock_reuseport(sock);
+    if (err)
+      return err;
+  }
 
   handle->io_watcher.fd = sock;
   if (uv__udp_is_connected(handle))
     handle->flags |= UV_HANDLE_UDP_CONNECTED;
 
   return 0;
+}
+
+
+int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
+  /*
+   * Keep backward compatibility, always set REUSEADDR.
+   * Refs: https://github.com/libuv/libuv/issues/4551
+   */
+  return uv_udp_open_ex(handle, sock, UV_UDP_REUSEADDR);
 }
 
 
