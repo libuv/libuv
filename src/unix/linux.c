@@ -53,6 +53,7 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
+#include <sys/resource.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -2217,11 +2218,21 @@ static uint64_t uv__get_cgroup_constrained_memory(char buf[static 1024]) {
 
 uint64_t uv_get_constrained_memory(void) {
   char buf[1024];
+  uint64_t cgroup_limit;
+  uint64_t rlimit_limit;
 
   if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
     return 0;
 
-  return uv__get_cgroup_constrained_memory(buf);
+  cgroup_limit = uv__get_cgroup_constrained_memory(buf);
+  rlimit_limit = uv__get_rlimit_max_memory();
+
+  /* Return the minimum of cgroup and rlimit constraints. */
+  if (cgroup_limit == 0)
+    return rlimit_limit;
+  if (rlimit_limit == 0)
+    return cgroup_limit;
+  return cgroup_limit < rlimit_limit ? cgroup_limit : rlimit_limit;
 }
 
 

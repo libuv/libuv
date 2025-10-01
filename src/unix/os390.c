@@ -188,12 +188,23 @@ uint64_t uv_get_total_memory(void) {
 
 uint64_t uv_get_constrained_memory(void) {
   struct rlimit rl;
+  uint64_t memlimit;
+  uint64_t rlimit_limit;
 
   /* RLIMIT_MEMLIMIT return value is in megabytes rather than bytes. */
-  if (getrlimit(RLIMIT_MEMLIMIT, &rl) == 0)
-    return rl.rlim_cur * 1024 * 1024;
+  memlimit = 0;
+  if (getrlimit(RLIMIT_MEMLIMIT, &rl) == 0 && rl.rlim_cur != RLIM_INFINITY)
+    memlimit = rl.rlim_cur * 1024 * 1024;
 
-  return 0; /* There is no memory limit set. */
+  /* Also check RLIMIT_AS and RLIMIT_DATA. */
+  rlimit_limit = uv__get_rlimit_max_memory();
+
+  /* Return the minimum of RLIMIT_MEMLIMIT and other rlimits. */
+  if (memlimit == 0)
+    return rlimit_limit;
+  if (rlimit_limit == 0)
+    return memlimit;
+  return memlimit < rlimit_limit ? memlimit : rlimit_limit;
 }
 
 
