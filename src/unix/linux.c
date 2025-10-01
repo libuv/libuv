@@ -1747,7 +1747,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     "0xd0b\nCortex-A76\n"   "0xd0c\nNeoverse-N1\n"  "0xd0d\nCortex-A77\n"
     "0xd0e\nCortex-A76AE\n" "0xd13\nCortex-R52\n"   "0xd20\nCortex-M23\n"
     "0xd21\nCortex-M33\n"   "0xd41\nCortex-A78\n"   "0xd42\nCortex-A78AE\n"
-    "0xd4a\nNeoverse-E1\n"  "0xd4b\nCortex-A78C\n"
+    "0xd4a\nNeoverse-E1\n"  "0xd4b\nCortex-A78C\n"  "0xd4f\nNeoverse-V2\n"
 #endif
     "";
   struct cpu {
