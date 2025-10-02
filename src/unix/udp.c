@@ -358,7 +358,9 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
 #endif
       handle->recv_cb(handle, nread, &buf, (const struct sockaddr*) &peer, flags);
     }
+#if defined(__linux__)
 out:
+#endif
     count--;
   }
   /* recv_cb callback may decide to pause or close the handle */

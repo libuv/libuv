@@ -116,10 +116,15 @@ TEST_IMPL(tcp_connect6_link_local) {
    *    connection attempt to the address above, i.e., we don't expect the
    *    connect() system call to fail synchronously.
    */
-  ASSERT_OK(uv_tcp_connect(&req,
-                           &server,
-                           (struct sockaddr*) &addr,
-                           connect_cb));
+  ok = uv_tcp_connect(&req,
+                      &server,
+                      (struct sockaddr*) &addr,
+                      connect_cb);
+#ifdef __APPLE__
+  if (ok == UV_EHOSTUNREACH)
+    RETURN_SKIP("macos-15 does not grant permission to local network access");
+#endif
+  ASSERT_OK(ok);
 
   uv_close((uv_handle_t*) &server, NULL);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
