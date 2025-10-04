@@ -2160,8 +2160,7 @@ uint64_t uv__get_rlimit_max_memory(void) {
   /* Check RLIMIT_AS (virtual memory limit). */
   if (getrlimit(RLIMIT_AS, &rl) == 0 && rl.rlim_cur != RLIM_INFINITY) {
     rlimit_value = rl.rlim_cur;
-    if (result == 0 || rlimit_value < result)
-      result = rlimit_value;
+    result = rlimit_value;
   }
 #endif
 
