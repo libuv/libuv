@@ -53,7 +53,6 @@
 #include <sys/sysmacros.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
-#include <sys/resource.h>
 #include <time.h>
 #include <unistd.h>
 
