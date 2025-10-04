@@ -767,7 +767,11 @@ void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags
 
   handle->cb(handle, fname, events, 0);
 }
-#endif
+#else  /* !HAVE_SYS_AHAFS_EVPRODS_H */
+void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags) {
+  /* Stub function to satisfy the linker. */
+}
+#endif  /* HAVE_SYS_AHAFS_EVPRODS_H */
 
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
