@@ -538,3 +538,9 @@ int uv_get_process_title(char* buffer, size_t size) {
 
 void uv__process_title_cleanup(void) {
 }
+
+void uv__ahafs_event(uv_loop_t* loop,
+                     uv__io_t* event_watch,
+                     unsigned int fflags) {
+  /* Stub function to satisfy the linker. */
+}
