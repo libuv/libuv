@@ -134,7 +134,7 @@ uint64_t uv_get_available_memory(void) {
     return 0;
   }
 
-  return ((uint64_t) info.free_count + (uint64_t) info.inactive_count) * sysconf(_SC_PAGESIZE);
+  return ((uint64_t) info.free_count + (uint64_t) info.inactive_count + (uint64_t) info.purgeable_count) * sysconf(_SC_PAGESIZE);
 }
 
 
