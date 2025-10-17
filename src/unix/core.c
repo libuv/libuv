@@ -2150,14 +2150,13 @@ int uv__sock_reuseport(int fd) {
   return 0;
 }
 
-
+/* Check if rlimit has any expressed restrictions on usable memory. */
 uint64_t uv__get_rlimit_max_memory(void) {
   struct rlimit rl;
   uint64_t result = 0;
   uint64_t rlimit_value;
 
 #if defined(RLIMIT_AS)
-  /* Check RLIMIT_AS (virtual memory limit). */
   if (getrlimit(RLIMIT_AS, &rl) == 0 && rl.rlim_cur != RLIM_INFINITY) {
     rlimit_value = rl.rlim_cur;
     result = rlimit_value;
@@ -2165,7 +2164,6 @@ uint64_t uv__get_rlimit_max_memory(void) {
 #endif
 
 #if defined(RLIMIT_DATA)
-  /* Check RLIMIT_DATA (data segment limit). */
   if (getrlimit(RLIMIT_DATA, &rl) == 0 && rl.rlim_cur != RLIM_INFINITY) {
     rlimit_value = rl.rlim_cur;
     if (result == 0 || rlimit_value < result)
