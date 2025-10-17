@@ -207,16 +207,156 @@ int uv_cwd(char* buffer, size_t* size) {
 }
 
 
+/* Helper function to check if path contains forward slashes */
+static int uv__path_has_forward_slash(const WCHAR* path, size_t len) {
+  size_t i;
+  for (i = 0; i < len; i++) {
+    if (path[i] == L'/')
+      return 1;
+  }
+  return 0;
+}
+
+
+/* Helper function to check if path uses Win32 namespace prefix */
+static int uv__is_win32_namespace(const WCHAR* path, size_t len) {
+  return len >= 4 &&
+         path[0] == L'\\' &&
+         path[1] == L'\\' &&
+         (path[2] == L'?' || path[2] == L'.') &&
+         path[3] == L'\\';
+}
+
+
+/* Helper function to check if path uses NT namespace prefix */
+static int uv__is_nt_namespace(const WCHAR* path, size_t len) {
+  return len >= 4 &&
+         path[0] == L'\\' &&
+         path[1] == L'?' &&
+         path[2] == L'?' &&
+         path[3] == L'\\';
+}
+
+
+/* Helper function to check if path is UNC after namespace prefix */
+static int uv__is_unc_after_prefix(const WCHAR* path, size_t len) {
+  /* Need "UNC\" pattern: at least 4 chars (UNC + backslash) */
+  if (len < 4)
+    return 0;
+  
+  /* Check if starts with "UNC" (case-insensitive) followed by backslash */
+  return _wcsnicmp(path, L"UNC", 3) == 0 && path[3] == L'\\';
+}
+
+
+/* Helper function to extract drive letter from various path formats */
+static WCHAR uv__extract_drive_letter(const WCHAR* path, size_t len) {
+  const WCHAR* scan = path;
+  size_t scan_len = len;
+  
+  /* Handle Win32 namespace: \\?\ or \\.\  */
+  if (uv__is_win32_namespace(scan, scan_len)) {
+    scan += 4;
+    scan_len -= 4;
+    
+    /* Check for UNC path: \\?\UNC\server\share */
+    if (uv__is_unc_after_prefix(scan, scan_len))
+      return 0;  /* No drive letter in UNC paths */
+    
+    /* Check for device paths: \\.\COM1, \\.\PhysicalDrive0 */
+    if (path[2] == L'.') {
+      /* Device namespace paths don't have drive letters we care about */
+      if (scan_len < 2 || scan[1] != L':')
+        return 0;
+    }
+    
+    /* Check for Volume GUID: \\?\Volume{...} */
+    if (scan_len >= 7 &&
+        _wcsnicmp(scan, L"VOLUME", 6) == 0 &&
+        scan[6] == L'{')
+      return 0;  /* Volume GUIDs don't have traditional drive letters */
+    
+    /* Check for GLOBALROOT and other special paths */
+    if (scan_len >= 10 &&
+        _wcsnicmp(scan, L"GLOBALROOT", 10) == 0)
+      return 0;
+  }
+  /* Handle NT namespace: \??\ */
+  else if (uv__is_nt_namespace(scan, scan_len)) {
+    scan += 4;
+    scan_len -= 4;
+    
+    /* Check for UNC: \??\UNC\server\share */
+    if (uv__is_unc_after_prefix(scan, scan_len))
+      return 0;
+  }
+  /* Handle regular UNC: \\server\share */
+  else if (scan_len >= 2 &&
+           scan[0] == L'\\' &&
+           scan[1] == L'\\') {
+    return 0;  /* UNC path */
+  }
+  
+  /* Now check for drive letter: X: */
+  if (scan_len >= 2 && scan[1] == L':') {
+    WCHAR letter = scan[0];
+    
+    /* Validate and normalize to uppercase */
+    if (letter >= L'A' && letter <= L'Z')
+      return letter;
+    else if (letter >= L'a' && letter <= L'z')
+      return letter - L'a' + L'A';
+  }
+  
+  return 0;  /* No valid drive letter found */
+}
+
+
 int uv_chdir(const char* dir) {
   WCHAR *utf16_buffer;
   DWORD utf16_len;
   WCHAR drive_letter, env_var[4];
   int r;
 
+  if (dir == NULL || dir[0] == '\0')
+    return UV_EINVAL;
+
   /* Convert to UTF-16 */
   r = uv__convert_utf8_to_utf16(dir, &utf16_buffer);
   if (r)
     return r;
+
+  /* Validate path length (32767 is the maximum for Win32 namespace) */
+  utf16_len = wcslen(utf16_buffer);
+  if (utf16_len > 32767) {
+    uv__free(utf16_buffer);
+    return UV_ENAMETOOLONG;
+  }
+
+  /* Win32 namespace paths (\\?\ and \\.\) do not support forward slashes.
+   * They require exact path strings and do not perform any normalization.
+   * Regular paths and UNC paths can handle forward slashes as Windows
+   * normalizes them to backslashes.
+   */
+  if (uv__is_win32_namespace(utf16_buffer, utf16_len)) {
+    /* Skip prefix for further checks */
+    const WCHAR* check_path = utf16_buffer + 4;
+    size_t check_len = utf16_len - 4;
+    
+    /* Explicitly reject GLOBALROOT paths */
+    if (check_len >= 11 &&
+        _wcsnicmp(check_path, L"GLOBALROOT", 10) == 0 &&
+        check_path[10] == L'\\') {
+      uv__free(utf16_buffer);
+      return UV_EINVAL;
+    }
+    
+    /* Forward slash check */
+    if (uv__path_has_forward_slash(utf16_buffer + 4, utf16_len - 4)) {
+      uv__free(utf16_buffer);
+      return UV_EINVAL;
+    }
+  }
 
   if (!SetCurrentDirectoryW(utf16_buffer)) {
     uv__free(utf16_buffer);
@@ -241,19 +381,17 @@ int uv_chdir(const char* dir) {
     return r;
   }
 
-  if (utf16_len < 2 || utf16_buffer[1] != L':') {
-    /* Doesn't look like a drive letter could be there - probably an UNC path.
-     * TODO: Need to handle win32 namespaces like \\?\C:\ ? */
-    drive_letter = 0;
-  } else if (utf16_buffer[0] >= L'A' && utf16_buffer[0] <= L'Z') {
-    drive_letter = utf16_buffer[0];
-  } else if (utf16_buffer[0] >= L'a' && utf16_buffer[0] <= L'z') {
-    /* Convert to uppercase. */
-    drive_letter = utf16_buffer[0] - L'a' + L'A';
-  } else {
-    /* Not valid. */
-    drive_letter = 0;
-  }
+  /* Extract drive letter from the current working directory path.
+   * This handles various Windows namespace formats:
+   * - Regular paths: C:\Windows
+   * - Win32 file namespace: \\?\C:\LongPath
+   * - Win32 device namespace: \\.\C:
+   * - NT namespace: \??\C:\Path
+   * - UNC paths: \\server\share (no drive letter)
+   * - Volume GUIDs: \\?\Volume{...} (no drive letter)
+   * - Special paths: \\?\GLOBALROOT\... (no drive letter)
+   */
+  drive_letter = uv__extract_drive_letter(utf16_buffer, utf16_len);
 
   if (drive_letter != 0) {
     /* Construct the environment variable name and set it. */

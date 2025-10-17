@@ -331,7 +331,8 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-reuseport.c \
                          test/test-uname.c \
                          test/test-walk-handles.c \
-                         test/test-watcher-cross-stop.c
+                         test/test-watcher-cross-stop.c \
+                         test/test-win32-namespaces.c
 test_run_tests_LDADD = libuv.la
 
 if WINNT

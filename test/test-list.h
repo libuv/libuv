@@ -593,6 +593,19 @@ TEST_DECLARE  (metrics_idle_time)
 TEST_DECLARE  (metrics_idle_time_thread)
 TEST_DECLARE  (metrics_idle_time_zero)
 
+#ifdef _WIN32
+TEST_DECLARE(chdir_win32_namespace)
+TEST_DECLARE(chdir_unc_paths)
+TEST_DECLARE(chdir_forward_slash_rejection)
+TEST_DECLARE(chdir_path_too_long)
+TEST_DECLARE(chdir_volume_guid_path)
+TEST_DECLARE(chdir_globalroot_path)
+TEST_DECLARE(chdir_nt_namespace)
+TEST_DECLARE(chdir_case_insensitive)
+TEST_DECLARE(chdir_drive_env_variable_update)
+TEST_DECLARE(chdir_device_paths)
+#endif
+
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
@@ -1264,6 +1277,19 @@ TASK_LIST_START
   TEST_ENTRY  (metrics_idle_time)
   TEST_ENTRY  (metrics_idle_time_thread)
   TEST_ENTRY  (metrics_idle_time_zero)
+
+#ifdef _WIN32
+  TEST_ENTRY(chdir_win32_namespace)
+  TEST_ENTRY(chdir_unc_paths)
+  TEST_ENTRY(chdir_forward_slash_rejection)
+  TEST_ENTRY(chdir_path_too_long)
+  TEST_ENTRY(chdir_volume_guid_path)
+  TEST_ENTRY(chdir_globalroot_path)
+  TEST_ENTRY(chdir_nt_namespace)
+  TEST_ENTRY(chdir_case_insensitive)
+  TEST_ENTRY(chdir_drive_env_variable_update)
+  TEST_ENTRY(chdir_device_paths)
+#endif
 
 #if 0
   /* These are for testing the test runner. */
