@@ -326,38 +326,6 @@ int uv_chdir(const char* dir) {
   if (r)
     return r;
 
-  /* Validate path length (32767 is the maximum for Win32 namespace) */
-  utf16_len = wcslen(utf16_buffer);
-  if (utf16_len > 32767) {
-    uv__free(utf16_buffer);
-    return UV_ENAMETOOLONG;
-  }
-
-  /* Win32 namespace paths (\\?\ and \\.\) do not support forward slashes.
-   * They require exact path strings and do not perform any normalization.
-   * Regular paths and UNC paths can handle forward slashes as Windows
-   * normalizes them to backslashes.
-   */
-  if (uv__is_win32_namespace(utf16_buffer, utf16_len)) {
-    /* Skip prefix for further checks */
-    const WCHAR* check_path = utf16_buffer + 4;
-    size_t check_len = utf16_len - 4;
-    
-    /* Explicitly reject GLOBALROOT paths */
-    if (check_len >= 11 &&
-        _wcsnicmp(check_path, L"GLOBALROOT", 10) == 0 &&
-        check_path[10] == L'\\') {
-      uv__free(utf16_buffer);
-      return UV_EINVAL;
-    }
-    
-    /* Forward slash check */
-    if (uv__path_has_forward_slash(utf16_buffer + 4, utf16_len - 4)) {
-      uv__free(utf16_buffer);
-      return UV_EINVAL;
-    }
-  }
-
   if (!SetCurrentDirectoryW(utf16_buffer)) {
     uv__free(utf16_buffer);
     return uv_translate_sys_error(GetLastError());
