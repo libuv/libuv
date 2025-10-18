@@ -207,17 +207,6 @@ int uv_cwd(char* buffer, size_t* size) {
 }
 
 
-/* Helper function to check if path contains forward slashes */
-static int uv__path_has_forward_slash(const WCHAR* path, size_t len) {
-  size_t i;
-  for (i = 0; i < len; i++) {
-    if (path[i] == L'/')
-      return 1;
-  }
-  return 0;
-}
-
-
 /* Helper function to check if path uses Win32 namespace prefix */
 static int uv__is_win32_namespace(const WCHAR* path, size_t len) {
   return len >= 4 &&

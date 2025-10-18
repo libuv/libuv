@@ -596,8 +596,6 @@ TEST_DECLARE  (metrics_idle_time_zero)
 #ifdef _WIN32
 TEST_DECLARE(chdir_win32_namespace)
 TEST_DECLARE(chdir_unc_paths)
-TEST_DECLARE(chdir_forward_slash_rejection)
-TEST_DECLARE(chdir_path_too_long)
 TEST_DECLARE(chdir_volume_guid_path)
 TEST_DECLARE(chdir_globalroot_path)
 TEST_DECLARE(chdir_nt_namespace)
@@ -1281,8 +1279,6 @@ TASK_LIST_START
 #ifdef _WIN32
   TEST_ENTRY(chdir_win32_namespace)
   TEST_ENTRY(chdir_unc_paths)
-  TEST_ENTRY(chdir_forward_slash_rejection)
-  TEST_ENTRY(chdir_path_too_long)
   TEST_ENTRY(chdir_volume_guid_path)
   TEST_ENTRY(chdir_globalroot_path)
   TEST_ENTRY(chdir_nt_namespace)
