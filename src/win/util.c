@@ -233,6 +233,16 @@ static int uv__is_unc_after_prefix(const WCHAR* path, size_t len) {
 }
 
 
+/* Extract drive letter from the current working directory path.
+  * This handles various Windows namespace formats:
+  * - Regular paths: C:\Windows
+  * - Win32 file namespace: \\?\C:\LongPath
+  * - Win32 device namespace: \\.\C:
+  * - NT namespace: \??\C:\Path
+  * - UNC paths: \\server\share (no drive letter)
+  * - Volume GUIDs: \\?\Volume{...} (no drive letter)
+  * - Special paths: \\?\GLOBALROOT\... (no drive letter)
+  */
 static WCHAR uv__extract_drive_letter(const WCHAR* path, size_t len) {
   const WCHAR* scan = path;
   size_t scan_len = len;
@@ -244,7 +254,6 @@ static WCHAR uv__extract_drive_letter(const WCHAR* path, size_t len) {
     if (uv__is_unc_after_prefix(scan, scan_len))
       return 0;
     
-    /* Check for device paths: \\.\COM1, \\.\PhysicalDrive0 */
     if (path[2] == L'.') {
       if (scan_len < 2 || scan[1] != L':')
         return 0;
@@ -284,16 +293,7 @@ static WCHAR uv__extract_drive_letter(const WCHAR* path, size_t len) {
   return 0;
 }
 
-/* Extract drive letter from the current working directory path.
-  * This handles various Windows namespace formats:
-  * - Regular paths: C:\Windows
-  * - Win32 file namespace: \\?\C:\LongPath
-  * - Win32 device namespace: \\.\C:
-  * - NT namespace: \??\C:\Path
-  * - UNC paths: \\server\share (no drive letter)
-  * - Volume GUIDs: \\?\Volume{...} (no drive letter)
-  * - Special paths: \\?\GLOBALROOT\... (no drive letter)
-  */
+
 int uv_chdir(const char* dir) {
   WCHAR *utf16_buffer;
   DWORD utf16_len;
