@@ -207,7 +207,6 @@ int uv_cwd(char* buffer, size_t* size) {
 }
 
 
-/* Helper function to check if path uses Win32 namespace prefix */
 static int uv__is_win32_namespace(const WCHAR* path, size_t len) {
   return len >= 4 &&
          path[0] == L'\\' &&
@@ -217,7 +216,6 @@ static int uv__is_win32_namespace(const WCHAR* path, size_t len) {
 }
 
 
-/* Helper function to check if path uses NT namespace prefix */
 static int uv__is_nt_namespace(const WCHAR* path, size_t len) {
   return len >= 4 &&
          path[0] == L'\\' &&
@@ -227,80 +225,75 @@ static int uv__is_nt_namespace(const WCHAR* path, size_t len) {
 }
 
 
-/* Helper function to check if path is UNC after namespace prefix */
 static int uv__is_unc_after_prefix(const WCHAR* path, size_t len) {
-  /* Need "UNC\" pattern: at least 4 chars (UNC + backslash) */
   if (len < 4)
     return 0;
   
-  /* Check if starts with "UNC" (case-insensitive) followed by backslash */
   return _wcsnicmp(path, L"UNC", 3) == 0 && path[3] == L'\\';
 }
 
 
-/* Helper function to extract drive letter from various path formats */
 static WCHAR uv__extract_drive_letter(const WCHAR* path, size_t len) {
   const WCHAR* scan = path;
   size_t scan_len = len;
   
-  /* Handle Win32 namespace: \\?\ or \\.\  */
   if (uv__is_win32_namespace(scan, scan_len)) {
     scan += 4;
     scan_len -= 4;
     
-    /* Check for UNC path: \\?\UNC\server\share */
     if (uv__is_unc_after_prefix(scan, scan_len))
-      return 0;  /* No drive letter in UNC paths */
+      return 0;
     
     /* Check for device paths: \\.\COM1, \\.\PhysicalDrive0 */
     if (path[2] == L'.') {
-      /* Device namespace paths don't have drive letters we care about */
       if (scan_len < 2 || scan[1] != L':')
         return 0;
     }
     
-    /* Check for Volume GUID: \\?\Volume{...} */
     if (scan_len >= 7 &&
         _wcsnicmp(scan, L"VOLUME", 6) == 0 &&
         scan[6] == L'{')
-      return 0;  /* Volume GUIDs don't have traditional drive letters */
+      return 0;
     
-    /* Check for GLOBALROOT and other special paths */
     if (scan_len >= 10 &&
         _wcsnicmp(scan, L"GLOBALROOT", 10) == 0)
       return 0;
   }
-  /* Handle NT namespace: \??\ */
   else if (uv__is_nt_namespace(scan, scan_len)) {
     scan += 4;
     scan_len -= 4;
     
-    /* Check for UNC: \??\UNC\server\share */
     if (uv__is_unc_after_prefix(scan, scan_len))
       return 0;
   }
-  /* Handle regular UNC: \\server\share */
   else if (scan_len >= 2 &&
            scan[0] == L'\\' &&
            scan[1] == L'\\') {
-    return 0;  /* UNC path */
+    return 0;
   }
   
-  /* Now check for drive letter: X: */
   if (scan_len >= 2 && scan[1] == L':') {
     WCHAR letter = scan[0];
     
-    /* Validate and normalize to uppercase */
     if (letter >= L'A' && letter <= L'Z')
       return letter;
     else if (letter >= L'a' && letter <= L'z')
       return letter - L'a' + L'A';
   }
   
-  return 0;  /* No valid drive letter found */
+  return 0;
 }
 
-
+/* Extract drive letter from the current working directory path.
+  * This handles various Windows namespace formats:
+  * - Regular paths: C:\Windows
+  * - Win32 file namespace: \\?\C:\LongPath
+  * - Win32 device namespace: \\.\C:
+  * - NT namespace: \??\C:\Path
+  * - UNC paths: \\server\share (no drive letter)
+  * - Volume GUIDs: \\?\Volume{...} (no drive letter)
+  * - Special paths: \\?\GLOBALROOT\... (no drive letter)
+  */
 int uv_chdir(const char* dir) {
   WCHAR *utf16_buffer;
   DWORD utf16_len;
@@ -310,7 +303,6 @@ int uv_chdir(const char* dir) {
   if (dir == NULL || dir[0] == '\0')
     return UV_EINVAL;
 
-  /* Convert to UTF-16 */
   r = uv__convert_utf8_to_utf16(dir, &utf16_buffer);
   if (r)
     return r;
@@ -320,38 +312,20 @@ int uv_chdir(const char* dir) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  /* uv__cwd() will return a new buffer. */
   uv__free(utf16_buffer);
   utf16_buffer = NULL;
 
-  /* Windows stores the drive-local path in an "hidden" environment variable,
-   * which has the form "=C:=C:\Windows". SetCurrentDirectory does not update
-   * this, so we'll have to do it. */
   r = uv__cwd(&utf16_buffer, &utf16_len);
   if (r == UV_ENOMEM) {
-    /* When updating the environment variable fails, return UV_OK anyway.
-     * We did successfully change current working directory, only updating
-     * hidden env variable failed. */
     return 0;
   }
   if (r < 0) {
     return r;
   }
 
-  /* Extract drive letter from the current working directory path.
-   * This handles various Windows namespace formats:
-   * - Regular paths: C:\Windows
-   * - Win32 file namespace: \\?\C:\LongPath
-   * - Win32 device namespace: \\.\C:
-   * - NT namespace: \??\C:\Path
-   * - UNC paths: \\server\share (no drive letter)
-   * - Volume GUIDs: \\?\Volume{...} (no drive letter)
-   * - Special paths: \\?\GLOBALROOT\... (no drive letter)
-   */
   drive_letter = uv__extract_drive_letter(utf16_buffer, utf16_len);
 
   if (drive_letter != 0) {
-    /* Construct the environment variable name and set it. */
     env_var[0] = L'=';
     env_var[1] = drive_letter;
     env_var[2] = L':';

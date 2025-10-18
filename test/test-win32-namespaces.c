@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* Helper to get current drive letter */
 static char get_current_drive(void) {
   char cwd[MAX_PATH];
   size_t cwd_size = sizeof(cwd);
@@ -20,13 +19,11 @@ static char get_current_drive(void) {
 }
 
 
-/* Helper to check if a path exists and is accessible */
 static int path_exists(const char* path) {
-  WCHAR wpath[32768];  /* Max path length for Win32 namespace */
+  WCHAR wpath[32768];
   DWORD attrs;
   int len;
   
-  /* Convert UTF-8 to UTF-16 using Windows API */
   len = MultiByteToWideChar(CP_UTF8, 0, path, -1, wpath, 32768);
   if (len == 0)
     return 0;
@@ -38,7 +35,6 @@ static int path_exists(const char* path) {
 }
 
 
-/* Helper to get environment variable value (drive-local path) */
 static int get_drive_env(char drive, char* buf, size_t buflen) {
   char env_name[4];
   env_name[0] = '=';
@@ -60,46 +56,37 @@ TEST_IMPL(chdir_win32_namespace) {
   char drive;
   int r;
 
-  /* Save original working directory */
   r = uv_cwd(original_cwd, &original_cwd_size);
   ASSERT_EQ(r, 0);
 
   drive = get_current_drive();
   ASSERT_NE(drive, 0);
 
-  /* Test 1: Win32 namespace path \\?\C:\Windows */
   snprintf(test_path, sizeof(test_path), "\\\\?\\%c:\\Windows", drive);
   if (path_exists(test_path)) {
     r = uv_chdir(test_path);
     ASSERT_EQ(r, 0);
 
-    /* Verify the drive-local environment variable is set */
     ASSERT_EQ(get_drive_env(drive, env_value, sizeof(env_value)), 1);
     
-    /* The env value should contain the current path (check substring) */
     snprintf(expected_path, sizeof(expected_path), "\\\\?\\%c:\\Windows", drive);
     ASSERT(strstr(env_value, "Windows") != NULL);
   }
 
-  /* Test 2: Win32 namespace with lowercase drive letter */
   snprintf(test_path, sizeof(test_path), "\\\\?\\%c:\\Windows", drive + 32);
   if (path_exists(test_path)) {
     r = uv_chdir(test_path);
     ASSERT_EQ(r, 0);
 
-    /* Environment variable should use uppercase drive letter */
     ASSERT_EQ(get_drive_env(drive, env_value, sizeof(env_value)), 1);
   }
 
-  /* Test 3: Device namespace \\.\C: (if accessible) */
   snprintf(test_path, sizeof(test_path), "\\\\.\\%c:", drive);
   r = uv_chdir(test_path);
-  /* May fail with access denied, which is OK */
   if (r == 0) {
     ASSERT_EQ(get_drive_env(drive, env_value, sizeof(env_value)), 1);
   }
 
-  /* Restore original directory */
   r = uv_chdir(original_cwd);
   ASSERT_EQ(r, 0);
 
@@ -114,7 +101,6 @@ TEST_IMPL(chdir_unc_paths) {
   char drive;
   int r;
 
-  /* Save original working directory */
   r = uv_cwd(original_cwd, &original_cwd_size);
   ASSERT_EQ(r, 0);
 
@@ -124,7 +110,6 @@ TEST_IMPL(chdir_unc_paths) {
   char old_env[1024];
   int had_env = get_drive_env(drive, old_env, sizeof(old_env));
 
-  /* Test 1: UNC path with Win32 namespace \\?\UNC\localhost\C$ */
   snprintf(test_path, sizeof(test_path), "\\\\?\\UNC\\localhost\\%c$", drive);
   r = uv_chdir(test_path);
   
@@ -141,19 +126,14 @@ TEST_IMPL(chdir_unc_paths) {
     r = uv_cwd(cwd, &cwd_size);
     ASSERT_EQ(r, 0);
     
-    /* Verify we're actually in a UNC path */
     ASSERT(strncmp(cwd, "\\\\", 2) == 0 || strncmp(cwd, "//", 2) == 0);
   } else {
-    /* Access denied or path not found is acceptable for UNC paths */
     ASSERT(r == UV_EACCES || r == UV_ENOENT || r == UV_EINVAL);
   }
 
-  /* Test 2: Regular UNC path \\localhost\C$ */
   snprintf(test_path, sizeof(test_path), "\\\\localhost\\%c$", drive);
   r = uv_chdir(test_path);
-  /* May fail, which is acceptable */
 
-  /* Restore original directory */
   r = uv_chdir(original_cwd);
   ASSERT_EQ(r, 0);
 
@@ -169,13 +149,10 @@ TEST_IMPL(chdir_volume_guid_path) {
   drive = get_current_drive();
   ASSERT_NE(drive, 0);
 
-  /* Capture current drive environment variable */
   had_env = get_drive_env(drive, old_env, sizeof(old_env));
 
-  /* Try a Volume GUID path - result doesn't matter */
   uv_chdir("\\\\?\\Volume{12345678-1234-1234-1234-123456789012}\\");
 
-  /* The ONLY thing that matters: drive env variable must be unchanged */
   char new_env[1024];
   int has_env = get_drive_env(drive, new_env, sizeof(new_env));
 
@@ -199,13 +176,10 @@ TEST_IMPL(chdir_globalroot_path) {
   drive = get_current_drive();
   ASSERT_NE(drive, 0);
 
-  /* Capture current drive environment variable */
   had_env = get_drive_env(drive, old_env, sizeof(old_env));
 
-  /* Try a GLOBALROOT path - result doesn't matter */
   uv_chdir("\\\\?\\GLOBALROOT\\Device\\HarddiskVolume1");
 
-  /* The ONLY thing that matters: drive env variable must be unchanged */
   char new_env[1024];
   int has_env = get_drive_env(drive, new_env, sizeof(new_env));
 
@@ -229,27 +203,22 @@ TEST_IMPL(chdir_nt_namespace) {
   char drive;
   int r;
 
-  /* Save original working directory */
   r = uv_cwd(original_cwd, &original_cwd_size);
   ASSERT_EQ(r, 0);
 
   drive = get_current_drive();
   ASSERT_NE(drive, 0);
 
-  /* Test NT namespace path \??\C:\Windows */
   snprintf(test_path, sizeof(test_path), "\\??\\%c:\\Windows", drive);
   r = uv_chdir(test_path);
   
   if (r == 0) {
-    /* Verify the drive-local environment variable is set */
     ASSERT_EQ(get_drive_env(drive, env_value, sizeof(env_value)), 1);
     ASSERT(strstr(env_value, "Windows") != NULL);
   } else {
-    /* May fail with access issues, which is acceptable */
     ASSERT(r == UV_ENOENT || r == UV_EINVAL || r == UV_EACCES);
   }
 
-  /* Restore original directory */
   r = uv_chdir(original_cwd);
   ASSERT_EQ(r, 0);
 
@@ -267,45 +236,37 @@ TEST_IMPL(chdir_case_insensitive) {
   char drive;
   int r;
 
-  /* Save original working directory */
   r = uv_cwd(original_cwd, &original_cwd_size);
   ASSERT_EQ(r, 0);
 
   drive = get_current_drive();
   ASSERT_NE(drive, 0);
 
-  /* Test uppercase drive */
   snprintf(test_path_upper, sizeof(test_path_upper), "%c:\\Windows", drive);
   if (path_exists(test_path_upper)) {
     r = uv_chdir(test_path_upper);
     ASSERT_EQ(r, 0);
 
-    /* Environment variable should always use uppercase */
     ASSERT_EQ(get_drive_env(drive, env_value, sizeof(env_value)), 1);
   }
 
-  /* Test lowercase drive */
   snprintf(test_path_lower, sizeof(test_path_lower), "%c:\\Windows", drive + 32);
   if (path_exists(test_path_lower)) {
     r = uv_chdir(test_path_lower);
     ASSERT_EQ(r, 0);
 
-    /* Environment variable should STILL use uppercase */
     ASSERT_EQ(get_drive_env(drive, env_value, sizeof(env_value)), 1);
   }
 
-  /* Test with Win32 namespace and lowercase */
   snprintf(test_path_mixed, sizeof(test_path_mixed), "\\\\?\\%c:\\Windows", 
            drive + 32);
   if (path_exists(test_path_mixed)) {
     r = uv_chdir(test_path_mixed);
     ASSERT_EQ(r, 0);
 
-    /* Environment variable should use uppercase */
     ASSERT_EQ(get_drive_env(drive, env_value, sizeof(env_value)), 1);
   }
 
-  /* Restore original directory */
   r = uv_chdir(original_cwd);
   ASSERT_EQ(r, 0);
 
@@ -323,39 +284,32 @@ TEST_IMPL(chdir_drive_env_variable_update) {
   char drive;
   int r;
 
-  /* Save original working directory */
   r = uv_cwd(original_cwd, &original_cwd_size);
   ASSERT_EQ(r, 0);
 
   drive = get_current_drive();
   ASSERT_NE(drive, 0);
 
-  /* Change to Windows directory */
   snprintf(test_path_1, sizeof(test_path_1), "%c:\\Windows", drive);
   if (path_exists(test_path_1)) {
     r = uv_chdir(test_path_1);
     ASSERT_EQ(r, 0);
 
-    /* Get environment variable value */
     ASSERT_EQ(get_drive_env(drive, env_value_1, sizeof(env_value_1)), 1);
     ASSERT(strstr(env_value_1, "Windows") != NULL);
 
-    /* Change to System32 subdirectory */
     snprintf(test_path_2, sizeof(test_path_2), "%c:\\Windows\\System32", drive);
     if (path_exists(test_path_2)) {
       r = uv_chdir(test_path_2);
       ASSERT_EQ(r, 0);
 
-      /* Environment variable should be updated */
       ASSERT_EQ(get_drive_env(drive, env_value_2, sizeof(env_value_2)), 1);
       ASSERT(strstr(env_value_2, "System32") != NULL);
       
-      /* Values should be different */
       ASSERT_STR_NE(env_value_1, env_value_2);
     }
   }
 
-  /* Restore original directory */
   r = uv_chdir(original_cwd);
   ASSERT_EQ(r, 0);
 
