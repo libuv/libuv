@@ -2217,13 +2217,11 @@ static uint64_t uv__get_cgroup_constrained_memory(char buf[static 1024]) {
 
 uint64_t uv_get_constrained_memory(void) {
   char buf[1024];
-  uint64_t cgroup_limit;
+  uint64_t cgroup_limit = 0;
   uint64_t rlimit_limit;
 
-  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
-    return 0;
-
-  cgroup_limit = uv__get_cgroup_constrained_memory(buf);
+  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)) == 0)
+    cgroup_limit = uv__get_cgroup_constrained_memory(buf);
   rlimit_limit = uv__get_rlimit_max_memory();
 
   /* Return the minimum of cgroup and rlimit constraints. */
