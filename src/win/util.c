@@ -207,29 +207,8 @@ int uv_cwd(char* buffer, size_t* size) {
 }
 
 
-static int uv__is_win32_namespace(const WCHAR* path, size_t len) {
-  return len >= 4 &&
-         path[0] == L'\\' &&
-         path[1] == L'\\' &&
-         (path[2] == L'?' || path[2] == L'.') &&
-         path[3] == L'\\';
-}
-
-
-static int uv__is_nt_namespace(const WCHAR* path, size_t len) {
-  return len >= 4 &&
-         path[0] == L'\\' &&
-         path[1] == L'?' &&
-         path[2] == L'?' &&
-         path[3] == L'\\';
-}
-
-
 static int uv__is_unc_after_prefix(const WCHAR* path, size_t len) {
-  if (len < 4)
-    return 0;
-  
-  return _wcsnicmp(path, L"UNC", 3) == 0 && path[3] == L'\\';
+  return len >= 4 && _wcsnicmp(path, L"UNC\\", 4) == 0;
 }
 
 
@@ -247,15 +226,24 @@ static WCHAR uv__extract_drive_letter(const WCHAR* path, size_t len) {
   const WCHAR* scan = path;
   size_t scan_len = len;
   
-  if (uv__is_win32_namespace(scan, scan_len)) {
+  if (scan_len >= 4 &&
+      scan[0] == L'\\' &&
+      scan[1] == L'\\' &&
+      (scan[2] == L'?' || scan[2] == L'.') &&
+      scan[3] == L'\\') {
+
+    int is_device_namespace = (scan[2] == L'.');
+
     scan += 4;
     scan_len -= 4;
     
     if (uv__is_unc_after_prefix(scan, scan_len))
       return 0;
     
-    if (path[2] == L'.') {
-      if (scan_len < 2 || scan[1] != L':')
+    if (is_device_namespace) {
+      if (scan_len < 2)
+        return 0;
+      if (scan[1] != L':')
         return 0;
     }
     
@@ -268,7 +256,7 @@ static WCHAR uv__extract_drive_letter(const WCHAR* path, size_t len) {
         _wcsnicmp(scan, L"GLOBALROOT", 10) == 0)
       return 0;
   }
-  else if (uv__is_nt_namespace(scan, scan_len)) {
+  else if (scan_len >= 4 && _wcsnicmp(scan, L"\\??\\", 4) == 0) {
     scan += 4;
     scan_len -= 4;
     
