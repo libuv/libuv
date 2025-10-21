@@ -707,7 +707,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-uname.c
        test/test-walk-handles.c
        test/test-watcher-cross-stop.c
-       test/test-win32-namespaces.c)
+       test/test-chdir-win32.c)
 
   add_executable(uv_run_tests ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests

@@ -594,14 +594,17 @@ TEST_DECLARE  (metrics_idle_time_thread)
 TEST_DECLARE  (metrics_idle_time_zero)
 
 #ifdef _WIN32
-TEST_DECLARE(chdir_win32_namespace)
-TEST_DECLARE(chdir_unc_paths)
-TEST_DECLARE(chdir_volume_guid_path)
-TEST_DECLARE(chdir_globalroot_path)
-TEST_DECLARE(chdir_nt_namespace)
-TEST_DECLARE(chdir_case_insensitive)
-TEST_DECLARE(chdir_drive_env_variable_update)
-TEST_DECLARE(chdir_device_paths)
+TEST_DECLARE(chdir_sets_drive_env_for_normal_path)
+TEST_DECLARE(chdir_normalizes_drive_letter_case)
+TEST_DECLARE(chdir_updates_env_on_path_change)
+TEST_DECLARE(chdir_preserves_env_for_regular_unc)
+TEST_DECLARE(chdir_preserves_env_for_volume_guid)
+TEST_DECLARE(chdir_preserves_env_for_globalroot)
+TEST_DECLARE(chdir_invalid_input_returns_error)
+TEST_DECLARE(chdir_nonexistent_path_returns_error)
+TEST_DECLARE(chdir_win32_namespace_updates_env)
+TEST_DECLARE(chdir_device_namespace_with_drive)
+TEST_DECLARE(chdir_nt_namespace_with_drive)
 #endif
 
 TASK_LIST_START
@@ -1277,14 +1280,17 @@ TASK_LIST_START
   TEST_ENTRY  (metrics_idle_time_zero)
 
 #ifdef _WIN32
-  TEST_ENTRY(chdir_win32_namespace)
-  TEST_ENTRY(chdir_unc_paths)
-  TEST_ENTRY(chdir_volume_guid_path)
-  TEST_ENTRY(chdir_globalroot_path)
-  TEST_ENTRY(chdir_nt_namespace)
-  TEST_ENTRY(chdir_case_insensitive)
-  TEST_ENTRY(chdir_drive_env_variable_update)
-  TEST_ENTRY(chdir_device_paths)
+  TEST_ENTRY(chdir_sets_drive_env_for_normal_path)
+  TEST_ENTRY(chdir_normalizes_drive_letter_case)
+  TEST_ENTRY(chdir_updates_env_on_path_change)
+  TEST_ENTRY(chdir_preserves_env_for_regular_unc)
+  TEST_ENTRY(chdir_preserves_env_for_volume_guid)
+  TEST_ENTRY(chdir_preserves_env_for_globalroot)
+  TEST_ENTRY(chdir_invalid_input_returns_error)
+  TEST_ENTRY(chdir_nonexistent_path_returns_error)
+  TEST_ENTRY(chdir_win32_namespace_updates_env)
+  TEST_ENTRY(chdir_device_namespace_with_drive)
+  TEST_ENTRY(chdir_nt_namespace_with_drive)
 #endif
 
 #if 0
