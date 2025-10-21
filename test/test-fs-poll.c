@@ -56,7 +56,8 @@ static void touch_file(const char* path) {
   FILE* fp;
   int i;
 
-  ASSERT((fp = fopen(FIXTURE, "w+")));
+  fp = fopen(path, "w+");
+  ASSERT_NOT_NULL(fp);
 
   /* Need to change the file size because the poller may not pick up
    * sub-second mtime changes.
@@ -92,6 +93,7 @@ static void poll_cb_noop(uv_fs_poll_t* handle,
                          int status,
                          const uv_stat_t* prev,
                          const uv_stat_t* curr) {
+  poll_cb_called++;
 }
 
 
@@ -288,5 +290,32 @@ TEST_IMPL(fs_poll_close_request_stop_when_active) {
   ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(&loop);
+  return 0;
+}
+
+TEST_IMPL(fs_poll_immediate_change) {
+  uv_fs_poll_t poll_handle;
+  uv_loop_t loop;
+
+  remove(FIXTURE);
+  touch_file(FIXTURE);
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_fs_poll_init(&loop, &poll_handle));
+  ASSERT_OK(uv_fs_poll_start(&poll_handle, poll_cb_noop, FIXTURE, 100));
+  touch_file(FIXTURE);
+  /* Having to call uv_run(UV_RUN_ONCE) thrice is a bug:
+   * it's the implementation detail leaking out that uv_fs_poll_t
+   * internally uses a uv_timer_t and a uv_fs_t to poll the path.
+   * See https://github.com/libuv/libuv/issues/4543
+   */
+  uv_run(&loop, UV_RUN_ONCE);
+  uv_run(&loop, UV_RUN_ONCE);
+  uv_run(&loop, UV_RUN_ONCE);
+  ASSERT_EQ(1, poll_cb_called);
+  uv_close((uv_handle_t*) &poll_handle, close_cb);
+  uv_run(&loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(1, close_cb_called);
+  MAKE_VALGRIND_HAPPY(&loop);
+  remove(FIXTURE);
   return 0;
 }
