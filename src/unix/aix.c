@@ -324,7 +324,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         have_signals = 1;
       } else {
         uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, pe->revents);
+        uv__io_cb(loop, w, pe->revents);
       }
 
       nevents++;
@@ -339,7 +339,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (have_signals != 0) {
       uv__metrics_update_idle_time(loop);
-      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+      uv__signal_event(loop, &loop->signal_io_watcher, POLLIN);
     }
 
     loop->watchers[loop->nwatchers] = NULL;
@@ -632,7 +632,7 @@ static int uv__skip_lines(char **p, int n) {
 
   while(n > 0) {
     *p = strchr(*p, '\n');
-    if (!p)
+    if (!*p)
       return lines;
 
     (*p)++;
@@ -716,7 +716,7 @@ static int uv__parse_data(char *buf, int *events, uv_fs_event_t* handle) {
 
 
 /* This is the internal callback */
-static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags) {
+void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags) {
   char   result_data[RDWR_BUF_SIZE];
   int bytes, rc = 0;
   uv_fs_event_t* handle;
@@ -767,7 +767,11 @@ static void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int
 
   handle->cb(handle, fname, events, 0);
 }
-#endif
+#else  /* !HAVE_SYS_AHAFS_EVPRODS_H */
+void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags) {
+  /* Stub function to satisfy the linker. */
+}
+#endif  /* HAVE_SYS_AHAFS_EVPRODS_H */
 
 
 int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
@@ -828,7 +832,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   /* Setup/Initialize all the libuv routines */
   uv__handle_start(handle);
-  uv__io_init(&handle->event_watcher, uv__ahafs_event, fd);
+  uv__io_init(&handle->event_watcher, UV__AHAFS_EVENT, fd);
   handle->path = uv__strdup(filename);
   handle->cb = cb;
   handle->dir_filename = NULL;
@@ -1120,6 +1124,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   struct ifreq *ifr, *p, flg;
   struct in6_ifreq if6;
   struct sockaddr_dl* sa_addr;
+  size_t namelen;
+  char* name;
 
   ifc.ifc_req = NULL;
   sock6fd = -1;
@@ -1156,6 +1162,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 #define ADDR_SIZE(p) MAX((p).sa_len, sizeof(p))
 
   /* Count all up and running ipv4/ipv6 addresses */
+  namelen = 0;
   ifr = ifc.ifc_req;
   while ((char*)ifr < (char*)ifc.ifc_req + ifc.ifc_len) {
     p = ifr;
@@ -1175,6 +1182,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     if (!(flg.ifr_flags & IFF_UP && flg.ifr_flags & IFF_RUNNING))
       continue;
 
+    namelen += strlen(p->ifr_name) + 1;
     (*count)++;
   }
 
@@ -1182,11 +1190,12 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     goto cleanup;
 
   /* Alloc the return interface structs */
-  *addresses = uv__calloc(*count, sizeof(**addresses));
-  if (!(*addresses)) {
+  *addresses = uv__calloc(1, *count * sizeof(**addresses) + namelen);
+  if (*addresses == NULL) {
     r = UV_ENOMEM;
     goto cleanup;
   }
+  name = (char*) &(*addresses)[*count];
   address = *addresses;
 
   ifr = ifc.ifc_req;
@@ -1210,7 +1219,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     /* All conditions above must match count loop */
 
-    address->name = uv__strdup(p->ifr_name);
+    namelen = strlen(p->ifr_name) + 1;
+    address->name = memcpy(name, p->ifr_name, namelen);
+    name += namelen;
 
     if (inet6)
       address->address.address6 = *((struct sockaddr_in6*) &p->ifr_addr);
@@ -1278,18 +1289,6 @@ cleanup:
     uv__close(sock6fd);
   uv__free(ifc.ifc_req);
   return r;
-}
-
-
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-  int count) {
-  int i;
-
-  for (i = 0; i < count; ++i) {
-    uv__free(addresses[i].name);
-  }
-
-  uv__free(addresses);
 }
 
 

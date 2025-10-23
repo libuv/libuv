@@ -307,7 +307,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         have_signals = 1;
       } else {
         uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, pe->portev_events);
+        uv__io_cb(loop, w, pe->portev_events);
       }
 
       nevents++;
@@ -329,7 +329,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (have_signals != 0) {
       uv__metrics_update_idle_time(loop);
-      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+      uv__signal_event(loop, &loop->signal_io_watcher, POLLIN);
     }
 
     loop->watchers[loop->nwatchers] = NULL;
@@ -446,9 +446,7 @@ static int uv__fs_event_rearm(uv_fs_event_t *handle) {
 }
 
 
-static void uv__fs_event_read(uv_loop_t* loop,
-                              uv__io_t* w,
-                              unsigned int revents) {
+void uv__fs_event_read(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   uv_fs_event_t *handle = NULL;
   timespec_t timeout;
   port_event_t pe;
@@ -546,8 +544,15 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   }
 
   if (first_run) {
-    uv__io_init(&handle->loop->fs_event_watcher, uv__fs_event_read, portfd);
-    uv__io_start(handle->loop, &handle->loop->fs_event_watcher, POLLIN);
+    err = uv__io_init_start(handle->loop,
+                             &handle->loop->fs_event_watcher,
+                             UV__FS_EVENT_READ,
+                             portfd,
+                             POLLIN);
+    if (err)
+      uv__handle_stop(handle);
+
+    return err;
   }
 
   return 0;
@@ -826,6 +831,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   uv_interface_address_t* address;
   struct ifaddrs* addrs;
   struct ifaddrs* ent;
+  size_t namelen;
+  char* name;
 
   *count = 0;
   *addresses = NULL;
@@ -834,9 +841,11 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     return UV__ERR(errno);
 
   /* Count the number of interfaces */
+  namelen = 0;
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
     if (uv__ifaddr_exclude(ent))
       continue;
+    namelen += strlen(ent->ifa_name) + 1;
     (*count)++;
   }
 
@@ -845,19 +854,22 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     return 0;
   }
 
-  *addresses = uv__malloc(*count * sizeof(**addresses));
-  if (!(*addresses)) {
+  *addresses = uv__calloc(1, *count * sizeof(**addresses) + namelen);
+  if (*addresses == NULL) {
     freeifaddrs(addrs);
     return UV_ENOMEM;
   }
 
+  name = (char*) &(*addresses)[*count];
   address = *addresses;
 
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
     if (uv__ifaddr_exclude(ent))
       continue;
 
-    address->name = uv__strdup(ent->ifa_name);
+    namelen = strlen(ent->ifa_name) + 1;
+    address->name = memcpy(name, ent->ifa_name, namelen);
+    name += namelen;
 
     if (ent->ifa_addr->sa_family == AF_INET6) {
       address->address.address6 = *((struct sockaddr_in6*) ent->ifa_addr);
@@ -883,17 +895,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   return 0;
 }
 #endif  /* SUNOS_NO_IFADDRS */
-
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-  int count) {
-  int i;
-
-  for (i = 0; i < count; i++) {
-    uv__free(addresses[i].name);
-  }
-
-  uv__free(addresses);
-}
 
 
 #if !defined(_POSIX_VERSION) || _POSIX_VERSION < 200809L

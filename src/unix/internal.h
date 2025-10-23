@@ -141,6 +141,11 @@ union uv__sockaddr {
 /* Leans on the fact that, on Linux, POLLRDHUP == EPOLLRDHUP. */
 #ifdef POLLRDHUP
 # define UV__POLLRDHUP POLLRDHUP
+#elif defined(__QNX__)
+/* On QNX, POLLRDHUP is not available and the 0x2000 workaround
+ * leads to undefined bahavior.
+ */
+# define UV__POLLRDHUP 0
 #else
 # define UV__POLLRDHUP 0x2000
 #endif
@@ -256,8 +261,66 @@ ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);
 void uv__make_close_pending(uv_handle_t* handle);
 int uv__getiovmax(void);
 
-void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd);
-void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+typedef enum {
+    UV__NO_IO_CB,
+    UV__AHAFS_EVENT,
+    UV__ASYNC_IO,
+    UV__FS_EVENT,
+    UV__FS_EVENT_READ,
+    UV__INOTIFY_READ,
+    UV__POLL_IO,
+    UV__SIGNAL_EVENT,
+    UV__SERVER_IO,
+    UV__STREAM_IO,
+    UV__UDP_IO,
+} uv__io_cb_t;
+
+#define uv__io_cb_get(w)      ((uv__io_cb_t)((w)->bits & 15))
+#define uv__io_cb_set(w, cb)                                                  \
+  do {                                                                        \
+    (w)->bits -= uv__io_cb_get(w);                                            \
+    (w)->bits |= (cb) & 15;                                                   \
+  } while (0)
+
+void uv__ahafs_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__fs_event_read(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__inotify_read(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+
+#ifndef _AIX
+#define uv__ahafs_event(loop, w, events) UNREACHABLE()
+#endif
+
+#if !defined(__APPLE__) &&                                                    \
+    !defined(__DragonFly__) &&                                                \
+    !defined(__FreeBSD__) &&                                                  \
+    !defined(__NetBSD__) &&                                                   \
+    !defined(__OpenBSD__)
+#define uv__fs_event(loop, w, events) UNREACHABLE()
+#endif
+
+#ifndef __linux__
+#define uv__inotify_read(loop, w, events) UNREACHABLE()
+#endif
+
+#ifndef __sun__
+#define uv__fs_event_read(loop, w, events) UNREACHABLE()
+#endif
+
+void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__io_init(uv__io_t* w, uv__io_cb_t cb, int fd);
+int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+int uv__io_init_start(uv_loop_t* loop,
+                      uv__io_t* w,
+                      uv__io_cb_t cb,
+                      int fd,
+                      unsigned int events);
 void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 void uv__io_close(uv_loop_t* loop, uv__io_t* w);
 void uv__io_feed(uv_loop_t* loop, uv__io_t* w);
@@ -294,7 +357,11 @@ int uv__slurp(const char* filename, char* buf, size_t len);
 /* tcp */
 int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
 int uv__tcp_nodelay(int fd, int on);
-int uv__tcp_keepalive(int fd, int on, unsigned int delay);
+int uv__tcp_keepalive(int fd,
+                      int on,
+                      unsigned int idle,
+                      unsigned int intvl,
+                      unsigned int cnt);
 
 /* tty */
 void uv__tty_close(uv_tty_t* handle);
@@ -489,13 +556,7 @@ uv__fs_copy_file_range(int fd_in,
 #endif
 
 #ifdef __linux__
-typedef struct {
-  long long quota_per_period;
-  long long period_length;
-  double proportions;
-} uv__cpu_constraint;
-
-int uv__get_constrained_cpu(uv__cpu_constraint* constraint);
+int uv__get_constrained_cpu(long long* quota);
 #endif
 
 #if defined(__sun) && !defined(__illumos__)

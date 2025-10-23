@@ -258,7 +258,8 @@ up a signal handler for termination.
     :lines: 43-
 
 When the user triggers the signal by pressing ``Ctrl+C`` we send
-``uv_cancel()`` to all the workers. ``uv_cancel()`` will return ``0`` for those that are already executing or finished.
+``uv_cancel()`` to all the workers. ``uv_cancel()`` will return ``0`` for those
+tasks that are pending execution and could be cancelled.
 
 .. rubric:: queue-cancel/main.c
 .. literalinclude:: ../../code/queue-cancel/main.c

@@ -157,7 +157,7 @@ void uv__async_close(uv_async_t* handle) {
 }
 
 
-static void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   char buf[1024];
   ssize_t r;
   struct uv__queue queue;
@@ -308,8 +308,14 @@ static int uv__async_start(uv_loop_t* loop) {
     return err;
 #endif
 
-  uv__io_init(&loop->async_io_watcher, uv__async_io, pipefd[0]);
-  uv__io_start(loop, &loop->async_io_watcher, POLLIN);
+  err = uv__io_init_start(loop, &loop->async_io_watcher, UV__ASYNC_IO,
+                          pipefd[0], POLLIN);
+  if (err < 0) {
+    uv__close(pipefd[0]);
+    if (pipefd[1] != -1)
+      uv__close(pipefd[1]);
+    return err;
+  }
   loop->async_wfd = pipefd[1];
 
 #if UV__KQUEUE_EVFILT_USER
@@ -403,7 +409,7 @@ static void uv__cpu_relax(void) {
 #if defined(__i386__) || defined(__x86_64__)
   __asm__ __volatile__ ("rep; nop" ::: "memory");  /* a.k.a. PAUSE */
 #elif (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__)
-  __asm__ __volatile__ ("yield" ::: "memory");
+  __asm__ __volatile__ ("isb" ::: "memory");
 #elif (defined(__ppc__) || defined(__ppc64__)) && defined(__APPLE__)
   __asm volatile ("" : : : "memory");
 #elif !defined(__APPLE__) && (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))

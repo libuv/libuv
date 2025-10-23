@@ -48,8 +48,6 @@
 #define EV_OOBAND  EV_FLAG1
 #endif
 
-static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags);
-
 
 int uv__kqueue_init(uv_loop_t* loop) {
   loop->backend_fd = kqueue();
@@ -204,7 +202,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       fflags = 0;
       op = EV_ADD;
 
-      if (w->cb == uv__fs_event) {
+      if (UV__FS_EVENT == uv__io_cb_get(w)) {
         filter = EVFILT_VNODE;
         fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
                | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE;
@@ -366,7 +364,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         w = &loop->async_io_watcher;
         assert(fd == w->fd);
         uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, w->events);
+        uv__io_cb(loop, w, w->events);
         nevents++;
         continue;
       }
@@ -376,7 +374,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         assert(w->events == POLLIN);
         assert(w->pevents == POLLIN);
         uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, ev->fflags); /* XXX always uv__fs_event() */
+        uv__io_cb(loop, w, ev->fflags); /* XXX always uv__fs_event() */
         nevents++;
         continue;
       }
@@ -420,7 +418,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         have_signals = 1;
       } else {
         uv__metrics_update_idle_time(loop);
-        w->cb(loop, w, revents);
+        uv__io_cb(loop, w, revents);
       }
 
       nevents++;
@@ -440,7 +438,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     if (have_signals != 0) {
       uv__metrics_update_idle_time(loop);
-      loop->signal_io_watcher.cb(loop, &loop->signal_io_watcher, POLLIN);
+      uv__signal_event(loop, &loop->signal_io_watcher, POLLIN);
     }
 
     loop->watchers[loop->nwatchers] = NULL;
@@ -496,7 +494,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 }
 
 
-static void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
+void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
   struct kevent ev;
   int events;
@@ -569,6 +567,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       const char* path,
                       unsigned int flags) {
   int fd;
+  int r;
 #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
   struct stat statbuf;
 #endif
@@ -604,7 +603,6 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   if (0 == atomic_load_explicit(&uv__has_forked_with_cfrunloop,
                                 memory_order_relaxed)) {
-    int r;
     /* The fallback fd is no longer needed */
     uv__close_nocheckstdio(fd);
     handle->event_watcher.fd = -1;
@@ -620,11 +618,16 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 fallback:
 #endif /* #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070 */
 
-  uv__handle_start(handle);
-  uv__io_init(&handle->event_watcher, uv__fs_event, fd);
-  uv__io_start(handle->loop, &handle->event_watcher, POLLIN);
+  r = uv__io_init_start(handle->loop,
+                        &handle->event_watcher,
+                        UV__FS_EVENT,
+                        fd,
+                        POLLIN);
 
-  return 0;
+  if (!r)
+    uv__handle_start(handle);
+
+  return r;
 }
 
 

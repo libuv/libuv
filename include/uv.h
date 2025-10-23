@@ -604,6 +604,11 @@ UV_EXTERN int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
 UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle,
                                int enable,
                                unsigned int delay);
+UV_EXTERN int uv_tcp_keepalive_ex(uv_tcp_t* handle,
+                                  int on,
+                                  unsigned int idle,
+                                  unsigned int intvl,
+                                  unsigned int cnt);
 UV_EXTERN int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable);
 
 enum uv_tcp_flags {
@@ -741,6 +746,9 @@ struct uv_udp_send_s {
 UV_EXTERN int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
 UV_EXTERN int uv_udp_init_ex(uv_loop_t*, uv_udp_t* handle, unsigned int flags);
 UV_EXTERN int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock);
+UV_EXTERN int uv_udp_open_ex(uv_udp_t* handle,
+                             uv_os_sock_t sock,
+                             unsigned int flags);
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
                           const struct sockaddr* addr,
                           unsigned int flags);
@@ -1964,7 +1972,6 @@ UV_EXTERN void uv_wtf8_to_utf16(const char* wtf8,
                                 size_t utf16_len);
 
 /* Don't export the private CPP symbols. */
-#undef UV_HANDLE_TYPE_PRIVATE
 #undef UV_REQ_TYPE_PRIVATE
 #undef UV_REQ_PRIVATE_FIELDS
 #undef UV_STREAM_PRIVATE_FIELDS
@@ -1976,12 +1983,10 @@ UV_EXTERN void uv_wtf8_to_utf16(const char* wtf8,
 #undef UV_TIMER_PRIVATE_FIELDS
 #undef UV_GETADDRINFO_PRIVATE_FIELDS
 #undef UV_GETNAMEINFO_PRIVATE_FIELDS
-#undef UV_FS_REQ_PRIVATE_FIELDS
 #undef UV_WORK_PRIVATE_FIELDS
 #undef UV_FS_EVENT_PRIVATE_FIELDS
 #undef UV_SIGNAL_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_FIELDS
-#undef UV_LOOP_PRIVATE_PLATFORM_FIELDS
 #undef UV__ERR
 
 #ifdef __cplusplus

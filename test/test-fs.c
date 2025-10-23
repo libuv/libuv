@@ -152,7 +152,7 @@ int uv_test_getiovmax(void) {
 int uv_test_getiovmax(void) {
 #if defined(IOV_MAX)
   return IOV_MAX;
-#elif defined(_SC_IOV_MAX)
+#elif defined(_SC_IOV_MAX) && !defined(__QNX__)
   static int iovmax = -1;
   if (iovmax == -1) {
     iovmax = sysconf(_SC_IOV_MAX);
@@ -356,7 +356,7 @@ static void statfs_cb(uv_fs_t* req) {
   stats = req->ptr;
 
 #if defined(_WIN32) || defined(__sun) || defined(_AIX) || defined(__MVS__) || \
-  defined(__OpenBSD__) || defined(__NetBSD__)
+  defined(__OpenBSD__) || defined(__NetBSD__) || defined(__QNX__)
   ASSERT_OK(stats->f_type);
 #else
   ASSERT_UINT64_GT(stats->f_type, 0);
@@ -2833,7 +2833,9 @@ TEST_IMPL(fs_utime_round) {
   double mtime;
   uv_fs_t req;
   int r;
-
+#if defined(__QNX__)
+  RETURN_SKIP("Setting time to a negative value is unsupported on QNX");
+#endif
   loop = uv_default_loop();
   unlink(path);
   r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
@@ -3889,6 +3891,12 @@ TEST_IMPL(fs_read_dir) {
    * created on. That is why this assertion is a bit lenient.
    */
   ASSERT((r >= 0) || (r == UV_EISDIR));
+#elif defined(__QNX__)
+  /*
+   * If UV_FS_O_DIRECTORY is supplied, QNX returns ENOSYS. Otherwise
+   * UV_EISDIR is returned. Here we are lenient and accept both.
+   */
+  ASSERT((r == UV_ENOSYS) || (r == UV_EISDIR));
 #else
   ASSERT_EQ(r, UV_EISDIR);
 #endif
