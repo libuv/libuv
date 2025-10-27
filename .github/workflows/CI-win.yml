@@ -97,7 +97,7 @@ jobs:
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libatomic-1.dll` \
              build/usr/bin
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: mingw-${{ matrix.config.arch }}
           path: build/usr/**/*
