@@ -115,7 +115,7 @@ jobs:
           - {arch: x86_64, server: 2022}
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: mingw-${{ matrix.config.arch }}
       - name: Test
