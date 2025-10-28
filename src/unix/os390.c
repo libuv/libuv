@@ -152,13 +152,15 @@ static int getexe(char* buf, size_t len) {
  * or through some libc APIs. The below approach is to parse the argv[0]'s pattern
  * and use it in conjunction with PATH environment variable to craft one.
  */
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   int res;
   char args[PATH_MAX];
-  int pid;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
+
+  if (return_enobufs)
+    return UV_ENOTSUP;
 
   res = getexe(args, sizeof(args));
   if (res < 0)

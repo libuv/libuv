@@ -63,10 +63,13 @@ void uv_loadavg(double avg[3]) {
 }
 
 
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   char path[PATH_MAX];
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
+
+  if (return_enobufs)
+    return UV_ENOTSUP;
 
   realpath(_cmdname(NULL), path);
   strlcpy(buffer, path, *size);

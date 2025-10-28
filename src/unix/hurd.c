@@ -36,7 +36,7 @@
 #include <string.h>
 #include <limits.h>
 
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   kern_return_t err;
   /* XXX in current Hurd, strings are char arrays of 1024 elements */
   string_t exepath;
@@ -44,6 +44,9 @@ int uv_exepath(char* buffer, size_t* size) {
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
+
+  if (return_enobufs)
+    return UV_ENOTSUP;
 
   if (*size - 1 > 0) {
     /* XXX limited length of buffer in current Hurd, this API will probably

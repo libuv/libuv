@@ -61,7 +61,8 @@ int uv__platform_loop_init(uv_loop_t* loop) {
 void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
-int uv_exepath(char* buffer, size_t* size) {
+
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   char abspath[PATH_MAX * 2 + 1];
   int mib[4];
   size_t abspath_size;
@@ -82,6 +83,9 @@ int uv_exepath(char* buffer, size_t* size) {
   abspath_size -= 1;
   *size -= 1;
 
+  if (return_enobufs && *size < abspath_size)
+    return UV_ENOBUFS;
+
   if (*size > abspath_size)
     *size = abspath_size;
 
@@ -90,6 +94,7 @@ int uv_exepath(char* buffer, size_t* size) {
 
   return 0;
 }
+
 
 uint64_t uv_get_free_memory(void) {
   int freecount;

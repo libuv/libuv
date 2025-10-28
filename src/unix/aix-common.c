@@ -57,7 +57,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
  * or through some libc APIs. The below approach is to parse the argv[0]'s pattern
  * and use it in conjunction with PATH environment variable to craft one.
  */
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   int res;
   char args[UV__PATH_MAX];
   size_t cached_len;
@@ -73,6 +73,12 @@ int uv_exepath(char* buffer, size_t* size) {
     *size -= 1;
     if (*size > cached_len)
       *size = cached_len;
+
+    if (return_enobufs && cached_len > *size) {
+      uv_mutex_unlock(&process_title_mutex);
+      return UV_ENOBUFS;
+    }
+
     memcpy(buffer, original_exepath, *size);
     buffer[*size] = '\0';
     uv_mutex_unlock(&process_title_mutex);

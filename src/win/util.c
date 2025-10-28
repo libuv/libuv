@@ -94,9 +94,10 @@ void uv__util_init(void) {
 }
 
 
-int uv_exepath(char* buffer, size_t* size_ptr) {
+int uv__exepath(char* buffer, size_t* size_ptr, int return_enobufs) {
   size_t utf8_len, utf16_buffer_len, utf16_len;
   WCHAR* utf16_buffer;
+  int required_utf8_len;
   int err;
 
   if (buffer == NULL || size_ptr == NULL || *size_ptr == 0) {
@@ -120,6 +121,23 @@ int uv_exepath(char* buffer, size_t* size_ptr) {
   if (utf16_len <= 0) {
     err = GetLastError();
     goto error;
+  }
+
+  /* Determine how many UTF-8 bytes are needed. */
+  required_utf8_len = WideCharToMultiByte(CP_UTF8, 0,
+                                          utf16_buffer, (int)utf16_len,
+                                          NULL, 0, NULL, NULL);
+  /* Just return error if return enobufs is requested */
+  if (return_enobufs && required_utf8_len <= 0) {
+    err = GetLastError();
+    uv__free(utf16_buffer);
+    return uv_translate_sys_error(err);
+  }
+
+  if (return_enobufs && *size_ptr < (size_t) required_utf8_len + 1) {
+    *size_ptr = (size_t) required_utf8_len + 1;
+    uv__free(utf16_buffer);
+    return UV_ENOBUFS;
   }
 
   /* Convert to UTF-8 */

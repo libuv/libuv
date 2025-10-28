@@ -522,6 +522,17 @@ API
     Gets the executable path. You *must* call `uv_setup_args` before calling
     this function.
 
+.. c:function:: int uv_exepath2(char* buffer, size_t* size)
+
+  Like :c:func:`uv_exepath`, but returns :c:macro:`UV_ENOBUFS` if ``buffer``
+  is too small and sets ``*size`` to the required length (including NUL). On
+  success, ``*size`` is set to the path length *excluding* the NUL byte.
+  Returns :c:macro:`UV_ENOTSUP` on unsupported platforms.
+
+  You *must* call :c:func:`uv_setup_args` before using this function.
+
+    .. versionadded:: 1.52.0
+
 .. c:function:: int uv_cwd(char* buffer, size_t* size)
 
     Gets the current working directory, and stores it in `buffer`. If the

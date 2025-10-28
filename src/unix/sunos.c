@@ -380,7 +380,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
  * of the function, but this function could be called by multiple consumers and
  * we don't want to potentially create a race condition in the use of snprintf.
  */
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   ssize_t res;
   char buf[128];
 
@@ -395,6 +395,11 @@ int uv_exepath(char* buffer, size_t* size) {
 
   if (res == -1)
     return UV__ERR(errno);
+
+  if (return_enobufs && *size < (size_t) res) {
+    *size = (size_t) res;
+    return UV_ENOBUFS;
+  }
 
   buffer[res] = '\0';
   *size = res;

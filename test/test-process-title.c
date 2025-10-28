@@ -83,6 +83,22 @@ static void exit_cb(uv_process_t* process, int64_t status, int signo) {
 }
 
 
+TEST_IMPL(exepath2_enobufs) {
+  int r;
+  char smallbuf[2];
+  size_t small_size;
+
+  /* Test uv_exepath2
+   * Refs: https://github.com/libuv/libuv/issues/4911 */
+  small_size = sizeof(smallbuf);
+  r = uv_exepath2(smallbuf, &small_size);
+  ASSERT(r == UV_ENOBUFS || r == UV_ENOTSUP);
+  ASSERT_GE(small_size, sizeof(smallbuf));
+
+  return 0;
+}
+
+
 TEST_IMPL(process_title_big_argv) {
   uv_process_options_t options;
   uv_process_t process;
