@@ -365,7 +365,6 @@ struct uv__req_write_extra_s {
 #define UV_PROCESS_PRIVATE_FIELDS                                             \
   struct uv__queue queue;                                                     \
   int status;                                                                 \
-  int pty_fd;
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
   const char *new_path;                                                       \
