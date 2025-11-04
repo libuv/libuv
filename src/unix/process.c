@@ -342,7 +342,7 @@ static void uv__write_errno(int error_fd) {
 }
 
 
-static void uv__process_child_init(const uv_process_options_t* options,
+static void uv__process_child_init(const uv_process_options2_t* options,
                                    int stdio_count,
                                    int (*pipes)[2],
                                    int error_fd,
@@ -616,7 +616,7 @@ static void uv__spawn_init_posix_spawn(void) {
 
 static int uv__spawn_set_posix_spawn_attrs(
     posix_spawnattr_t* attrs,
-    const uv_process_options_t* options) {
+    const uv_process_options2_t* options) {
   int err;
   unsigned int flags;
   sigset_t signal_set;
@@ -689,7 +689,7 @@ error:
 
 static int uv__spawn_set_posix_spawn_file_actions(
     posix_spawn_file_actions_t* actions,
-    const uv_process_options_t* options,
+    const uv_process_options2_t* options,
     int stdio_count,
     int (*pipes)[2]) {
   int child_fds_storage[8];
@@ -852,7 +852,7 @@ char* uv__spawn_find_path_in_env(char** env) {
 }
 
 
-static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
+static int uv__spawn_resolve_and_spawn(const uv_process_options2_t* options,
                                        posix_spawnattr_t* attrs,
                                        posix_spawn_file_actions_t* actions,
                                        pid_t* pid) {
@@ -948,7 +948,7 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
 
 static int uv__spawn_and_init_child_posix_spawn(
     uv_loop_t* loop,
-    const uv_process_options_t* options,
+    const uv_process_options2_t* options,
     int stdio_count,
     int (*pipes)[2],
     pid_t* pid) {
@@ -1019,7 +1019,7 @@ error:
 }
 
 
-static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
+static int uv__spawn_and_init_child_fork(const uv_process_options2_t* options,
                                          int stdio_count,
                                          int (*pipes)[2],
                                          int error_fd,
@@ -1063,7 +1063,7 @@ static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
 
 static int uv__spawn_and_init_child(
     uv_loop_t* loop,
-    const uv_process_options_t* options,
+    const uv_process_options2_t* options,
     int stdio_count,
     int (*pipes)[2],
     pid_t* pid,
@@ -1185,7 +1185,6 @@ int uv__spawn_make_pty(int* fd_pty, int* fd_tty, int cols, int rows) {
 }
 #else
 int uv__spawn_make_pty(int* fd_pty, int* fd_tty, int cols, int rows) {
-  int ret;
   int my_errno;
 
   *fd_pty = posix_openpt(O_RDWR);
@@ -1227,6 +1226,27 @@ int uv__spawn_make_pty(int* fd_pty, int* fd_tty, int cols, int rows) {
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
              const uv_process_options_t* options) {
+  uv_process_options2_t options2;
+  options2.version     = UV_PROCESS_OPTIONS_VERSION_V0;
+  options2.exit_cb     = options->exit_cb;
+  options2.file        = options->file;
+  options2.args        = options->args;
+  options2.env         = options->env;
+  options2.cwd         = options->cwd;
+  options2.flags       = options->flags;
+  options2.stdio_count = options->stdio_count;
+  options2.stdio       = options->stdio;
+  options2.pty_cols    = 0;
+  options2.pty_rows    = 0;
+  options2.uid         = options->uid;
+  options2.gid         = options->gid;
+
+  return uv_spawn2(loop, process, &options2);
+}
+
+int uv_spawn2(uv_loop_t* loop,
+              uv_process_t* process,
+              const uv_process_options2_t* options) {
 #if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   /* fork is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED. */
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);
@@ -1245,13 +1265,15 @@ int uv_spawn(uv_loop_t* loop,
   int fd_tty;
 
   if (options->flags & UV_PROCESS_PTY) {
+    if (options->version < UV_PROCESS_OPTIONS_VERSION_V1)
+      return UV_EINVAL;
     if (options->stdio[0].flags != (UV_CREATE_PIPE | UV_READABLE_PIPE) ||
         options->stdio[0].data.stream->type != UV_NAMED_PIPE ||
         options->stdio[1].flags != (UV_CREATE_PIPE | UV_WRITABLE_PIPE) ||
         options->stdio[1].data.stream->type != UV_NAMED_PIPE ||
         options->stdio[2].flags != UV_IGNORE)
       return UV_EINVAL;
-    if (options->pty_rows == 0 |
+    if (options->pty_rows == 0 ||
         options->pty_cols == 0)
       return UV_EINVAL;
   }
