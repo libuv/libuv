@@ -326,39 +326,29 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
     }
 #endif
 
-    do {
+    do
       nread = recvmsg(handle->io_watcher.fd, &h, flag);
-    }
     while (nread == -1 && errno == EINTR);
 
-    if (nread == -1) {
-#if defined(__linux__)
-      if ((flag & MSG_ERRQUEUE) &&
-          uv__udp_recvmsg_errqueue(handle, &h, &buf,
-                                   (const struct sockaddr*) &peer, flags)) {
-        goto out;
-      }
-#endif
-      if (errno == EAGAIN || errno == EWOULDBLOCK)
-        handle->recv_cb(handle, 0, &buf, NULL, 0);
-      else
-        handle->recv_cb(handle, UV__ERR(errno), &buf, NULL, 0);
-    }
-    else {
-      flags = 0;
+    flags = 0;
+    if (nread != -1)
       if (h.msg_flags & MSG_TRUNC)
         flags |= UV_UDP_PARTIAL;
 
 #if defined(__linux__)
-      if ((flag & MSG_ERRQUEUE) &&
-          uv__udp_recvmsg_errqueue(handle, &h, &buf,
-                                   (const struct sockaddr*) &peer, flags)) {
-        goto out;
-      }
-#endif
-      handle->recv_cb(handle, nread, &buf, (const struct sockaddr*) &peer, flags);
+    if ((flag & MSG_ERRQUEUE) &&
+        uv__udp_recvmsg_errqueue(handle, &h, &buf, (void*) &peer, flags)) {
+      count--;
+      continue;
     }
-out:
+#endif
+
+    if (nread != -1)
+      handle->recv_cb(handle, nread, &buf, (void*) &peer, flags);
+    else if (errno == EAGAIN || errno == EWOULDBLOCK)
+      handle->recv_cb(handle, 0, &buf, NULL, 0);
+    else
+      handle->recv_cb(handle, UV__ERR(errno), &buf, NULL, 0);
     count--;
   }
   /* recv_cb callback may decide to pause or close the handle */
