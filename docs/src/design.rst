@@ -16,9 +16,29 @@ cross-platform file I/O and threading functionality is also provided, amongst ot
 Here is a diagram illustrating the different parts that compose libuv and what subsystem they
 relate to:
 
-.. image:: static/architecture.png
-    :scale: 75%
-    :align: center
+.. code-block:: guess
+
+    +----------------------------------------------+ +---+ +---+ +---+
+    |                                              | |   | |   | |   |
+    | Network I/O                                  | | F | | D | | U |
+    |                                              | | i | | N | | s |
+    |                                              | | l | | S | | e |
+    |                                              | | e | |   | | r |
+    |                                              | |   | | O | |   |
+    |                                              | | I | | p | | C |
+    | +------+ +------+ +------+ +------+ +------+ | | / | | s | | o |
+    | | TCP  | | UDP  | | TTY  | | Pipe | | ...  | | | O | |   | | d |
+    | +------+ +------+ +------+ +------+ +------+ | |   | |   | | e |
+    |                                              | |   | |   | |   |
+    +----------------------------------------------+ +---+ +---+ +---+
+
+    +----------------------------------+  +--------+ +---------------+
+    |           uv__io_t               |  |        | |               |
+    +----------------------------------+  |        | |               |
+                                          |  IOCP  | |  Thread Pool  |
+    +-------+ +--------+ +-------------+  |        | |               |
+    | epoll | | kqueue | | event ports |  |        | |               |
+    +-------+ +--------+ +-------------+  +--------+ +---------------+
 
 
 Handles and requests
@@ -55,9 +75,43 @@ which have been added to the poller and callbacks will be fired indicating socke
 In order to better understand how the event loop operates, the following diagram illustrates all
 stages of a loop iteration:
 
-.. image:: static/loop_iteration.png
-    :scale: 75%
-    :align: center
+.. code-block:: guess
+
+              +------------------------+
+              | Initialze loop time    |
+              +------------------------+
+              | Run due timers         |
+              +------------------------+
+                          |
+                          v
+                          __
+      _____              /  \
+     /     \            /    \
+    /       \  No      / Loop \
+    | end    |<-------| alive? |<----------+
+    \       /          \      /            |
+     \     /            \    /             |
+      -----              \__/              |
+                          |                |
+                          | Yes            |
+                          v                |
+              +------------------------+   |
+              | Call pending callbacks |   |
+              +------------------------+   |
+              | Run idle handles       |   |
+              +------------------------+   |
+              | Run prepare handles    |   |
+              +------------------------+   |
+              | Poll for I/O           |   |
+              +------------------------+   |
+              | Run check handles      |   |
+              +------------------------+   |
+              | Call close callbacks   |   |
+              +------------------------+   |
+              | Update loop time       |   |
+              +------------------------+   |
+              | Run due timers         |---+
+              +------------------------+
 
 
 #. The loop concept of 'now' is initially set.
