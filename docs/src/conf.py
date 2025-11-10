@@ -149,6 +149,10 @@ html_favicon = 'static/favicon.ico'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['static']
 
+# Custom CSS and JS files
+html_css_files = ['copy-button.css']
+html_js_files = ['copy-button.js']
+
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
 # directly to the root of the documentation.
