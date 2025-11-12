@@ -3,7 +3,7 @@
 #include <uv.h>
 
 int main() {
-    uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+    uv_loop_t *loop = malloc(uv_loop_size());
     uv_loop_init(loop);
 
     printf("Now quitting.\n");

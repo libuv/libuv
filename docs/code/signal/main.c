@@ -5,7 +5,7 @@
 
 uv_loop_t* create_loop()
 {
-    uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+    uv_loop_t *loop = malloc(uv_loop_size());
     if (loop) {
       uv_loop_init(loop);
     }
