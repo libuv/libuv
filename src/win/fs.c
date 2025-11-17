@@ -182,14 +182,27 @@ void uv__fs_init(void) {
   uv__fd_hash_init();
 }
 
-
+/* Puts the utf16 link target path in the buffer pointed to by *w_target_ptr if
+ * w_target_ptr != NULL. If *w_target_ptr is null, a new buffer is allocated.
+ * If *w_target_ptr is nonnull, *w_target_size_ptr MUST contain the size of the
+ * buffer (in WCHARs), including space for NUL. If that is too small,
+ * `UV_ENOBUFS` is returned, and `*w_target_size_ptr` is set to the necessary
+ * size.
+ *
+ * On success, `*w_target_size_ptr` represents the string length(in WCHARs) of
+ * the target path, excluding NUL.
+ *
+ * The wtf8 length of target_path is placed in w_target_wtf8_len_ptr if it's
+ * nonnull. */
 static int fs__readlink_handle(HANDLE handle,
-                               char** target_ptr,
-                               size_t* target_len_ptr) {
+                               WCHAR** w_target_ptr,
+                               size_t* w_target_size_ptr,
+                               size_t* w_target_wtf8_len_ptr) {
   char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
   REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*) buffer;
   WCHAR* w_target;
   DWORD w_target_len;
+  DWORD w_target_size;
   DWORD bytes;
   size_t i;
   size_t len;
@@ -315,8 +328,132 @@ static int fs__readlink_handle(HANDLE handle,
     return -1;
   }
 
-  assert(target_ptr == NULL || *target_ptr == NULL);
-  return uv_utf16_to_wtf8(w_target, w_target_len, target_ptr, target_len_ptr);
+
+  if (w_target_wtf8_len_ptr != NULL)
+    *w_target_wtf8_len_ptr = uv_utf16_length_as_wtf8(w_target, w_target_len);
+
+  w_target_size = w_target_len + 1;
+  if (w_target_ptr != NULL) {
+    if (*w_target_ptr != NULL) { /* preallocated buffer */
+      assert(w_target_size_ptr);
+
+      /* return if buffer is too small */
+      if (*w_target_size_ptr < w_target_size) {
+        *w_target_size_ptr = w_target_size;
+        return UV_ENOBUFS;
+      }
+    } else { /* buffer needs to be allocated by us */
+     *w_target_ptr = uv__malloc(w_target_size * sizeof(WCHAR));
+
+     if (*w_target_ptr == NULL) {
+       if (w_target_size_ptr != NULL)
+         *w_target_size_ptr = w_target_size;
+
+       SetLastError(ERROR_OUTOFMEMORY);
+       return -1;
+     }
+    }
+
+    memcpy(*w_target_ptr, w_target, w_target_len * sizeof(WCHAR));
+    (*w_target_ptr)[w_target_len] = '\0';
+  }
+
+  if (w_target_size_ptr != NULL)
+    *w_target_size_ptr = w_target_len;
+
+  return 0;
+}
+
+/* CreateFile wrapper. This uses our own readlink logic if windows can't do it. */
+static HANDLE fs__create_file(WCHAR* path, DWORD desired_access, int do_lstat) {
+  HANDLE handle;
+  size_t target_path_size;
+  WCHAR target_path_scratch[512];
+  WCHAR* target_path = target_path_scratch;
+  size_t target_buf_size = ARRAY_SIZE(target_path_scratch);
+  int err;
+
+  if (do_lstat) {
+    return CreateFileW(path,
+                       desired_access,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                       NULL);
+  }
+
+  for (uint32_t i = 0; i < 32; i++) {
+
+    /* try to get a handle normally */
+    handle = CreateFileW(path,
+                         desired_access,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE |
+                         FILE_SHARE_DELETE,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_FLAG_BACKUP_SEMANTICS,
+                         NULL);
+
+    if (handle != INVALID_HANDLE_VALUE || GetLastError() != ERROR_CANT_ACCESS_FILE)
+      goto clean_and_ret_handle;
+
+    /* try again, but tell windows not to resolve reparse points */
+    handle = CreateFileW(path,
+                         desired_access,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE |
+                         FILE_SHARE_DELETE,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_FLAG_BACKUP_SEMANTICS |
+                         FILE_FLAG_OPEN_REPARSE_POINT,
+                         NULL);
+
+    /* return if there is another issue */
+    if (handle == INVALID_HANDLE_VALUE)
+      goto clean_and_ret_handle;
+
+    target_path_size = target_buf_size;
+
+    /* try to use our own reparse point handling */
+    err = fs__readlink_handle(handle, &target_path, &target_path_size, NULL);
+
+    if (err < 0) {
+      if (err == UV_ENOBUFS) { /* buffer was too small */
+        if (target_path != target_path_scratch)
+          uv__free(target_path);
+
+        /* make readlink allocate the buffer itself */
+        target_path = NULL;
+        target_path_size = 0;
+        err = fs__readlink_handle(handle, &target_path, &target_path_size, NULL);
+        target_buf_size = target_path_size + 1;
+
+        if (err < 0) {
+          CloseHandle(handle);
+          handle = INVALID_HANDLE_VALUE;
+          goto ret_handle;
+        }
+
+      } else {
+        CloseHandle(handle);
+        handle = INVALID_HANDLE_VALUE;
+        goto clean_and_ret_handle;
+      }
+    }
+
+    CloseHandle(handle);
+    path = target_path;
+  }
+
+  handle = INVALID_HANDLE_VALUE;
+  SetLastError(ERROR_CANT_RESOLVE_FILENAME);
+
+clean_and_ret_handle:
+  if (target_path != target_path_scratch)
+    uv__free(target_path);
+ret_handle:
+  return handle;
 }
 
 
@@ -1152,7 +1289,7 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
 
     /* Read the reparse point and check if it is a valid symlink. If not, don't
      * unlink. */
-    if (fs__readlink_handle(handle, NULL, NULL) < 0) {
+    if (fs__readlink_handle(handle, NULL, NULL, NULL) < 0) {
       error = GetLastError();
       if (error == ERROR_SYMLINK_NOT_SUPPORTED)
         error = ERROR_ACCESS_DENIED;
@@ -1853,7 +1990,7 @@ static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf, int do_lstat) {
      * to be treated as a regular file. The higher level lstat function will
      * detect this failure and retry without do_lstat if appropriate.
      */
-    if (fs__readlink_handle(handle, NULL, &target_length) != 0) {
+    if (fs__readlink_handle(handle, NULL, NULL, &target_length) != 0) {
       return -1;
     }
     stat_info.EndOfFile.QuadPart = target_length;
@@ -2059,13 +2196,7 @@ static DWORD fs__stat_directory(WCHAR* path,
   }
 
   /* Get directory handle */
-  handle = CreateFileW(path_dirpath,
-                       FILE_LIST_DIRECTORY,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                       NULL,
-                       OPEN_EXISTING,
-                       FILE_FLAG_BACKUP_SEMANTICS,
-                       NULL);
+  handle = fs__create_file(path_dirpath, FILE_LIST_DIRECTORY, 0);
 
   if (handle == INVALID_HANDLE_VALUE) {
     ret_error = GetLastError();
@@ -2186,17 +2317,7 @@ static DWORD fs__stat_impl_from_path(WCHAR* path,
   }
 
   /* If the new API does not exist, use the old API. */
-  flags = FILE_FLAG_BACKUP_SEMANTICS;
-  if (do_lstat)
-    flags |= FILE_FLAG_OPEN_REPARSE_POINT;
-
-  handle = CreateFileW(path,
-                       FILE_READ_ATTRIBUTES,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                       NULL,
-                       OPEN_EXISTING,
-                       flags,
-                       NULL);
+  handle = fs__create_file(path, FILE_READ_ATTRIBUTES, do_lstat);
 
   if (handle == INVALID_HANDLE_VALUE) {
     ret = GetLastError();
@@ -2959,6 +3080,10 @@ static void fs__symlink(uv_fs_t* req) {
 
 static void fs__readlink(uv_fs_t* req) {
   HANDLE handle;
+  WCHAR initial_path_buf[512];
+  WCHAR* target_path = (WCHAR*)initial_path_buf;
+  size_t target_path_size = 512;
+  int err;
 
   handle = CreateFileW(req->file.pathw,
                        0,
@@ -2974,14 +3099,29 @@ static void fs__readlink(uv_fs_t* req) {
   }
 
   assert(req->ptr == NULL);
-  if (fs__readlink_handle(handle, (char**) &req->ptr, NULL) != 0) {
-    DWORD error = GetLastError();
-    SET_REQ_WIN32_ERROR(req, error);
-    if (error == ERROR_NOT_A_REPARSE_POINT)
-      req->result = UV_EINVAL;
-    CloseHandle(handle);
-    return;
+  err = fs__readlink_handle(handle, &target_path, &target_path_size, NULL);
+  if (err != 0) {
+
+    if (err == UV_ENOBUFS) {
+      target_path = NULL;
+      target_path_size = 0;
+      err = fs__readlink_handle(handle, &target_path, &target_path_size, NULL);
+    }
+
+    if (err != 0) {
+      DWORD error = GetLastError();
+      SET_REQ_WIN32_ERROR(req, error);
+      if (error == ERROR_NOT_A_REPARSE_POINT)
+        req->result = UV_EINVAL;
+      CloseHandle(handle);
+      return;
+    }
   }
+
+  uv_utf16_to_wtf8(target_path, target_path_size, (char**) &req->ptr, NULL);
+
+  if (target_path != initial_path_buf)
+    uv__free(target_path);
 
   req->flags |= UV_FS_FREE_PTR;
   SET_REQ_RESULT(req, 0);

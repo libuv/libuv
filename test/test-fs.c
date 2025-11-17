@@ -2693,7 +2693,7 @@ TEST_FS_IMPL(fs_non_symlink_reparse_point) {
   return 0;
 }
 
-TEST_FS_IMPL(fs_lstat_windows_store_apps) {
+TEST_FS_IMPL(fs_stat_windows_store_apps) {
   uv_loop_t* loop;
   char localappdata[MAX_PATH];
   char windowsapps_path[MAX_PATH];
@@ -2739,6 +2739,7 @@ TEST_FS_IMPL(fs_lstat_windows_store_apps) {
       continue;
     }
     ASSERT_OK(uv_fs_lstat(loop, &stat_req, file_path, NULL));
+    ASSERT_OK(uv_fs_stat(loop, &stat_req, file_path, NULL));
   }
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
