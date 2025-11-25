@@ -1647,7 +1647,7 @@ static void uv__fs_done(struct uv__work *w, int status) {
 
   req = container_of(w, uv_fs_t, work_req);
 
-  if (req->reserved[0] != (void *)UV__REQ_INTERNAL)
+  if (req->reserved[0] != UV__REQ_INTERNAL)
     uv__req_unregister(req->loop);
 
   if (status == UV_ECANCELED) {

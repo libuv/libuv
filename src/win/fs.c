@@ -2974,7 +2974,7 @@ static void uv__fs_done(struct uv__work *w, int status) {
     SET_REQ_UV_ERROR(req, UV_ECANCELED, 0);
   }
 
-  if (req->reserved[0] == (void *)UV__REQ_INTERNAL)
+  if (req->reserved[0] != UV__REQ_INTERNAL)
     uv__req_register(req->loop);
 
   req->cb(req);

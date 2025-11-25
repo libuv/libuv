@@ -176,7 +176,7 @@ static void timer_cb(uv_timer_t *timer) {
     abort();
 
   /* Mark fs_req as internal and unregister it. */
-  ctx->fs_req.reserved[0] = (void *)UV__REQ_INTERNAL;
+  ctx->fs_req.reserved[0] = UV__REQ_INTERNAL;
   uv__req_unregister(ctx->loop);
 }
 
