@@ -33,10 +33,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "queue.h"
-#include "strscpy.h"
 #include "uv.h"
 #include "uv/tree.h"
+#include "queue.h"
+#include "strscpy.h"
 
 #ifndef _MSC_VER
 #include <stdatomic.h>
