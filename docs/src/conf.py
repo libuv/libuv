@@ -48,7 +48,7 @@ sys.path.insert(0, os.path.abspath('sphinx-plugins'))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['manpage']
+extensions = ['manpage', 'sphinx_copybutton']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']
@@ -148,6 +148,12 @@ html_favicon = 'static/favicon.ico'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['static']
+
+# Add a tiny CSS override for the copy button so it positions nicely
+# and matches the docs' minimal style. The file lives under static/.
+html_css_files = [
+    'copybutton.css',
+]
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -325,6 +331,23 @@ epub_basename = u'libuv'
 
 # A list of files that should not be packed into the epub file.
 epub_exclude_files = ['search.html']
+
+# ------------------------------------------------------------------
+# sphinx-copybutton configuration
+# Adds a small, accessible "Copy" button to code blocks in the HTML
+# output. Install with: pip install sphinx-copybutton
+# ------------------------------------------------------------------
+# Selector targets the <pre> elements created by the Pygments highlight
+# integration. Keep this selector minimal so it matches the project's
+# highlighted code blocks across themes.
+copybutton_selector = "div.highlight pre, div.highlighted pre, pre.literal-block"
+
+# Treat the prompt text as a regular expression so common REPL prompts
+# (>>>, $) are stripped when copying. This keeps copied snippets
+# clean for pasting into shells or editors.
+copybutton_prompt_text = r"^\s*(>>> |\$ |\.\.\. )"
+copybutton_prompt_is_regexp = True
+
 
 # The depth of the table of contents in toc.ncx.
 #epub_tocdepth = 3

@@ -1,0 +1,50 @@
+/* Minimal, theme-agnostic styles for the copy button added by
+   sphinx-copybutton. Keeps the UI small and accessible. */
+
+/* Ensure the code block container is the positioning context */
+.highlight, .highlighted, pre.literal-block {
+  position: relative;
+}
+
+/* Target possible copy button class names used by extensions */
+button.copybutton, button.copybtn, .copybutton, .copybtn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.02);
+  color: inherit;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms ease, transform 80ms ease;
+  /* Make sure it doesn't overlap long code selection */
+  z-index: 3;
+}
+
+button.copybutton:hover, button.copybtn:hover,
+.copybutton:hover, .copybtn:hover {
+  background: rgba(255,255,255,0.04);
+  transform: translateY(-1px);
+}
+
+/* Focus styles for keyboard users */
+button.copybutton:focus, button.copybtn:focus,
+.copybutton:focus, .copybtn:focus {
+  outline: 3px solid Highlight;
+  outline-offset: 2px;
+}
+
+/* Smaller visual footprint on narrow screens */
+@media (max-width: 520px) {
+  button.copybutton, button.copybtn, .copybutton, .copybtn {
+    top: 0.35rem;
+    right: 0.35rem;
+    padding: 0.25rem;
+  }
+}
