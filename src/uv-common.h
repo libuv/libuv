@@ -141,6 +141,10 @@ enum {
   UV_HANDLE_REAP                        = 0x10000000
 };
 
+enum {
+  UV__REQ_INTERNAL                      = 0x8000
+};
+
 static inline int uv__is_raw_tty_mode(uv_tty_mode_t m) {
   return m == UV_TTY_MODE_RAW || m == UV_TTY_MODE_RAW_VT;
 }
