@@ -2967,15 +2967,14 @@ static void uv__fs_done(struct uv__work *w, int status) {
   uv_fs_t *req;
 
   req = container_of(w, uv_fs_t, work_req);
-  uv__req_unregister(req->loop);
+
+  if (req->reserved[0] != UV__REQ_INTERNAL)
+    uv__req_unregister(req->loop);
 
   if (status == UV_ECANCELED) {
     assert(req->result == 0);
     SET_REQ_UV_ERROR(req, UV_ECANCELED, 0);
   }
-
-  if (req->reserved[0] != UV__REQ_INTERNAL)
-    uv__req_register(req->loop);
 
   req->cb(req);
 }
