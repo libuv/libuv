@@ -807,16 +807,12 @@ static struct uv__io_uring_sqe* uv__iou_get_sqe(struct uv__iou* iou,
 
 
 static void uv__iou_submit(struct uv__iou* iou) {
-  uint32_t flags;
-
   atomic_store_explicit((_Atomic uint32_t*) iou->sqtail,
                         *iou->sqtail + 1,
                         memory_order_release);
+  atomic_thread_fence(memory_order_seq_cst);
 
-  flags = atomic_load_explicit((_Atomic uint32_t*) iou->sqflags,
-                               memory_order_acquire);
-
-  if (flags & UV__IORING_SQ_NEED_WAKEUP)
+  if (*iou->sqflags & UV__IORING_SQ_NEED_WAKEUP)
     if (uv__io_uring_enter(iou->ringfd, 0, 0, UV__IORING_ENTER_SQ_WAKEUP))
       if (errno != EOWNERDEAD)  /* Kernel bug. Harmless, ignore. */
         perror("libuv: io_uring_enter(wakeup)");  /* Can't happen. */
@@ -1167,7 +1163,6 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
   uint32_t tail;
   uint32_t mask;
   uint32_t i;
-  uint32_t flags;
   int nevents;
   int rc;
 
@@ -1214,14 +1209,12 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
   atomic_store_explicit((_Atomic uint32_t*) iou->cqhead,
                         tail,
                         memory_order_release);
+  atomic_thread_fence(memory_order_seq_cst);
 
   /* Check whether CQE's overflowed, if so enter the kernel to make them
    * available. Don't grab them immediately but in the next loop iteration to
    * avoid loop starvation. */
-  flags = atomic_load_explicit((_Atomic uint32_t*) iou->sqflags,
-                               memory_order_acquire);
-
-  if (flags & UV__IORING_SQ_CQ_OVERFLOW) {
+  if (*iou->sqflags & UV__IORING_SQ_CQ_OVERFLOW) {
     do
       rc = uv__io_uring_enter(iou->ringfd, 0, 0, UV__IORING_ENTER_GETEVENTS);
     while (rc == -1 && errno == EINTR);
