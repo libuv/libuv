@@ -52,7 +52,7 @@
  */
 static int isreallyatty(int file) {
   int rc;
- 
+
   rc = !ioctl(file, TXISATTY + 0x81, NULL);
   if (!rc && errno != EBADF)
       errno = ENOTTY;
@@ -334,7 +334,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   }
 
   /* Apply changes after draining */
-  rc = uv__tcsetattr(fd, TCSADRAIN, &tmp);
+  rc = uv__tcsetattr(fd, TCSANOW, &tmp);
   if (rc == 0)
     tty->mode = mode;
 
