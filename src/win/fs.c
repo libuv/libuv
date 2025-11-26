@@ -2968,6 +2968,10 @@ static void uv__fs_done(struct uv__work *w, int status) {
 
   req = container_of(w, uv_fs_t, work_req);
 
+  /* Internal requests are not registered with the loop, so we shouldn't
+   * unregister them. Unregistering would decrement the active request
+   * count incorrectly.
+   */
   if (req->reserved[0] != UV__REQ_INTERNAL)
     uv__req_unregister(req->loop);
 

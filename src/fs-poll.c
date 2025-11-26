@@ -175,7 +175,9 @@ static void timer_cb(uv_timer_t *timer) {
   if (uv_fs_stat(ctx->loop, &ctx->fs_req, ctx->path, poll_cb))
     abort();
 
-  /* Mark fs_req as internal and unregister it. */
+  /* Mark fs_req as internal so it doesn't keep the loop alive.
+   * We also unregister it immediately because uv_fs_stat registers it.
+   */
   ctx->fs_req.reserved[0] = UV__REQ_INTERNAL;
   uv__req_unregister(ctx->loop);
 }

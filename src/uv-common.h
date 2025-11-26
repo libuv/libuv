@@ -33,10 +33,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "uv.h"
-#include "uv/tree.h"
 #include "queue.h"
 #include "strscpy.h"
+#include "uv.h"
+#include "uv/tree.h"
 
 #ifndef _MSC_VER
 #include <stdatomic.h>
@@ -141,6 +141,10 @@ enum {
   UV_HANDLE_REAP = 0x10000000
 };
 
+/* Internal requests (like those used by uv_fs_poll) are marked with this
+ * flag to prevent them from being counted in the active request count.
+ * This avoids keeping the loop alive unnecessarily.
+ */
 #define UV__REQ_INTERNAL ((void *)(uintptr_t)0x8000)
 
 static inline int uv__is_raw_tty_mode(uv_tty_mode_t m) {
