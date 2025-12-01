@@ -222,11 +222,15 @@ static struct timespec uv__fs_to_timespec(double time) {
     return (struct timespec){UTIME_OMIT, UTIME_OMIT};
 
   ts.tv_sec  = time;
-  ts.tv_nsec = (time - ts.tv_sec) * 1e9;
+  ts.tv_nsec = (long)((time - ts.tv_sec) * 1e9 + 0.5);
 
   if (ts.tv_nsec < 0) {
     ts.tv_nsec += 1e9;
     ts.tv_sec -= 1;
+  }
+  if (ts.tv_nsec >= 1e9) {
+    ts.tv_nsec -= 1e9;
+    ts.tv_sec += 1;
   }
   return ts;
 }
