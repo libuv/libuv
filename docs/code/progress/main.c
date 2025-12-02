@@ -13,6 +13,7 @@ _Atomic double percentage;
 void fake_download(uv_work_t *req) {
     int size = *((int*) req->data);
     int downloaded = 0;
+    double pct;
     while (downloaded < size) {
         pct = downloaded * 100.0 / size;
         atomic_store_explicit(&percentage, pct, memory_order_release);
