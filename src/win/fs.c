@@ -1662,6 +1662,21 @@ void fs__readdir(uv_fs_t* req) {
   dir = req->ptr;
   dirents = dir->dirents;
   memset(dirents, 0, dir->nentries * sizeof(*dir->dirents));
+
+  /* Initial FindFirstFile can fail with ERROR_FILE_NOT_FOUND, meaning
+   * no matches, which leaves dir_handle set to INVALID_HANDLE_VALUE,
+   * see fs__opendir(). Not an actual error, just means no results.
+   *
+   * sshfs-win apparently works that way but reading an empty directory
+   * on a regular drive doesn't trigger that particular code path.
+   *
+   * See https://github.com/libuv/libuv/issues/4952
+   */
+  if (dir->dir_handle == INVALID_HANDLE_VALUE) {
+    SET_REQ_RESULT(req, 0);
+    return;
+  }
+
   find_data = &dir->find_data;
   dirent_idx = 0;
 
