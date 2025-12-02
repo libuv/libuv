@@ -26,24 +26,24 @@ void fake_download(uv_work_t *req) {
 }
 
 void after(uv_work_t *req, int status) {
-  fprintf(stderr, "Download complete\n");
-  uv_close((uv_handle_t *)&async, NULL);
+    fprintf(stderr, "Download complete\n");
+    uv_close((uv_handle_t*) &async, NULL);
 }
 
+
 void print_progress(uv_async_t *handle) {
-  double pct = atomic_load_explicit(&percentage, memory_order_acquire);
-  fprintf(stderr, "Downloaded %.2f%%\n", pct);
+    double pct = atomic_load_explicit(&percentage, memory_order_acquire);
+    fprintf(stderr, "Downloaded %.2f%%\n", pct);
 }
 
 int main() {
-  loop = uv_default_loop();
+    loop = uv_default_loop();
 
-  uv_work_t req;
-  int size = 10240;
-  req.data = (void *)&size;
+    uv_work_t req;
+    int size = 10240;
+    req.data = (void*) &size;
 
-  uv_async_init(loop, &async, print_progress);
-  uv_queue_work(loop, &req, fake_download, after);
-
-  return uv_run(loop, UV_RUN_DEFAULT);
+    uv_async_init(loop, &async, print_progress);
+    uv_queue_work(loop, &req, fake_download, after);
+    return uv_run(loop, UV_RUN_DEFAULT);
 }
