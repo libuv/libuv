@@ -31,8 +31,8 @@ void after(uv_work_t *req, int status) {
 }
 
 void print_progress(uv_async_t *handle) {
-  double percentage = *((double *)handle->data);
-  fprintf(stderr, "Downloaded %.2f%%\n", percentage);
+  double pct = atomic_load_explicit(&percentage, memory_order_acquire);
+  fprintf(stderr, "Downloaded %.2f%%\n", pct);
 }
 
 int main() {
