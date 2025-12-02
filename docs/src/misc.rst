@@ -892,6 +892,16 @@ API
 
     .. versionadded:: 1.34.0
 
+.. code-block:: c
+    #include <uv.h>
+    #include <stdio.h>
+    int main() {
+        printf("Sleeping for 1 second...\n");
+        uv_sleep(1000);
+        printf("Awake!\n");
+        return 0;
+    }
+
 String manipulation functions
 -----------------------------
 
