@@ -510,9 +510,12 @@ static int uv__makedir_p(const char *dir) {
   char *p = NULL;
   size_t len;
   int err;
+  ssize_t r;
 
-  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-  uv__strscpy(tmp, dir, sizeof(tmp));
+  r = uv__strscpy(tmp, dir, sizeof(tmp));
+  if (r == UV_E2BIG)
+    return UV_ENAMETOOLONG;
+
   len = strlen(tmp);
   if (tmp[len - 1] == '/')
     tmp[len - 1] = 0;
@@ -723,6 +726,7 @@ void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags
   int events = 0;
   char fname[PATH_MAX];
   char *p;
+  ssize_t r;
 
   handle = container_of(event_watch, uv_fs_event_t, event_watcher);
 
@@ -762,8 +766,9 @@ void uv__ahafs_event(uv_loop_t* loop, uv__io_t* event_watch, unsigned int fflags
       p++;
   }
 
-  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-  uv__strscpy(fname, p, sizeof(fname));
+  r = uv__strscpy(fname, p, sizeof(fname));
+  if (r == UV_E2BIG)
+    return;
 
   handle->cb(handle, fname, events, 0);
 }
@@ -804,8 +809,9 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   }
   else if (filename[0] == '/') {
     /* We have absolute pathname */
-    /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-    uv__strscpy(absolute_path, filename, sizeof(absolute_path));
+    rc = uv__strscpy(absolute_path, filename, sizeof(absolute_path));
+    if (rc == UV_E2BIG)
+      return UV_ENAMETOOLONG;
   } else {
     /* We have a relative pathname, compose the absolute pathname */
     snprintf(cwd, sizeof(cwd), "/proc/%lu/cwd", (unsigned long) getpid());
@@ -1067,6 +1073,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   perfstat_cpu_t* ps_cpus;
   perfstat_id_t cpu_id;
   int result, ncpus, idx = 0;
+  ssize_t r;
 
   result = perfstat_cpu_total(NULL, &ps_total, sizeof(ps_total), 1);
   if (result == -1) {
@@ -1083,8 +1090,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     return UV_ENOMEM;
   }
 
-  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-  uv__strscpy(cpu_id.name, FIRST_CPU, sizeof(cpu_id.name));
+  r = uv__strscpy(cpu_id.name, FIRST_CPU, sizeof(cpu_id.name));
+  if (r == UV_E2BIG)
+    return UV_EIO;
   result = perfstat_cpu(&cpu_id, ps_cpus, sizeof(perfstat_cpu_t), ncpus);
   if (result == -1) {
     uv__free(ps_cpus);
