@@ -27,3 +27,4 @@ sphinxcontrib-qthelp==2.0.0
 sphinxcontrib-serializinghtml==2.0.0
 typing_extensions==4.13.0
 urllib3==2.3.0
+sphinx-copybutton==0.5.2
