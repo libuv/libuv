@@ -1257,7 +1257,21 @@ void fs__mkdir(uv_fs_t* req) {
   if (CreateDirectoryW(req->file.pathw, NULL)) {
     SET_REQ_RESULT(req, 0);
   } else {
-    SET_REQ_WIN32_ERROR(req, GetLastError());
+    DWORD err = GetLastError();
+
+    /* Fix: On Windows network drives, CreateDirectoryW returns
+       ERROR_ACCESS_DENIED when the directory already exists. */
+    if (err == ERROR_ACCESS_DENIED) {
+      DWORD attr = GetFileAttributesW(req->file.pathw);
+      if (attr != INVALID_FILE_ATTRIBUTES &&
+          (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+        req->result = UV_EEXIST;
+        return;
+      }
+    }
+
+    SET_REQ_WIN32_ERROR(req, err);
+
     if (req->sys_errno_ == ERROR_INVALID_NAME ||
         req->sys_errno_ == ERROR_DIRECTORY)
       req->result = UV_EINVAL;
