@@ -4928,3 +4928,30 @@ TEST_IMPL(fs_wtf) {
   return 0;
 }
 #endif
+
+TEST_IMPL(fs_mkdir_existing) {
+  int r;
+  uv_fs_t req;
+
+  loop = uv_default_loop();
+
+  /* Setup */
+  unlink("test_dir/file");
+  rmdir("test_dir");
+
+  /* Create directory */
+  r = uv_fs_mkdir(NULL, &req, "test_dir", 0755, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Create directory again - synchronous */
+  r = uv_fs_mkdir(NULL, &req, "test_dir", 0755, NULL);
+  ASSERT_EQ(r, UV_EEXIST);
+  uv_fs_req_cleanup(&req);
+
+  /* Cleanup */
+  rmdir("test_dir");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}

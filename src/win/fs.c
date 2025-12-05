@@ -1253,11 +1253,22 @@ static void fs__unlink(uv_fs_t* req) {
 
 
 void fs__mkdir(uv_fs_t* req) {
+  DWORD attr;
+
   /* TODO: use req->mode. */
   if (CreateDirectoryW(req->file.pathw, NULL)) {
     SET_REQ_RESULT(req, 0);
   } else {
     SET_REQ_WIN32_ERROR(req, GetLastError());
+    if (req->sys_errno_ == ERROR_ACCESS_DENIED) {
+      /* Check if the directory already exists. */
+      attr = GetFileAttributesW(req->file.pathw);
+      if (attr != INVALID_FILE_ATTRIBUTES &&
+          (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+        req->sys_errno_ = ERROR_ALREADY_EXISTS;
+        req->result = UV_EEXIST;
+      }
+    }
     if (req->sys_errno_ == ERROR_INVALID_NAME ||
         req->sys_errno_ == ERROR_DIRECTORY)
       req->result = UV_EINVAL;
