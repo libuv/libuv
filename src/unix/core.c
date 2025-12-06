@@ -1533,7 +1533,7 @@ int uv_os_environ(uv_env_item_t** envitems, int* count) {
 
 fail:
   for (i = 0; i < cnt; i++) {
-    envitem = &(*envitems)[cnt];
+    envitem = &(*envitems)[i];
     uv__free(envitem->name);
   }
   uv__free(*envitems);

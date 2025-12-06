@@ -1280,7 +1280,7 @@ fail:
   FreeEnvironmentStringsW(env);
 
   for (i = 0; i < cnt; i++) {
-    envitem = &(*envitems)[cnt];
+    envitem = &(*envitems)[i];
     uv__free(envitem->name);
   }
   uv__free(*envitems);
