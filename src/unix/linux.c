@@ -875,7 +875,7 @@ int uv__iou_fs_ftruncate(uv_loop_t* loop, uv_fs_t* req) {
     return 0;
 
   sqe->fd = req->file;
-  sqe->len = req->off;
+  sqe->off = req->off;
   sqe->opcode = UV__IORING_OP_FTRUNCATE;
   uv__iou_submit(iou);
 

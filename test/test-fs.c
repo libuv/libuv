@@ -953,7 +953,7 @@ static void lutime_cb(uv_fs_t* req) {
 }
 
 
-TEST_IMPL(fs_file_async) {
+TEST_FS_IMPL(fs_file_async) {
   int r;
 
   /* Setup. */
