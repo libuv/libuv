@@ -284,6 +284,19 @@ typedef enum {
   int run_benchmark_##name(void);                                             \
   int run_benchmark_##name(void)
 
+#ifdef __linux__
+#define TEST_FS_IMPL(name)                                                    \
+  int run_test_##name(void);                                                  \
+  int run_test_##name##_iouring(void) {                                       \
+    uv_os_setenv("UV_USE_IO_URING", "1");                                     \
+    uv_loop_configure(uv_default_loop(), UV_LOOP_USE_IO_URING_SQPOLL);        \
+    return run_test_##name();                                                 \
+  }                                                                           \
+  int run_test_##name(void)
+#else
+#define TEST_FS_IMPL(name) TEST_IMPL(name)
+#endif
+
 #define HELPER_IMPL(name)                                                     \
   int run_helper_##name(void);                                                \
   int run_helper_##name(void)
