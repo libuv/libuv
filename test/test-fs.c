@@ -728,7 +728,7 @@ static void open_loop_cb(uv_fs_t* req) {
 }
 
 
-TEST_IMPL(fs_file_noent) {
+TEST_FS_IMPL(fs_file_noent) {
   uv_fs_t req;
   int r;
 
@@ -753,7 +753,7 @@ TEST_IMPL(fs_file_noent) {
   return 0;
 }
 
-TEST_IMPL(fs_file_nametoolong) {
+TEST_FS_IMPL(fs_file_nametoolong) {
   uv_fs_t req;
   int r;
   char name[TOO_LONG_NAME_LENGTH + 1];
@@ -779,7 +779,7 @@ TEST_IMPL(fs_file_nametoolong) {
   return 0;
 }
 
-TEST_IMPL(fs_file_loop) {
+TEST_FS_IMPL(fs_file_loop) {
   uv_fs_t req;
   int r;
 
@@ -1099,7 +1099,7 @@ static void fs_file_sync(int add_flags) {
   unlink("test_file");
   unlink("test_file2");
 }
-TEST_IMPL(fs_file_sync) {
+TEST_FS_IMPL(fs_file_sync) {
   fs_file_sync(0);
   fs_file_sync(UV_FS_O_FILEMAP);
 
@@ -1107,7 +1107,7 @@ TEST_IMPL(fs_file_sync) {
   return 0;
 }
 
-TEST_IMPL(fs_posix_delete) {
+TEST_FS_IMPL(fs_posix_delete) {
   int r;
 
   /* Setup. */
@@ -1180,7 +1180,7 @@ static void fs_file_write_null_buffer(int add_flags) {
 
   unlink("test_file");
 }
-TEST_IMPL(fs_file_write_null_buffer) {
+TEST_FS_IMPL(fs_file_write_null_buffer) {
   fs_file_write_null_buffer(0);
   fs_file_write_null_buffer(UV_FS_O_FILEMAP);
 
@@ -1189,7 +1189,7 @@ TEST_IMPL(fs_file_write_null_buffer) {
 }
 
 
-TEST_IMPL(fs_async_dir) {
+TEST_FS_IMPL(fs_async_dir) {
   int r;
   uv_dirent_t dent;
 
@@ -1373,17 +1373,17 @@ static void sendfile_setup(int f) {
 }
 
 
-TEST_IMPL(fs_async_sendfile) {
+TEST_FS_IMPL(fs_async_sendfile) {
   return test_sendfile(sendfile_setup, sendfile_cb, 65545);
 }
 
 
-TEST_IMPL(fs_async_sendfile_nodata) {
+TEST_FS_IMPL(fs_async_sendfile_nodata) {
   return test_sendfile(NULL, sendfile_nodata_cb, 0);
 }
 
 
-TEST_IMPL(fs_mkdtemp) {
+TEST_FS_IMPL(fs_mkdtemp) {
   int r;
   const char* path_template = "test_dir_XXXXXX";
 
@@ -1414,7 +1414,7 @@ TEST_IMPL(fs_mkdtemp) {
 }
 
 
-TEST_IMPL(fs_mkstemp) {
+TEST_FS_IMPL(fs_mkstemp) {
   int r;
   int fd;
   const char path_template[] = "test_file_XXXXXX";
@@ -1482,7 +1482,7 @@ TEST_IMPL(fs_mkstemp) {
 }
 
 
-TEST_IMPL(fs_fstat) {
+TEST_FS_IMPL(fs_fstat) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -1646,7 +1646,7 @@ TEST_IMPL(fs_fstat) {
 }
 
 
-TEST_IMPL(fs_fstat_st_dev) {
+TEST_FS_IMPL(fs_fstat_st_dev) {
   uv_fs_t req;
   uv_fs_t req_link;
   uv_loop_t* loop = uv_default_loop();
@@ -1690,7 +1690,7 @@ TEST_IMPL(fs_fstat_st_dev) {
 }
 
 
-TEST_IMPL(fs_fstat_stdio) {
+TEST_FS_IMPL(fs_fstat_stdio) {
   int fd;
   int res;
   uv_fs_t req;
@@ -1729,7 +1729,7 @@ TEST_IMPL(fs_fstat_stdio) {
 }
 
 
-TEST_IMPL(fs_access) {
+TEST_FS_IMPL(fs_access) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -1805,7 +1805,7 @@ TEST_IMPL(fs_access) {
 }
 
 
-TEST_IMPL(fs_chmod) {
+TEST_FS_IMPL(fs_chmod) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -1903,7 +1903,7 @@ TEST_IMPL(fs_chmod) {
 }
 
 
-TEST_IMPL(fs_unlink_readonly) {
+TEST_FS_IMPL(fs_unlink_readonly) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -1960,7 +1960,7 @@ TEST_IMPL(fs_unlink_readonly) {
 }
 
 #ifdef _WIN32
-TEST_IMPL(fs_unlink_archive_readonly) {
+TEST_FS_IMPL(fs_unlink_archive_readonly) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -2016,7 +2016,7 @@ TEST_IMPL(fs_unlink_archive_readonly) {
 }
 #endif
 
-TEST_IMPL(fs_chown) {
+TEST_FS_IMPL(fs_chown) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -2109,7 +2109,7 @@ TEST_IMPL(fs_chown) {
 }
 
 
-TEST_IMPL(fs_link) {
+TEST_FS_IMPL(fs_link) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -2195,7 +2195,7 @@ TEST_IMPL(fs_link) {
 }
 
 
-TEST_IMPL(fs_readlink) {
+TEST_FS_IMPL(fs_readlink) {
   /* Must return UV_ENOENT on an inexistent file */
   {
     uv_fs_t req;
@@ -2249,7 +2249,7 @@ TEST_IMPL(fs_readlink) {
 }
 
 
-TEST_IMPL(fs_realpath) {
+TEST_FS_IMPL(fs_realpath) {
   uv_fs_t req;
 
   loop = uv_default_loop();
@@ -2270,7 +2270,7 @@ TEST_IMPL(fs_realpath) {
 }
 
 
-TEST_IMPL(fs_symlink) {
+TEST_FS_IMPL(fs_symlink) {
   int r;
   uv_fs_t req;
   uv_file file;
@@ -2584,16 +2584,16 @@ int test_symlink_dir_impl(int type) {
   return 0;
 }
 
-TEST_IMPL(fs_symlink_dir) {
+TEST_FS_IMPL(fs_symlink_dir) {
   return test_symlink_dir_impl(UV_FS_SYMLINK_DIR);
 }
 
-TEST_IMPL(fs_symlink_junction) {
+TEST_FS_IMPL(fs_symlink_junction) {
   return test_symlink_dir_impl(UV_FS_SYMLINK_JUNCTION);
 }
 
 #ifdef _WIN32
-TEST_IMPL(fs_non_symlink_reparse_point) {
+TEST_FS_IMPL(fs_non_symlink_reparse_point) {
   uv_fs_t req;
   int r;
   HANDLE file_handle;
@@ -2693,7 +2693,7 @@ TEST_IMPL(fs_non_symlink_reparse_point) {
   return 0;
 }
 
-TEST_IMPL(fs_lstat_windows_store_apps) {
+TEST_FS_IMPL(fs_lstat_windows_store_apps) {
   uv_loop_t* loop;
   char localappdata[MAX_PATH];
   char windowsapps_path[MAX_PATH];
@@ -2746,7 +2746,7 @@ TEST_IMPL(fs_lstat_windows_store_apps) {
 #endif
 
 
-TEST_IMPL(fs_utime) {
+TEST_FS_IMPL(fs_utime) {
   utime_check_t checkme;
   const char* path = "test_file";
   double atime;
@@ -2827,7 +2827,7 @@ TEST_IMPL(fs_utime) {
 }
 
 
-TEST_IMPL(fs_utime_round) {
+TEST_FS_IMPL(fs_utime_round) {
   const char path[] = "test_file";
   double atime;
   double mtime;
@@ -2871,7 +2871,7 @@ TEST_IMPL(fs_utime_round) {
 
 
 #ifdef _WIN32
-TEST_IMPL(fs_stat_root) {
+TEST_FS_IMPL(fs_stat_root) {
   int r;
 
   r = uv_fs_stat(NULL, &stat_req, "\\", NULL);
@@ -2902,7 +2902,7 @@ TEST_IMPL(fs_stat_root) {
 #endif
 
 
-TEST_IMPL(fs_futime) {
+TEST_FS_IMPL(fs_futime) {
   utime_check_t checkme;
   const char* path = "test_file";
   double atime;
@@ -3000,7 +3000,7 @@ TEST_IMPL(fs_futime) {
 }
 
 
-TEST_IMPL(fs_lutime) {
+TEST_FS_IMPL(fs_lutime) {
   utime_check_t checkme;
   const char* path = "test_file";
   const char* symlink_path = "test_file_symlink";
@@ -3107,7 +3107,7 @@ TEST_IMPL(fs_lutime) {
 }
 
 
-TEST_IMPL(fs_stat_missing_path) {
+TEST_FS_IMPL(fs_stat_missing_path) {
   uv_fs_t req;
   int r;
 
@@ -3123,7 +3123,7 @@ TEST_IMPL(fs_stat_missing_path) {
 }
 
 
-TEST_IMPL(fs_scandir_empty_dir) {
+TEST_FS_IMPL(fs_scandir_empty_dir) {
   const char* path;
   uv_fs_t req;
   uv_dirent_t dent;
@@ -3160,7 +3160,7 @@ TEST_IMPL(fs_scandir_empty_dir) {
 }
 
 
-TEST_IMPL(fs_scandir_non_existent_dir) {
+TEST_FS_IMPL(fs_scandir_non_existent_dir) {
   const char* path;
   uv_fs_t req;
   uv_dirent_t dent;
@@ -3193,7 +3193,7 @@ TEST_IMPL(fs_scandir_non_existent_dir) {
   return 0;
 }
 
-TEST_IMPL(fs_scandir_file) {
+TEST_FS_IMPL(fs_scandir_file) {
   const char* path;
   int r;
 
@@ -3217,7 +3217,7 @@ TEST_IMPL(fs_scandir_file) {
 
 
 /* Run in Valgrind. Should not leak when the iterator isn't exhausted. */
-TEST_IMPL(fs_scandir_early_exit) {
+TEST_FS_IMPL(fs_scandir_early_exit) {
   uv_dirent_t d;
   uv_fs_t req;
 
@@ -3234,7 +3234,7 @@ TEST_IMPL(fs_scandir_early_exit) {
 }
 
 
-TEST_IMPL(fs_open_dir) {
+TEST_FS_IMPL(fs_open_dir) {
   const char* path;
   uv_fs_t req;
   int r, file;
@@ -3331,7 +3331,7 @@ static void fs_file_open_append(int add_flags) {
   /* Cleanup */
   unlink("test_file");
 }
-TEST_IMPL(fs_file_open_append) {
+TEST_FS_IMPL(fs_file_open_append) {
   fs_file_open_append(0);
   fs_file_open_append(UV_FS_O_FILEMAP);
 
@@ -3340,7 +3340,7 @@ TEST_IMPL(fs_file_open_append) {
 }
 
 
-TEST_IMPL(fs_rename_to_existing_file) {
+TEST_FS_IMPL(fs_rename_to_existing_file) {
   int r;
 
   /* Setup. */
@@ -3458,7 +3458,7 @@ static void fs_read_bufs(int add_flags) {
   ASSERT_OK(close_req.result);
   uv_fs_req_cleanup(&close_req);
 }
-TEST_IMPL(fs_read_bufs) {
+TEST_FS_IMPL(fs_read_bufs) {
   fs_read_bufs(0);
   fs_read_bufs(UV_FS_O_FILEMAP);
 
@@ -3525,7 +3525,7 @@ static void fs_read_file_eof(int add_flags) {
   /* Cleanup */
   unlink("test_file");
 }
-TEST_IMPL(fs_read_file_eof) {
+TEST_FS_IMPL(fs_read_file_eof) {
   fs_read_file_eof(0);
   fs_read_file_eof(UV_FS_O_FILEMAP);
 
@@ -3620,7 +3620,7 @@ static void fs_write_multiple_bufs(int add_flags) {
   /* Cleanup */
   unlink("test_file");
 }
-TEST_IMPL(fs_write_multiple_bufs) {
+TEST_FS_IMPL(fs_write_multiple_bufs) {
   fs_write_multiple_bufs(0);
   fs_write_multiple_bufs(UV_FS_O_FILEMAP);
 
@@ -3728,7 +3728,7 @@ static void fs_write_alotof_bufs(int add_flags) {
   unlink("test_file");
   free(iovs);
 }
-TEST_IMPL(fs_write_alotof_bufs) {
+TEST_FS_IMPL(fs_write_alotof_bufs) {
   fs_write_alotof_bufs(0);
   fs_write_alotof_bufs(UV_FS_O_FILEMAP);
 
@@ -3844,7 +3844,7 @@ static void fs_write_alotof_bufs_with_offset(int add_flags) {
   unlink("test_file");
   free(iovs);
 }
-TEST_IMPL(fs_write_alotof_bufs_with_offset) {
+TEST_FS_IMPL(fs_write_alotof_bufs_with_offset) {
   fs_write_alotof_bufs_with_offset(0);
   fs_write_alotof_bufs_with_offset(UV_FS_O_FILEMAP);
 
@@ -3852,7 +3852,7 @@ TEST_IMPL(fs_write_alotof_bufs_with_offset) {
   return 0;
 }
 
-TEST_IMPL(fs_read_dir) {
+TEST_FS_IMPL(fs_read_dir) {
   int r;
   char buf[2];
   loop = uv_default_loop();
@@ -3915,11 +3915,11 @@ TEST_IMPL(fs_read_dir) {
 
 #ifdef _WIN32
 
-TEST_IMPL(fs_partial_read) {
+TEST_FS_IMPL(fs_partial_read) {
   RETURN_SKIP("Test not implemented on Windows.");
 }
 
-TEST_IMPL(fs_partial_write) {
+TEST_FS_IMPL(fs_partial_write) {
   RETURN_SKIP("Test not implemented on Windows.");
 }
 
@@ -4071,19 +4071,19 @@ static void test_fs_partial(int doread) {
   MAKE_VALGRIND_HAPPY(loop);
 }
 
-TEST_IMPL(fs_partial_read) {
+TEST_FS_IMPL(fs_partial_read) {
   test_fs_partial(1);
   return 0;
 }
 
-TEST_IMPL(fs_partial_write) {
+TEST_FS_IMPL(fs_partial_write) {
   test_fs_partial(0);
   return 0;
 }
 
 #endif/* _WIN32 */
 
-TEST_IMPL(fs_read_write_null_arguments) {
+TEST_FS_IMPL(fs_read_write_null_arguments) {
   int r;
 
   r = uv_fs_read(NULL, &read_req, 0, NULL, 0, -1, NULL);
@@ -4146,7 +4146,7 @@ TEST_IMPL(fs_read_write_null_arguments) {
 }
 
 
-TEST_IMPL(get_osfhandle_valid_handle) {
+TEST_FS_IMPL(get_osfhandle_valid_handle) {
   int r;
   uv_os_fd_t fd;
 
@@ -4182,7 +4182,7 @@ TEST_IMPL(get_osfhandle_valid_handle) {
   return 0;
 }
 
-TEST_IMPL(open_osfhandle_valid_handle) {
+TEST_FS_IMPL(open_osfhandle_valid_handle) {
   int r;
   uv_os_fd_t handle;
   int fd;
@@ -4228,7 +4228,7 @@ TEST_IMPL(open_osfhandle_valid_handle) {
   return 0;
 }
 
-TEST_IMPL(fs_file_pos_after_op_with_offset) {
+TEST_FS_IMPL(fs_file_pos_after_op_with_offset) {
   int r;
 
   /* Setup. */
@@ -4357,7 +4357,7 @@ static void fs_file_pos_write(int add_flags) {
 
   fs_file_pos_close_check("aecd", 4);
 }
-TEST_IMPL(fs_file_pos_write) {
+TEST_FS_IMPL(fs_file_pos_write) {
   fs_file_pos_write(0);
   fs_file_pos_write(UV_FS_O_FILEMAP);
 
@@ -4397,7 +4397,7 @@ static void fs_file_pos_append(int add_flags) {
 
   fs_file_pos_close_check("abcde", 5);
 }
-TEST_IMPL(fs_file_pos_append) {
+TEST_FS_IMPL(fs_file_pos_append) {
   fs_file_pos_append(0);
   fs_file_pos_append(UV_FS_O_FILEMAP);
 
@@ -4406,7 +4406,7 @@ TEST_IMPL(fs_file_pos_append) {
 }
 #endif
 
-TEST_IMPL(fs_null_req) {
+TEST_FS_IMPL(fs_null_req) {
   /* Verify that all fs functions return UV_EINVAL when the request is NULL. */
   int r;
 
@@ -4510,7 +4510,7 @@ TEST_IMPL(fs_null_req) {
 }
 
 #ifdef _WIN32
-TEST_IMPL(fs_exclusive_sharing_mode) {
+TEST_FS_IMPL(fs_exclusive_sharing_mode) {
   int r;
 
   /* Setup. */
@@ -4565,7 +4565,7 @@ TEST_IMPL(fs_exclusive_sharing_mode) {
 #endif
 
 #ifdef _WIN32
-TEST_IMPL(fs_file_flag_no_buffering) {
+TEST_FS_IMPL(fs_file_flag_no_buffering) {
   int r;
 
   /* Setup. */
@@ -4622,7 +4622,7 @@ int call_icacls(const char* command, ...) {
     return system(icacls_command);
 }
 
-TEST_IMPL(fs_open_readonly_acl) {
+TEST_FS_IMPL(fs_open_readonly_acl) {
     uv_passwd_t pwd;
     uv_fs_t req;
     int r;
@@ -4697,7 +4697,7 @@ TEST_IMPL(fs_open_readonly_acl) {
     return 0;
 }
 
-TEST_IMPL(fs_stat_no_permission) {
+TEST_FS_IMPL(fs_stat_no_permission) {
     uv_passwd_t pwd;
     uv_fs_t req;
     int r;
@@ -4753,7 +4753,7 @@ TEST_IMPL(fs_stat_no_permission) {
 #endif
 
 #ifdef _WIN32
-TEST_IMPL(fs_fchmod_archive_readonly) {
+TEST_FS_IMPL(fs_fchmod_archive_readonly) {
     uv_fs_t req;
     uv_file file;
     int r;
@@ -4798,7 +4798,7 @@ TEST_IMPL(fs_fchmod_archive_readonly) {
     return 0;
 }
 
-TEST_IMPL(fs_invalid_mkdir_name) {
+TEST_FS_IMPL(fs_invalid_mkdir_name) {
   uv_loop_t* loop;
   uv_fs_t req;
   int r;
@@ -4812,7 +4812,7 @@ TEST_IMPL(fs_invalid_mkdir_name) {
 }
 #endif
 
-TEST_IMPL(fs_statfs) {
+TEST_FS_IMPL(fs_statfs) {
   uv_fs_t req;
   int r;
 
@@ -4834,7 +4834,7 @@ TEST_IMPL(fs_statfs) {
   return 0;
 }
 
-TEST_IMPL(fs_get_system_error) {
+TEST_FS_IMPL(fs_get_system_error) {
   uv_fs_t req;
   int r;
   int system_error;
@@ -4853,7 +4853,7 @@ TEST_IMPL(fs_get_system_error) {
 }
 
 
-TEST_IMPL(fs_stat_batch_multiple) {
+TEST_FS_IMPL(fs_stat_batch_multiple) {
   uv_fs_t req[300];
   int r;
   int i;
@@ -4879,7 +4879,7 @@ TEST_IMPL(fs_stat_batch_multiple) {
 
 
 #ifdef _WIN32
-TEST_IMPL(fs_wtf) {
+TEST_FS_IMPL(fs_wtf) {
   int r;
   HANDLE file_handle;
   uv_dirent_t dent;

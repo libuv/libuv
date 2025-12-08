@@ -102,7 +102,7 @@ static void touch_file(const char* name, unsigned int size) {
 }
 
 
-TEST_IMPL(fs_copyfile) {
+TEST_FS_IMPL(fs_copyfile) {
   const char src[] = "test_file_src";
   uv_loop_t* loop;
   uv_fs_t req;
