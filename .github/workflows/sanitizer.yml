@@ -55,7 +55,7 @@ jobs:
           fi
 
   sanitizers-macos:
-    runs-on: macos-13
+    runs-on: macos-14
     strategy:
       matrix:
         config:
