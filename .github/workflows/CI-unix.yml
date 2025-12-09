@@ -80,7 +80,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14]
+        os: [macos-14, macos-15]
     steps:
       - uses: actions/checkout@v6
       - name: Envinfo
@@ -122,7 +122,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-13, macos-14]
+        os: [macos-14, macos-15]
     steps:
       - uses: actions/checkout@v6
       - name: Configure
