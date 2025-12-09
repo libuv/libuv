@@ -107,6 +107,11 @@ jobs:
         run: |
           ./build/uv_run_tests_a platform_output
       - name: Test
+        if: ${{ maxtrix.os == 'macos-15' }}
+        run: |
+          cd build && sudo UV_RUN_AS_ROOT=1 ctest -V
+      - name: Test
+        if: ${{ maxtrix.os != 'macos-15' }}
         run: |
           cd build && ctest -V
       - name: Autotools configure
