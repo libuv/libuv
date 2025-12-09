@@ -890,6 +890,39 @@ API
 
     Causes the calling thread to sleep for `msec` milliseconds.
 
+    .. note::
+        This is a blocking call and will pause the calling thread for the
+        specified duration. It should not be used in the main event loop thread
+        as it will block the event loop. Consider using :c:type:`uv_timer_t`
+        for non-blocking delays in the event loop.
+
+    Example:
+
+    .. code-block:: c
+
+        #include <uv.h>
+        #include <stdio.h>
+
+        int main() {
+            uint64_t start, end;
+
+            // Get the start time
+            start = uv_hrtime();
+
+            printf("Sleeping for 1000 milliseconds...\n");
+
+            // Sleep for 1 second (1000 milliseconds)
+            uv_sleep(1000);
+
+            // Get the end time
+            end = uv_hrtime();
+
+            printf("Actual sleep duration: %llu ms\n",
+                   (unsigned long long)((end - start) / 1000000));
+
+            return 0;
+        }
+
     .. versionadded:: 1.34.0
 
 String manipulation functions
