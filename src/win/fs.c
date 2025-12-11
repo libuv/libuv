@@ -1104,7 +1104,7 @@ void fs__write(uv_fs_t* req) {
 static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   const WCHAR* pathw = req->file.pathw;
   HANDLE handle;
-  BY_HANDLE_FILE_INFORMATION info;
+  FILE_BASIC_INFO info;
   FILE_DISPOSITION_INFORMATION disposition;
   FILE_DISPOSITION_INFORMATION_EX disposition_ex;
   IO_STATUS_BLOCK iosb;
@@ -1124,13 +1124,13 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
     return;
   }
 
-  if (!GetFileInformationByHandle(handle, &info)) {
+  if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &info, sizeof info)) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     CloseHandle(handle);
     return;
   }
 
-  if (isrmdir && !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+  if (isrmdir && !(info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
     /* Error if we're in rmdir mode but it is not a dir.
      * TODO: change it to UV_NOTDIR in v2. */
     SET_REQ_UV_ERROR(req, UV_ENOENT, ERROR_DIRECTORY);
@@ -1138,13 +1138,13 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
     return;
   }
 
-  if (!isrmdir && (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+  if (!isrmdir && (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
     /* If not explicitly allowed, do not allow deletion of directories, unless
      * it is a symlink. When the path refers to a non-symlink directory, report
      * EPERM as mandated by POSIX.1. */
 
     /* Check if it is a reparse point. If it's not, it's a normal directory. */
-    if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+    if (!(info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
       SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
       CloseHandle(handle);
       return;
@@ -1183,7 +1183,7 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
         error == ERROR_INVALID_PARAMETER /* pre Windows 10 error */ ||
         error == ERROR_INVALID_FUNCTION /* pre Windows 10 1607 error */) {
       /* posix delete not supported so try fallback */
-      if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+      if (info.FileAttributes & FILE_ATTRIBUTE_READONLY) {
         /* Remove read-only attribute */
         FILE_BASIC_INFORMATION basic = { 0 };
 
@@ -1194,7 +1194,7 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
          * this bug, we re-open the handle here */
         HANDLE write_attributes_handle;
 
-        basic.FileAttributes = (info.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY) |
+        basic.FileAttributes = (info.FileAttributes & ~FILE_ATTRIBUTE_READONLY) |
                               FILE_ATTRIBUTE_ARCHIVE;
 
         write_attributes_handle = ReOpenFile(handle, FILE_WRITE_ATTRIBUTES,
