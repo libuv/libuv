@@ -1332,6 +1332,7 @@ static DWORD WINAPI uv_pipe_writefile_thread_proc(void* parameter) {
   if (!result) {
     SET_REQ_ERROR(req, GetLastError());
   }
+  SET_REQ_NWRITTEN(req, bytes);
 
   POST_COMPLETION_FOR_REQ(loop, req);
   return 0;
@@ -1592,6 +1593,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
   req->handle = (uv_stream_t*) handle;
   req->send_handle = NULL;
   req->cb = cb;
+  req->write_extra.nwritten = 0;
   /* Private fields. */
   req->coalesced = 0;
   req->event_handle = NULL;
@@ -1637,6 +1639,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
       req->u.io.queued_bytes = 0;
     }
 
+    SET_REQ_NWRITTEN(req, bytes);
     REGISTER_HANDLE_REQ(loop, handle);
     handle->reqs_pending++;
     handle->stream.conn.write_reqs_pending++;
@@ -2176,11 +2179,15 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
 void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_write_t* req) {
   int err;
+  size_t bytes_written;
 
   assert(handle->type == UV_NAMED_PIPE);
 
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
+  /* Ask the kernel how many bytes were actually written.
+   * N.B.: If the write was partially cancelled, this could differ from queued_bytes. */
+  bytes_written = req->u.io.overlapped.InternalHigh;
 
   UNREGISTER_HANDLE_REQ(loop, handle);
 
@@ -2204,6 +2211,9 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     req = coalesced_write->user_req;
     uv__free(coalesced_write);
   }
+
+  req->write_extra.nwritten += bytes_written;
+
   if (req->cb) {
     req->cb(req, uv_translate_sys_error(err));
   }

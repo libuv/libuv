@@ -250,3 +250,54 @@ int uv_stream_set_blocking(uv_stream_t* handle, int blocking) {
 
   return 0;
 }
+
+
+size_t uv_write_nwritten(const uv_write_t* req) {
+  return req->write_extra.nwritten;
+}
+
+
+int uv_write_cancel(uv_write_t* req) {
+  uv_stream_t* stream;
+  HANDLE handle;
+  BOOL result;
+
+  stream = req->handle;
+
+  switch (stream->type) {
+    case UV_TCP:
+      handle = (HANDLE)((uv_tcp_t*)stream)->socket;
+      break;
+    case UV_NAMED_PIPE:
+      handle = ((uv_pipe_t*)stream)->handle;
+
+      if ((stream->flags & (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) ==
+          UV_HANDLE_NON_OVERLAPPED_PIPE) {
+        /* Non-overlapped, non-blocking writes run on the threadpool and we
+           do not have a good way to cancel them. */
+        return UV_ENOTSUP;
+      }
+
+      break;
+    case UV_TTY:
+      /* TTY writes complete synchronously on Windows, so cancellation
+       * is not applicable - the callback has already been queued. */
+      return 0;
+    default:
+      assert(0);
+      return UV_EINVAL;
+  }
+
+  result = CancelIoEx(handle, &req->u.io.overlapped);
+
+  if (!result) {
+    DWORD err = GetLastError();
+    if (err == ERROR_NOT_FOUND) {
+      /* The operation has already completed. */
+      return 0;
+    }
+    return uv_translate_sys_error(err);
+  }
+
+  return 0;
+}

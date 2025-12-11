@@ -379,7 +379,13 @@ typedef struct {
       WCHAR* name;                                                             \
     } connect;                                                                \
   } u;                                                                        \
-  struct uv_req_s* next_req;
+  struct uv_req_s* next_req;                                                  \
+  union {                                                                     \
+    void* reserved2[1];                                                       \
+    struct {                                                                  \
+      size_t nwritten;                                                        \
+    } write_extra;                                                            \
+  };
 
 #define UV_WRITE_PRIVATE_FIELDS \
   int coalesced;                \
