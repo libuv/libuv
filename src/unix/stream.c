@@ -92,6 +92,7 @@ void uv__stream_init(uv_loop_t* loop,
   stream->shutdown_req = NULL;
   stream->accepted_fd = -1;
   stream->queued_fds = NULL;
+  stream->blocked_write = NULL;
   stream->delayed_error = 0;
   uv__queue_init(&stream->write_queue);
   uv__queue_init(&stream->write_completed_queue);
@@ -455,6 +456,13 @@ void uv__stream_destroy(uv_stream_t* stream) {
   assert(!uv__io_active(&stream->io_watcher, POLLIN | POLLOUT));
   assert(stream->flags & UV_HANDLE_CLOSED);
 
+  if (stream->io_watcher.fd != -1) {
+    /* Don't close stdio file descriptors.  Nothing good comes from it. */
+    if (stream->io_watcher.fd > STDERR_FILENO)
+      uv__close(stream->io_watcher.fd);
+    stream->io_watcher.fd = -1;
+  }
+
   if (stream->connect_req) {
     uv__req_unregister(stream->loop);
     stream->connect_req->cb(stream->connect_req, UV_ECANCELED);
@@ -464,6 +472,11 @@ void uv__stream_destroy(uv_stream_t* stream) {
   uv__stream_flush_write_queue(stream, UV_ECANCELED);
   uv__write_callbacks(stream);
   uv__drain(stream);
+
+  if (stream->blocked_write) {
+    uv__free(stream->blocked_write);
+    stream->blocked_write = NULL;
+  }
 
   assert(stream->write_queue_size == 0);
 }
@@ -732,7 +745,8 @@ static void uv__write_req_finish(uv_write_t* req) {
    * callback called in the near future.
    */
   uv__queue_insert_tail(&stream->write_completed_queue, &req->queue);
-  uv__io_feed(stream->loop, &stream->io_watcher);
+  if (!(stream->flags & UV_HANDLE_CLOSING))
+    uv__io_feed(stream->loop, &stream->io_watcher);
 }
 
 
@@ -836,6 +850,59 @@ static int uv__try_write(uv_stream_t* stream,
   return UV__ERR(errno);
 }
 
+static void uv__write_done(uv_fs_t* req) {
+  uv_stream_t* stream;
+  struct uv__queue* q;
+  uv_write_t* wreq;
+
+  stream = (uv_stream_t*)req->data;
+  stream->flags &= ~UV_HANDLE_WRITE_PENDING;
+  assert(!(uv__queue_empty(&stream->write_queue)));
+  q = uv__queue_head(&stream->write_queue);
+  wreq = uv__queue_data(q, uv_write_t, queue);
+
+  if (req->result >= 0) {
+    if (uv__write_req_update(stream, wreq, req->result))
+      uv__write_req_finish(wreq);
+  } else {
+    wreq->error = req->result;
+    uv__write_req_finish(wreq);
+  }
+}
+
+static int uv__write_submit(uv_stream_t* stream,
+                            const uv_buf_t bufs[],
+                            unsigned int nbufs,
+                            uv_stream_t* send_handle) {
+  uv_os_fd_t fd;
+  uv_fs_t* req;
+  ssize_t r;
+
+  if (send_handle || !(stream->flags & UV_HANDLE_BLOCKING_WRITES))
+    return uv__try_write(stream, bufs, nbufs, send_handle);
+
+  /* Is a blocking write already underway? */
+  if (stream->flags & UV_HANDLE_WRITE_PENDING)
+    return UV_EAGAIN;
+
+  stream->flags |= UV_HANDLE_WRITE_PENDING;
+  req = stream->blocked_write;
+  if (req == NULL) {
+    req = uv__malloc(sizeof *stream->blocked_write);
+    req->data = stream;
+    stream->blocked_write = req;
+  }
+
+  fd = uv__stream_fd(stream);
+  r = uv_fs_write(stream->loop, req, fd, bufs, nbufs, -1, uv__write_done);
+  if (r != 0) {
+    stream->flags &= ~UV_HANDLE_WRITE_PENDING;
+    return r;
+  }
+
+  return UV_EAGAIN;
+}
+
 static void uv__write(uv_stream_t* stream) {
   struct uv__queue* q;
   uv_write_t* req;
@@ -858,10 +925,10 @@ static void uv__write(uv_stream_t* stream) {
     req = uv__queue_data(q, uv_write_t, queue);
     assert(req->handle == stream);
 
-    n = uv__try_write(stream,
-                      &(req->bufs[req->write_index]),
-                      req->nbufs - req->write_index,
-                      req->send_handle);
+    n = uv__write_submit(stream,
+                         &(req->bufs[req->write_index]),
+                         req->nbufs - req->write_index,
+                         req->send_handle);
 
     /* Ensure the handle isn't sent again in case this is a partial write. */
     if (n >= 0) {
@@ -875,10 +942,6 @@ static void uv__write(uv_stream_t* stream) {
       }
     } else if (n != UV_EAGAIN)
       goto error;
-
-    /* If this is a blocking stream, try again. */
-    if (stream->flags & UV_HANDLE_BLOCKING_WRITES)
-      continue;
 
     /* We're not done. */
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
@@ -1384,12 +1447,6 @@ int uv_write2(uv_write_t* req,
     uv__write(stream);
   }
   else {
-    /*
-     * blocking streams should never have anything in the queue.
-     * if this assert fires then somehow the blocking stream isn't being
-     * sufficiently flushed in uv__write.
-     */
-    assert(!(stream->flags & UV_HANDLE_BLOCKING_WRITES));
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
     uv__stream_osx_interrupt_select(stream);
   }
@@ -1533,13 +1590,6 @@ void uv__stream_close(uv_stream_t* handle) {
   uv__handle_stop(handle);
   handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
-  if (handle->io_watcher.fd != -1) {
-    /* Don't close stdio file descriptors.  Nothing good comes from it. */
-    if (handle->io_watcher.fd > STDERR_FILENO)
-      uv__close(handle->io_watcher.fd);
-    handle->io_watcher.fd = -1;
-  }
-
   if (handle->accepted_fd != -1) {
     uv__close(handle->accepted_fd);
     handle->accepted_fd = -1;
@@ -1553,6 +1603,9 @@ void uv__stream_close(uv_stream_t* handle) {
     uv__free(handle->queued_fds);
     handle->queued_fds = NULL;
   }
+
+  if (handle->flags & UV_HANDLE_WRITE_PENDING)
+    uv_cancel((uv_req_t*)handle->blocked_write);
 
   assert(!uv__io_active(&handle->io_watcher, POLLIN | POLLOUT));
 }
