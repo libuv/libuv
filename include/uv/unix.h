@@ -258,7 +258,7 @@ typedef struct {
   unsigned int write_index;                                                   \
   uv_buf_t* bufs;                                                             \
   unsigned int nbufs;                                                         \
-  int error;                                                                  \
+  ssize_t result;                                                             \
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
@@ -292,7 +292,7 @@ typedef struct {
   int delayed_error;                                                          \
   int accepted_fd;                                                            \
   void* queued_fds;                                                           \
-  uv_fs_t* blocked_write;                                                     \
+  struct uv__work blocked_write;                                              \
   UV_STREAM_PRIVATE_PLATFORM_FIELDS                                           \
 
 #define UV_TCP_PRIVATE_FIELDS /* empty */
