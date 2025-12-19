@@ -68,8 +68,6 @@ jobs:
 
   sanitizers-macos:
     runs-on: macos-14
-<<<<<<< HEAD
-=======
     strategy:
       matrix:
         config:
@@ -79,7 +77,6 @@ jobs:
             flags: -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
           - name: UBSAN
             flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
->>>>>>> 4eefcbeb (ci: update macos runner images (#4967))
     steps:
       - uses: actions/checkout@v4
 
