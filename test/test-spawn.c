@@ -1512,7 +1512,7 @@ TEST_IMPL(spawn_setgids) {
   init_process_options("spawn_helper1", exit_cb);
 
   pw = getpwnam("nobody");
-  ASSERT(pw != NULL);
+  ASSERT_NOT_NULL(pw);
   gids[0] = pw->pw_gid;
   options.gids = gids;
   options.gids_size = 1;
@@ -1523,13 +1523,13 @@ TEST_IMPL(spawn_setgids) {
   if (r == UV_EACCES)
     RETURN_SKIP("user 'nobody' cannot access the test runner");
 
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
-  ASSERT(exit_cb_called == 1);
-  ASSERT(close_cb_called == 1);
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -1643,9 +1643,9 @@ TEST_IMPL(spawn_setgids_fails) {
   if (uid == 0) {
     struct passwd* pw;
     pw = getpwnam("nobody");
-    ASSERT(pw != NULL);
-    ASSERT(0 == setgid(pw->pw_gid));
-    ASSERT(0 == setuid(pw->pw_uid));
+    ASSERT_NOT_NULL(NULL);
+    ASSERT_OK(setgid(pw->pw_gid));
+    ASSERT_OK(setuid(pw->pw_uid));
   }
 
   init_process_options("spawn_helper1", fail_cb);
@@ -1655,12 +1655,12 @@ TEST_IMPL(spawn_setgids_fails) {
   options.gids_size = 1;
 
   r = uv_spawn(uv_default_loop(), &process, &options);
-  ASSERT(r == UV_EPERM);
+  ASSERT_EQ(r, UV_EPERM);
 
   r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-  ASSERT(r == 0);
+  ASSERT_OK(r);
 
-  ASSERT(close_cb_called == 0);
+  ASSERT_EQ(0, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
