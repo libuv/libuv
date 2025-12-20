@@ -67,7 +67,16 @@ jobs:
           ./build-ubsan/uv_run_tests_a
 
   sanitizers-macos:
-    runs-on: macos-13
+    runs-on: macos-14
+    strategy:
+      matrix:
+        config:
+          - name: ASAN
+            flags: -DASAN=ON -DCMAKE_BUILD_TYPE=Debug
+          - name: TSAN
+            flags: -DTSAN=ON -DCMAKE_BUILD_TYPE=Release
+          - name: UBSAN
+            flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
     steps:
       - uses: actions/checkout@v4
 
