@@ -48,6 +48,11 @@ static void close_cb(uv_handle_t *handle) {
 static void write_cb_ok(uv_write_t* req, int status) {
   ASSERT_OK(status);
   ++write_complete;
+
+  if (write_complete == 1) {
+    uv_close((uv_handle_t*)&pipe_in, close_cb);
+    uv_close((uv_handle_t*)&pipe_out, close_cb);
+  }
 }
 
 static void read_cb(uv_stream_t* stream,
@@ -56,11 +61,8 @@ static void read_cb(uv_stream_t* stream,
   ASSERT_GE(nread, 0);
   total_read += nread;
   free(buf->base);
-  if (total_read == 12 + FILL_PIPE_NUM) {
+  if (total_read == 12 + FILL_PIPE_NUM)
     uv_read_stop(stream);
-    uv_close((uv_handle_t*)&pipe_in, close_cb);
-    uv_close((uv_handle_t*)&pipe_out, close_cb);
-  }
 }
 
 static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
@@ -104,6 +106,10 @@ static void exit_cb_write(uv_process_t* process,
 }
 
 TEST_IMPL(pipe_blocking_subprocess) {
+#ifdef _WIN32
+  RETURN_SKIP("Unix only test");
+#endif
+
   init_common();
   options.exit_cb = exit_cb_write;
 
@@ -152,6 +158,10 @@ static void exit_cb_cancel(uv_process_t* process,
 }
 
 TEST_IMPL(pipe_blocking_cancel) {
+#ifdef _WIN32
+  RETURN_SKIP("Unix only test");
+#endif
+
   init_common();
   options.exit_cb = exit_cb_cancel;
 
