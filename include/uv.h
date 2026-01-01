@@ -1262,7 +1262,8 @@ struct uv_statfs_s {
   uint64_t f_bavail;
   uint64_t f_files;
   uint64_t f_ffree;
-  uint64_t f_spare[4];
+  uint64_t f_frsize;
+  uint64_t f_spare[3];
 };
 
 typedef enum {

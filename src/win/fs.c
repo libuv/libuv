@@ -3154,6 +3154,7 @@ retry_get_full_path_name:
 
   stat_fs->f_type = 0;
   stat_fs->f_bsize = bytes_per_sector * sectors_per_cluster;
+  stat_fs->f_frsize = bytes_per_sector * sectors_per_cluster;
   stat_fs->f_blocks = total_clusters;
   stat_fs->f_bfree = free_clusters;
   stat_fs->f_bavail = free_clusters;
