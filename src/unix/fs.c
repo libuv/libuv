@@ -706,12 +706,16 @@ static int uv__fs_statfs(uv_fs_t* req) {
   stat_fs->f_type = buf.f_type;
 #endif
   stat_fs->f_bsize = buf.f_bsize;
-  stat_fs->f_frsize = buf.f_frsize;
   stat_fs->f_blocks = buf.f_blocks;
   stat_fs->f_bfree = buf.f_bfree;
   stat_fs->f_bavail = buf.f_bavail;
   stat_fs->f_files = buf.f_files;
   stat_fs->f_ffree = buf.f_ffree;
+#if defined(__APPLE__)
+  stat_fs->f_frsize = buf.f_bsize;
+#else
+  stat_fs->f_frsize = buf.f_frsize;
+#endif
   req->ptr = stat_fs;
   return 0;
 }
