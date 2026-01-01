@@ -363,6 +363,7 @@ static void statfs_cb(uv_fs_t* req) {
 #endif
 
   ASSERT_GT(stats->f_bsize, 0);
+  ASSERT_GT(stats->f_frsize, 0);
   ASSERT_GT(stats->f_blocks, 0);
   ASSERT_LE(stats->f_bfree, stats->f_blocks);
   ASSERT_LE(stats->f_bavail, stats->f_bfree);

@@ -711,6 +711,11 @@ static int uv__fs_statfs(uv_fs_t* req) {
   stat_fs->f_bavail = buf.f_bavail;
   stat_fs->f_files = buf.f_files;
   stat_fs->f_ffree = buf.f_ffree;
+#if defined(__linux__)
+  stat_fs->f_frsize = buf.f_frsize;
+#else
+  stat_fs->f_frsize = buf.f_bsize;
+#endif
   req->ptr = stat_fs;
   return 0;
 }

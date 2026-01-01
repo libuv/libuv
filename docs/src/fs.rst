@@ -129,7 +129,8 @@ Data types
             uint64_t f_bavail;
             uint64_t f_files;
             uint64_t f_ffree;
-            uint64_t f_spare[4];
+            uint64_t f_frsize;
+            uint64_t f_spare[3];
         } uv_statfs_t;
 
 .. c:enum:: uv_dirent_type_t
