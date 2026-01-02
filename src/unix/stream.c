@@ -757,10 +757,12 @@ static int uv__handle_fd(uv_handle_t* handle) {
   }
 }
 
+
 static int uv__try_write(uv_stream_t* stream,
                          const uv_buf_t bufs[],
                          unsigned int nbufs,
-                         uv_stream_t* send_handle) {
+                         uv_stream_t* send_handle,
+                         struct uv__work* w) {
   struct iovec* iov;
   int iovmax;
   int iovcnt;
@@ -772,6 +774,7 @@ static int uv__try_write(uv_stream_t* stream,
    */
   iov = (struct iovec*) bufs;
   iovcnt = nbufs;
+  n = 0;
 
   iovmax = uv__getiovmax();
 
@@ -811,13 +814,17 @@ static int uv__try_write(uv_stream_t* stream,
     cmsg.hdr.cmsg_len = CMSG_LEN(sizeof(fd_to_send));
     memcpy(CMSG_DATA(&cmsg.hdr), &fd_to_send, sizeof(fd_to_send));
 
-    do
+    do {
+      if (uv__work_check_cancelled(w))
+        break;
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
-    while (n == -1 && errno == EINTR);
+    } while (n == -1 && errno == EINTR);
   } else {
-    do
+    do {
+      if (uv__work_check_cancelled(w))
+        break;
       n = uv__writev(uv__stream_fd(stream), iov, iovcnt);
-    while (n == -1 && errno == EINTR);
+    } while (n == -1 && errno == EINTR);
   }
 
   if (n >= 0)
@@ -843,13 +850,13 @@ static int uv__try_write(uv_stream_t* stream,
   return UV__ERR(errno);
 }
 
+
 /* A note about blocking writes: The UV_HANDLE_WRITE_PENDING flag is toggled
  * only on the loop thread (either by uv__write or uv__write_done).  While we're
  * doing work from the thread pool, we touch only the result field of
  * uv_write_t; we'll never read it from the loop thread while a blocked write is
  * pending.
  */
-
 static void uv__write_work(struct uv__work* w) {
   uv_stream_t* stream;
   struct uv__queue* q;
@@ -865,8 +872,10 @@ static void uv__write_work(struct uv__work* w) {
   req->result = uv__try_write(stream,
                               &(req->bufs[req->write_index]),
                               req->nbufs - req->write_index,
-                              req->send_handle);
+                              req->send_handle,
+                              w);
 }
+
 
 static void uv__write_done(struct uv__work* w, int status) {
   uv_stream_t* stream;
@@ -905,6 +914,7 @@ error:
   uv__stream_osx_interrupt_select(stream);
 }
 
+
 static void uv__write(uv_stream_t* stream) {
   struct uv__queue* q;
   uv_write_t* req;
@@ -931,14 +941,15 @@ static void uv__write(uv_stream_t* stream) {
       n = uv__try_write(stream,
                         &(req->bufs[req->write_index]),
                         req->nbufs - req->write_index,
-                        req->send_handle);
+                        req->send_handle,
+                        NULL);
     } else {
       n = UV_EAGAIN;
       if (!(stream->flags & UV_HANDLE_WRITE_PENDING)) {
         stream->flags |= UV_HANDLE_WRITE_PENDING;
         uv__work_submit(stream->loop,
                         &stream->blocked_write,
-                        UV__WORK_FAST_IO,
+                        UV__WORK_FAST_IO_CANCELLABLE,
                         uv__write_work,
                         uv__write_done);
       }
@@ -1524,7 +1535,7 @@ int uv_try_write2(uv_stream_t* stream,
   if (err < 0)
     return err;
 
-  return uv__try_write(stream, bufs, nbufs, send_handle);
+  return uv__try_write(stream, bufs, nbufs, send_handle, NULL);
 }
 
 
@@ -1636,8 +1647,8 @@ void uv__stream_close(uv_stream_t* handle) {
     handle->queued_fds = NULL;
   }
 
-  /* if (handle->flags & UV_HANDLE_WRITE_PENDING)
-   *   uv_cancel((uv_req_t*)handle->blocked_write); */
+  if (handle->flags & UV_HANDLE_WRITE_PENDING)
+    uv__work_cancel(handle->loop, &handle->blocked_write);
 
   assert(!uv__io_active(&handle->io_watcher, POLLIN | POLLOUT));
 }

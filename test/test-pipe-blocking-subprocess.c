@@ -72,6 +72,9 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
 
 static void init_common(void) {
   loop = uv_default_loop();
+#ifndef _WIN32
+  uv_loop_configure(loop, UV_LOOP_CANCEL_SIGNAL, SIGUSR1);
+#endif
 
   ASSERT_OK(uv_pipe_init(loop, &pipe_in, 0));
   ASSERT_OK(uv_pipe_init(loop, &pipe_out, 0));

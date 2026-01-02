@@ -27,11 +27,23 @@
 #ifndef UV_THREADPOOL_H_
 #define UV_THREADPOOL_H_
 
+enum {
+  UV__WORK_BUSY = 0,
+  UV__WORK_CANCELLABLE,
+  UV__WORK_CANCEL_PENDING,
+  UV__WORK_CANCELLED,
+  UV__WORK_DONE
+};
+
 struct uv__work {
   void (*work)(struct uv__work *w);
   void (*done)(struct uv__work *w, int status);
   struct uv_loop_s* loop;
   struct uv__queue wq;
+#ifndef _WIN32
+  pthread_t thread;
+  _Atomic char state;
+#endif
 };
 
 #endif /* UV_THREADPOOL_H_ */

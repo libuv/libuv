@@ -215,14 +215,19 @@ int uv__getaddrinfo_translate_error(int sys_err);    /* EAI_* error. */
 enum uv__work_kind {
   UV__WORK_CPU,
   UV__WORK_FAST_IO,
+  UV__WORK_FAST_IO_CANCELLABLE,
   UV__WORK_SLOW_IO
 };
+
+void uv__cancel_signal_handler(int signo);
 
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work *w,
                      enum uv__work_kind kind,
                      void (*work)(struct uv__work *w),
                      void (*done)(struct uv__work *w, int status));
+
+int uv__work_cancel(uv_loop_t* loop, struct uv__work* w);
 
 void uv__work_done(uv_async_t* handle);
 

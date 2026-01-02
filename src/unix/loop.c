@@ -23,6 +23,7 @@
 #include "uv/tree.h"
 #include "internal.h"
 #include "heap-inl.h"
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -72,6 +73,7 @@ int uv_loop_init(uv_loop_t* loop) {
   loop->signal_pipefd[1] = -1;
   loop->backend_fd = -1;
   loop->emfile_fd = -1;
+  loop->cancel_signum = -1;
 
   loop->timer_counter = 0;
   loop->stop_flag = 0;
@@ -213,6 +215,7 @@ void uv__loop_close(uv_loop_t* loop) {
 
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
   uv__loop_internal_fields_t* lfields;
+  struct sigaction sa;
 
   lfields = uv__get_internal_fields(loop);
   if (option == UV_METRICS_IDLE_TIME) {
@@ -227,13 +230,23 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
   }
 #endif
 
+  if (option == UV_LOOP_BLOCK_SIGNAL) {
+    if (va_arg(ap, int) != SIGPROF)
+      return UV_EINVAL;
+    loop->flags |= UV_LOOP_BLOCK_SIGPROF;
+    return 0;
+  }
 
-  if (option != UV_LOOP_BLOCK_SIGNAL)
-    return UV_ENOSYS;
+  if (option == UV_LOOP_CANCEL_SIGNAL) {
+    loop->cancel_signum = va_arg(ap, int);
+    memset(&sa, 0, sizeof sa);
+    sa.sa_handler = &uv__cancel_signal_handler;
+    if (sigaction(loop->cancel_signum, &sa, NULL) == -1) {
+      loop->cancel_signum = -1;
+      return UV__ERR(errno);
+    }
+    return 0;
+  }
 
-  if (va_arg(ap, int) != SIGPROF)
-    return UV_EINVAL;
-
-  loop->flags |= UV_LOOP_BLOCK_SIGPROF;
-  return 0;
+  return UV_ENOSYS;
 }
