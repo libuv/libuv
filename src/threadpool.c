@@ -58,10 +58,17 @@ static void worker(void* arg) {
   struct uv__work* w;
   struct uv__queue* q;
   int is_slow_work;
+#ifndef _WIN32
+  pthread_t self;
+  char expected;
+#endif
 
   uv_thread_setname("libuv-worker");
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
+#ifndef _WIN32
+  self = pthread_self();
+#endif
 
   uv_mutex_lock(&mutex);
   for (;;) {
@@ -117,14 +124,31 @@ static void worker(void* arg) {
       }
     }
 
+    w = uv__queue_data(q, struct uv__work, wq);
+#ifndef _WIN32
+    w->thread = self;
+#endif
+
     uv_mutex_unlock(&mutex);
 
-    w = uv__queue_data(q, struct uv__work, wq);
     w->work(w);
 
     uv_mutex_lock(&w->loop->wq_mutex);
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
+#ifndef _WIN32
+    expected = UV__WORK_CANCELLABLE;
+    if (!atomic_compare_exchange_strong_explicit(&w->state,
+                                                 &expected,
+                                                 UV__WORK_DONE,
+                                                 memory_order_relaxed,
+                                                 memory_order_relaxed)) {
+      if (expected == UV__WORK_CANCEL_PENDING)
+        atomic_store_explicit(&w->state,
+                              UV__WORK_CANCELLED,
+                              memory_order_relaxed);
+    }
+#endif
     uv__queue_insert_tail(&w->loop->wq, &w->wq);
     uv_async_send(&w->loop->wq_async);
     uv_mutex_unlock(&w->loop->wq_mutex);
@@ -273,15 +297,31 @@ static void init_once(void) {
 }
 
 
+#ifndef _WIN32
+void uv__cancel_signal_handler(int signo) {
+    /* We just want to trigger EINTR. */
+}
+#endif
+
+
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
                      enum uv__work_kind kind,
                      void (*work)(struct uv__work* w),
                      void (*done)(struct uv__work* w, int status)) {
+#ifndef _WIN32
+  char state;
+#endif
+
   uv_once(&once, init_once);
   w->loop = loop;
   w->work = work;
   w->done = done;
+#ifndef _WIN32
+  state = kind == UV__WORK_FAST_IO_CANCELLABLE ? UV__WORK_CANCELLABLE
+                                               : UV__WORK_BUSY;
+  atomic_store_explicit(&w->state, state, memory_order_relaxed);
+#endif
   post(&w->wq, kind);
 }
 
@@ -289,8 +329,13 @@ void uv__work_submit(uv_loop_t* loop,
 /* TODO(bnoordhuis) teach libuv how to cancel file operations
  * that go through io_uring instead of the thread pool.
  */
-static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
+int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
   int cancelled;
+#ifndef _WIN32
+  char expected;
+  pthread_t thread;
+  int i;
+#endif
 
   uv_once(&once, init_once);  /* Ensure |mutex| is initialized. */
   uv_mutex_lock(&mutex);
@@ -303,8 +348,39 @@ static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
   uv_mutex_unlock(&w->loop->wq_mutex);
   uv_mutex_unlock(&mutex);
 
+#ifdef _WIN32
   if (!cancelled)
     return UV_EBUSY;
+#else
+  if (!cancelled) {
+    if (atomic_load_explicit(&w->state, memory_order_relaxed) == UV__WORK_BUSY)
+      return UV_EBUSY;
+
+    if (loop->cancel_signum == -1)
+      return UV_EBUSY;
+
+    expected = UV__WORK_CANCELLABLE;
+    if (atomic_compare_exchange_strong_explicit(&w->state,
+                                                &expected,
+                                                UV__WORK_CANCEL_PENDING,
+                                                memory_order_relaxed,
+                                                memory_order_relaxed)) {
+      thread = w->thread;
+      i = 0;
+      do {
+        if (i >= 10)
+          return UV_EBUSY;
+        if (i > 0)
+          uv_sleep(1 << i++);
+        if (pthread_kill(thread, loop->cancel_signum) != 0)
+          abort();
+      } while (atomic_load_explicit(&w->state, memory_order_relaxed) ==
+             UV__WORK_CANCEL_PENDING);
+    }
+
+    return 0;
+  }
+#endif
 
   w->work = uv__cancelled;
   uv_mutex_lock(&loop->wq_mutex);
@@ -337,6 +413,10 @@ void uv__work_done(uv_async_t* handle) {
 
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
+#ifndef _WIN32
+    if (atomic_load_explicit(&w->state, memory_order_relaxed) == UV__WORK_CANCELLED)
+      err = UV_ECANCELED;
+#endif
     w->done(w, err);
     nevents++;
   }
@@ -425,5 +505,5 @@ int uv_cancel(uv_req_t* req) {
     return UV_EINVAL;
   }
 
-  return uv__work_cancel(loop, req, wreq);
+  return uv__work_cancel(loop, wreq);
 }
