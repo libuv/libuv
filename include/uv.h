@@ -871,6 +871,7 @@ struct uv_pipe_s {
   UV_HANDLE_FIELDS
   UV_STREAM_FIELDS
   int ipc; /* non-zero if this pipe is used for passing handles */
+  int socket_type; /* socket type from enum __socket_type */
   UV_PIPE_PRIVATE_FIELDS
 };
 

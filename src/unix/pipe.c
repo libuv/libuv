@@ -51,6 +51,7 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   handle->connect_req = NULL;
   handle->pipe_fname = NULL;
   handle->ipc = ipc;
+  handle->socket_type = SOCK_STREAM;
   return 0;
 }
 
@@ -119,7 +120,7 @@ int uv_pipe_bind2(uv_pipe_t* handle,
     addrlen = sizeof saddr;
   }
 
-  err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
+  err = uv__socket(AF_UNIX, handle->socket_type, 0);
   if (err < 0)
     goto err_socket;
   sockfd = err;
@@ -286,7 +287,7 @@ int uv_pipe_connect2(uv_connect_t* req,
   new_sock = (uv__stream_fd(handle) == -1);
 
   if (new_sock) {
-    err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
+    err = uv__socket(AF_UNIX, handle->socket_type, 0);
     if (err < 0)
       goto out;
     handle->io_watcher.fd = err;
