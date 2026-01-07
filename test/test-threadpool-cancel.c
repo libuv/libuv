@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "task.h"
+#include <string.h>
 
 #ifdef _WIN32
 # define putenv _putenv
@@ -218,6 +219,7 @@ TEST_IMPL(threadpool_cancel_getaddrinfo) {
   r = uv_getaddrinfo(loop, reqs + 2, getaddrinfo_cb, "fail", "fail", NULL);
   ASSERT_OK(r);
 
+  memset(&hints, 0, sizeof(hints));
   r = uv_getaddrinfo(loop, reqs + 3, getaddrinfo_cb, "fail", NULL, &hints);
   ASSERT_OK(r);
 
