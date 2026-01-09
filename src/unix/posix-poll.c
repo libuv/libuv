@@ -131,7 +131,7 @@ static void uv__pollfds_del(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+void uv__io_poll(uv_loop_t* loop, uint64_t timeout) {
   uv__loop_internal_fields_t* lfields;
   sigset_t* pset;
   sigset_t set;
@@ -145,8 +145,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int have_signals;
   struct pollfd* pe;
   int fd;
-  int user_timeout;
-  int reset_timeout;
+  uint64_t user_timeout;
+  uint64_t reset_timeout;
 
   if (loop->nfds == 0) {
     assert(uv__queue_empty(&loop->watcher_queue));
@@ -179,11 +179,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     sigaddset(pset, SIGPROF);
   }
 
-  assert(timeout >= -1);
   time_base = loop->time;
 
   if (lfields->flags & UV_METRICS_IDLE_TIME) {
-    reset_timeout = 1;
+    reset_timeout = 1000 * 1000;  /* One millisecond. */
     user_timeout = timeout;
     timeout = 0;
   } else {
@@ -210,7 +209,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (pset != NULL)
       if (pthread_sigmask(SIG_BLOCK, pset, NULL))
         abort();
-    nfds = poll(loop->poll_fds, (nfds_t)loop->poll_fds_used, timeout);
+    nfds = poll(loop->poll_fds,
+                (nfds_t)loop->poll_fds_used,
+                uv__ns_to_ms_sat(timeout));
     if (pset != NULL)
       if (pthread_sigmask(SIG_UNBLOCK, pset, NULL))
         abort();
@@ -225,13 +226,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (reset_timeout != 0) {
         timeout = user_timeout;
         reset_timeout = 0;
-        if (timeout == -1)
+        if (timeout == (uint64_t) -1)
           continue;
         if (timeout > 0)
           goto update_timeout;
       }
 
-      assert(timeout != -1);
+      assert(timeout != (uint64_t) -1);
       return;
     }
 
@@ -244,7 +245,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         reset_timeout = 0;
       }
 
-      if (timeout == -1)
+      if (timeout == (uint64_t) -1)
         continue;
 
       if (timeout == 0)
@@ -334,7 +335,7 @@ update_timeout:
     assert(timeout > 0);
 
     time_diff = loop->time - time_base;
-    if (time_diff >= (uint64_t) timeout)
+    if (time_diff >= timeout)
       return;
 
     timeout -= time_diff;

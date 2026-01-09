@@ -64,10 +64,10 @@ int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
 }
 
 
-int uv_timer_start(uv_timer_t* handle,
-                   uv_timer_cb cb,
-                   uint64_t timeout,
-                   uint64_t repeat) {
+static int uv__timer_start(uv_timer_t* handle,
+                           uv_timer_cb cb,
+                           uint64_t timeout,
+                           uint64_t repeat) {
   uint64_t clamped_timeout;
 
   if (uv__is_closing(handle) || cb == NULL)
@@ -94,6 +94,23 @@ int uv_timer_start(uv_timer_t* handle,
 }
 
 
+static uint64_t uv__ms_to_ns_clamp(uint64_t ms) {
+  if (ms > (uint64_t) -1 / (1000 * 1000))
+    return (uint64_t) -1;
+  return ms * (1000 * 1000);
+}
+
+
+int uv_timer_start(uv_timer_t* handle,
+                   uv_timer_cb cb,
+                   uint64_t timeout,
+                   uint64_t repeat) {
+  timeout = uv__ms_to_ns_clamp(timeout);
+  repeat = uv__ms_to_ns_clamp(repeat);
+  return uv__timer_start(handle, cb, timeout, repeat);
+}
+
+
 int uv_timer_stop(uv_timer_t* handle) {
   if (uv__is_active(handle)) {
     heap_remove(timer_heap(handle->loop),
@@ -115,7 +132,7 @@ int uv_timer_again(uv_timer_t* handle) {
 
   if (handle->repeat) {
     uv_timer_stop(handle);
-    uv_timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
+    uv__timer_start(handle, handle->timer_cb, handle->repeat, handle->repeat);
   }
 
   return 0;
@@ -123,12 +140,12 @@ int uv_timer_again(uv_timer_t* handle) {
 
 
 void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat) {
-  handle->repeat = repeat;
+  handle->repeat = uv__ms_to_ns_clamp(repeat);
 }
 
 
 uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
-  return handle->repeat;
+  return uv__ns_to_ms(handle->repeat);
 }
 
 
@@ -136,14 +153,16 @@ uint64_t uv_timer_get_due_in(const uv_timer_t* handle) {
   if (handle->loop->time >= handle->timeout)
     return 0;
 
-  return handle->timeout - handle->loop->time;
+  if (handle->timeout == (uint64_t) -1)
+    return -1;
+
+  return uv__ns_to_ms(handle->timeout - handle->loop->time);
 }
 
 
-int uv__next_timeout(const uv_loop_t* loop) {
+uint64_t uv__next_timeout(const uv_loop_t* loop) {
   const struct heap_node* heap_node;
   const uv_timer_t* handle;
-  uint64_t diff;
 
   heap_node = heap_min(timer_heap(loop));
   if (heap_node == NULL)
@@ -153,11 +172,7 @@ int uv__next_timeout(const uv_loop_t* loop) {
   if (handle->timeout <= loop->time)
     return 0;
 
-  diff = handle->timeout - loop->time;
-  if (diff > INT_MAX)
-    diff = INT_MAX;
-
-  return (int) diff;
+  return handle->timeout - loop->time;
 }
 
 
@@ -196,4 +211,32 @@ void uv__run_timers(uv_loop_t* loop) {
 
 void uv__timer_close(uv_timer_t* handle) {
   uv_timer_stop(handle);
+}
+
+
+uint64_t uv__ns_to_ms(uint64_t ns) {
+  uint64_t frac;
+  uint64_t ms;
+
+  if (ns == (uint64_t) -1)
+    return (uint64_t) -1;
+  frac = ns % (1000 * 1000);
+  ms = ns / (1000 * 1000);
+  if (frac > 500 * 1000)
+    ms += 1;
+  else if (frac == 500 * 1000)
+    ms += ms & 1;  /* Bankers' rounding, averages out exact .5 midpoints. */
+  return ms;
+}
+
+
+int uv__ns_to_ms_sat(uint64_t ns) {
+  uint64_t ms;
+
+  ms = uv__ns_to_ms(ns);
+  if (ms == (uint64_t) -1)
+    return -1;
+  if (ms > INT_MAX)
+    return INT_MAX;
+  return ms;
 }

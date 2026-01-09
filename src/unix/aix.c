@@ -130,7 +130,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+void uv__io_poll(uv_loop_t* loop, uint64_t timeout) {
   uv__loop_internal_fields_t* lfields;
   struct pollfd events[1024];
   struct pollfd pqry;
@@ -147,8 +147,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int i;
   int rc;
   int add_failed;
-  int user_timeout;
-  int reset_timeout;
+  uint64_t user_timeout;
+  uint64_t reset_timeout;
 
   if (loop->nfds == 0) {
     assert(uv__queue_empty(&loop->watcher_queue));
@@ -216,12 +216,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     w->events = w->pevents;
   }
 
-  assert(timeout >= -1);
   base = loop->time;
   count = 48; /* Benchmarks suggest this gives the best throughput. */
 
   if (lfields->flags & UV_METRICS_IDLE_TIME) {
-    reset_timeout = 1;
+    reset_timeout = 1000 * 1000;  /* One millisecond. */
     user_timeout = timeout;
     timeout = 0;
   } else {
@@ -244,7 +243,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     nfds = pollset_poll(loop->backend_fd,
                         events,
                         ARRAY_SIZE(events),
-                        timeout);
+                        uv__ns_to_ms_sat(timeout));
 
     /* Update loop->time unconditionally. It's tempting to skip the update when
      * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
@@ -262,7 +261,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
           goto update_timeout;
       }
 
-      assert(timeout != -1);
+      assert(timeout != (uint64_t) -1);
       return;
     }
 
@@ -276,7 +275,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         reset_timeout = 0;
       }
 
-      if (timeout == -1)
+      if (timeout == (uint64_t) -1)
         continue;
 
       if (timeout == 0)
@@ -360,14 +359,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (timeout == 0)
       return;
 
-    if (timeout == -1)
+    if (timeout == (uint64_t) -1)
       continue;
 
 update_timeout:
     assert(timeout > 0);
 
     diff = loop->time - base;
-    if (diff >= (uint64_t) timeout)
+    if (diff >= timeout)
       return;
 
     timeout -= diff;

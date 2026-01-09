@@ -144,7 +144,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+void uv__io_poll(uv_loop_t* loop, uint64_t timeout) {
   struct port_event events[1024];
   struct port_event* pe;
   struct timespec spec;
@@ -162,8 +162,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int count;
   int err;
   int fd;
-  int user_timeout;
-  int reset_timeout;
+  uint64_t user_timeout;
+  uint64_t reset_timeout;
 
   if (loop->nfds == 0) {
     assert(uv__queue_empty(&loop->watcher_queue));
@@ -197,12 +197,11 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     sigaddset(pset, SIGPROF);
   }
 
-  assert(timeout >= -1);
   base = loop->time;
   count = 48; /* Benchmarks suggest this gives the best throughput. */
 
   if (uv__get_internal_fields(loop)->flags & UV_METRICS_IDLE_TIME) {
-    reset_timeout = 1;
+    reset_timeout = 1000 * 1000;  /* One millisecond. */
     user_timeout = timeout;
     timeout = 0;
   } else {
@@ -216,9 +215,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (timeout != 0)
       uv__metrics_set_provider_entry_time(loop);
 
-    if (timeout != -1) {
-      spec.tv_sec = timeout / 1000;
-      spec.tv_nsec = (timeout % 1000) * 1000000;
+    if (timeout != (uint64_t) -1) {
+      spec.tv_sec = timeout / (1000 * 1000 * 1000);
+      spec.tv_nsec = timeout % (1000 * 1000 * 1000);
     }
 
     /* Work around a kernel bug where nfds is not updated. */
@@ -234,7 +233,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
                     events,
                     ARRAY_SIZE(events),
                     &nfds,
-                    timeout == -1 ? NULL : &spec);
+                    timeout == (uint64_t) -1 ? NULL : &spec);
 
     if (pset != NULL)
       pthread_sigmask(SIG_UNBLOCK, pset, NULL);
@@ -266,14 +265,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (timeout == 0)
         return;
 
-      if (timeout == -1)
+      if (timeout == (uint64_t) -1)
         continue;
 
       goto update_timeout;
     }
 
     if (nfds == 0) {
-      assert(timeout != -1);
+      assert(timeout != (uint64_t) -1);
       return;
     }
 
@@ -348,21 +347,21 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     if (saved_errno == ETIME) {
-      assert(timeout != -1);
+      assert(timeout != (uint64_t) -1);
       return;
     }
 
     if (timeout == 0)
       return;
 
-    if (timeout == -1)
+    if (timeout == (uint64_t) -1)
       continue;
 
 update_timeout:
     assert(timeout > 0);
 
     diff = loop->time - base;
-    if (diff >= (uint64_t) timeout)
+    if (diff >= timeout)
       return;
 
     timeout -= diff;

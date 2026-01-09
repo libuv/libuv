@@ -233,9 +233,11 @@ void uv__fs_scandir_cleanup(uv_fs_t* req);
 void uv__fs_readdir_cleanup(uv_fs_t* req);
 uv_dirent_type_t uv__fs_get_dirent_type(uv__dirent_t* dent);
 
-int uv__next_timeout(const uv_loop_t* loop);
+uint64_t uv__next_timeout(const uv_loop_t* loop);
 void uv__run_timers(uv_loop_t* loop);
 void uv__timer_close(uv_timer_t* handle);
+uint64_t uv__ns_to_ms(uint64_t ns);
+int uv__ns_to_ms_sat(uint64_t ns);  /* Saturates to INT_MAX. */
 
 void uv__process_title_cleanup(void);
 void uv__signal_cleanup(void);
@@ -431,7 +433,7 @@ struct uv__iou {
 struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
-  int current_timeout;
+  uint64_t current_timeout;
 #ifdef __linux__
   struct uv__iou ctl;
   struct uv__iou iou;

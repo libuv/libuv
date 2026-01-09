@@ -808,7 +808,7 @@ static int os390_message_queue_handler(uv__os390_epoll* ep) {
 }
 
 
-void uv__io_poll(uv_loop_t* loop, int timeout) {
+void uv__io_poll(uv_loop_t* loop, uint64_t timeout) {
   static const int max_safe_timeout = 1789569;
   uv__loop_internal_fields_t* lfields;
   struct epoll_event events[1024];
@@ -816,17 +816,18 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct epoll_event e;
   uv__os390_epoll* ep;
   int have_signals;
-  int real_timeout;
+  uint64_t real_timeout;
   struct uv__queue* q;
   uv__io_t* w;
   uint64_t base;
+  uint64_t diff;
   int count;
   int nfds;
   int fd;
   int op;
   int i;
-  int user_timeout;
-  int reset_timeout;
+  uint64_t user_timeout;
+  uint64_t reset_timeout;
 
   if (loop->nfds == 0) {
     assert(uv__queue_empty(&loop->watcher_queue));
@@ -875,7 +876,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     w->events = w->pevents;
   }
 
-  assert(timeout >= -1);
   base = loop->time;
   count = 48; /* Benchmarks suggest this gives the best throughput. */
   real_timeout = timeout;
@@ -883,7 +883,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   have_signals = 0;
 
   if (lfields->flags & UV_METRICS_IDLE_TIME) {
-    reset_timeout = 1;
+    reset_timeout = 1000 * 1000;  /* One millisecond. */
     user_timeout = timeout;
     timeout = 0;
   } else {
@@ -907,8 +907,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     lfields->current_timeout = timeout;
 
-    nfds = epoll_wait(loop->ep, events,
-                      ARRAY_SIZE(events), timeout);
+    nfds = epoll_wait(loop->ep,
+                      events,
+                      ARRAY_SIZE(events),
+                      uv__ns_to_ms_sat(timeout));
 
     /* Update loop->time unconditionally. It's tempting to skip the update when
      * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
@@ -917,14 +919,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     base = loop->time;
     SAVE_ERRNO(uv__update_time(loop));
     if (nfds == 0) {
-      assert(timeout != -1);
+      assert(timeout != (uint64_t) -1);
 
       if (reset_timeout != 0) {
         timeout = user_timeout;
         reset_timeout = 0;
       }
 
-      if (timeout == -1)
+      if (timeout == (uint64_t) -1)
         continue;
 
       if (timeout == 0)
@@ -946,7 +948,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         reset_timeout = 0;
       }
 
-      if (timeout == -1)
+      if (timeout == (uint64_t) -1)
         continue;
 
       if (timeout == 0)
@@ -1044,16 +1046,17 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     if (timeout == 0)
       return;
 
-    if (timeout == -1)
+    if (timeout == (uint64_t) -1)
       continue;
 
 update_timeout:
     assert(timeout > 0);
 
-    real_timeout -= (loop->time - base);
-    if (real_timeout <= 0)
+    diff = loop->time - base;
+    if (diff >= real_timeout)
       return;
 
+    real_timeout -= diff;
     timeout = real_timeout;
   }
 }
