@@ -3109,67 +3109,35 @@ static void fs__lchown(uv_fs_t* req) {
 
 
 static void fs__statfs(uv_fs_t* req) {
+  FILE_FS_FULL_SIZE_INFORMATION info;
+  IO_STATUS_BLOCK io_status;
   uv_statfs_t* stat_fs;
-  DWORD sectors_per_cluster;
-  DWORD bytes_per_sector;
-  DWORD free_clusters;
-  DWORD total_clusters;
-  WCHAR* pathw;
+  NTSTATUS nt_status;
+  HANDLE handle;
 
-  pathw = req->file.pathw;
-retry_get_disk_free_space:
-  if (0 == GetDiskFreeSpaceW(pathw,
-                             &sectors_per_cluster,
-                             &bytes_per_sector,
-                             &free_clusters,
-                             &total_clusters)) {
-    DWORD err;
-    WCHAR* fpart;
-    size_t len;
-    DWORD ret;
-    BOOL is_second;
+  handle = CreateFileW(req->file.pathw,
+                       FILE_READ_ATTRIBUTES,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_FLAG_BACKUP_SEMANTICS,
+                       NULL);
 
-    err = GetLastError();
-    is_second = pathw != req->file.pathw;
-    if (err != ERROR_DIRECTORY || is_second) {
-      if (is_second)
-        uv__free(pathw);
-
-      SET_REQ_WIN32_ERROR(req, err);
-      return;
-    }
-
-    len = MAX_PATH + 1;
-    pathw = uv__malloc(len * sizeof(*pathw));
-    if (pathw == NULL) {
-      SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
-      return;
-    }
-retry_get_full_path_name:
-    ret = GetFullPathNameW(req->file.pathw,
-                           len,
-                           pathw,
-                           &fpart);
-    if (ret == 0) {
-      uv__free(pathw);
-      SET_REQ_WIN32_ERROR(req, err);
-      return;
-    } else if (ret > len) {
-      len = ret;
-      pathw = uv__reallocf(pathw, len * sizeof(*pathw));
-      if (pathw == NULL) {
-        SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
-        return;
-      }
-      goto retry_get_full_path_name;
-    }
-    if (fpart != 0)
-      *fpart = L'\0';
-
-    goto retry_get_disk_free_space;
+  if (handle == INVALID_HANDLE_VALUE) {
+    SET_REQ_WIN32_ERROR(req, GetLastError());
+    return;
   }
-  if (pathw != req->file.pathw) {
-    uv__free(pathw);
+
+  nt_status = pNtQueryVolumeInformationFile(handle,
+                                            &io_status,
+                                            &info,
+                                            sizeof info,
+                                            FileFsFullSizeInformation);
+  CloseHandle(handle);
+
+  if (NT_ERROR(nt_status)) {
+    SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+    return;
   }
 
   stat_fs = uv__malloc(sizeof(*stat_fs));
@@ -3179,11 +3147,12 @@ retry_get_full_path_name:
   }
 
   stat_fs->f_type = 0;
-  stat_fs->f_bsize = bytes_per_sector * sectors_per_cluster;
-  stat_fs->f_frsize = bytes_per_sector * sectors_per_cluster;
-  stat_fs->f_blocks = total_clusters;
-  stat_fs->f_bfree = free_clusters;
-  stat_fs->f_bavail = free_clusters;
+  stat_fs->f_bsize = (uint64_t)info.SectorsPerAllocationUnit *
+                               info.BytesPerSector;
+  stat_fs->f_frsize = stat_fs->f_bsize;
+  stat_fs->f_blocks = info.TotalAllocationUnits.QuadPart;
+  stat_fs->f_bfree = info.ActualAvailableAllocationUnits.QuadPart;
+  stat_fs->f_bavail = info.CallerAvailableAllocationUnits.QuadPart;
   stat_fs->f_files = 0;
   stat_fs->f_ffree = 0;
   req->ptr = stat_fs;
