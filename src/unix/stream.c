@@ -1030,8 +1030,6 @@ static void uv__read(uv_stream_t* stream) {
   int err;
   int is_ipc;
 
-  stream->flags &= ~UV_HANDLE_READ_PARTIAL;
-
   /* Prevent loop starvation when the data comes in as fast as (or faster than)
    * we can read it. XXX Need to rearm fd if we switch to edge-triggered I/O.
    */
@@ -1146,11 +1144,15 @@ static void uv__read(uv_stream_t* stream) {
 #endif
       stream->read_cb(stream, nread, &buf);
 
-      /* Return if we didn't fill the buffer, there is no more data to read. */
-      if (nread < buflen) {
-        stream->flags |= UV_HANDLE_READ_PARTIAL;
+      /* Save a system call and return if we didn't fill the buffer
+       * completely, on the assumption the next read() will fail with EOF.
+       *
+       * Devices like PTYs sometimes operate in a packet-like mode where
+       * they don't return all available data in a single read but we'll
+       * catch it on the next read because of level-triggered I/O.
+       */
+      if (nread < buflen)
         return;
-      }
     }
   }
 }
@@ -1202,22 +1204,23 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  /* Ignore POLLHUP here. Even if it's set, there may still be data to read. */
-  if (events & (POLLIN | POLLERR | POLLHUP))
+  if (events & (POLLIN | POLLERR))
     uv__read(stream);
 
   if (uv__stream_fd(stream) == -1)
     return;  /* read_cb closed stream. */
 
   /* Short-circuit iff POLLHUP is set, the user is still interested in read
-   * events and uv__read() reported a partial read but not EOF. If the EOF
-   * flag is set, uv__read() called read_cb with err=UV_EOF and we don't
-   * have to do anything. If the partial read flag is not set, we can't
-   * report the EOF yet because there is still data to read.
+   * events and uv__read() didn't see EOF. If the EOF flag is set, uv__read()
+   * called read_cb with err=UV_EOF and we don't have to do anything.
+   *
+   * POLLIN should not be set because, at least on Linux and possibly other
+   * operating systems, devices like PTYs sometimes produce partial reads even
+   * when more data is available.
    */
   if ((events & POLLHUP) &&
+      !(events & POLLIN) &&
       (stream->flags & UV_HANDLE_READING) &&
-      (stream->flags & UV_HANDLE_READ_PARTIAL) &&
       !(stream->flags & UV_HANDLE_READ_EOF)) {
     uv_buf_t buf = { NULL, 0 };
     uv__stream_eof(stream, &buf);
