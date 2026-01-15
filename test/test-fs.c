@@ -23,6 +23,7 @@
 #include "task.h"
 
 #include <errno.h>
+#include <stddef.h> /* offsetof */
 #include <string.h> /* memset */
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -36,6 +37,13 @@
 # include <io.h>
 # ifndef ERROR_SYMLINK_NOT_SUPPORTED
 #  define ERROR_SYMLINK_NOT_SUPPORTED 1464
+# endif
+# ifndef REPARSE_DATA_BUFFER_HEADER_SIZE
+#  define REPARSE_DATA_BUFFER_HEADER_SIZE \
+     offsetof(REPARSE_DATA_BUFFER, GenericReparseBuffer)
+# endif
+# ifndef IO_REPARSE_TAG_LX_SYMLINK
+#  define IO_REPARSE_TAG_LX_SYMLINK (0xA000001DL)
 # endif
 # ifndef S_IFIFO
 #  define S_IFIFO _S_IFIFO
@@ -77,6 +85,24 @@ typedef struct {
   double mtime;
 } utime_check_t;
 
+#ifdef _WIN32
+# ifndef REPARSE_DATA_BUFFER
+typedef struct _REPARSE_DATA_BUFFER {
+  ULONG  ReparseTag;
+  USHORT ReparseDataLength;
+  USHORT Reserved;
+  union {
+    struct {
+      ULONG Version;
+      UCHAR PathBuffer[1];
+    } LinuxSymbolicLinkReparseBuffer;
+    struct {
+      UCHAR DataBuffer[1];
+    } GenericReparseBuffer;
+  } DUMMYUNIONNAME;
+} REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
+# endif
+#endif
 
 static int dummy_cb_count;
 static int close_cb_count;
@@ -2688,6 +2714,80 @@ TEST_FS_IMPL(fs_non_symlink_reparse_point) {
 
   /* clean-up */
   unlink("test_dir/test_file");
+  rmdir("test_dir");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+TEST_FS_IMPL(fs_readlink_lx_symlink) {
+  uv_fs_t req;
+  int r;
+  HANDLE file_handle;
+  REPARSE_DATA_BUFFER* reparse_buffer;
+  DWORD bytes_returned;
+  const char* target_path = "target_file";
+  size_t target_len = strlen(target_path);
+  size_t buffer_size;
+
+  /* set-up */
+  unlink("test_dir/lx_symlink");
+  rmdir("test_dir");
+
+  loop = uv_default_loop();
+
+  uv_fs_mkdir(NULL, &req, "test_dir", 0777, NULL);
+  uv_fs_req_cleanup(&req);
+
+  file_handle = CreateFile("test_dir/lx_symlink",
+                           GENERIC_WRITE | FILE_WRITE_ATTRIBUTES,
+                           0,
+                           NULL,
+                           CREATE_ALWAYS,
+                           FILE_FLAG_OPEN_REPARSE_POINT |
+                             FILE_FLAG_BACKUP_SEMANTICS,
+                           NULL);
+  ASSERT_PTR_NE(file_handle, INVALID_HANDLE_VALUE);
+
+  /* Allocate buffer for reparse data */
+  buffer_size = REPARSE_DATA_BUFFER_HEADER_SIZE +
+                sizeof(ULONG) + /* Version field */
+                target_len;
+  reparse_buffer = malloc(buffer_size);
+  ASSERT_NOT_NULL(reparse_buffer);
+
+  /* Set up Linux symlink reparse buffer */
+  memset(reparse_buffer, 0, buffer_size);
+  reparse_buffer->ReparseTag = IO_REPARSE_TAG_LX_SYMLINK;
+  reparse_buffer->ReparseDataLength = sizeof(ULONG) + target_len;
+  reparse_buffer->Reserved = 0;
+  reparse_buffer->LinuxSymbolicLinkReparseBuffer.Version = 2;
+  memcpy(reparse_buffer->LinuxSymbolicLinkReparseBuffer.PathBuffer,
+         target_path,
+         target_len);
+
+  r = DeviceIoControl(file_handle,
+                      FSCTL_SET_REPARSE_POINT,
+                      reparse_buffer,
+                      buffer_size,
+                      NULL,
+                      0,
+                      &bytes_returned,
+                      NULL);
+  ASSERT(r);
+
+  CloseHandle(file_handle);
+
+  /* Test that readlink works on the Linux symlink */
+  r = uv_fs_readlink(NULL, &req, "test_dir/lx_symlink", NULL);
+  ASSERT_OK(r);
+  ASSERT_NOT_NULL(req.ptr);
+  ASSERT_OK(strcmp(req.ptr, target_path));
+  uv_fs_req_cleanup(&req);
+
+  /* clean-up */
+  free(reparse_buffer);
+  unlink("test_dir/lx_symlink");
   rmdir("test_dir");
 
   MAKE_VALGRIND_HAPPY(loop);

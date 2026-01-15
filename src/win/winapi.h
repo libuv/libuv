@@ -4164,6 +4164,10 @@ typedef struct _REPARSE_DATA_BUFFER {
       WCHAR PathBuffer[1];
     } SymbolicLinkReparseBuffer;
     struct {
+      ULONG Version;
+      UCHAR PathBuffer[1];
+    } LinuxSymbolicLinkReparseBuffer;
+    struct {
       USHORT SubstituteNameOffset;
       USHORT SubstituteNameLength;
       USHORT PrintNameOffset;
@@ -4581,6 +4585,9 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 
 #ifndef IO_REPARSE_TAG_SYMLINK
 # define IO_REPARSE_TAG_SYMLINK (0xA000000CL)
+#endif
+#ifndef IO_REPARSE_TAG_LX_SYMLINK
+# define IO_REPARSE_TAG_LX_SYMLINK (0xA000001DL)
 #endif
 #ifndef IO_REPARSE_TAG_APPEXECLINK
 # define IO_REPARSE_TAG_APPEXECLINK (0x8000001BL)
