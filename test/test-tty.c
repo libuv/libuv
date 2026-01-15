@@ -421,10 +421,6 @@ TEST_IMPL(tty_pty) {
 #if defined(__QEMU__)
   RETURN_SKIP("Test does not currently work in QEMU");
 #endif
-#if defined(__ASAN__)
-  RETURN_SKIP("Test does not currently work in ASAN");
-#endif
-
 #if defined(__APPLE__)                            || \
     defined(__DragonFly__)                        || \
     defined(__FreeBSD__)                          || \
@@ -432,16 +428,14 @@ TEST_IMPL(tty_pty) {
     defined(__NetBSD__)                           || \
     defined(__OpenBSD__)
   int master_fd, slave_fd, r;
-  struct winsize w;
   uv_loop_t loop;
   uv_tty_t master_tty, slave_tty;
 
-  ASSERT_OK(uv_loop_init(&loop));
-
-  r = openpty(&master_fd, &slave_fd, NULL, NULL, &w);
+  r = openpty(&master_fd, &slave_fd, NULL, NULL, NULL);
   if (r != 0)
     RETURN_SKIP("No pty available, skipping.");
 
+  ASSERT_OK(uv_loop_init(&loop));
   ASSERT_OK(uv_tty_init(&loop, &slave_tty, slave_fd, 0));
   ASSERT_OK(uv_tty_init(&loop, &master_tty, master_fd, 0));
   ASSERT(uv_is_readable((uv_stream_t*) &slave_tty));
