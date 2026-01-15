@@ -461,7 +461,7 @@ TEST_IMPL(tty_pty) {
   return 0;
 }
 
-#ifndef _WIN32
+#if !defined(__ANDROID__) && !defined(_WIN32)
 static int tty_pty_partial_read_count;
 
 static void tty_pty_partial_feeder(void *arg) {
@@ -499,10 +499,10 @@ static void tty_pty_partial_read_cb(uv_stream_t* stream,
   else
     uv_close((uv_handle_t*) stream, NULL);
 }
-#endif  /* !_WIN32 */
+#endif  /* !defined(__ANDROID__) && !defined(_WIN32) */
 
 TEST_IMPL(tty_pty_partial) {
-#ifndef _WIN32
+#if !defined(__ANDROID__) && !defined(_WIN32)
   int master_fd, slave_fd;
   uv_tty_t master_tty;
   uv_thread_t tid;
