@@ -261,47 +261,25 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   }
 
   for (;; nevents = 0) {
-    /* Only need to set the provider_entry_time if timeout != 0. The function
-     * will return early if the loop isn't configured with UV_METRICS_IDLE_TIME.
-     */
-    if (timeout != 0)
-      uv__metrics_set_provider_entry_time(loop);
-
     if (timeout != -1) {
       spec.tv_sec = timeout / 1000;
       spec.tv_nsec = (timeout % 1000) * 1000000;
     }
 
-    if (pset != NULL)
-      pthread_sigmask(SIG_BLOCK, pset, NULL);
-
-    /* Store the current timeout in a location that's globally accessible so
-     * other locations like uv__work_done() can determine whether the queue
-     * of events in the callback were waiting when poll was called.
-     */
-    lfields->current_timeout = timeout;
-
+    uv__io_poll_prepare(loop, pset, timeout);
     nfds = kevent(loop->backend_fd,
                   events,
                   nevents,
                   events,
                   ARRAY_SIZE(events),
                   timeout == -1 ? NULL : &spec);
+    uv__io_poll_check(loop, pset);
 
     if (nfds == -1)
       assert(errno == EINTR);
     else if (nfds == 0)
       /* Unlimited timeout should only return with events or signal. */
       assert(timeout != -1);
-
-    if (pset != NULL)
-      pthread_sigmask(SIG_UNBLOCK, pset, NULL);
-
-    /* Update loop->time unconditionally. It's tempting to skip the update when
-     * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
-     * operating system didn't reschedule our process while in the syscall.
-     */
-    uv__update_time(loop);
 
     if (nfds == 0 || nfds == -1) {
       /* If kqueue is empty or interrupted, we might still have children ready
