@@ -210,12 +210,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   }
 
   for (;;) {
-    /* Only need to set the provider_entry_time if timeout != 0. The function
-     * will return early if the loop isn't configured with UV_METRICS_IDLE_TIME.
-     */
-    if (timeout != 0)
-      uv__metrics_set_provider_entry_time(loop);
-
     if (timeout != -1) {
       spec.tv_sec = timeout / 1000;
       spec.tv_nsec = (timeout % 1000) * 1000000;
@@ -227,17 +221,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     nfds = 1;
     saved_errno = 0;
 
-    if (pset != NULL)
-      pthread_sigmask(SIG_BLOCK, pset, NULL);
-
+    uv__io_poll_prepare(loop, pset, timeout);
     err = port_getn(loop->backend_fd,
                     events,
                     ARRAY_SIZE(events),
                     &nfds,
                     timeout == -1 ? NULL : &spec);
-
-    if (pset != NULL)
-      pthread_sigmask(SIG_UNBLOCK, pset, NULL);
+    uv__io_poll_check(loop, pset);
 
     if (err) {
       /* Work around another kernel bug: port_getn() may return events even
@@ -250,12 +240,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         abort();
       }
     }
-
-    /* Update loop->time unconditionally. It's tempting to skip the update when
-     * timeout == 0 (i.e. non-blocking poll) but there is no guarantee that the
-     * operating system didn't reschedule our process while in the syscall.
-     */
-    SAVE_ERRNO(uv__update_time(loop));
 
     if (events[0].portev_source == 0) {
       if (reset_timeout != 0) {

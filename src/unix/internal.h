@@ -328,6 +328,8 @@ int uv__io_active(const uv__io_t* w, unsigned int events);
 int uv__io_check_fd(uv_loop_t* loop, int fd);
 void uv__io_poll(uv_loop_t* loop, int timeout); /* in milliseconds or -1 */
 int uv__io_fork(uv_loop_t* loop);
+void uv__io_poll_prepare(uv_loop_t* loop, sigset_t* pset, int timeout);
+void uv__io_poll_check(uv_loop_t* loop, sigset_t* pset);
 int uv__fd_exists(uv_loop_t* loop, int fd);
 
 /* async */
