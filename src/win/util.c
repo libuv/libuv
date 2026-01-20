@@ -333,6 +333,20 @@ uv_pid_t uv_os_getppid(void) {
 
 
 char** uv_setup_args(int argc, char** argv) {
+  char* s;
+  char* basename;
+  
+  if (argc <= 0 || argv == NULL || argv[0] == NULL)
+    return argv;
+  
+  basename = argv[0];
+  for (s = basename; *s != '\0'; s++) {
+    if (*s == '\\' || *s == '/')
+      basename = s + 1;
+  }
+  
+  process_title = uv__strdup(basename);
+  
   return argv;
 }
 
@@ -348,9 +362,18 @@ int uv_set_process_title(const char* title) {
 
   uv__once_init();
 
+  EnterCriticalSection(&process_title_lock);
+  /* If uv_setup_args wasn't called or failed, we can't continue. */
+  if (process_title == NULL) {
+    LeaveCriticalSection(&process_title_lock);
+    return UV_ENOBUFS;
+  }
+
   err = uv__convert_utf8_to_utf16(title, &title_w);
-  if (err)
+  if (err) {
+    LeaveCriticalSection(&process_title_lock);
     return err;
+  }
 
   /* If the title must be truncated insert a \0 terminator there */
   length = wcslen(title_w);
@@ -359,10 +382,10 @@ int uv_set_process_title(const char* title) {
 
   if (!SetConsoleTitleW(title_w)) {
     err = GetLastError();
+    LeaveCriticalSection(&process_title_lock);
     goto done;
   }
 
-  EnterCriticalSection(&process_title_lock);
   uv__free(process_title);
   process_title = uv__strdup(title);
   LeaveCriticalSection(&process_title_lock);
@@ -375,26 +398,8 @@ done:
 }
 
 
-static int uv__get_process_title(void) {
-  WCHAR title_w[MAX_TITLE_LENGTH];
-  DWORD wlen;
-  DWORD err;
-
-  SetLastError(ERROR_SUCCESS);
-  wlen = GetConsoleTitleW(title_w, sizeof(title_w) / sizeof(WCHAR));
-  if (wlen == 0) {
-    err = GetLastError();
-    if (err != 0)
-      return uv_translate_sys_error(err);
-  }
-
-  return uv__convert_utf16_to_utf8(title_w, wlen, &process_title);
-}
-
-
 int uv_get_process_title(char* buffer, size_t size) {
   size_t len;
-  int r;
 
   if (buffer == NULL || size == 0)
     return UV_EINVAL;
@@ -402,19 +407,12 @@ int uv_get_process_title(char* buffer, size_t size) {
   uv__once_init();
 
   EnterCriticalSection(&process_title_lock);
-  /*
-   * If the process_title was never read before nor explicitly set,
-   * we must query it with getConsoleTitleW
-   */
+  
+  /* If uv_setup_args wasn't called or failed, we can't continue. */
   if (process_title == NULL) {
-    r = uv__get_process_title();
-    if (r) {
-      LeaveCriticalSection(&process_title_lock);
-      return r;
-    }
+    LeaveCriticalSection(&process_title_lock);
+    return UV_ENOBUFS;
   }
-
-  assert(process_title);
   len = strlen(process_title) + 1;
 
   if (size < len) {
