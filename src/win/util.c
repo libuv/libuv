@@ -333,19 +333,10 @@ uv_pid_t uv_os_getppid(void) {
 
 
 char** uv_setup_args(int argc, char** argv) {
-  char* s;
-  char* basename;
-  
   if (argc <= 0 || argv == NULL || argv[0] == NULL)
     return argv;
   
-  basename = argv[0];
-  for (s = basename; *s != '\0'; s++) {
-    if (*s == '\\' || *s == '/')
-      basename = s + 1;
-  }
-  
-  process_title = uv__strdup(basename);
+  process_title = uv__strdup(argv[0]);
   
   return argv;
 }
@@ -362,44 +353,40 @@ int uv_set_process_title(const char* title) {
 
   uv__once_init();
 
-  EnterCriticalSection(&process_title_lock);
-  /* If uv_setup_args wasn't called or failed, we can't continue. */
-  if (process_title == NULL) {
-    LeaveCriticalSection(&process_title_lock);
-    return UV_ENOBUFS;
-  }
-
   err = uv__convert_utf8_to_utf16(title, &title_w);
-  if (err) {
-    LeaveCriticalSection(&process_title_lock);
+  if (err)
     return err;
-  }
 
   /* If the title must be truncated insert a \0 terminator there */
   length = wcslen(title_w);
   if (length >= MAX_TITLE_LENGTH)
     title_w[MAX_TITLE_LENGTH - 1] = L'\0';
 
+  EnterCriticalSection(&process_title_lock);
+  err = UV_ENOBUFS;
+  /* If uv_setup_args wasn't called or failed, we can't continue. */
+  if (process_title == NULL)
+    goto done;
+
   if (!SetConsoleTitleW(title_w)) {
-    err = GetLastError();
-    LeaveCriticalSection(&process_title_lock);
+    err = uv_translate_sys_error(GetLastError());
     goto done;
   }
 
   uv__free(process_title);
   process_title = uv__strdup(title);
-  LeaveCriticalSection(&process_title_lock);
-
   err = 0;
 
 done:
+  LeaveCriticalSection(&process_title_lock);
   uv__free(title_w);
-  return uv_translate_sys_error(err);
+  return err;
 }
 
 
 int uv_get_process_title(char* buffer, size_t size) {
   size_t len;
+  int err;
 
   if (buffer == NULL || size == 0)
     return UV_EINVAL;
@@ -408,22 +395,22 @@ int uv_get_process_title(char* buffer, size_t size) {
 
   EnterCriticalSection(&process_title_lock);
   
+  err = UV_ENOBUFS;
   /* If uv_setup_args wasn't called or failed, we can't continue. */
-  if (process_title == NULL) {
-    LeaveCriticalSection(&process_title_lock);
-    return UV_ENOBUFS;
-  }
+  if (process_title == NULL)
+    goto done;
+
   len = strlen(process_title) + 1;
 
-  if (size < len) {
-    LeaveCriticalSection(&process_title_lock);
-    return UV_ENOBUFS;
-  }
+  if (size < len)
+    goto done;
 
   memcpy(buffer, process_title, len);
-  LeaveCriticalSection(&process_title_lock);
+  err = 0;
 
-  return 0;
+done:
+  LeaveCriticalSection(&process_title_lock);
+  return err;
 }
 
 
