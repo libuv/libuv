@@ -256,6 +256,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-signal-pending-on-close.c \
                          test/test-signal.c \
                          test/test-socket-buffer-size.c \
+                         test/test-socket-tos.c \
                          test/test-spawn.c \
                          test/test-stdio-over-pipes.c \
                          test/test-strscpy.c \

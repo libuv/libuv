@@ -519,6 +519,9 @@ UV_EXTERN int uv_socketpair(int type,
                             int flags0,
                             int flags1);
 
+UV_EXTERN int uv_socket_set_tos(const uv_handle_t* handle, int tos);
+UV_EXTERN int uv_socket_get_tos(const uv_handle_t* handle, int* tos);
+
 #define UV_STREAM_FIELDS                                                      \
   /* number of bytes queued for writing */                                    \
   size_t write_queue_size;                                                    \
