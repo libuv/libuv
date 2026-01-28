@@ -33,7 +33,7 @@ void uv_loadavg(double avg[3]) {
 }
 
 
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   char abspath[B_PATH_NAME_LENGTH];
   status_t status;
   ssize_t abspath_len;
@@ -46,10 +46,16 @@ int uv_exepath(char* buffer, size_t* size) {
   if (status != B_OK)
     return UV__ERR(status);
 
-  abspath_len = uv__strscpy(buffer, abspath, *size);
+  abspath_len = strlen(abspath);
   *size -= 1;
-  if (abspath_len >= 0 && *size > (size_t)abspath_len)
-    *size = (size_t)abspath_len;
+  if (return_enobufs && *size < (size_t) abspath_len) {
+    *size = (size_t)abspath_len + 1;
+    return UV_ENOBUFS;
+  }
+
+  abspath_len = uv__strscpy(buffer, abspath, *size);
+  if (abspath_len >= 0 && *size > (size_t) abspath_len)
+    *size = (size_t) abspath_len;
 
   return 0;
 }

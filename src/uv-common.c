@@ -1055,6 +1055,17 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
   return idle_time;
 }
 
+
+int uv_exepath(char *buffer, size_t *size) {
+  return uv__exepath(buffer, size, /*return_enobufs*/0);
+}
+
+
+int uv_exepath2(char *buffer, size_t *size) {
+  return uv__exepath(buffer, size, /*return_enobufs*/1);
+}
+
+
 /* OS390 needs a different implementation, already provided in os390.c. */
 #ifndef __MVS__
 void uv_free_interface_addresses(uv_interface_address_t* addresses,

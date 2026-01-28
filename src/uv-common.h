@@ -210,6 +210,12 @@ void uv__fs_poll_close(uv_fs_poll_t* handle);
 
 int uv__getaddrinfo_translate_error(int sys_err);    /* EAI_* error. */
 
+int uv__exepath(char* buffer, size_t* size, int return_enobufs);
+
+int uv_exepath(char *buffer, size_t *size);
+
+int uv_exepath2(char *buffer, size_t *size);
+
 enum uv__work_kind {
   UV__WORK_CPU,
   UV__WORK_FAST_IO,

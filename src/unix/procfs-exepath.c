@@ -25,21 +25,32 @@
 #include <stddef.h>
 #include <unistd.h>
 
-int uv_exepath(char* buffer, size_t* size) {
+
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
+  char tmp[4096];
   ssize_t n;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
-  n = *size - 1;
-  if (n > 0)
-    n = readlink("/proc/self/exe", buffer, n);
-
+  n = readlink("/proc/self/exe", tmp, sizeof(tmp) - 1);
   if (n == -1)
     return UV__ERR(errno);
 
+  tmp[n] = '\0';
+
+  if (return_enobufs && *size < (size_t) n) {
+    *size = (size_t) n + 1;
+    return UV_ENOBUFS;
+  }
+
+  n = uv__strscpy(buffer, tmp, *size);
+  if (n < 0) /* Trucated but still ok */
+    n = *size - 1;
+
   buffer[n] = '\0';
-  *size = n;
+
+  *size = (size_t) n;
 
   return 0;
 }

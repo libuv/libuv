@@ -63,7 +63,7 @@ uint64_t uv__hrtime(uv_clocktype_t type) {
 }
 
 
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   /* realpath(exepath) may be > PATH_MAX so double it to be on the safe side. */
   char abspath[PATH_MAX * 2 + 1];
   char exepath[PATH_MAX + 1];
@@ -83,6 +83,10 @@ int uv_exepath(char* buffer, size_t* size) {
   abspath_size = strlen(abspath);
   if (abspath_size == 0)
     return UV_EIO;
+
+  /* Return ENOBUFS if resize is requested and buffer is too small. */
+  if (return_enobufs && *size < abspath_size)
+    return UV_ENOBUFS;
 
   *size -= 1;
   if (*size > abspath_size)

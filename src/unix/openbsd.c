@@ -58,7 +58,7 @@ void uv_loadavg(double avg[3]) {
 }
 
 
-int uv_exepath(char* buffer, size_t* size) {
+int uv__exepath(char* buffer, size_t* size, int return_enobufs) {
   int mib[4];
   char **argsbuf = NULL;
   size_t argsbuf_size = 100U;
@@ -96,6 +96,11 @@ int uv_exepath(char* buffer, size_t* size) {
 
   *size -= 1;
   exepath_size = strlen(argsbuf[0]);
+  if (return_enobufs && *size < exepath_size) {
+    *size = exepath_size;
+    return UV_ENOBUFS;
+  }
+
   if (*size > exepath_size)
     *size = exepath_size;
 

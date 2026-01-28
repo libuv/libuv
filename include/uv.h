@@ -1825,6 +1825,7 @@ UV_EXTERN int uv_if_indextoiid(unsigned int ifindex,
                                size_t* size);
 
 UV_EXTERN int uv_exepath(char* buffer, size_t* size);
+UV_EXTERN int uv_exepath2(char* buffer, size_t* size);
 
 UV_EXTERN int uv_cwd(char* buffer, size_t* size);
 
