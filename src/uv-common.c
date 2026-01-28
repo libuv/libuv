@@ -1074,20 +1074,24 @@ int uv_socket_get_tos(const uv_handle_t* handle, int* tos) {
   struct sockaddr_storage storage;
 
   addrlen = sizeof(storage);
-  tos_ = 0; 
+  tos_ = 0;
   optlen = sizeof(tos_);
 
   switch (handle->type) {
     case UV_TCP:
-      r = uv_tcp_getsockname((uv_tcp_t*)handle, (struct sockaddr*)&storage, &addrlen);
+      r = uv_tcp_getsockname((uv_tcp_t*)handle,
+                             (struct sockaddr*)&storage,
+                             &addrlen);
       break;
     case UV_UDP:
-      r = uv_udp_getsockname((uv_udp_t*)handle, (struct sockaddr*)&storage, &addrlen);
+      r = uv_udp_getsockname((uv_udp_t*)handle,
+                             (struct sockaddr*)&storage,
+                             &addrlen);
       break;
     default:
       return UV_EINVAL;
   }
-  
+
   if (r)
     return r;
 
@@ -1107,7 +1111,7 @@ int uv_socket_get_tos(const uv_handle_t* handle, int* tos) {
     default:
       return UV_EAFNOSUPPORT;
   }
-  
+
   r = getsockopt(fd, level, option, &tos_, &optlen);
   if (r)
     return r;
@@ -1143,6 +1147,7 @@ int uv_socket_set_tos(const uv_handle_t* handle, int tos) {
 
   if (r)
     return r;
+
   r = uv_fileno(handle, &fd);
   if (r)
     return r;
