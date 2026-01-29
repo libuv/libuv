@@ -599,6 +599,23 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
   if (handle->flags & UV_HANDLE_CLOSING) {
     uv__want_endgame(loop, (uv_handle_t*)handle);
   } else if (uv__is_active(handle)) {
+    /*
+     * Check if the handle has become a zombie pointing to $Extend\$Deleted.
+     * If so, report as deleted and don't re-queue.
+     */
+    WCHAR path_buf[MAX_PATH];
+    DWORD path_len = GetFinalPathNameByHandleW(handle->dir_handle,
+                                               path_buf,
+                                               MAX_PATH,
+                                               FILE_NAME_NORMALIZED);
+    
+    if (path_len > 0 && path_len < MAX_PATH) {
+      if (wcsstr(path_buf, L"$Extend\\$Deleted") != NULL) {
+        handle->cb(handle, NULL, 0, UV_ENOENT);
+        return;
+      }
+    }
+    
     uv__fs_event_queue_readdirchanges(loop, handle);
   }
 }
