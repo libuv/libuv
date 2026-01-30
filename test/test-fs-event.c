@@ -519,6 +519,65 @@ TEST_IMPL(fs_event_watch_delete_dir) {
   return 0;
 }
 
+#ifdef _WIN32
+static int fs_event_cb_del_dir_perm_got_enoent;
+static uv_timer_t timeout_timer;
+
+static void fs_event_cb_del_dir_perm(uv_fs_event_t* handle,
+                                     const char* filename,
+                                     int events,
+                                     int status) {
+  if (status == UV_ENOENT) {
+    fs_event_cb_del_dir_perm_got_enoent = 1;
+    uv_close((uv_handle_t*)&timeout_timer, close_cb);
+    uv_close((uv_handle_t*)handle, close_cb);
+  }
+}
+
+static void timeout_cb_del_dir_perm(uv_timer_t* handle) {
+  uv_close((uv_handle_t*)&fs_event, NULL);
+  uv_close((uv_handle_t*)handle, NULL);
+  FATAL("Test timed out: fs_event watcher did not receive UV_ENOENT");
+}
+
+TEST_IMPL(fs_event_watch_delete_dir_win) {
+  uv_loop_t* loop = uv_default_loop();
+  int r;
+
+  /* Setup */
+  fs_event_cb_del_dir_perm_got_enoent = 0;
+  fs_event_unlink_files(NULL);
+  delete_dir("watch_del_dir/");
+  create_dir("watch_del_dir");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_del_dir_perm, "watch_del_dir", 0);
+  ASSERT_OK(r);
+  r = uv_timer_init(loop, &timer);
+  ASSERT_OK(r);
+  r = uv_timer_start(&timer, fs_event_del_dir, 100, 0);
+  ASSERT_OK(r);
+
+  /* Timeout timer fails the test if it takes too long (infinite loop bug) */
+  r = uv_timer_init(loop, &timeout_timer);
+  ASSERT_OK(r);
+  r = uv_timer_start(&timeout_timer, timeout_cb_del_dir_perm, 3000, 0);
+  ASSERT_OK(r);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(1, fs_event_cb_del_dir_perm_got_enoent);
+  ASSERT_EQ(3, close_cb_called);
+
+  /* Cleanup */
+  fs_event_unlink_files(NULL);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+#endif
+
 
 TEST_IMPL(fs_event_watch_dir_recursive) {
 #if defined(__APPLE__) && defined(__TSAN__)
