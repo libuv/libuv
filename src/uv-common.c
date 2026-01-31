@@ -32,8 +32,6 @@
 
 #if defined(_WIN32)
 # include <malloc.h> /* malloc */
-# include <qos2.h>
-# include <winsock.h>
 #else
 # include <net/if.h> /* if_nametoindex */
 # include <sys/un.h> /* AF_UNIX, sockaddr_un */
@@ -1075,6 +1073,10 @@ int uv_socket_get_tos(const uv_handle_t* handle, int* tos) {
   socklen_t optlen;
   struct sockaddr_storage storage;
 
+#if defined(_WIN32)
+  return UV_ENOSYS;
+#endif
+
   addrlen = sizeof(storage);
   tos_ = 0;
   optlen = sizeof(tos_);
@@ -1114,11 +1116,7 @@ int uv_socket_get_tos(const uv_handle_t* handle, int* tos) {
       return UV_EAFNOSUPPORT;
   }
 
-#if defined(_WIN32)
-  r = getsockopt(fd, level, option, (char*)&tos_, &optlen);
-#else
   r = getsockopt(fd, level, option, &tos_, &optlen);
-#endif
   if (r)
     return r;
 
@@ -1134,6 +1132,10 @@ int uv_socket_set_tos(const uv_handle_t* handle, int tos) {
   int addrlen;
   int level;
   int option;
+
+#if defined(_WIN32)
+  return UV_ENOSYS;
+#endif
 
   addrlen = sizeof(storage);
 
@@ -1171,37 +1173,6 @@ int uv_socket_set_tos(const uv_handle_t* handle, int tos) {
       return UV_EAFNOSUPPORT;
   }
 
-#ifndef _WIN32
   r = setsockopt(fd, level, option, &tos, sizeof(tos));
   return UV__ERR(r);
-#else
-  HANDLE qosHandle = NULL;
-  QOS_VERSION version = {1, 0};
-  QOS_FLOWID flowId = 0;
-  DWORD dscpValue = (DWORD)tos;
-  SOCKET socket = (SOCKET)fd;
-  
-  /* NOTE: I'm using setsockopt here to set the TOS value directly on the socket as UNIX.
-   * I'm not too worried about this one, let's use the QOS API as a backup plan.
-   */
-  setsockopt(fd, level, option, (char*)&tos, sizeof(tos));
-  
-  if (storage.ss_family == AF_UNSPEC) {
-    /* Can't set DSCP on an unspecified address */
-    return UV_ENOTCONN;
-  }
-  
-  /* Do the same thing using QOS APIs just to be sure */
-  if (QOSCreateHandle(&version, &qosHandle)) {
-    if(QOSAddSocketToFlow(qosHandle, socket, NULL, QOSTrafficTypeBestEffort, 0,  &flowId)) {
-      QOSSetFlow(qosHandle, flowId, QOSSetOutgoingDSCPValue,  sizeof(dscpValue), &dscpValue, 0, NULL);
-    } else {
-      int err = WSAGetLastError();
-      printf("QOSAddSocketToFlow failed with error: %d\n", err);
-    }
-    QOSCloseHandle(qosHandle);
-    return 0;   
-  }
-#endif
-  return 0;
 }

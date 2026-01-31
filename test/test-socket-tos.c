@@ -19,8 +19,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "task.h"
 #include "uv.h"
+#include "task.h"
 
 static void setup_tcp(uv_loop_t* loop, uv_tcp_t* tcp, const char* ip,
                       int is_ip6) {
@@ -86,6 +86,9 @@ static void check_tos_fail(uv_handle_t* handle, int tos) {
 }
 
 TEST_IMPL(tcp_socket_set_get_tos) {
+#if defined(_WIN32)
+  RETURN_SKIP("Windows does not support setting TOS");
+#endif
   uv_tcp_t tcp;
 
   setup_tcp(uv_default_loop(), &tcp, "0.0.0.0", 0);
@@ -106,6 +109,9 @@ TEST_IMPL(tcp_socket_set_get_tos) {
 }
 
 TEST_IMPL(tcp6_socket_set_get_tos) {
+#if defined(_WIN32)
+  RETURN_SKIP("Windows does not support setting TOS");
+#endif
   uv_tcp_t tcp;
 
   setup_tcp(uv_default_loop(), &tcp, "::1", 1);
@@ -122,6 +128,9 @@ TEST_IMPL(tcp6_socket_set_get_tos) {
 }
 
 TEST_IMPL(udp_socket_set_get_tos) {
+#if defined(_WIN32)
+  RETURN_SKIP("Windows does not support setting TOS");
+#endif
   uv_udp_t udp;
 
   setup_udp(uv_default_loop(), &udp, "0.0.0.0", 0);
@@ -141,6 +150,9 @@ TEST_IMPL(udp_socket_set_get_tos) {
 }
 
 TEST_IMPL(udp6_socket_set_get_tos) {
+#if defined(_WIN32)
+  RETURN_SKIP("Windows does not support setting TOS");
+#endif
   uv_udp_t udp;
 
   setup_udp(uv_default_loop(), &udp, "::1", 1);
@@ -157,6 +169,9 @@ TEST_IMPL(udp6_socket_set_get_tos) {
 }
 
 TEST_IMPL(socket_tos_invalid_handle) {
+#if defined(_WIN32)
+  RETURN_SKIP("Windows does not support setting TOS");
+#endif
   uv_timer_t timer;
   int r;
   int tos;
@@ -181,6 +196,9 @@ TEST_IMPL(socket_tos_invalid_handle) {
 }
 
 TEST_IMPL(socket_tos_unbound_tcp) {
+#if defined(_WIN32)
+  RETURN_SKIP("Windows does not support setting TOS on UDP sockets");
+#endif
   uv_tcp_t tcp;
   int r;
   int tos;
