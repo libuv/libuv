@@ -44,10 +44,8 @@ extern "C" {
     /* Building static library. */
 #   define UV_EXTERN /* nothing */
 # endif
-#elif __GNUC__ >= 4
+#elif defined(__GNUC__)
 # define UV_EXTERN __attribute__((visibility("default")))
-#elif defined(__SUNPRO_C) && (__SUNPRO_C >= 0x550) /* Sun Studio >= 8 */
-# define UV_EXTERN __global
 #else
 # define UV_EXTERN /* nothing */
 #endif
