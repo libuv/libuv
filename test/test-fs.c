@@ -4915,21 +4915,41 @@ TEST_FS_IMPL(fs_invalid_mkdir_name) {
 
 TEST_FS_IMPL(fs_statfs) {
   uv_fs_t req;
+  uv_fs_t req1;
   int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  r = uv_fs_open(NULL, &req, "test_file", UV_FS_O_WRONLY | UV_FS_O_CREAT,
+      S_IRUSR | S_IWUSR, NULL);
+  ASSERT_GT(r, 0);
+
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, req.result, NULL);
+  ASSERT_OK(r);
+
+  uv_fs_req_cleanup(&req);
 
   loop = uv_default_loop();
 
-  /* Test the synchronous version. */
+  /* Test the synchronous version for both a directory and a file. */
   r = uv_fs_statfs(NULL, &req, ".", NULL);
   ASSERT_OK(r);
   statfs_cb(&req);
-  ASSERT_EQ(1, statfs_cb_count);
+  r = uv_fs_statfs(NULL, &req, "test_file", NULL);
+  ASSERT_OK(r);
+  statfs_cb(&req);
+  ASSERT_EQ(2, statfs_cb_count);
 
-  /* Test the asynchronous version. */
+  /* Test the asynchronous version too. */
   r = uv_fs_statfs(loop, &req, ".", statfs_cb);
   ASSERT_OK(r);
+  r = uv_fs_statfs(loop, &req1, "test_file", statfs_cb);
+  ASSERT_OK(r);
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(2, statfs_cb_count);
+  ASSERT_EQ(4, statfs_cb_count);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
