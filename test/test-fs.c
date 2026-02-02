@@ -73,12 +73,6 @@ static const int is_win32 = 1;
 static const int is_win32 = 0;
 #endif
 
-#if defined(__APPLE__) || defined(__SUNPRO_C)
-static const int is_apple_or_sunpro_c = 1;
-#else
-static const int is_apple_or_sunpro_c = 0;
-#endif
-
 typedef struct {
   const char* path;
   double atime;
@@ -882,9 +876,10 @@ static void check_utime(const char* path,
       ASSERT_LE(s->st_atim.tv_sec, (long) atime);
     } else {
       double st_atim;
+#ifndef __APPLE__
       /* TODO(vtjnash): would it be better to normalize this? */
-      if (!is_apple_or_sunpro_c)
-        ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
+      ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
+#endif
       st_atim = s->st_atim.tv_sec + s->st_atim.tv_nsec / 1e9;
       /* Linux does not allow reading reliably the atime of a symlink
        * since readlink() can update it
@@ -917,9 +912,10 @@ static void check_utime(const char* path,
       ASSERT_LE(s->st_mtim.tv_sec, (long) mtime);
     } else {
       double st_mtim;
+#ifndef __APPLE__
       /* TODO(vtjnash): would it be better to normalize this? */
-      if (!is_apple_or_sunpro_c)
-        ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
+      ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
+#endif
       st_mtim = s->st_mtim.tv_sec + s->st_mtim.tv_nsec / 1e9;
       ASSERT_DOUBLE_EQ(st_mtim, mtime);
     }
