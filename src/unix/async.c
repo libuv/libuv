@@ -414,5 +414,7 @@ static void uv__cpu_relax(void) {
   __asm volatile ("" : : : "memory");
 #elif !defined(__APPLE__) && (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))
   __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
+#elif defined(__riscv) && __riscv_xlen == 64
+  __asm__ volatile(".insn 0x0100000f" ::: "memory");
 #endif
 }
