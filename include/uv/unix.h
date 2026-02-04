@@ -245,6 +245,7 @@ typedef struct {
   uv__io_t signal_io_watcher;                                                 \
   uv_signal_t child_watcher;                                                  \
   int emfile_fd;                                                              \
+  int cancel_signum;                                                          \
   UV_PLATFORM_LOOP_FIELDS                                                     \
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
@@ -258,7 +259,7 @@ typedef struct {
   unsigned int write_index;                                                   \
   uv_buf_t* bufs;                                                             \
   unsigned int nbufs;                                                         \
-  int error;                                                                  \
+  ssize_t result;                                                             \
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
@@ -292,6 +293,7 @@ typedef struct {
   int delayed_error;                                                          \
   int accepted_fd;                                                            \
   void* queued_fds;                                                           \
+  struct uv__work blocked_write;                                              \
   UV_STREAM_PRIVATE_PLATFORM_FIELDS                                           \
 
 #define UV_TCP_PRIVATE_FIELDS /* empty */
