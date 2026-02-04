@@ -502,7 +502,10 @@ static void tty_pty_partial_read_cb(uv_stream_t* stream,
 #endif  /* !defined(__ANDROID__) && !defined(_WIN32) */
 
 TEST_IMPL(tty_pty_partial) {
-#if !defined(__ANDROID__) && !defined(_WIN32)
+#if !defined(_AIX)        && \
+    !defined(__ANDROID__) && \
+    !defined(__MVS__)     && \
+    !defined(_WIN32)
   int master_fd, slave_fd;
   uv_tty_t master_tty;
   uv_thread_t tid;
