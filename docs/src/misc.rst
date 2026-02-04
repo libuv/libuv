@@ -522,6 +522,10 @@ API
     Gets the executable path. You *must* call `uv_setup_args` before calling
     this function.
 
+    Be careful in setuid executables. On some platforms the executable path
+    is an arbitrary string that is controlled by the user. On other platforms
+    environment variables are consulted that may be under control of the user.
+
 .. c:function:: int uv_cwd(char* buffer, size_t* size)
 
     Gets the current working directory, and stores it in `buffer`. If the
