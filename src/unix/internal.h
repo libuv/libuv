@@ -591,4 +591,6 @@ int uv__get_constrained_cpu(long long* quota);
 #define UV__KQUEUE_EVFILT_USER 0
 #endif
 
+extern char* uv_saved_argv0;
+
 #endif /* UV_UNIX_INTERNAL_H_ */
