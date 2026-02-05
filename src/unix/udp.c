@@ -1456,7 +1456,7 @@ exit:
 
 
 static void uv__udp_sendmsg(uv_udp_t* handle) {
-  static const int N = 20;
+  enum { N = 20 };
   struct sockaddr* addrs[N];
   unsigned int nbufs[N];
   uv_buf_t* bufs[N];
