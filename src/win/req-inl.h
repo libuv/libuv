@@ -35,7 +35,7 @@
   SET_REQ_STATUS((req), NTSTATUS_FROM_WIN32((error)))
 
 #define SET_REQ_NWRITTEN(req, nwritten)                                 \
-  (req)->u.io.overlapped.InternalHigh = (ULONG_PTR) (nwritten);
+  (req)->u.io.overlapped.InternalHigh = (nwritten);
 
 /* Note: used open-coded in UV_REQ_INIT() because of a circular dependency
  * between src/uv-common.h and src/win/internal.h.

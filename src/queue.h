@@ -87,13 +87,4 @@ static inline void uv__queue_remove(struct uv__queue* q) {
   q->next->prev = q->prev;
 }
 
-static inline int uv__queue_contains(const struct uv__queue* h,
-                                     const struct uv__queue* q) {
-  const struct uv__queue* p;
-  uv__queue_foreach(p, h)
-    if (p == q)
-      return 1;
-  return 0;
-}
-
 #endif /* QUEUE_H_ */

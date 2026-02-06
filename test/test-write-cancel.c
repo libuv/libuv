@@ -48,7 +48,8 @@ static void connection_cb(uv_stream_t* tcp, int status) {
   ASSERT_OK(status);
   ASSERT_OK(uv_tcp_init(tcp->loop, &incoming));
   ASSERT_OK(uv_accept(tcp, (uv_stream_t*) &incoming));
-  connected = 1;
+  connected++;
+  ASSERT_EQ(1, connected);
 }
 
 static void write_cb(uv_write_t* req, int status) {
@@ -123,7 +124,13 @@ TEST_IMPL(tcp_write_cancel) {
                            &client,
                            (struct sockaddr*) &addr,
                            connect_cb));
+  /* Set the send buffer size small to ensure that writes get queued in
+   * userspace rather than fitting entirely in the kernel's send buffer.
+   * Also set the receive buffer small so the receiver doesn't drain data
+   * and relieve backpressure. Note: Linux sets the actual buffer to twice
+   * the requested size. */
   ASSERT_OK(uv_send_buffer_size((uv_handle_t*) &client, &buffer_size));
+  ASSERT_OK(uv_recv_buffer_size((uv_handle_t*) &client, &buffer_size));
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
 

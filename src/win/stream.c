@@ -284,7 +284,6 @@ int uv_write_cancel(uv_write_t* req) {
        * is not applicable - the callback has already been queued. */
       return 0;
     default:
-      assert(0);
       return UV_EINVAL;
   }
 

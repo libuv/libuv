@@ -1409,20 +1409,24 @@ size_t uv_write_nwritten(const uv_write_t* req) {
 
 
 int uv_write_cancel(uv_write_t* req) {
+  struct uv__queue* q;
   uv_stream_t* stream;
 
   stream = req->handle;
 
-  /* Already completed, return success, callback will return success as well */
-  if (!uv__queue_contains(&stream->write_queue, &req->queue))
-    return 0;
+  /* N.B.: If the request already completed, we still return 0, but the callback
+    will not return ECANCELED - nothing to do here. */
+  uv__queue_foreach(q, &stream->write_queue) {
+    if (q == &req->queue) {
+      uv__queue_remove(&req->queue);
+      req->error = UV_ECANCELED;
 
-  uv__queue_remove(&req->queue);
-  req->error = UV_ECANCELED;
-
-  /* uv__write_callbacks will handle write_queue_size and freeing bufs. */
-  uv__queue_insert_tail(&stream->write_completed_queue, &req->queue);
-  uv__io_feed(stream->loop, &stream->io_watcher);
+      /* uv__write_callbacks will handle write_queue_size and freeing bufs. */
+      uv__queue_insert_tail(&stream->write_completed_queue, &req->queue);
+      uv__io_feed(stream->loop, &stream->io_watcher);
+      break;
+    }
+  }
 
   return 0;
 }
