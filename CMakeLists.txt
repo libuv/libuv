@@ -783,6 +783,11 @@ install(TARGETS uv_a EXPORT libuvConfig
 install(EXPORT libuvConfig
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv
 	NAMESPACE libuv::)
+write_basic_package_version_file(libuvConfigVersion.cmake
+                                 VERSION ${PACKAGE_VERSION}
+                                 COMPATIBILITY SameMajorVersion)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuvConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
 
 if(LIBUV_BUILD_SHARED)
   # The version in the filename is mirroring the behaviour of autotools.
