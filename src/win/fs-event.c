@@ -606,7 +606,7 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
     WCHAR path_buf[MAX_PATH];
     DWORD path_len = GetFinalPathNameByHandleW(handle->dir_handle,
                                                path_buf,
-                                               MAX_PATH,
+                                               ARRAY_SIZE(path_buf),
                                                FILE_NAME_NORMALIZED);
     
     if (path_len > 0 && path_len < MAX_PATH) {
