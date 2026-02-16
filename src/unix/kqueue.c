@@ -95,7 +95,7 @@ int uv__io_fork(uv_loop_t* loop) {
 
 
 int uv__io_check_fd(uv_loop_t* loop, int fd) {
-  struct kevent ev[2];
+  KEVENT_S ev[2];
   struct stat sb;
 #ifdef __APPLE__
   char path[MAXPATHLEN];
@@ -130,21 +130,21 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   }
 #endif
 
-  EV_SET(ev, fd, EVFILT_READ, EV_ADD, 0, 0, 0);
-  EV_SET(ev + 1, fd, EVFILT_READ, EV_DELETE, 0, 0, 0);
-  if (kevent(loop->backend_fd, ev, 2, NULL, 0, NULL))
+  SET_EVENT(ev, fd, EVFILT_READ, EV_ADD, 0);
+  SET_EVENT(ev + 1, fd, EVFILT_READ, EV_DELETE, 0);
+  if (KEVENT(loop->backend_fd, ev, 2, NULL, 0, 0, NULL))
     return UV__ERR(errno);
 
   return 0;
 }
 
 
-static void uv__kqueue_delete(int kqfd, const struct kevent *ev) {
-  struct kevent change;
+static void uv__kqueue_delete(int kqfd, const KEVENT_S *ev) {
+  KEVENT_S change;
 
-  EV_SET(&change, ev->ident, ev->filter, EV_DELETE, 0, 0, 0);
+  SET_EVENT(&change, ev->ident, ev->filter, EV_DELETE, 0);
 
-  if (0 == kevent(kqfd, &change, 1, NULL, 0, NULL))
+  if (0 == KEVENT(kqfd, &change, 1, NULL, 0, 0, NULL))
     return;
 
   if (errno == EBADF || errno == ENOENT)
@@ -156,8 +156,8 @@ static void uv__kqueue_delete(int kqfd, const struct kevent *ev) {
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   uv__loop_internal_fields_t* lfields;
-  struct kevent events[1024];
-  struct kevent* ev;
+  KEVENT_S events[1024];
+  KEVENT_S* ev;
   struct timespec spec;
   unsigned int nevents;
   unsigned int revents;
@@ -209,20 +209,20 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         op = EV_ADD | EV_ONESHOT; /* Stop the event from firing repeatedly. */
       }
 
-      EV_SET(events + nevents, w->fd, filter, op, fflags, 0, 0);
+      SET_EVENT(events + nevents, w->fd, filter, op, fflags);
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+        if (KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
           abort();
         nevents = 0;
       }
     }
 
     if ((w->events & POLLOUT) == 0 && (w->pevents & POLLOUT) != 0) {
-      EV_SET(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+      SET_EVENT(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+        if (KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
           abort();
         nevents = 0;
       }
@@ -235,13 +235,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
        * FreeBSD does not.
        * Refs: https://github.com/libuv/libuv/issues/3947
        */
-      EV_SET(events + nevents, w->fd, EVFILT_EXCEPT, EV_ADD, NOTE_OOB, 0, 0);
+      SET_EVENT(events + nevents, w->fd, EV_OOBAND, EV_ADD, NOTE_OOB);
 #else
-      EV_SET(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0, 0, 0);
+      SET_EVENT(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0);
 #endif
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (kevent(loop->backend_fd, events, nevents, NULL, 0, NULL))
+        if (KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
           abort();
         nevents = 0;
       }
@@ -276,11 +276,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     uv__io_poll_prepare(loop, pset, timeout);
-    nfds = kevent(loop->backend_fd,
+    nfds = KEVENT(loop->backend_fd,
                   events,
                   nevents,
                   events,
                   ARRAY_SIZE(events),
+                  timeout == 0 ? KEVENT_FLAG_IMMEDIATE : KEVENT_FLAG_NONE,
                   timeout == -1 ? NULL : &spec);
     uv__io_poll_check(loop, pset);
 
@@ -488,7 +489,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
 void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
-  struct kevent ev;
+  KEVENT_S ev;
   int events;
   const char* path;
 #if defined(F_GETPATH)
@@ -541,9 +542,9 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
          | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE;
 
-  EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags, 0, 0);
+  SET_EVENT(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags);
 
-  if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
+  if (KEVENT(loop->backend_fd, &ev, 1, NULL, 0, 0, NULL))
     abort();
 }
 

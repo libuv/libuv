@@ -276,8 +276,8 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
    * select(2) in separate thread for those fds
    */
 
-  struct kevent filter[1];
-  struct kevent events[1];
+  KEVENT_S filter[1];
+  KEVENT_S events[1];
   struct timespec timeout;
   uv__stream_select_t* s;
   int fds[2];
@@ -295,14 +295,14 @@ int uv__stream_try_select(uv_stream_t* stream, int* fd) {
     return UV__ERR(errno);
   }
 
-  EV_SET(&filter[0], *fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, 0);
+  SET_EVENT(&filter[0], *fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0);
 
   /* Use small timeout, because we only want to capture EINVALs */
   timeout.tv_sec = 0;
   timeout.tv_nsec = 1;
 
   do
-    ret = kevent(kq, filter, 1, events, 1, &timeout);
+    ret = KEVENT(kq, filter, 1, events, 1, 0, &timeout);
   while (ret == -1 && errno == EINTR);
 
   uv__close(kq);
