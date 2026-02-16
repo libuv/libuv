@@ -67,6 +67,7 @@ libuv_la_SOURCES += src/win/async.c \
                     src/win/error.c \
                     src/win/fs-event.c \
                     src/win/fs.c \
+                    src/win/fs-fd-hash-inl.h \
                     src/win/getaddrinfo.c \
                     src/win/getnameinfo.c \
                     src/win/handle.c \
