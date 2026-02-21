@@ -90,6 +90,13 @@ typedef struct {
 } uv__coalesced_write_t;
 
 
+static uv_write_t* uv__coalesced_write_user_req(uv_write_t* req) {
+  if (req->coalesced)
+    return container_of(req, uv__coalesced_write_t, req)->user_req;
+  return req;
+}
+
+
 static void eof_timer_init(uv_pipe_t* pipe);
 static void eof_timer_start(uv_pipe_t* pipe);
 static void eof_timer_stop(uv_pipe_t* pipe);
@@ -518,8 +525,10 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
       mode_info.Mode & FILE_SYNCHRONOUS_IO_NONALERT) {
     /* Non-overlapped pipe. */
     handle->flags |= UV_HANDLE_NON_OVERLAPPED_PIPE;
-    handle->pipe.conn.readfile_thread_handle = NULL;
-    InitializeCriticalSection(&handle->pipe.conn.readfile_thread_lock);
+    handle->pipe.conn.non_overlapped_write_active = NULL;
+    handle->pipe.conn.readfile_thread_handle = INVALID_HANDLE_VALUE;
+    handle->pipe.conn.writefile_thread_handle = INVALID_HANDLE_VALUE;
+    InitializeCriticalSection(&handle->pipe.conn.thread_lock);
   } else {
     /* Overlapped pipe.  Try to associate with IOCP. */
     if (CreateIoCompletionPort(pipeHandle,
@@ -679,7 +688,7 @@ void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
     }
 
     if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE)
-      DeleteCriticalSection(&handle->pipe.conn.readfile_thread_lock);
+      DeleteCriticalSection(&handle->pipe.conn.thread_lock);
   }
 
   if (handle->flags & UV_HANDLE_PIPESERVER) {
@@ -996,51 +1005,69 @@ error:
   return 0;
 }
 
+/* Cancel a synchronous I/O operation running in a thread pool thread.
+ * thread_ptr is the volatile handle set by the worker thread, and lock
+ * is held briefly to synchronize the handshake. */
+static void uv__pipe_cancel_synchronous_io(volatile HANDLE* thread_ptr,
+                                            CRITICAL_SECTION* lock) {
+  HANDLE thread;
+  HANDLE expected_invalid = INVALID_HANDLE_VALUE;
+
+  EnterCriticalSection(lock);
+
+  thread = *thread_ptr;
+  if (thread == NULL) {
+    /* The thread pool thread has not yet reached the point of blocking, we
+     * can pre-empt it here. However, we still need to wait for the thread
+     * to acknowledge the interrupt. Otherwise it could race with the next
+     * request. It does this by setting *thread_ptr back to NULL. */
+    *thread_ptr = INVALID_HANDLE_VALUE;
+    do {
+      LeaveCriticalSection(lock);
+      WaitOnAddress(thread_ptr, &expected_invalid, sizeof(*thread_ptr), INFINITE);
+      EnterCriticalSection(lock);
+    } while (*thread_ptr != NULL);
+    /* Finally set this back to INVALID_HANDLE_VALUE to retain the
+     * invariant that it'll be INVALID_HANDLE_VALUE on exit from this function. */
+    *thread_ptr = INVALID_HANDLE_VALUE;
+  } else {
+    /* Spin until the thread has acknowledged (by changing *thread_ptr)
+     * that it is past the point of blocking. */
+    while (thread != INVALID_HANDLE_VALUE) {
+      BOOL r = CancelSynchronousIo(thread);
+      assert(r || GetLastError() == ERROR_NOT_FOUND);
+      LeaveCriticalSection(lock);
+      SwitchToThread();
+      EnterCriticalSection(lock);
+      thread = *thread_ptr;
+    }
+  }
+
+  LeaveCriticalSection(lock);
+}
+
 
 void uv__pipe_interrupt_read(uv_pipe_t* handle) {
-  BOOL r;
-
   if (!(handle->flags & UV_HANDLE_READ_PENDING))
     return; /* No pending reads. */
-  if (handle->flags & UV_HANDLE_CANCELLATION_PENDING)
+  if (handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING)
     return; /* Already cancelled. */
   if (handle->handle == INVALID_HANDLE_VALUE)
     return; /* Pipe handle closed. */
 
   if (!(handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE)) {
     /* Cancel asynchronous read. */
-    r = CancelIoEx(handle->handle, &handle->read_req.u.io.overlapped);
+    BOOL r = CancelIoEx(handle->handle, &handle->read_req.u.io.overlapped);
     assert(r || GetLastError() == ERROR_NOT_FOUND);
     (void) r;
   } else {
-    /* Cancel synchronous read (which is happening in the thread pool). */
-    HANDLE thread;
-    volatile HANDLE* thread_ptr = &handle->pipe.conn.readfile_thread_handle;
-
-    EnterCriticalSection(&handle->pipe.conn.readfile_thread_lock);
-
-    thread = *thread_ptr;
-    if (thread == NULL) {
-      /* The thread pool thread has not yet reached the point of blocking, we
-       * can pre-empt it by setting thread_handle to INVALID_HANDLE_VALUE. */
-      *thread_ptr = INVALID_HANDLE_VALUE;
-
-    } else {
-      /* Spin until the thread has acknowledged (by setting the thread to
-       * INVALID_HANDLE_VALUE) that it is past the point of blocking. */
-      while (thread != INVALID_HANDLE_VALUE) {
-        r = CancelSynchronousIo(thread);
-        assert(r || GetLastError() == ERROR_NOT_FOUND);
-        SwitchToThread(); /* Yield thread. */
-        thread = *thread_ptr;
-      }
-    }
-
-    LeaveCriticalSection(&handle->pipe.conn.readfile_thread_lock);
+    uv__pipe_cancel_synchronous_io(
+        &handle->pipe.conn.readfile_thread_handle,
+        &handle->pipe.conn.thread_lock);
   }
 
   /* Set flag to indicate that read has been cancelled. */
-  handle->flags |= UV_HANDLE_CANCELLATION_PENDING;
+  handle->flags |= UV_HANDLE_READ_CANCELLATION_PENDING;
 }
 
 
@@ -1048,6 +1075,113 @@ void uv__pipe_read_stop(uv_pipe_t* handle) {
   handle->flags &= ~UV_HANDLE_READING;
   DECREASE_ACTIVE_COUNT(handle->loop, handle);
   uv__pipe_interrupt_read(handle);
+}
+
+
+/* Remove the element after prev from the non-overlapped write queue.
+ * prev must be a node in the queue. Returns the removed element. */
+static uv_write_t* uv__remove_non_overlapped_write_req_after(
+    uv_pipe_t* handle, uv_write_t* prev) {
+  uv_write_t* req;
+
+  req = (uv_write_t*) prev->next_req;
+  if (req == prev) {
+    /* Only element. */
+    handle->pipe.conn.non_overlapped_writes_tail = NULL;
+  } else {
+    prev->next_req = req->next_req;
+    if (req == handle->pipe.conn.non_overlapped_writes_tail)
+      handle->pipe.conn.non_overlapped_writes_tail = prev;
+  }
+  return req;
+}
+
+
+static uv_write_t* uv_remove_non_overlapped_write_req(uv_pipe_t* handle) {
+  if (handle->pipe.conn.non_overlapped_writes_tail == NULL)
+    return NULL;
+
+  return uv__remove_non_overlapped_write_req_after(
+      handle, handle->pipe.conn.non_overlapped_writes_tail);
+}
+
+
+/* Find and remove a specific request from the non-overlapped write queue.
+ * For coalesced writes, match against the user-facing req.
+ * Returns the actual queued req if found and removed, NULL otherwise. */
+static uv_write_t* uv__remove_specific_non_overlapped_write_req(
+    uv_pipe_t* handle, uv_write_t* target) {
+  uv_write_t* tail;
+  uv_write_t* prev;
+  uv_write_t* curr;
+
+  tail = handle->pipe.conn.non_overlapped_writes_tail;
+  if (tail == NULL)
+    return NULL;
+
+  prev = tail;
+  curr = (uv_write_t*) tail->next_req;
+  do {
+    if (uv__coalesced_write_user_req(curr) == target)
+      return uv__remove_non_overlapped_write_req_after(handle, prev);
+
+    prev = curr;
+    curr = (uv_write_t*) curr->next_req;
+  } while (prev != tail);
+
+  return NULL;
+}
+
+
+int uv__pipe_write_cancel_non_overlapped(uv_pipe_t* handle, uv_write_t* req) {
+  uv_write_t* queued_req;
+
+  assert(handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE);
+  assert(!(handle->flags & UV_HANDLE_BLOCKING_WRITES));
+
+  /* On the thread pool - send the cancellation signal. */
+  if (handle->pipe.conn.non_overlapped_write_active != NULL &&
+      uv__coalesced_write_user_req(
+          handle->pipe.conn.non_overlapped_write_active) == req) {
+    /* N.B.: It's possible to end up here multiple times if `req` is cancelled
+     * again after an initial cancellation, but before the completion is processed.
+     * This is harmless - uv__pipe_cancel_synchronous_io will see that the thread
+     * has concluded and do nothing. */
+    uv__pipe_cancel_synchronous_io(
+        &handle->pipe.conn.writefile_thread_handle,
+        &handle->pipe.conn.thread_lock);
+    return 0;
+  }
+
+  /* If it's in the queue, remove and complete it as cancelled. */
+  queued_req = uv__remove_specific_non_overlapped_write_req(handle, req);
+  if (queued_req != NULL) {
+    SET_REQ_ERROR(queued_req, ERROR_OPERATION_ABORTED);
+    SET_REQ_NWRITTEN(queued_req, 0);
+    uv__insert_pending_req(handle->loop, (uv_req_t*) queued_req);
+    return 0;
+  }
+
+  /* Already completed (including previously cancelled). */
+  return 0;
+}
+
+/* Cancel all active and pending non-overlapped writes. */
+static void uv__pipe_flush_non_overlapped_writes(uv_pipe_t* handle) {
+  uv_write_t* req;
+
+  /* Cancel the active write if there is one. */
+  if (handle->pipe.conn.non_overlapped_write_active != NULL)
+    uv__pipe_cancel_synchronous_io(
+        &handle->pipe.conn.writefile_thread_handle,
+        &handle->pipe.conn.thread_lock);
+
+  /* Drain the entire queue. */
+  while ((req = uv_remove_non_overlapped_write_req(handle)) != NULL) {
+    SET_REQ_ERROR(req, ERROR_OPERATION_ABORTED);
+    SET_REQ_NWRITTEN(req, 0);
+    uv__insert_pending_req(handle->loop, (uv_req_t*) req);
+  }
 }
 
 
@@ -1095,6 +1229,15 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
 
   if ((handle->flags & UV_HANDLE_CONNECTION)
       && handle->handle != INVALID_HANDLE_VALUE) {
+    if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+      /* The non-overlapped writer thread reads handle->handle. To avoid
+       * the possibility of a stale value, we must shoot it down now before we
+       * close the handle. While we're at it, cancel the whole queue, to
+       * avoid putting things on the thread pool only for them to come straight
+       * back with an invalid handle error. */
+      uv__pipe_flush_non_overlapped_writes(handle);
+    }
+
     /* This will eventually destroy the write queue for us too. */
     close_pipe(handle);
   }
@@ -1239,22 +1382,16 @@ int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
 }
 
 
-static DWORD WINAPI uv_pipe_zero_readfile_thread_proc(void* arg) {
-  uv_read_t* req = (uv_read_t*) arg;
-  uv_pipe_t* handle = (uv_pipe_t*) req->data;
-  uv_loop_t* loop = handle->loop;
-  volatile HANDLE* thread_ptr = &handle->pipe.conn.readfile_thread_handle;
-  CRITICAL_SECTION* lock = &handle->pipe.conn.readfile_thread_lock;
+/* Register the current thread for cancellation via CancelSynchronousIo.
+ * Returns 0 on success, or a Windows error code on failure (including
+ * ERROR_OPERATION_ABORTED if pre-empted by uv__pipe_cancel_synchronous_io).
+ * On success, the caller must call uv__pipe_end_synchronous_io after the
+ * blocking operation. On failure, the caller must not. */
+static DWORD uv__pipe_begin_synchronous_io(volatile HANDLE* thread_ptr,
+                                            CRITICAL_SECTION* lock,
+                                            HANDLE* thread_out) {
   HANDLE thread;
-  DWORD bytes;
-  DWORD err;
 
-  assert(req->type == UV_READ);
-  assert(handle->type == UV_NAMED_PIPE);
-
-  err = 0;
-
-  /* Create a handle to the current thread. */
   if (!DuplicateHandle(GetCurrentProcess(),
                        GetCurrentThread(),
                        GetCurrentProcess(),
@@ -1262,46 +1399,74 @@ static DWORD WINAPI uv_pipe_zero_readfile_thread_proc(void* arg) {
                        0,
                        FALSE,
                        DUPLICATE_SAME_ACCESS)) {
-    err = GetLastError();
-    goto out1;
+    /* Even if we failed here, we still need to synchronize */
+    DWORD err = GetLastError();
+    EnterCriticalSection(lock);
+    *thread_ptr = *thread_ptr == INVALID_HANDLE_VALUE ? NULL : INVALID_HANDLE_VALUE;
+    LeaveCriticalSection(lock);
+    WakeByAddressSingle((HANDLE*) thread_ptr);
+    return err;
   }
 
-  /* The lock needs to be held when thread handle is modified. */
   EnterCriticalSection(lock);
   if (*thread_ptr == INVALID_HANDLE_VALUE) {
-    /* uv__pipe_interrupt_read() cancelled reading before we got here. */
-    err = ERROR_OPERATION_ABORTED;
-  } else {
-    /* Let main thread know which worker thread is doing the blocking read. */
-    assert(*thread_ptr == NULL);
-    *thread_ptr = thread;
+    /* Cancelled before we got here. */
+    /* Acknowledge the cancellation and wake the waiting canceller. */
+    *thread_ptr = NULL;
+    LeaveCriticalSection(lock);
+    WakeByAddressSingle((HANDLE*) thread_ptr);
+    CloseHandle(thread);
+    return ERROR_OPERATION_ABORTED;
   }
+  assert(*thread_ptr == NULL);
+  *thread_ptr = thread;
   LeaveCriticalSection(lock);
 
-  if (err)
-    goto out2;
+  *thread_out = thread;
+  return 0;
+}
 
-  /* Block the thread until data is available on the pipe, or the read is
-   * cancelled. */
+
+/* Deregister the current thread after a blocking operation and synchronize
+ * with any in-progress cancellation. */
+static void uv__pipe_end_synchronous_io(volatile HANDLE* thread_ptr,
+                                         CRITICAL_SECTION* lock,
+                                         HANDLE thread) {
+  /* Acquire the lock, set the thread handle to INVALID_HANDLE_VALUE to signal
+   * completion, then release. This synchronizes with the cancellation spin
+   * loop which releases the lock around SwitchToThread(). */
+  EnterCriticalSection(lock);
+  assert(thread == *thread_ptr);
+  *thread_ptr = INVALID_HANDLE_VALUE;
+  LeaveCriticalSection(lock);
+
+  CloseHandle(thread);
+}
+
+
+static DWORD WINAPI uv_pipe_zero_readfile_thread_proc(void* arg) {
+  uv_read_t* req = (uv_read_t*) arg;
+  uv_pipe_t* handle = (uv_pipe_t*) req->data;
+  uv_loop_t* loop = handle->loop;
+  volatile HANDLE* thread_ptr = &handle->pipe.conn.readfile_thread_handle;
+  CRITICAL_SECTION* lock = &handle->pipe.conn.thread_lock;
+  HANDLE thread;
+  DWORD bytes;
+  DWORD err;
+
+  assert(req->type == UV_READ);
+  assert(handle->type == UV_NAMED_PIPE);
+
+  err = uv__pipe_begin_synchronous_io(thread_ptr, lock, &thread);
+  if (err)
+    goto done;
+
   if (!ReadFile(handle->handle, &uv_zero_, 0, &bytes, NULL))
     err = GetLastError();
 
-  /* Let the main thread know the worker is past the point of blocking. */
-  assert(thread == *thread_ptr);
-  *thread_ptr = INVALID_HANDLE_VALUE;
+  uv__pipe_end_synchronous_io(thread_ptr, lock, thread);
 
-  /* Briefly acquire the mutex. Since the main thread holds the lock while it
-   * is spinning trying to cancel this thread's I/O, we will block here until
-   * it stops doing that. */
-  EnterCriticalSection(lock);
-  LeaveCriticalSection(lock);
-
-out2:
-  /* Close the handle to the current thread. */
-  CloseHandle(thread);
-
-out1:
-  /* Set request status and post a completion record to the IOCP. */
+done:
   if (err)
     SET_REQ_ERROR(req, err);
   else
@@ -1314,14 +1479,24 @@ out1:
 
 static DWORD WINAPI uv_pipe_writefile_thread_proc(void* parameter) {
   int result;
+  HANDLE thread;
   DWORD bytes;
+  DWORD err;
   uv_write_t* req = (uv_write_t*) parameter;
   uv_pipe_t* handle = (uv_pipe_t*) req->handle;
   uv_loop_t* loop = handle->loop;
+  volatile HANDLE* thread_ptr = &handle->pipe.conn.writefile_thread_handle;
+  CRITICAL_SECTION* lock = &handle->pipe.conn.thread_lock;
 
   assert(req != NULL);
   assert(req->type == UV_WRITE);
   assert(handle->type == UV_NAMED_PIPE);
+
+  bytes = 0;
+
+  err = uv__pipe_begin_synchronous_io(thread_ptr, lock, &thread);
+  if (err)
+    goto done;
 
   result = WriteFile(handle->handle,
                      req->write_buffer.base,
@@ -1329,9 +1504,14 @@ static DWORD WINAPI uv_pipe_writefile_thread_proc(void* parameter) {
                      &bytes,
                      NULL);
 
-  if (!result) {
-    SET_REQ_ERROR(req, GetLastError());
-  }
+  if (!result)
+    err = GetLastError();
+
+  uv__pipe_end_synchronous_io(thread_ptr, lock, thread);
+
+done:
+  if (err)
+    SET_REQ_ERROR(req, err);
   SET_REQ_NWRITTEN(req, bytes);
 
   POST_COMPLETION_FOR_REQ(loop, req);
@@ -1389,6 +1569,7 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
   req = &handle->read_req;
 
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    assert(handle->pipe.conn.readfile_thread_handle == INVALID_HANDLE_VALUE);
     handle->pipe.conn.readfile_thread_handle = NULL; /* Reset cancellation. */
     if (!QueueUserWorkItem(&uv_pipe_zero_readfile_thread_proc,
                            req,
@@ -1483,30 +1664,13 @@ static void uv__insert_non_overlapped_write_req(uv_pipe_t* handle,
 }
 
 
-static uv_write_t* uv_remove_non_overlapped_write_req(uv_pipe_t* handle) {
-  uv_write_t* req;
-
-  if (handle->pipe.conn.non_overlapped_writes_tail) {
-    req = (uv_write_t*)handle->pipe.conn.non_overlapped_writes_tail->next_req;
-
-    if (req == handle->pipe.conn.non_overlapped_writes_tail) {
-      handle->pipe.conn.non_overlapped_writes_tail = NULL;
-    } else {
-      handle->pipe.conn.non_overlapped_writes_tail->next_req =
-        req->next_req;
-    }
-
-    return req;
-  } else {
-    /* queue empty */
-    return NULL;
-  }
-}
-
-
 static void uv__queue_non_overlapped_write(uv_pipe_t* handle) {
   uv_write_t* req = uv_remove_non_overlapped_write_req(handle);
   if (req) {
+    assert(handle->pipe.conn.non_overlapped_write_active == NULL);
+    assert(handle->pipe.conn.writefile_thread_handle == INVALID_HANDLE_VALUE);
+    handle->pipe.conn.non_overlapped_write_active = req;
+    handle->pipe.conn.writefile_thread_handle = NULL; /* Reset cancellation. */
     if (!QueueUserWorkItem(&uv_pipe_writefile_thread_proc,
                            req,
                            WT_EXECUTELONGFUNCTION)) {
@@ -1643,13 +1807,17 @@ static int uv__pipe_write_data(uv_loop_t* loop,
     REGISTER_HANDLE_REQ(loop, handle);
     handle->reqs_pending++;
     handle->stream.conn.write_reqs_pending++;
-    POST_COMPLETION_FOR_REQ(loop, req);
+    uv__insert_pending_req(loop, (uv_req_t*)req);
     return 0;
   } else if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     req->write_buffer = write_buf;
     uv__insert_non_overlapped_write_req(handle, req);
     if (handle->stream.conn.write_reqs_pending == 0) {
       uv__queue_non_overlapped_write(handle);
+      /* There shouldn't have been any queued writes before, so we should have
+       * dispatched the request we just added. Sanity check the state
+       * synchronization here. */
+      assert(handle->pipe.conn.non_overlapped_writes_tail == NULL);
     }
 
     /* Request queued by the kernel. */
@@ -2124,7 +2292,7 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
   DWORD bytes_requested;
   assert(handle->type == UV_NAMED_PIPE);
 
-  handle->flags &= ~(UV_HANDLE_READ_PENDING | UV_HANDLE_CANCELLATION_PENDING);
+  handle->flags &= ~(UV_HANDLE_READ_PENDING | UV_HANDLE_READ_CANCELLATION_PENDING);
   DECREASE_PENDING_REQ_COUNT(handle);
   eof_timer_stop(handle);
 
@@ -2202,6 +2370,20 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   err = GET_REQ_ERROR(req);
 
+  /* For non-overlapped pipes, manage the write queue before unwrapping
+   * coalesced writes, since the coalesced wrapper is what's in the queue.
+   *
+   * If this request was the active write (dispatched to the thread pool),
+   * clear the active slot and dispatch the next queued write.  Queue-cancelled
+   * writes (removed by uv__pipe_write_cancel or flush) were never dispatched,
+   * so they must not trigger another dispatch. */
+  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
+    if (req == handle->pipe.conn.non_overlapped_write_active) {
+      handle->pipe.conn.non_overlapped_write_active = NULL;
+      uv__queue_non_overlapped_write(handle);
+    }
+  }
+
   /* If this was a coalesced write, extract pointer to the user_provided
    * uv_write_t structure so we can pass the expected pointer to the callback,
    * then free the heap-allocated write req. */
@@ -2219,12 +2401,6 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
   }
 
   handle->stream.conn.write_reqs_pending--;
-
-  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE &&
-      handle->pipe.conn.non_overlapped_writes_tail) {
-    assert(handle->stream.conn.write_reqs_pending > 0);
-    uv__queue_non_overlapped_write(handle);
-  }
 
   if (handle->stream.conn.write_reqs_pending == 0 &&
       uv__is_stream_shutting(handle))

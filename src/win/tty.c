@@ -997,13 +997,13 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
                       &buf);
     }
   } else {
-    if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING) &&
+    if (!(handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING) &&
         req->u.io.overlapped.InternalHigh != 0) {
       /* Read successful. TODO: read unicode, convert to utf-8 */
       DWORD bytes = req->u.io.overlapped.InternalHigh;
       handle->read_cb((uv_stream_t*) handle, bytes, &buf);
     }
-    handle->flags &= ~UV_HANDLE_CANCELLATION_PENDING;
+    handle->flags &= ~UV_HANDLE_READ_CANCELLATION_PENDING;
   }
 
   /* Wait for more input events. */
@@ -1086,13 +1086,13 @@ int uv__tty_read_stop(uv_tty_t* handle) {
     if (!WriteConsoleInputW(handle->handle, &record, 1, &written)) {
       return GetLastError();
     }
-  } else if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING)) {
+  } else if (!(handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING)) {
     /* Cancel line-buffered read if not already pending */
     err = uv__cancel_read_console(handle);
     if (err)
       return err;
 
-    handle->flags |= UV_HANDLE_CANCELLATION_PENDING;
+    handle->flags |= UV_HANDLE_READ_CANCELLATION_PENDING;
   }
 
   return 0;
@@ -1105,7 +1105,7 @@ static int uv__cancel_read_console(uv_tty_t* handle) {
   DWORD err = 0;
   LONG status;
 
-  assert(!(handle->flags & UV_HANDLE_CANCELLATION_PENDING));
+  assert(!(handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING));
 
   /* Hold the output lock during the cancellation, to ensure that further
      writes don't interfere with the screen state. It will be the ReadConsole

@@ -376,9 +376,11 @@ typedef struct {
       ULONG_PTR result; /* overlapped.Internal is reused to hold the result */\
       HANDLE pipeHandle;                                                      \
       DWORD duplex_flags;                                                     \
-      WCHAR* name;                                                             \
+      WCHAR* name;                                                            \
     } connect;                                                                \
   } u;                                                                        \
+  /* Singly linked list of pending reqs. For non-overlapped pipes, also used  \
+   * to keep track of reqs no yet submitted to the thread pool */             \
   struct uv_req_s* next_req;                                                  \
   union {                                                                     \
     void* reserved2[1];                                                       \
@@ -478,7 +480,10 @@ typedef struct {
 
 #define uv_pipe_connection_fields                                             \
   uv_timer_t* eof_timer;                                                      \
-  uv_write_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
+  /* TODO: This is here for ABI compat - remove in 2.x. */                    \
+  uintptr_t dummy[sizeof(uv_write_t) / sizeof(uintptr_t) - 2];                \
+  uv_write_t* non_overlapped_write_active;                                    \
+  volatile HANDLE writefile_thread_handle;                                    \
   DWORD ipc_remote_pid;                                                       \
   union {                                                                     \
     uint32_t payload_remaining;                                               \
@@ -487,7 +492,7 @@ typedef struct {
   struct uv__queue ipc_xfer_queue;                                            \
   int ipc_xfer_queue_length;                                                  \
   uv_write_t* non_overlapped_writes_tail;                                     \
-  CRITICAL_SECTION readfile_thread_lock;                                      \
+  CRITICAL_SECTION thread_lock;                                               \
   volatile HANDLE readfile_thread_handle;
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \

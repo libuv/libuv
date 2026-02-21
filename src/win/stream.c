@@ -266,16 +266,14 @@ int uv_write_cancel(uv_write_t* req) {
 
   switch (stream->type) {
     case UV_TCP:
-      handle = (HANDLE)((uv_tcp_t*)stream)->socket;
+      handle = (HANDLE) ((uv_tcp_t*) stream)->socket;
       break;
     case UV_NAMED_PIPE:
-      handle = ((uv_pipe_t*)stream)->handle;
+      handle = ((uv_pipe_t*) stream)->handle;
 
       if ((stream->flags & (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) ==
           UV_HANDLE_NON_OVERLAPPED_PIPE) {
-        /* Non-overlapped, non-blocking writes run on the threadpool and we
-           do not have a good way to cancel them. */
-        return UV_ENOTSUP;
+        return uv__pipe_write_cancel_non_overlapped((uv_pipe_t*) stream, req);
       }
 
       break;

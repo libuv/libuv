@@ -112,6 +112,8 @@ TEST_DECLARE   (tcp_write_in_a_row)
 TEST_DECLARE   (tcp_try_write_error)
 TEST_DECLARE   (tcp_write_queue_order)
 TEST_DECLARE   (tcp_write_cancel)
+TEST_DECLARE   (pipe_write_cancel)
+TEST_DECLARE   (pipe_write_cancel_all)
 TEST_DECLARE   (tcp_write_nwritten)
 TEST_DECLARE   (pipe_write_nwritten)
 TEST_DECLARE   (tcp_open)
@@ -727,6 +729,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (tcp_write_queue_order)
   TEST_ENTRY  (tcp_write_cancel)
+  TEST_ENTRY  (pipe_write_cancel)
+  TEST_ENTRY  (pipe_write_cancel_all)
   TEST_ENTRY  (tcp_write_nwritten)
   TEST_ENTRY  (pipe_write_nwritten)
 
