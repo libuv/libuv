@@ -1436,7 +1436,7 @@ int uv_try_write2(uv_stream_t* stream,
   if (stream->connect_req != NULL || stream->write_queue_size != 0)
     return UV_EAGAIN;
 
-  err = uv__check_before_write(stream, nbufs, NULL);
+  err = uv__check_before_write(stream, nbufs, send_handle);
   if (err < 0)
     return err;
 
