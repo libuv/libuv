@@ -634,6 +634,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-socket-buffer-size.c
        test/test-spawn.c
        test/test-stdio-over-pipes.c
+       test/test-pipe-read-cancel-race.c
        test/test-strscpy.c
        test/test-strtok.c
        test/test-tcp-alloc-cb-fail.c
