@@ -473,7 +473,7 @@ UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
 UV_UNUSED(static char* uv__basename_r(const char* path)) {
   char* s;
 
-  s = strrchr(path, '/');
+  s = strrchr((char*) path, '/');
   if (s == NULL)
     return (char*) path;
 
