@@ -94,7 +94,7 @@ static void connect_cb(uv_connect_t* req, int status) {
   /* Cancel the trailing writes which should be queued */
   cancel_count = 0;
   for (i = REQ_COUNT - 5; i < REQ_COUNT; i++) {
-    r = uv_write_cancel(&write_reqs[i]);
+    r = uv_cancel((uv_req_t*) &write_reqs[i]);
     ASSERT_OK(r);
     cancel_count++;
   }
@@ -244,7 +244,7 @@ TEST_IMPL(pipe_write_cancel) {
 
   /* Cancel the trailing writes which should be queued. */
   for (i = REQ_COUNT - 5; i < REQ_COUNT; i++)
-    ASSERT_OK(uv_write_cancel(&pipe_cancel_write_reqs[i]));
+    ASSERT_OK(uv_cancel((uv_req_t*) &pipe_cancel_write_reqs[i]));
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
 
@@ -273,7 +273,7 @@ TEST_IMPL(pipe_write_cancel_all) {
    * currently blocking in the thread pool (on Windows). Both cases are
    * exercised by cancelling every request in order. */
   for (i = 0; i < REQ_COUNT; i++)
-    uv_write_cancel(&pipe_cancel_write_reqs[i]);
+    uv_cancel((uv_req_t*) &pipe_cancel_write_reqs[i]);
 
   /* Close the handles so the event loop can drain. */
   uv_close((uv_handle_t*) &pipe_cancel_writer, close_cb);

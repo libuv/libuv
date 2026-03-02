@@ -1408,7 +1408,7 @@ size_t uv_write_nwritten(const uv_write_t* req) {
 }
 
 
-int uv_write_cancel(uv_write_t* req) {
+int uv__write_cancel(uv_write_t* req) {
   struct uv__queue* q;
   uv_stream_t* stream;
 

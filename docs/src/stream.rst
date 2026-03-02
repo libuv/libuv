@@ -218,33 +218,17 @@ API
 
     .. versionadded:: 1.42.0
 
-.. c:function:: int uv_write_cancel(uv_write_t* req)
-
-    Cancel a pending write request. The write callback will still be called,
-    with ``UV_ECANCELED`` status, or with the normal result if the write
-    completed before cancellation took effect.
-
-    Fully cancelled writes (where no bytes were written) may have their
-    callbacks called out of order with respect to other writes on the same
-    stream. Partial writes are completed in order.
-
-    Returns 0 on success. Currently expected to succeed for all valid write
-    requests, but may return an error code in future libuv versions.
-
-    Use :c:func:`uv_write_nwritten` from the write callback to determine how
-    many bytes were written before cancellation.
-
-    .. versionadded:: 1.52.0
-
 .. c:function:: size_t uv_write_nwritten(const uv_write_t* req)
 
     Returns the number of bytes written by a write request. Only valid when
     called from within the write callback (:c:type:`uv_write_cb`).
 
     This is primarily useful when a write has been cancelled via
-    :c:func:`uv_write_cancel` and the callback receives ``UV_ECANCELED``
+    :c:func:`uv_cancel` and the callback receives ``UV_ECANCELED``
     status, to determine how many bytes were actually written before
-    cancellation.
+    cancellation. Note that cancelled writes may still succeed or fail
+    with other errors if the kernel finished processing the write before
+    the cancellation took effect.
 
     .. versionadded:: 1.52.0
 

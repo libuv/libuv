@@ -149,6 +149,8 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
 void uv__loop_close(uv_loop_t* loop);
 
+int uv__write_cancel(uv_write_t* req);
+
 int uv__read_start(uv_stream_t* stream,
                    uv_alloc_cb alloc_cb,
                    uv_read_cb read_cb);

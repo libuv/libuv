@@ -575,26 +575,13 @@ UV_EXTERN int uv_try_write2(uv_stream_t* handle,
  * write callback (uv_write_cb). The value is undefined if called at
  * other times.
  *
- * This is primarily useful when a write has been cancelled via uv_write_cancel()
+ * This is primarily useful when a write has been cancelled via uv_cancel()
  * and the callback receives UV_ECANCELED status, to determine how many
- * bytes were actually written before cancellation.
+ * bytes were actually written before cancellation. Note that cancelled
+ * writes may still succeed or fail with other errors if the kernel finished
+ * processing the write before the cancellation took effect.
  */
 UV_EXTERN size_t uv_write_nwritten(const uv_write_t* req);
-
-/*
- * Cancel a pending write request.
- *
- * The write callback will still be called, with UV_ECANCELED status, or with
- * the normal result if the write completed before cancellation took effect.
- *
- * Fully cancelled writes (where no bytes were written) may have their
- * callbacks called out of order with respect to other writes on the same
- * stream. Partial writes are completed in order.
- *
- * Returns 0 on success. Currently expected to succeed for all valid write
- * requests, but may return an error code in future libuv versions.
- */
-UV_EXTERN int uv_write_cancel(uv_write_t* req);
 
 /* uv_write_t is a subclass of uv_req_t. */
 struct uv_write_s {
