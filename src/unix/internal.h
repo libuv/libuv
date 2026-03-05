@@ -451,7 +451,7 @@ int uv__iou_fs_unlink(uv_loop_t* loop, uv_fs_t* req);
 int uv___stream_fd(const uv_stream_t* handle);
 #define uv__stream_fd(handle) (uv___stream_fd((const uv_stream_t*) (handle)))
 
-#if defined(EV64) && defined(__LP64__) && !defined(__i386__)
+#if defined(__LP64__) && !defined(__i386__)
 #define SET_EVENT(a, b, c, d, e) EV_SET64(a, b, c, d, e, 0, 0, 0, 0)
 #define KEVENT(a, b, c, d, e, f, g) kevent64(a, b, c, d, e, f, g)
 #define KEVENT_S struct kevent64_s

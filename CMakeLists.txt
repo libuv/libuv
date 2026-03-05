@@ -46,11 +46,6 @@ option(MSAN "Enable MemorySanitizer (MSan)" OFF)
 option(TSAN "Enable ThreadSanitizer (TSan)" OFF)
 option(UBSAN "Enable UndefinedBehaviorSanitizer (UBSan)" OFF)
 
-option(USE_EV64 "Enable event64 support with fast return" OFF)
-if(APPLE AND USE_EV64)
-  add_compile_definitions(EV64)
-endif()
-
 if(MSAN AND NOT CMAKE_C_COMPILER_ID MATCHES "AppleClang|Clang")
   message(SEND_ERROR "MemorySanitizer requires clang. Try again with -DCMAKE_C_COMPILER=clang")
 endif()
