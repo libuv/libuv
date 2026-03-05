@@ -1639,7 +1639,7 @@ done:
 
 int uv_resident_set_memory(size_t* rss) {
   char buf[1024];
-  char* s;
+  const char* s;
   long val;
   int rc;
   int i;
@@ -1900,7 +1900,7 @@ nocpuinfo:
     c = *cpus + cpu;
 
     (*ci)[i++] = (uv_cpu_info_t) {
-      .model     = (char*) p + c->model * sizeof(*model),
+      .model     = p + c->model * sizeof(*model),
       .speed     = c->freq / 1000,
       /* Note: sysconf(_SC_CLK_TCK) is fixed at 100 Hz,
        * therefore the multiplier is always 1000/100 = 10.
@@ -2371,10 +2371,10 @@ next:
   return 0;
 }
 
-static char* uv__cgroup1_find_cpu_controller(const char* cgroup,
+static const char* uv__cgroup1_find_cpu_controller(const char* cgroup,
                                              int* cgroup_size) {
   /* Seek to the cpu controller line. */
-  char* cgroup_cpu = strstr((char*) cgroup, ":cpu,");
+  const char* cgroup_cpu = strstr(cgroup, ":cpu,");
 
   if (cgroup_cpu != NULL) {
     /* Skip the controller prefix to the start of the cgroup path. */
@@ -2391,7 +2391,7 @@ static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
   char path[256];
   char buf[1024];
   int cgroup_size;
-  char* cgroup_cpu;
+  const char* cgroup_cpu;
   long long period_length;
   long long quota_per_period;
 
