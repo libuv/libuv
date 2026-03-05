@@ -1209,7 +1209,7 @@ struct uv_cpu_times_s {
 };
 
 struct uv_cpu_info_s {
-  char* model;
+  const char* model;
   int speed;
   struct uv_cpu_times_s cpu_times;
 };
