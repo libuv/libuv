@@ -175,8 +175,9 @@ int uv__stdio_create(uv_loop_t* loop,
 
   count = options->stdio_count;
 
-  if (count < 0 || count > 255) {
-    /* Only support FDs 0-255 */
+  if (count < 0 ||
+      (size_t) count > (SIZE_MAX - sizeof(int)) /
+                        (sizeof(unsigned char) + sizeof(uintptr_t))) {
     return ERROR_NOT_SUPPORTED;
   } else if (count < 3) {
     /* There should always be at least 3 stdio handles. */
