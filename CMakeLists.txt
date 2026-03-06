@@ -701,6 +701,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-send-immediate.c
        test/test-udp-sendmmsg-error.c
        test/test-udp-send-unreachable.c
+       test/test-udp-recv-cb-close-pollerr.c
        test/test-udp-recvmsg-unreachable-error.c
        test/test-udp-try-send.c
        test/test-udp-recv-in-a-row.c
