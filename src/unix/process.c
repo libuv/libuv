@@ -993,6 +993,10 @@ int uv_spawn(uv_loop_t* loop,
   process->status = 0;
 
   stdio_count = options->stdio_count;
+  if (stdio_count < 0 || (size_t) stdio_count > SIZE_MAX / sizeof(*pipes)) {
+    err = UV_EINVAL;
+    goto error;
+  }
   if (stdio_count < 3)
     stdio_count = 3;
 
