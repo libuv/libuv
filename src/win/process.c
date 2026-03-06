@@ -546,6 +546,10 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
 
   /* Adjust for potential quotes. Also assume the worst-case scenario that
    * every character needs escaping, so we need twice as much space. */
+  if (dst_len > (SIZE_MAX / sizeof(WCHAR) - arg_count * 2) / 2) {
+    err = UV_EINVAL;
+    goto error;
+  }
   dst_len = dst_len * 2 + arg_count * 2;
 
   /* Allocate buffer for the final command line. */
