@@ -675,6 +675,8 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
 
   /* second pass: copy to UTF-16 environment block */
   len = env_block_count * sizeof(WCHAR*);
+  if (env_len > (SIZE_MAX - len) / sizeof(WCHAR))
+    return UV_EINVAL;
   p = uv__malloc(len + env_len * sizeof(WCHAR));
   if (p == NULL) {
     return UV_ENOMEM;
@@ -728,6 +730,10 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   }
 
   /* final pass: copy, in sort order, and inserting required variables */
+  if (env_len > SIZE_MAX / sizeof(WCHAR) - 1) {
+    uv__free(p);
+    return UV_EINVAL;
+  }
   dst = uv__malloc((1+env_len) * sizeof(WCHAR));
   if (!dst) {
     uv__free(p);
