@@ -186,8 +186,15 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   }
 
   /* Allocate buffer for output */
-  result = result_pos = (WCHAR*)uv__malloc(sizeof(WCHAR) *
-      (cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1));
+  {
+    size_t alloc_len = cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1;
+    if (alloc_len > SIZE_MAX / sizeof(WCHAR) ||
+        alloc_len < cwd_len /* overflow in the addition */) {
+      SetLastError(ERROR_OUTOFMEMORY);
+      return NULL;
+    }
+    result = result_pos = (WCHAR*)uv__malloc(sizeof(WCHAR) * alloc_len);
+  }
 
   /* Copy cwd */
   wcsncpy(result_pos, cwd, cwd_len);
