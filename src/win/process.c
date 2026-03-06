@@ -757,13 +757,21 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
       /* missing required var */
       len = required_vars_value_len[i];
       if (len) {
+        size_t remaining;
         wcscpy(ptr, required_vars[i].wide_eq);
         ptr += required_vars[i].len;
+        remaining = env_len - (ptr - dst);
+        if (remaining > (size_t) INT_MAX)
+          remaining = (size_t) INT_MAX;
         var_size = GetEnvironmentVariableW(required_vars[i].wide,
                                            ptr,
-                                           (int) (env_len - (ptr - dst)));
-        if (var_size != (DWORD) (len - 1)) { /* TODO: handle race condition? */
-          uv_fatal_error(GetLastError(), "GetEnvironmentVariableW");
+                                           (int) remaining);
+        if (var_size == 0 || var_size >= remaining) {
+          /* Env var was deleted or grew since we measured it; skip it. */
+          ptr -= required_vars[i].len;
+          len = 0;
+        } else {
+          len = var_size + 1;
         }
       }
       i++;
