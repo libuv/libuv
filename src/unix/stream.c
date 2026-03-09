@@ -929,11 +929,16 @@ static void uv__write_callbacks(uv_stream_t* stream) {
 
 
 static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
+  uv_read_cb read_cb;
+
   stream->flags |= UV_HANDLE_READ_EOF;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
   uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
-  stream->read_cb(stream, UV_EOF, buf);
+  read_cb = stream->read_cb;
+  stream->read_cb = NULL;
+  stream->alloc_cb = NULL;
+  read_cb(stream, UV_EOF, buf);
 }
 
 
