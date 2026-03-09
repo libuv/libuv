@@ -555,7 +555,7 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
                                       NULL);
 
   if (read_console_success) {
-    read_bytes = bytes;
+    read_bytes = bytes - 1;
     uv_utf16_to_wtf8(utf16,
                      read_chars,
                      &handle->tty.rd.read_line_buffer.base,
