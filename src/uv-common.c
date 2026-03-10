@@ -928,7 +928,7 @@ int uv_read_start(uv_stream_t* stream,
   if (stream->flags & UV_HANDLE_CLOSING)
     return UV_EINVAL;
 
-  if (stream->read_cb != NULL)
+  if (stream->flags & UV_HANDLE_READING)
     return UV_EALREADY;
 
   if (!(stream->flags & UV_HANDLE_READABLE))
