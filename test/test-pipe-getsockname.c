@@ -26,6 +26,7 @@
 #include <string.h>
 
 #ifndef _WIN32
+# include <sys/socket.h>
 # include <unistd.h>  /* close */
 #else
 # include <fcntl.h>
@@ -382,8 +383,8 @@ TEST_IMPL(pipe_getsockname_long_path) {
   uv_loop_t* loop;
   size_t len;
   int r;
-  char path[254];
-  char name[254];
+  char path[SOCK_MAXADDRLEN + 1];
+  char name[SOCK_MAXADDRLEN + 1];
 
   loop = uv_default_loop();
   ASSERT_NOT_NULL(loop);
