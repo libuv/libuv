@@ -259,7 +259,8 @@ API
     Initializes the process handle and starts the process. If the process is
     successfully spawned, this function will return 0. Otherwise, the
     negative error code corresponding to the reason it couldn't spawn is
-    returned.
+    returned. Note that either way you must eventually call :c:func:`uv_close`
+    to close the handle again.
 
     Possible reasons for failing to spawn would include (but not be limited to)
     the file to execute not existing, not having permissions to use the setuid or
