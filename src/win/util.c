@@ -627,7 +627,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
     uv__convert_utf16_to_utf8(cpu_brand,
                               cpu_brand_size / sizeof(WCHAR),
-                              &(cpu_info->model));
+                              (char**) &(cpu_info->model));
   }
 
   uv__free(sppi);
