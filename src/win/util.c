@@ -639,12 +639,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
  error:
   if (cpu_infos != NULL) {
-    /* This is safe because the cpu_infos array is zeroed on allocation. */
-    for (i = 0; i < cpu_count; i++)
-      uv__free(cpu_infos[i].model);
+    uv_free_cpu_info(cpu_infos, cpu_count);
   }
-
-  uv__free(cpu_infos);
   uv__free(sppi);
 
   return uv_translate_sys_error(err);
