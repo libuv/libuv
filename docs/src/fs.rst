@@ -166,8 +166,8 @@ Data types
 .. c:type:: uv_dir_t
 
     Data type used for streaming directory iteration.
-    Used by :c:func:`uv_fs_opendir()`, :c:func:`uv_fs_readdir()`, and
-    :c:func:`uv_fs_closedir()`. `dirents` represents a user provided array of
+    Used by :c:func:`uv_fs_opendir`, :c:func:`uv_fs_readdir`, and
+    :c:func:`uv_fs_closedir`. `dirents` represents a user provided array of
     `uv_dirent_t`s used to hold results. `nentries` is the user provided maximum
     array size of `dirents`.
 
@@ -391,7 +391,7 @@ API
       create a copy-on-write reflink. If the underlying platform does not
       support copy-on-write, or an error occurs while attempting to use
       copy-on-write, a fallback copy mechanism based on
-      :c:func:`uv_fs_sendfile()` is used.
+      :c:func:`uv_fs_sendfile` is used.
     - `UV_FS_COPYFILE_FICLONE_FORCE`: If present, `uv_fs_copyfile()` will
       attempt to create a copy-on-write reflink. If the underlying platform does
       not support copy-on-write, or an error occurs while attempting to use

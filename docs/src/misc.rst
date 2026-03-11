@@ -281,13 +281,13 @@ API
     do so automatically when it is unloaded but it can be instructed to perform
     cleanup manually.
 
-    .. warning:: Only call :c:func:`uv_library_shutdown()` once.
+    .. warning:: Only call :c:func:`uv_library_shutdown` once.
 
-    .. warning:: Don't call :c:func:`uv_library_shutdown()` when there are
+    .. warning:: Don't call :c:func:`uv_library_shutdown` when there are
                  still event loops or I/O requests active.
 
     .. warning:: Don't call libuv functions after calling
-                 :c:func:`uv_library_shutdown()`.
+                 :c:func:`uv_library_shutdown`.
 
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 
