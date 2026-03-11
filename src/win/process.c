@@ -891,11 +891,15 @@ int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
              const uv_process_options_t* options) {
   int i;
-  int err = 0;
-  WCHAR* path = NULL, *alloc_path = NULL;
+  int err;
   BOOL result;
-  WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
-         *env = NULL, *cwd = NULL;
+  WCHAR* alloc_path = NULL;
+  WCHAR* application = NULL;
+  WCHAR* application_path = NULL;
+  WCHAR* arguments = NULL;
+  WCHAR* cwd = NULL;
+  WCHAR* env = NULL;
+  WCHAR* path;
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;
   DWORD process_flags, cwd_len;
@@ -906,12 +910,13 @@ int uv_spawn(uv_loop_t* loop,
   child_stdio_buffer = NULL;
 
   if (options->flags & (UV_PROCESS_SETGID | UV_PROCESS_SETUID)) {
-    return UV_ENOTSUP;
+    err = UV_ENOTSUP;
+    goto done;
   }
 
-  if (options->file == NULL ||
-      options->args == NULL) {
-    return UV_EINVAL;
+  if (options->file == NULL || options->args == NULL) {
+    err = UV_EINVAL;
+    goto done;
   }
 
   assert(options->file != NULL);
@@ -926,26 +931,26 @@ int uv_spawn(uv_loop_t* loop,
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);
   if (err)
-    goto done_uv;
+    goto done;
 
   err = make_program_args(
       options->args,
       options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS,
       &arguments);
   if (err)
-    goto done_uv;
+    goto done;
 
   if (options->env) {
      err = make_program_env(options->env, &env);
      if (err)
-       goto done_uv;
+       goto done;
   }
 
   if (options->cwd) {
     /* Explicit cwd */
     err = uv__utf8_to_utf16_alloc(options->cwd, &cwd);
     if (err)
-      goto done_uv;
+      goto done;
 
     cwd_len = wcslen(cwd);
   } else {
@@ -954,19 +959,19 @@ int uv_spawn(uv_loop_t* loop,
 
     cwd_len = GetCurrentDirectoryW(0, NULL);
     if (!cwd_len) {
-      err = GetLastError();
+      err = uv_translate_sys_error(GetLastError());
       goto done;
     }
 
     cwd = (WCHAR*) uv__malloc(cwd_len * sizeof(WCHAR));
     if (cwd == NULL) {
-      err = ERROR_OUTOFMEMORY;
+      err = UV_ENOMEM;
       goto done;
     }
 
     r = GetCurrentDirectoryW(cwd_len, cwd);
     if (r == 0 || r >= cwd_len) {
-      err = GetLastError();
+      err = uv_translate_sys_error(GetLastError());
       goto done;
     }
   }
@@ -975,7 +980,7 @@ int uv_spawn(uv_loop_t* loop,
   if (cwd_len >= MAX_PATH) {
     cwd_len = GetShortPathNameW(cwd, cwd, cwd_len);
     if (cwd_len == 0) {
-      err = GetLastError();
+      err = uv_translate_sys_error(GetLastError());
       goto done;
     }
   }
@@ -989,22 +994,24 @@ int uv_spawn(uv_loop_t* loop,
     if (path_len != 0) {
       alloc_path = (WCHAR*) uv__malloc(path_len * sizeof(WCHAR));
       if (alloc_path == NULL) {
-        err = ERROR_OUTOFMEMORY;
+        err = UV_ENOMEM;
         goto done;
       }
       path = alloc_path;
 
       r = GetEnvironmentVariableW(L"PATH", path, path_len);
       if (r == 0 || r >= path_len) {
-        err = GetLastError();
+        err = uv_translate_sys_error(GetLastError());
         goto done;
       }
     }
   }
 
   err = uv__stdio_create(loop, options, &child_stdio_buffer);
-  if (err)
+  if (err) {
+    err = uv_translate_sys_error(err);
     goto done;
+  }
 
   application_path = search_path(application,
                                  cwd,
@@ -1012,7 +1019,7 @@ int uv_spawn(uv_loop_t* loop,
                                  options->flags);
   if (application_path == NULL) {
     /* Not found. */
-    err = ERROR_FILE_NOT_FOUND;
+    err = UV_ENOENT;
     goto done;
   }
 
@@ -1075,7 +1082,7 @@ int uv_spawn(uv_loop_t* loop,
                      &startup,
                      &info)) {
     /* CreateProcessW failed. */
-    err = GetLastError();
+    err = uv_translate_sys_error(GetLastError());
     goto done;
   }
 
@@ -1103,7 +1110,7 @@ int uv_spawn(uv_loop_t* loop,
 
   if (process_flags & CREATE_SUSPENDED) {
     if (ResumeThread(info.hThread) == ((DWORD)-1)) {
-      err = GetLastError();
+      err = uv_translate_sys_error(GetLastError());
       TerminateProcess(info.hProcess, 1);
       goto done;
     }
@@ -1140,25 +1147,25 @@ int uv_spawn(uv_loop_t* loop,
   /* Make the handle active. It will remain active until the exit callback is
    * made or the handle is closed, whichever happens first. */
   uv__handle_start(process);
-
-  goto done_uv;
+  err = 0;
 
   /* Cleanup, whether we succeeded or failed. */
- done:
-  err = uv_translate_sys_error(err);
-
- done_uv:
+done:
+  uv__free(alloc_path);
   uv__free(application);
   uv__free(application_path);
   uv__free(arguments);
   uv__free(cwd);
   uv__free(env);
-  uv__free(alloc_path);
 
   if (child_stdio_buffer != NULL) {
     /* Clean up child stdio handles. */
     uv__stdio_destroy(child_stdio_buffer);
     child_stdio_buffer = NULL;
+  }
+
+  if (err != 0) {
+    uv__queue_remove(&process->handle_queue);
   }
 
   return err;
