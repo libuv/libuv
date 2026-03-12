@@ -286,9 +286,6 @@ TEST_IMPL(utf16_to_wtf8_exact_fill) {
 
     /* NUL must land inside the buffer; canary byte must be untouched. */
     ASSERT_EQ((unsigned char) mem[buf_size], 0xAA);
-
-    free(utf16);
-    free(mem);
   }
 
   return 0;
