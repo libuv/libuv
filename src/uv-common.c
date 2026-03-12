@@ -34,6 +34,7 @@
 # include <malloc.h> /* malloc */
 #else
 # include <net/if.h> /* if_nametoindex */
+# include <sched.h>  /* sched_yield() */
 # include <sys/un.h> /* AF_UNIX, sockaddr_un */
 #endif
 
@@ -884,6 +885,128 @@ uv_loop_t* uv_loop_new(void) {
   }
 
   return loop;
+}
+
+
+/* Pause the CPU briefly to avoid burning power in spin-wait loops. */
+static void uv__cpu_relax(void) {
+#if defined(_WIN32)
+  YieldProcessor();
+#elif defined(__i386__) || defined(__x86_64__)
+  __asm__ __volatile__ ("rep; nop" ::: "memory");  /* a.k.a. PAUSE */
+#elif (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__)
+  __asm__ __volatile__ ("isb" ::: "memory");
+#elif !defined(__APPLE__) && (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))
+  __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
+#elif (defined(__ppc__) || defined(__ppc64__)) && defined(__APPLE__)
+  __asm volatile ("" : : : "memory");
+#elif defined(__riscv) && __riscv_xlen == 64
+  __asm__ volatile(".insn 0x0100000f" ::: "memory");  /* FENCE */
+#endif
+}
+
+
+/* Atomic helpers for the async pending field.
+ * Bit 0: pending flag (notification sent or handle closing).
+ * Bits 1+: busy counter (2 per in-flight uv_async_send call). */
+#ifdef _MSC_VER
+
+static int uv__pending_cas(int* p, int* expected, int desired) {
+  LONG old;
+  old = InterlockedCompareExchange((LONG volatile*) p, (LONG) desired, (LONG) *expected);
+  if (old == (LONG) *expected) return 1;
+  *expected = (int) old;
+  return 0;
+}
+
+#define uv__pending_load(p)       ((int) *(volatile int*)(p))
+#define uv__pending_fetch_add(p, v) \
+  ((void) InterlockedExchangeAdd((LONG volatile*)(p), (LONG)(v)))
+#define uv__pending_fetch_or(p, v) \
+  ((int) InterlockedOr((LONG volatile*)(p), (LONG)(v)))
+#define uv__pending_fetch_and(p, v) \
+  ((int) InterlockedAnd((LONG volatile*)(p), (LONG)(v)))
+
+#else  /* GCC / Clang / MinGW — use C11 stdatomic */
+
+static int uv__pending_cas(int* p, int* expected, int desired) {
+  return atomic_compare_exchange_weak_explicit((_Atomic int*) p,
+                                               expected,
+                                               desired,
+                                               memory_order_relaxed,
+                                               memory_order_relaxed);
+}
+
+#define uv__pending_load(p) \
+  atomic_load_explicit((_Atomic int*)(p), memory_order_relaxed)
+#define uv__pending_fetch_add(p, v) \
+  ((void) atomic_fetch_add_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
+#define uv__pending_fetch_or(p, v) \
+  ((int) atomic_fetch_or_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
+#define uv__pending_fetch_and(p, v) \
+  ((int) atomic_fetch_and_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
+
+#endif  /* _MSC_VER */
+
+
+int uv_async_send(uv_async_t* handle) {
+  int current;
+
+  /* Do a cheap read first. */
+  current = uv__pending_load(&handle->pending);
+  if (current & 1)
+    return 0;
+
+  /* Atomically set the pending flag (bit 0) and increment the busy counter
+   * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once,
+   * so both operations appear atomic to other threads. */
+  while (!uv__pending_cas(&handle->pending, &current, current + 3))
+    if (current & 1)
+      return 0;
+
+  /* Wake up the event loop. The notification write establishes a
+   * happens-before relationship with the reader via the kernel. */
+  uv__async_notify(handle);
+
+  /* Decrement the busy counter (bits 1+). */
+  uv__pending_fetch_add(&handle->pending, -2);
+
+  return 0;
+}
+
+
+int uv__async_spin(uv_async_t* handle) {
+  int old;
+  int i;
+
+  /* Atomically set the pending flag (bit 0) so no new notifications will be
+   * sent after this function returns.  Save whether the flag was already set
+   * so callers can determine whether a notification is in flight. */
+  old = uv__pending_fetch_or(&handle->pending, 1);
+
+  for (;;) {
+    /* 997 is not completely chosen at random. It's a prime number, acyclic by
+     * nature, and should therefore hopefully dampen sympathetic resonance.
+     */
+    for (i = 0; i < 997; i++) {
+      /* Wait until the busy counter (bits 1+) is zero. */
+      if ((uv__pending_load(&handle->pending) & ~1) == 0)
+        return old & 1;
+
+      /* Another thread is busy with this handle; spin until it's done. */
+      uv__cpu_relax();
+    }
+
+    /* Yield the CPU. We may have preempted the other thread while it's
+     * inside the critical section and if it's running on the same CPU
+     * as us, we'll just burn CPU cycles until the end of our time slice.
+     */
+#ifdef _WIN32
+    SwitchToThread();
+#else
+    sched_yield();
+#endif
+  }
 }
 
 
