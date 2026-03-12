@@ -265,8 +265,8 @@ TEST_IMPL(utf16_to_wtf8_exact_fill) {
   for (i = 0; i < ARRAY_SIZE(sizes); i++) {
     size_t buf_size = sizes[i];
     size_t num_chars = buf_size / 3;
-    char* mem = malloc(buf_size + 1);
-    uint16_t* utf16 = malloc(num_chars * sizeof(*utf16));
+    char mem[200];
+    uint16_t utf16[200];
     char* target;
     size_t target_len;
     size_t j;
