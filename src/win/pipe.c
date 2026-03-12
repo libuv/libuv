@@ -560,7 +560,7 @@ void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t *req) {
 
   assert(handle->flags & UV_HANDLE_CONNECTION);
   assert(req != NULL);
-  assert(handle->stream.conn.write_reqs_pending == 0);
+  assert(uv__queue_empty(&handle->stream.conn.write_queue));
   SET_REQ_SUCCESS(req);
 
   if (handle->flags & UV_HANDLE_CLOSING) {
@@ -1600,13 +1600,13 @@ static int uv__pipe_write_data(uv_loop_t* loop,
 
     REGISTER_HANDLE_REQ(loop, handle);
     handle->reqs_pending++;
-    handle->stream.conn.write_reqs_pending++;
+    uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
     POST_COMPLETION_FOR_REQ(loop, req);
     return 0;
   } else if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     req->write_buffer = write_buf;
     uv__insert_non_overlapped_write_req(handle, req);
-    if (handle->stream.conn.write_reqs_pending == 0) {
+    if (uv__queue_empty(&handle->stream.conn.write_queue)) {
       uv__queue_non_overlapped_write(handle);
     }
 
@@ -1648,7 +1648,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
 
     REGISTER_HANDLE_REQ(loop, handle);
     handle->reqs_pending++;
-    handle->stream.conn.write_reqs_pending++;
+    uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
     return 0;
   } else {
     result = WriteFile(handle->handle,
@@ -1681,7 +1681,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
 
   REGISTER_HANDLE_REQ(loop, handle);
   handle->reqs_pending++;
-  handle->stream.conn.write_reqs_pending++;
+  uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
 
   return 0;
 }
@@ -2158,6 +2158,7 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
   /* If this was a coalesced write, extract pointer to the user_provided
    * uv_write_t structure so we can pass the expected pointer to the callback,
    * then free the heap-allocated write req. */
+  uv__queue_remove(&req->queue);
   if (req->coalesced) {
     uv__coalesced_write_t* coalesced_write =
         container_of(req, uv__coalesced_write_t, req);
@@ -2168,15 +2169,13 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     req->cb(req, uv_translate_sys_error(err));
   }
 
-  handle->stream.conn.write_reqs_pending--;
-
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE &&
       handle->pipe.conn.non_overlapped_writes_tail) {
-    assert(handle->stream.conn.write_reqs_pending > 0);
+    assert(!uv__queue_empty(&handle->stream.conn.write_queue));
     uv__queue_non_overlapped_write(handle);
   }
 
-  if (handle->stream.conn.write_reqs_pending == 0 &&
+  if (uv__queue_empty(&handle->stream.conn.write_queue) &&
       uv__is_stream_shutting(handle))
     uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
 

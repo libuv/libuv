@@ -2166,7 +2166,7 @@ int uv__tty_write(uv_loop_t* loop,
   req->cb = cb;
 
   handle->reqs_pending++;
-  handle->stream.conn.write_reqs_pending++;
+  uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
   REGISTER_HANDLE_REQ(loop, handle);
 
   req->u.io.queued_bytes = 0;
@@ -2188,7 +2188,7 @@ int uv__tty_try_write(uv_tty_t* handle,
                       unsigned int nbufs) {
   DWORD error;
 
-  if (handle->stream.conn.write_reqs_pending > 0)
+  if (!uv__queue_empty(&handle->stream.conn.write_queue))
     return UV_EAGAIN;
 
   if (uv__tty_write_bufs(handle, bufs, nbufs, &error))
@@ -2211,8 +2211,8 @@ void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
 
-  handle->stream.conn.write_reqs_pending--;
-  if (handle->stream.conn.write_reqs_pending == 0 &&
+  uv__queue_remove(&req->queue);
+  if (uv__queue_empty(&handle->stream.conn.write_queue) &&
       uv__is_stream_shutting(handle))
     uv__process_tty_shutdown_req(loop,
                                  handle,
@@ -2237,7 +2237,7 @@ void uv__tty_close(uv_tty_t* handle) {
 
 
 void uv__process_tty_shutdown_req(uv_loop_t* loop, uv_tty_t* stream, uv_shutdown_t* req) {
-  assert(stream->stream.conn.write_reqs_pending == 0);
+  assert(uv__queue_empty(&stream->stream.conn.write_queue));
   assert(req);
 
   stream->stream.conn.shutdown_req = NULL;
