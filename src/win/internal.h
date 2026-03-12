@@ -201,6 +201,7 @@ void uv__once_init(void);
 /*
  * Async watcher
  */
+void uv__async_stop(uv_loop_t* loop);
 void uv__async_close(uv_loop_t* loop, uv_async_t* handle);
 void uv__async_endgame(uv_loop_t* loop, uv_async_t* handle);
 
