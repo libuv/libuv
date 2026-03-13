@@ -2204,6 +2204,7 @@ void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
   handle->write_queue_size -= req->u.io.queued_bytes;
   UNREGISTER_HANDLE_REQ(loop, handle);
+  uv__queue_remove(&req->queue);
 
   if (req->cb) {
     err = GET_REQ_ERROR(req);
@@ -2211,7 +2212,6 @@ void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
 
-  uv__queue_remove(&req->queue);
   if (uv__queue_empty(&handle->stream.conn.write_queue) &&
       uv__is_stream_shutting(handle))
     uv__process_tty_shutdown_req(loop,

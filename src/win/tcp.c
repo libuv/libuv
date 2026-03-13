@@ -1083,7 +1083,7 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
-
+  uv__queue_remove(&req->queue);
   UNREGISTER_HANDLE_REQ(loop, handle);
 
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
@@ -1106,7 +1106,6 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
     req->cb(req, err);
   }
 
-  uv__queue_remove(&req->queue);
   if (uv__queue_empty(&handle->stream.conn.write_queue)) {
     if (handle->flags & UV_HANDLE_CLOSING) {
       closesocket(handle->socket);
