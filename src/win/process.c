@@ -186,8 +186,15 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   }
 
   /* Allocate buffer for output */
-  result = result_pos = (WCHAR*)uv__malloc(sizeof(WCHAR) *
-      (cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1));
+  {
+    size_t alloc_len = cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1;
+    if (alloc_len > SIZE_MAX / sizeof(WCHAR) ||
+        alloc_len < cwd_len /* overflow in the addition */) {
+      SetLastError(ERROR_OUTOFMEMORY);
+      return NULL;
+    }
+    result = result_pos = (WCHAR*)uv__malloc(sizeof(WCHAR) * alloc_len);
+  }
 
   /* Copy cwd */
   wcsncpy(result_pos, cwd, cwd_len);
@@ -546,6 +553,10 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
 
   /* Adjust for potential quotes. Also assume the worst-case scenario that
    * every character needs escaping, so we need twice as much space. */
+  if (dst_len > (SIZE_MAX / sizeof(WCHAR) - arg_count * 2) / 2) {
+    err = UV_EINVAL;
+    goto error;
+  }
   dst_len = dst_len * 2 + arg_count * 2;
 
   /* Allocate buffer for the final command line. */
@@ -671,6 +682,8 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
 
   /* second pass: copy to UTF-16 environment block */
   len = env_block_count * sizeof(WCHAR*);
+  if (env_len > (SIZE_MAX - len) / sizeof(WCHAR))
+    return UV_EINVAL;
   p = uv__malloc(len + env_len * sizeof(WCHAR));
   if (p == NULL) {
     return UV_ENOMEM;
@@ -724,6 +737,10 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
   }
 
   /* final pass: copy, in sort order, and inserting required variables */
+  if (env_len > SIZE_MAX / sizeof(WCHAR) - 1) {
+    uv__free(p);
+    return UV_EINVAL;
+  }
   dst = uv__malloc((1+env_len) * sizeof(WCHAR));
   if (!dst) {
     uv__free(p);
@@ -747,13 +764,21 @@ int make_program_env(char* env_block[], WCHAR** dst_ptr) {
       /* missing required var */
       len = required_vars_value_len[i];
       if (len) {
+        size_t remaining;
         wcscpy(ptr, required_vars[i].wide_eq);
         ptr += required_vars[i].len;
+        remaining = env_len - (ptr - dst);
+        if (remaining > (size_t) INT_MAX)
+          remaining = (size_t) INT_MAX;
         var_size = GetEnvironmentVariableW(required_vars[i].wide,
                                            ptr,
-                                           (int) (env_len - (ptr - dst)));
-        if (var_size != (DWORD) (len - 1)) { /* TODO: handle race condition? */
-          uv_fatal_error(GetLastError(), "GetEnvironmentVariableW");
+                                           (int) remaining);
+        if (var_size == 0 || var_size >= remaining) {
+          /* Env var was deleted or grew since we measured it; skip it. */
+          ptr -= required_vars[i].len;
+          len = 0;
+        } else {
+          len = var_size + 1;
         }
       }
       i++;
