@@ -86,24 +86,20 @@ static int maybe_new_socket(uv_tcp_t* handle, int domain, unsigned int flags) {
   int sockfd;
   int err;
 
-  if (domain == AF_UNSPEC)
-    goto out;
+  if (domain == AF_UNSPEC) {
+	  handle->flags |= flags;
+	  return 0;
+  }
 
   sockfd = uv__stream_fd(handle);
   if (sockfd == -1)
     return new_socket(handle, domain, flags);
 
-  if (!(flags & UV_HANDLE_BOUND))
-    goto out;
-
-  if (handle->flags & UV_HANDLE_BOUND)
-    goto out;  /* Already bound to a port. */
-
-  err = maybe_bind_socket(sockfd);
-  if (err)
-    return err;
-
-out:
+  if((flags & UV_HANDLE_BOUND) && !(handle->flags & UV_HANDLE_BOUND)) {
+	  err = maybe_bind_socket(sockfd);
+	  if(err)
+		  return err;
+  }
 
   handle->flags |= flags;
   return 0;
