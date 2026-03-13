@@ -198,8 +198,6 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloccb,
 
 int uv__udp_recv_stop(uv_udp_t* handle);
 
-void uv__fs_poll_close(uv_fs_poll_t* handle);
-
 int uv__getaddrinfo_translate_error(int sys_err);    /* EAI_* error. */
 
 enum uv__work_kind {

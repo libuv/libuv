@@ -29,8 +29,7 @@ CLEANFILES =
 lib_LTLIBRARIES = libuv.la
 libuv_la_CFLAGS = $(AM_CFLAGS)
 libuv_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined -version-info 2:0:0
-libuv_la_SOURCES = src/fs-poll.c \
-                   src/heap-inl.h \
+libuv_la_SOURCES = src/heap-inl.h \
                    src/idna.c \
                    src/idna.h \
                    src/inet.c \
@@ -177,7 +176,6 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-fail-always.c \
                          test/test-fs-copyfile.c \
                          test/test-fs-event.c \
-                         test/test-fs-poll.c \
                          test/test-fs.c \
                          test/test-fs-readdir.c \
                          test/test-fs-fd-hash.c \
