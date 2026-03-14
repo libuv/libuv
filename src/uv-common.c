@@ -492,6 +492,9 @@ int uv_udp_send(uv_udp_send_t* req,
                 uv_udp_send_cb send_cb) {
   int addrlen;
 
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
+
   addrlen = uv__udp_check_before_send(handle, addr);
   if (addrlen < 0)
     return addrlen;
@@ -505,6 +508,9 @@ int uv_udp_try_send(uv_udp_t* handle,
                     unsigned int nbufs,
                     const struct sockaddr* addr) {
   int addrlen;
+
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
 
   addrlen = uv__udp_check_before_send(handle, addr);
   if (addrlen < 0)
@@ -520,11 +526,17 @@ int uv_udp_try_send2(uv_udp_t* handle,
                      unsigned int nbufs[/*count*/],
                      struct sockaddr* addrs[/*count*/],
                      unsigned int flags) {
+  unsigned int i;
+
   if (count < 1)
     return UV_EINVAL;
 
   if (flags != 0)
     return UV_EINVAL;
+
+  for (i = 0; i < count; i++)
+    if (nbufs[i] < 1 || nbufs[i] > 1024 * 1024)
+      return UV_EINVAL;
 
   if (handle->send_queue_count > 0)
     return UV_EAGAIN;
