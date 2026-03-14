@@ -201,6 +201,7 @@ TEST_DECLARE   (udp_reuseport)
 #ifndef _WIN32
 TEST_DECLARE   (udp_send_unix)
 #endif
+TEST_DECLARE   (udp_send_fail_nbufs)
 TEST_DECLARE   (udp_sendmmsg_error)
 TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
@@ -829,6 +830,7 @@ TASK_LIST_START
   TEST_ENTRY  (udp_multicast_join)
   TEST_ENTRY  (udp_multicast_join6)
   TEST_ENTRY  (udp_multicast_ttl)
+  TEST_ENTRY  (udp_send_fail_nbufs)
   TEST_ENTRY  (udp_sendmmsg_error)
   TEST_ENTRY  (udp_try_send)
   TEST_ENTRY  (udp_recv_in_a_row)

@@ -697,6 +697,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-open.c
        test/test-udp-options.c
        test/test-udp-send-and-recv.c
+       test/test-udp-send-fail.c
        test/test-udp-send-hang-loop.c
        test/test-udp-send-immediate.c
        test/test-udp-sendmmsg-error.c
