@@ -1077,6 +1077,7 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
 
 void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
     uv_write_t* req) {
+  //uv_shutdown_t* shutdown_req;
   int err;
 
   assert(handle->type == UV_TCP);
@@ -1111,10 +1112,23 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
       closesocket(handle->socket);
       handle->socket = INVALID_SOCKET;
     }
-    if (uv__is_stream_shutting(handle))
-      uv__process_tcp_shutdown_req(loop,
-                                   handle,
-                                   handle->stream.conn.shutdown_req);
+//    if (uv__is_stream_shutting(handle)) {
+//      shutdown_req = handle->stream.conn.shutdown_req;
+//      if (shutdown_req->next_req == (uv_req_t*)shutdown_req) {
+//        assert(loop->pending_reqs_tail == (uv_req_t*)shutdown_req);
+//        loop->pending_reqs_tail = NULL;
+//      } else {
+//        uv_req_t** pending;
+//	pending = &loop->pending_reqs_tail;
+//        while ((*pending)->next_req != (uv_req_t*)shutdown_req) {
+//          pending = &(*pending)->next_req;
+//          assert(*pending != loop->pending_reqs_tail);
+//        }
+//        *pending = shutdown_req->next_req;
+//      }
+//      shutdown_req->next_req = NULL;
+//      uv__process_tcp_shutdown_req(loop, handle, shutdown_req);
+//    }
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
