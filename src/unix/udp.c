@@ -820,7 +820,7 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
 
   mreq.ipv6mr_multiaddr = multicast_addr->sin6_addr;
 
-  err = uv__udp_membership_optname(membersip, IPV6_ADD_MEMBERSHIP,
+  err = uv__udp_membership_optname(membership, IPV6_ADD_MEMBERSHIP,
                                    IPV6_DROP_MEMBERSHIP, &optname);
   if (err)
     return err;
