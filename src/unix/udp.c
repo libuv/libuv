@@ -743,6 +743,20 @@ int uv__udp_try_send(uv_udp_t* handle,
   return uv__count_bufs(bufs, nbufs);
 }
 
+static int uv__udp_membership_optname(uv_membership membership, int join_opt,
+                                      int leave_opt, int* optname) {
+
+  switch (membership) {
+    case UV_JOIN_GROUP:
+      *optname = join_opt;
+      return 0;
+    case UV_LEAVE_GROUP:
+      *optname = leave_opt;
+      return 0;
+    default:
+      return UV_EINVAL;
+  }
+}
 
 static int uv__udp_set_membership4(uv_udp_t* handle,
                                    const struct sockaddr_in* multicast_addr,
@@ -764,16 +778,10 @@ static int uv__udp_set_membership4(uv_udp_t* handle,
 
   mreq.imr_multiaddr.s_addr = multicast_addr->sin_addr.s_addr;
 
-  switch (membership) {
-  case UV_JOIN_GROUP:
-    optname = IP_ADD_MEMBERSHIP;
-    break;
-  case UV_LEAVE_GROUP:
-    optname = IP_DROP_MEMBERSHIP;
-    break;
-  default:
-    return UV_EINVAL;
-  }
+  err = uv__udp_membership_optname(membership, IP_ADD_MEMBERSHIP,
+                                   IP_DROP_MEMBERSHIP, &optname);
+  if (err)
+    return err;
 
   if (setsockopt(handle->io_watcher.fd,
                  IPPROTO_IP,
@@ -798,6 +806,7 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
   int optname;
   struct ipv6_mreq mreq;
   struct sockaddr_in6 addr6;
+  int err;
 
   memset(&mreq, 0, sizeof mreq);
 
@@ -811,16 +820,10 @@ static int uv__udp_set_membership6(uv_udp_t* handle,
 
   mreq.ipv6mr_multiaddr = multicast_addr->sin6_addr;
 
-  switch (membership) {
-  case UV_JOIN_GROUP:
-    optname = IPV6_ADD_MEMBERSHIP;
-    break;
-  case UV_LEAVE_GROUP:
-    optname = IPV6_DROP_MEMBERSHIP;
-    break;
-  default:
-    return UV_EINVAL;
-  }
+  err = uv__udp_membership_optname(membersip, IPV6_ADD_MEMBERSHIP,
+                                   IPV6_DROP_MEMBERSHIP, &optname);
+  if (err)
+    return err;
 
   if (setsockopt(handle->io_watcher.fd,
                  IPPROTO_IPV6,
