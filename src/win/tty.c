@@ -2208,7 +2208,9 @@ void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
   if (req->cb) {
     err = GET_REQ_ERROR(req);
+    handle->flags |= UV_HANDLE_IN_WRITE_CB;
     req->cb(req, uv_translate_sys_error(err));
+    handle->flags &= ~UV_HANDLE_IN_WRITE_CB;
   }
 
 

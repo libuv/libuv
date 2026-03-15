@@ -2166,7 +2166,9 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv__free(coalesced_write);
   }
   if (req->cb) {
+    handle->flags |= UV_HANDLE_IN_WRITE_CB;
     req->cb(req, uv_translate_sys_error(err));
+    handle->flags &= ~UV_HANDLE_IN_WRITE_CB;
   }
 
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE &&

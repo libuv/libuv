@@ -1103,7 +1103,9 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
       /* use UV_ECANCELED for consistency with Unix */
       err = UV_ECANCELED;
     }
+    handle->flags |= UV_HANDLE_IN_WRITE_CB;
     req->cb(req, err);
+    handle->flags &= ~UV_HANDLE_IN_WRITE_CB;
   }
 
   if (uv__queue_empty(&handle->stream.conn.write_queue)) {

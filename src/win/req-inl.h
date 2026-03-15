@@ -155,9 +155,7 @@ INLINE static void uv__process_reqs(uv_loop_t* loop) {
         break;
 
       case UV_WRITE:
-        ((uv_write_t*) req)->handle->flags |= UV_HANDLE_IN_WRITE_CB;
         DELEGATE_STREAM_REQ(loop, (uv_write_t*) req, write, handle);
-        ((uv_write_t*) req)->handle->flags &= ~UV_HANDLE_IN_WRITE_CB;
         break;
 
       case UV_ACCEPT:
