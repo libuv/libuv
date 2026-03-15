@@ -38,7 +38,8 @@ static int close_cb_called = 0;
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT_PTR_EQ(req, &shutdown_req);
-  ASSERT(status == 0 || status == UV_ECANCELED);
+  if (status != UV_ECANCELED)
+    ASSERT_OK(status);
   shutdown_cb_called++;
 }
 
@@ -55,7 +56,10 @@ static void connect_cb(uv_connect_t* req, int status) {
   ASSERT_OK(status);
 
   r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
-  ASSERT_OK(r);
+  if (r != 0) {
+    ASSERT_EQ(r, UV_ENOTSOCK);
+    shutdown_cb(&shutdown_req, 0);
+  }
   ASSERT_OK(uv_is_closing((uv_handle_t*) req->handle));
   uv_close((uv_handle_t*) req->handle, close_cb);
   ASSERT_EQ(1, uv_is_closing((uv_handle_t*) req->handle));
