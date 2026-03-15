@@ -136,9 +136,7 @@ static void after_read(uv_stream_t* handle,
   ASSERT_NOT_NULL(wr);
   wr->buf = uv_buf_init(buf->base, nread);
 
-  if (uv_write(&wr->req, handle, &wr->buf, 1, after_write)) {
-    FATAL("uv_write failed");
-  }
+  ASSERT_OK(uv_write(&wr->req, handle, &wr->buf, 1, after_write));
 
   if (shutdown)
     ASSERT_OK(uv_shutdown(malloc(sizeof* sreq), handle, on_shutdown));

@@ -218,7 +218,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   handle->reqs_pending++;
   REGISTER_HANDLE_REQ(loop, handle);
 
-  if (!(handle->flags & UV_STREAM_IN_WRITE_CB) &&
+  if (!(handle->flags & UV_HANDLE_IN_WRITE_CB) &&
       uv__queue_empty(&handle->stream.conn.write_queue)) {
     if (handle->type == UV_NAMED_PIPE)
       uv__pipe_shutdown(loop, (uv_pipe_t*) handle, req);
