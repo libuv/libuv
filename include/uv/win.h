@@ -349,7 +349,6 @@ typedef struct {
   uv_pipe_accept_t* pending_accepts;
 
 #define uv_pipe_connection_fields                                             \
-  uv_timer_t* eof_timer;                                                      \
   DWORD ipc_remote_pid;                                                       \
   struct {                                                                    \
     uint32_t payload_remaining;                                               \

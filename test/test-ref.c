@@ -69,14 +69,20 @@ static void req_cb(uv_udp_send_t* req, int status) {
 
 
 static void shutdown_cb(uv_shutdown_t* req, int status) {
+  ASSERT_OK(status);
   ASSERT_PTR_EQ(req, &shutdown_req);
   shutdown_cb_called++;
 }
 
 
 static void write_cb(uv_write_t* req, int status) {
+  int r;
   ASSERT_PTR_EQ(req, &write_req);
-  uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
+  r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
+  if (r != 0) {
+    ASSERT_EQ(r, UV_ENOTSOCK);
+    shutdown_cb(&shutdown_req, 0);
+  }
   write_cb_called++;
 }
 
@@ -92,9 +98,14 @@ static void connect_and_write(uv_connect_t* req, int status) {
 
 
 static void connect_and_shutdown(uv_connect_t* req, int status) {
+  int r;
   ASSERT_PTR_EQ(req, &connect_req);
   ASSERT_OK(status);
-  uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
+  r = uv_shutdown(&shutdown_req, req->handle, shutdown_cb);
+  if (r != 0) {
+    ASSERT_EQ(r, UV_ENOTSOCK);
+    shutdown_cb(&shutdown_req, 0);
+  }
   connect_cb_called++;
 }
 
