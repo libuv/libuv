@@ -165,7 +165,6 @@ struct uv__queue {
   XX(ASYNC, async)                                                            \
   XX(CHECK, check)                                                            \
   XX(FS_EVENT, fs_event)                                                      \
-  XX(FS_POLL, fs_poll)                                                        \
   XX(HANDLE, handle)                                                          \
   XX(IDLE, idle)                                                              \
   XX(NAMED_PIPE, pipe)                                                        \
@@ -234,7 +233,6 @@ typedef struct uv_idle_s uv_idle_t;
 typedef struct uv_async_s uv_async_t;
 typedef struct uv_process_s uv_process_t;
 typedef struct uv_fs_event_s uv_fs_event_t;
-typedef struct uv_fs_poll_s uv_fs_poll_t;
 typedef struct uv_signal_s uv_signal_t;
 
 /* Request types. */
@@ -397,10 +395,6 @@ typedef void (*uv_fs_event_cb)(uv_fs_event_t* handle,
                                int events,
                                int status);
 
-typedef void (*uv_fs_poll_cb)(uv_fs_poll_t* handle,
-                              int status,
-                              const uv_stat_t* prev,
-                              const uv_stat_t* curr);
 
 typedef void (*uv_signal_cb)(uv_signal_t* handle, int signum);
 
@@ -1773,25 +1767,6 @@ struct uv_fs_event_s {
   UV_FS_EVENT_PRIVATE_FIELDS
 };
 
-
-/*
- * uv_fs_stat() based polling file watcher.
- */
-struct uv_fs_poll_s {
-  UV_HANDLE_FIELDS
-  /* Private, don't touch. */
-  void* poll_ctx;
-};
-
-UV_EXTERN int uv_fs_poll_init(uv_loop_t* loop, uv_fs_poll_t* handle);
-UV_EXTERN int uv_fs_poll_start(uv_fs_poll_t* handle,
-                               uv_fs_poll_cb poll_cb,
-                               const char* path,
-                               unsigned int interval);
-UV_EXTERN int uv_fs_poll_stop(uv_fs_poll_t* handle);
-UV_EXTERN int uv_fs_poll_getpath(uv_fs_poll_t* handle,
-                                 char* buffer,
-                                 size_t* size);
 
 
 struct uv_signal_s {

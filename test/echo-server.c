@@ -81,6 +81,7 @@ static void after_read(uv_stream_t* handle,
                        ssize_t nread,
                        const uv_buf_t* buf) {
   int i;
+  int r;
   write_req_t *wr;
   uv_shutdown_t* sreq;
   int shutdown = 0;
@@ -92,7 +93,13 @@ static void after_read(uv_stream_t* handle,
     free(buf->base);
     sreq = malloc(sizeof* sreq);
     if (uv_is_writable(handle)) {
-      ASSERT_OK(uv_shutdown(sreq, handle, after_shutdown));
+      r = uv_shutdown(sreq, handle, after_shutdown);
+      if (r != 0) {
+        /* Cancel pending writes. */
+        ASSERT_EQ(r, UV_ENOTSOCK);
+        sreq->handle = handle;
+        after_shutdown(sreq, 0);
+      }
     }
     return;
   }
@@ -132,14 +139,20 @@ static void after_read(uv_stream_t* handle,
     }
   }
 
-  wr = (write_req_t*) malloc(sizeof *wr);
+  wr = malloc(sizeof *wr);
   ASSERT_NOT_NULL(wr);
   wr->buf = uv_buf_init(buf->base, nread);
 
   ASSERT_OK(uv_write(&wr->req, handle, &wr->buf, 1, after_write));
 
-  if (shutdown)
-    ASSERT_OK(uv_shutdown(malloc(sizeof* sreq), handle, on_shutdown));
+  if (shutdown) {
+    sreq = malloc(sizeof* sreq);
+    r = uv_shutdown(sreq, handle, on_shutdown);
+    if (r != 0) {
+      ASSERT_EQ(r, UV_ENOTSOCK);
+      free(sreq);
+    }
+  }
 }
 
 

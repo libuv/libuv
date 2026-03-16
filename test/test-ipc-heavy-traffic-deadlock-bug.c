@@ -45,6 +45,13 @@ static uv_shutdown_t shutdown_req;
 
 static size_t bytes_written;
 static size_t bytes_read;
+static int shutdown_notsup;
+
+static void shutdown_cb(uv_shutdown_t* req, int status) {
+  if (status != UV_ENOTCONN)
+    ASSERT_OK(status);
+  uv_close((uv_handle_t*) req->handle, NULL);
+}
 
 static void write_cb(uv_write_t* req, int status) {
   struct write_info* write_info =
@@ -52,11 +59,13 @@ static void write_cb(uv_write_t* req, int status) {
   ASSERT_OK(status);
   bytes_written += BUFFERS_PER_WRITE * BUFFER_SIZE;
   free(write_info);
-}
 
-static void shutdown_cb(uv_shutdown_t* req, int status) {
-  ASSERT(status == 0 || status == UV_ENOTCONN);
-  uv_close((uv_handle_t*) req->handle, NULL);
+  if (bytes_written >= XFER_SIZE) {
+    ASSERT_EQ(bytes_written, XFER_SIZE);
+    if (shutdown_notsup == 1)
+      shutdown_cb(&shutdown_req, 0);
+    shutdown_notsup = -1;
+  }
 }
 
 static void do_write(uv_stream_t* handle) {
@@ -102,10 +111,17 @@ static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
   free(buf->base);
 
   if (bytes_read >= XFER_SIZE) {
+    ASSERT_EQ(bytes_read, XFER_SIZE);
     r = uv_read_stop(handle);
     ASSERT_OK(r);
     r = uv_shutdown(&shutdown_req, handle, shutdown_cb);
-    ASSERT_OK(r);
+    if (r != 0) {
+      ASSERT_EQ(r, UV_ENOTSOCK);
+      shutdown_req.handle = handle;
+      if (shutdown_notsup == -1)
+        shutdown_cb(&shutdown_req, 0);
+      shutdown_notsup = 1;
+    }
   }
 }
 

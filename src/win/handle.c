@@ -132,11 +132,6 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       uv__fs_event_close(loop, (uv_fs_event_t*) handle);
       return;
 
-    case UV_FS_POLL:
-      uv__fs_poll_close((uv_fs_poll_t*) handle);
-      uv__handle_closing(handle);
-      return;
-
     default:
       /* Not supported */
       abort();

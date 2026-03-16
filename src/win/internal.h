@@ -118,8 +118,6 @@ int uv__pipe_write(uv_loop_t* loop,
                    size_t nbufs,
                    uv_stream_t* send_handle,
                    uv_write_cb cb);
-void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t* req);
-
 void uv__process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_req_t* req);
 void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
@@ -223,12 +221,6 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
     uv_fs_event_t* handle);
 void uv__fs_event_close(uv_loop_t* loop, uv_fs_event_t* handle);
 void uv__fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle);
-
-
-/*
- * Stat poller.
- */
-void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle);
 
 
 /*

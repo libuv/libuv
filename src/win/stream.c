@@ -203,6 +203,9 @@ int uv_try_write2(uv_stream_t* stream,
 int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   uv_loop_t* loop = handle->loop;
 
+  if (handle->type == UV_NAMED_PIPE)
+    return UV_ENOTSOCK;
+
   if (!(handle->flags & UV_HANDLE_WRITABLE) ||
       uv__is_stream_shutting(handle) ||
       uv__is_closing(handle)) {
@@ -219,12 +222,8 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   REGISTER_HANDLE_REQ(loop, handle);
 
   if (!(handle->flags & UV_HANDLE_IN_WRITE_CB) &&
-      uv__queue_empty(&handle->stream.conn.write_queue)) {
-    if (handle->type == UV_NAMED_PIPE)
-      uv__pipe_shutdown(loop, (uv_pipe_t*) handle, req);
-    else
-      uv__insert_pending_req(loop, (uv_req_t*) req);
-  }
+      uv__queue_empty(&handle->stream.conn.write_queue))
+    uv__insert_pending_req(loop, (uv_req_t*) req);
 
   return 0;
 }

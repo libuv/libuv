@@ -40,10 +40,6 @@ static char uv_zero_[] = "";
 /* Null uv_buf_t */
 static const uv_buf_t uv_null_buf_ = { 0, NULL };
 
-/* The timeout that the pipe will wait for the remote end to write data when
- * the local ends wants to shut it down. */
-static const int64_t eof_timeout = 50; /* ms */
-
 static const int default_pending_pipe_instances = 4;
 
 /* Pipe prefix */
@@ -89,13 +85,6 @@ typedef struct {
 } uv__coalesced_write_t;
 
 
-static void eof_timer_init(uv_pipe_t* pipe);
-static void eof_timer_start(uv_pipe_t* pipe);
-static void eof_timer_stop(uv_pipe_t* pipe);
-static void eof_timer_cb(uv_timer_t* timer);
-static void eof_timer_destroy(uv_pipe_t* pipe);
-static void eof_timer_close_cb(uv_handle_t* handle);
-
 
 /* Does the file path contain embedded nul bytes? */
 static int includes_nul(const char *s, size_t n) {
@@ -131,7 +120,6 @@ static void uv__pipe_connection_init(uv_pipe_t* handle) {
   assert(!(handle->flags & UV_HANDLE_PIPESERVER));
   uv__connection_init((uv_stream_t*) handle);
   handle->read_req.data = handle;
-  handle->pipe.conn.eof_timer = NULL;
 }
 
 
@@ -530,76 +518,6 @@ static int pipe_alloc_accept(uv_loop_t* loop, uv_pipe_t* handle,
   return 1;
 }
 
-
-static DWORD WINAPI pipe_shutdown_thread_proc(void* parameter) {
-  uv_loop_t* loop;
-  uv_pipe_t* handle;
-  uv_shutdown_t* req;
-
-  req = (uv_shutdown_t*) parameter;
-  assert(req);
-  handle = (uv_pipe_t*) req->handle;
-  assert(handle);
-  loop = handle->loop;
-  assert(loop);
-
-  FlushFileBuffers(handle->handle);
-
-  /* Post completed */
-  POST_COMPLETION_FOR_REQ(loop, req);
-
-  return 0;
-}
-
-
-void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t *req) {
-  DWORD result;
-  NTSTATUS nt_status;
-  IO_STATUS_BLOCK io_status;
-  FILE_PIPE_LOCAL_INFORMATION pipe_info;
-
-  assert(handle->flags & UV_HANDLE_CONNECTION);
-  assert(req != NULL);
-  assert(uv__queue_empty(&handle->stream.conn.write_queue));
-  SET_REQ_SUCCESS(req);
-
-  if (handle->flags & UV_HANDLE_CLOSING) {
-    uv__insert_pending_req(loop, (uv_req_t*) req);
-    return;
-  }
-
-  /* Try to avoid flushing the pipe buffer in the thread pool. */
-  nt_status = pNtQueryInformationFile(handle->handle,
-                                      &io_status,
-                                      &pipe_info,
-                                      sizeof pipe_info,
-                                      FilePipeLocalInformation);
-
-  if (nt_status != STATUS_SUCCESS) {
-    SET_REQ_ERROR(req, pRtlNtStatusToDosError(nt_status));
-    handle->flags |= UV_HANDLE_WRITABLE; /* Questionable. */
-    uv__insert_pending_req(loop, (uv_req_t*) req);
-    return;
-  }
-
-  if (pipe_info.OutboundQuota == pipe_info.WriteQuotaAvailable) {
-    /* Short-circuit, no need to call FlushFileBuffers:
-     * all writes have been read. */
-    uv__insert_pending_req(loop, (uv_req_t*) req);
-    return;
-  }
-
-  /* Run FlushFileBuffers in the thread pool. */
-  result = QueueUserWorkItem(pipe_shutdown_thread_proc,
-                             req,
-                             WT_EXECUTELONGFUNCTION);
-  if (!result) {
-    SET_REQ_ERROR(req, GetLastError());
-    handle->flags |= UV_HANDLE_WRITABLE; /* Questionable. */
-    uv__insert_pending_req(loop, (uv_req_t*) req);
-    return;
-  }
-}
 
 
 void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
@@ -1050,10 +968,6 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
     handle->handle = INVALID_HANDLE_VALUE;
   }
 
-  if (handle->flags & UV_HANDLE_CONNECTION) {
-    eof_timer_destroy(handle);
-  }
-
   if ((handle->flags & UV_HANDLE_CONNECTION)
       && handle->handle != INVALID_HANDLE_VALUE) {
     /* This will eventually destroy the write queue for us too. */
@@ -1388,8 +1302,6 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
     }
   }
 
-  /* Start the eof timer if there is one */
-  eof_timer_start(handle);
   handle->flags |= UV_HANDLE_READ_PENDING;
   handle->reqs_pending++;
   return;
@@ -1826,10 +1738,6 @@ int uv__pipe_write(uv_loop_t* loop,
 
 static void uv__pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
     uv_buf_t buf) {
-  /* If there is an eof timer running, we don't need it any more, so discard
-   * it. */
-  eof_timer_destroy(handle);
-
   uv_read_stop((uv_stream_t*) handle);
 
   handle->read_cb((uv_stream_t*) handle, UV_EOF, &buf);
@@ -1838,10 +1746,6 @@ static void uv__pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
 
 static void uv__pipe_read_error(uv_loop_t* loop, uv_pipe_t* handle, int error,
     uv_buf_t buf) {
-  /* If there is an eof timer running, we don't need it any more, so discard
-   * it. */
-  eof_timer_destroy(handle);
-
   uv_read_stop((uv_stream_t*) handle);
 
   handle->read_cb((uv_stream_t*)handle, uv_translate_sys_error(error), &buf);
@@ -2084,7 +1988,6 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
 
   handle->flags &= ~(UV_HANDLE_READ_PENDING | UV_HANDLE_CANCELLATION_PENDING);
   DECREASE_PENDING_REQ_COUNT(handle);
-  eof_timer_stop(handle);
 
   if (handle->read_req.wait_handle != INVALID_HANDLE_VALUE) {
     UnregisterWait(handle->read_req.wait_handle);
@@ -2177,10 +2080,6 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv__queue_non_overlapped_write(handle);
   }
 
-  if (uv__queue_empty(&handle->stream.conn.write_queue) &&
-      uv__is_stream_shutting(handle))
-    uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
-
   DECREASE_PENDING_REQ_COUNT(handle);
 }
 
@@ -2254,128 +2153,8 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
 
 void uv__process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_shutdown_t* req) {
-  int err;
-
-  assert(handle->type == UV_NAMED_PIPE);
-
-  /* Clear the shutdown_req field so we don't go here again. */
-  handle->stream.conn.shutdown_req = NULL;
-  UNREGISTER_HANDLE_REQ(loop, handle);
-
-  if (handle->flags & UV_HANDLE_CLOSING) {
-    /* Already closing. Cancel the shutdown. */
-    err = UV_ECANCELED;
-  } else if (!REQ_SUCCESS(req)) {
-    /* An error occurred in trying to shutdown gracefully. */
-    err = uv_translate_sys_error(GET_REQ_ERROR(req));
-  } else {
-    if (handle->flags & UV_HANDLE_READABLE) {
-      /* Initialize and optionally start the eof timer. Only do this if the pipe
-       * is readable and we haven't seen EOF come in ourselves. */
-      eof_timer_init(handle);
-
-      /* If reading start the timer right now. Otherwise uv__pipe_queue_read will
-       * start it. */
-      if (handle->flags & UV_HANDLE_READ_PENDING) {
-        eof_timer_start(handle);
-      }
-
-    } else {
-      /* This pipe is not readable. We can just close it to let the other end
-       * know that we're done writing. */
-      close_pipe(handle);
-    }
-    err = 0;
-  }
-
-  if (req->cb)
-    req->cb(req, err);
-
-  DECREASE_PENDING_REQ_COUNT(handle);
-}
-
-
-static void eof_timer_init(uv_pipe_t* pipe) {
-  int r;
-
-  assert(pipe->pipe.conn.eof_timer == NULL);
-  assert(pipe->flags & UV_HANDLE_CONNECTION);
-
-  pipe->pipe.conn.eof_timer = (uv_timer_t*) uv__malloc(sizeof *pipe->pipe.conn.eof_timer);
-
-  r = uv_timer_init(pipe->loop, pipe->pipe.conn.eof_timer);
-  assert(r == 0);  /* timers can't fail */
-  (void) r;
-  pipe->pipe.conn.eof_timer->data = pipe;
-  uv_unref((uv_handle_t*) pipe->pipe.conn.eof_timer);
-}
-
-
-static void eof_timer_start(uv_pipe_t* pipe) {
-  assert(pipe->flags & UV_HANDLE_CONNECTION);
-
-  if (pipe->pipe.conn.eof_timer != NULL) {
-    uv_timer_start(pipe->pipe.conn.eof_timer, eof_timer_cb, eof_timeout, 0);
-  }
-}
-
-
-static void eof_timer_stop(uv_pipe_t* pipe) {
-  assert(pipe->flags & UV_HANDLE_CONNECTION);
-
-  if (pipe->pipe.conn.eof_timer != NULL) {
-    uv_timer_stop(pipe->pipe.conn.eof_timer);
-  }
-}
-
-
-static void eof_timer_cb(uv_timer_t* timer) {
-  uv_pipe_t* pipe = (uv_pipe_t*) timer->data;
-  uv_loop_t* loop = timer->loop;
-
-  assert(pipe->type == UV_NAMED_PIPE);
-
-  /* This should always be true, since we start the timer only in
-   * uv__pipe_queue_read after successfully calling ReadFile, or in
-   * uv__process_pipe_shutdown_req if a read is pending, and we always
-   * immediately stop the timer in uv__process_pipe_read_req. */
-  assert(pipe->flags & UV_HANDLE_READ_PENDING);
-
-  /* If there are many packets coming off the iocp then the timer callback may
-   * be called before the read request is coming off the queue. Therefore we
-   * check here if the read request has completed but will be processed later.
-   */
-  if ((pipe->flags & UV_HANDLE_READ_PENDING) &&
-      HasOverlappedIoCompleted(&pipe->read_req.u.io.overlapped)) {
-    return;
-  }
-
-  /* Force both ends off the pipe. */
-  close_pipe(pipe);
-
-  /* Stop reading, so the pending read that is going to fail will not be
-   * reported to the user. */
-  uv_read_stop((uv_stream_t*) pipe);
-
-  /* Report the eof and update flags. This will get reported even if the user
-   * stopped reading in the meantime. TODO: is that okay? */
-  uv__pipe_read_eof(loop, pipe, uv_null_buf_);
-}
-
-
-static void eof_timer_destroy(uv_pipe_t* pipe) {
-  assert(pipe->flags & UV_HANDLE_CONNECTION);
-
-  if (pipe->pipe.conn.eof_timer) {
-    uv_close((uv_handle_t*) pipe->pipe.conn.eof_timer, eof_timer_close_cb);
-    pipe->pipe.conn.eof_timer = NULL;
-  }
-}
-
-
-static void eof_timer_close_cb(uv_handle_t* handle) {
-  assert(handle->type == UV_TIMER);
-  uv__free(handle);
+  /* uv_shutdown() returns UV_ENOTSOCK for named pipes; this is unreachable. */
+  abort();
 }
 
 
