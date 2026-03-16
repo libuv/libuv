@@ -73,6 +73,7 @@ extern char **environ;
 
 static uv_once_t posix_spawn_init_once = UV_ONCE_INIT;
 static int posix_spawn_can_use_setsid;
+static volatile int posix_spawn_works;
 
 static struct uv__posix_spawn_fncs_s {
   struct {
@@ -449,6 +450,27 @@ static void uv__spawn_init_can_use_setsid(void) {
 
 
 static void uv__spawn_init_posix_spawn(void) {
+#if !defined(__linux__)
+  posix_spawn_works = 1;
+#elif !defined(__ANDROID__)
+  pid_t pid;
+  int status;
+
+  /* Probe whether vfork()/clone(CLONE_VM) correctly shares the address space,
+   * i.e. a write by the child before _exit() is visible to the parent once it
+   * resumes.  On Linux vfork() is equivalent to
+   * clone(CLONE_VM|CLONE_VFORK|SIGCHLD). On QEMU and WSL1, CLONE_VM is broken,
+   * resulting in glibc errors if we try to use posix_spawn(). */
+  posix_spawn_works = 0;
+  pid = vfork();
+  if (pid == 0) {
+    posix_spawn_works = 1;
+    _exit(0);
+  }
+  if (pid > 0)
+    waitpid(pid, &status, 0);
+#endif
+
   /* Try to locate all new functions at runtime.
    * Expected on macOS, glibc, and musl. */
   posix_spawn_fncs.file_actions.addchdir =
@@ -796,6 +818,9 @@ static int uv__spawn_and_init_child_posix_spawn(
   int err;
   posix_spawnattr_t attrs;
   posix_spawn_file_actions_t actions;
+
+  if (!posix_spawn_works)
+    return UV_ENOSYS;
 
   err = uv__spawn_set_posix_spawn_attrs(&attrs, options);
   if (err != 0)
