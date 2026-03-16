@@ -205,7 +205,7 @@ void uv__process_tcp_shutdown_req(uv_loop_t* loop, uv_tcp_t* stream, uv_shutdown
   int err;
 
   assert(req);
-  assert(stream->stream.conn.write_reqs_pending == 0);
+  assert(uv__queue_empty(&stream->stream.conn.write_queue));
   assert(!(stream->flags & UV_HANDLE_SHUT));
   assert(stream->flags & UV_HANDLE_CONNECTION);
 
@@ -919,14 +919,14 @@ int uv__tcp_write(uv_loop_t* loop,
     /* Request completed immediately. */
     req->u.io.queued_bytes = 0;
     handle->reqs_pending++;
-    handle->stream.conn.write_reqs_pending++;
+    uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
     REGISTER_HANDLE_REQ(loop, handle);
     uv__insert_pending_req(loop, (uv_req_t*) req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* Request queued by the kernel. */
     req->u.io.queued_bytes = uv__count_bufs(bufs, nbufs);
     handle->reqs_pending++;
-    handle->stream.conn.write_reqs_pending++;
+    uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
     REGISTER_HANDLE_REQ(loop, handle);
     handle->write_queue_size += req->u.io.queued_bytes;
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
@@ -940,7 +940,7 @@ int uv__tcp_write(uv_loop_t* loop,
     /* Send failed due to an error, report it later */
     req->u.io.queued_bytes = 0;
     handle->reqs_pending++;
-    handle->stream.conn.write_reqs_pending++;
+    uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
     REGISTER_HANDLE_REQ(loop, handle);
     SET_REQ_ERROR(req, WSAGetLastError());
     uv__insert_pending_req(loop, (uv_req_t*) req);
@@ -956,7 +956,7 @@ int uv__tcp_try_write(uv_tcp_t* handle,
   int result;
   DWORD bytes;
 
-  if (handle->stream.conn.write_reqs_pending > 0)
+  if (!uv__queue_empty(&handle->stream.conn.write_queue))
     return UV_EAGAIN;
 
   result = WSASend(handle->socket,
@@ -1083,7 +1083,7 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
-
+  uv__queue_remove(&req->queue);
   UNREGISTER_HANDLE_REQ(loop, handle);
 
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
@@ -1103,11 +1103,12 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
       /* use UV_ECANCELED for consistency with Unix */
       err = UV_ECANCELED;
     }
+    handle->flags |= UV_HANDLE_IN_WRITE_CB;
     req->cb(req, err);
+    handle->flags &= ~UV_HANDLE_IN_WRITE_CB;
   }
 
-  handle->stream.conn.write_reqs_pending--;
-  if (handle->stream.conn.write_reqs_pending == 0) {
+  if (uv__queue_empty(&handle->stream.conn.write_queue)) {
     if (handle->flags & UV_HANDLE_CLOSING) {
       closesocket(handle->socket);
       handle->socket = INVALID_SOCKET;
@@ -1360,19 +1361,22 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
   int non_ifs_lsp;
   int reading;
   int writing;
+  struct uv__queue* q;
 
   socket = tcp->socket;
   reading = tcp->flags & UV_HANDLE_READ_PENDING;
-  writing = tcp->stream.conn.write_reqs_pending > 0;
+  writing = !uv__queue_empty(&tcp->stream.conn.write_queue);
   if (!reading && !writing)
     return;
 
-  /* TODO: in libuv v2, keep explicit track of write_reqs, so we can cancel
-   * them each explicitly with CancelIoEx (like unix). */
   if (reading)
     CancelIoEx((HANDLE) socket, &tcp->read_req.u.io.overlapped);
-  if (writing)
-    CancelIo((HANDLE) socket);
+  if (writing) {
+    uv__queue_foreach(q, &tcp->stream.conn.write_queue) {
+      uv_write_t* wr = uv__queue_data(q, uv_write_t, queue);
+      CancelIoEx((HANDLE) socket, &wr->u.io.overlapped);
+    }
+  }
 
   /* Check if we have any non-IFS LSPs stacked on top of TCP */
   non_ifs_lsp = (tcp->flags & UV_HANDLE_IPV6) ? uv_tcp_non_ifs_lsp_ipv6 :
@@ -1391,7 +1395,7 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
                  &bytes,
                  NULL,
                  NULL) != 0) {
-      /* Failed. We can't do CancelIo. */
+      /* Failed. We can't do CancelIoEx. */
       return;
     }
   }
@@ -1401,8 +1405,12 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
   if (socket != tcp->socket) {
     if (reading)
       CancelIoEx((HANDLE) socket, &tcp->read_req.u.io.overlapped);
-    if (writing)
-      CancelIo((HANDLE) socket);
+    if (writing) {
+      uv__queue_foreach(q, &tcp->stream.conn.write_queue) {
+        uv_write_t* wr = uv__queue_data(q, uv_write_t, queue);
+        CancelIoEx((HANDLE) socket, &wr->u.io.overlapped);
+      }
+    }
   }
 }
 
@@ -1443,7 +1451,7 @@ void uv__tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
    * first (which typically should be cancellations). There's not much we can
    * do about canceled reads, which also will generate an RST packet. */
   if (!(tcp->flags & UV_HANDLE_CONNECTION) ||
-      tcp->stream.conn.write_reqs_pending == 0) {
+      uv__queue_empty(&tcp->stream.conn.write_queue)) {
     closesocket(tcp->socket);
     tcp->socket = INVALID_SOCKET;
   }

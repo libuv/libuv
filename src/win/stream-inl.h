@@ -37,7 +37,7 @@ INLINE static void uv__stream_init(uv_loop_t* loop,
   handle->write_queue_size = 0;
   handle->activecnt = 0;
   handle->stream.conn.shutdown_req = NULL;
-  handle->stream.conn.write_reqs_pending = 0;
+  uv__queue_init(&handle->stream.conn.write_queue);
 
   UV_REQ_INIT(loop, &handle->read_req, UV_READ);
   handle->read_req.event_handle = NULL;

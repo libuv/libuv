@@ -260,6 +260,7 @@ typedef struct {
   struct uv_req_s* next_req;
 
 #define UV_WRITE_PRIVATE_FIELDS \
+  struct uv__queue queue;       \
   int coalesced;                \
   uv_buf_t write_buffer;        \
   HANDLE event_handle;          \
@@ -297,7 +298,7 @@ typedef struct {
   } uv_read_t;
 
 #define uv_stream_connection_fields                                           \
-  unsigned int write_reqs_pending;                                            \
+  struct uv__queue write_queue;                                               \
   uv_shutdown_t* shutdown_req;
 
 #define uv_stream_server_fields                                               \
