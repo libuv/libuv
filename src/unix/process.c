@@ -145,7 +145,7 @@ void uv__wait_children(uv_loop_t* loop) {
     }
 
     assert(pid == process->pid);
-    process->pid = 0; // pid is no longer valid (or unique)
+    process->flags |= UV_HANDLE_ESRCH; /* pid is no longer valid (or unique) */
     process->status = status;
     uv__queue_remove(&process->queue);
     uv__queue_insert_tail(&pending, &process->queue);
@@ -1101,7 +1101,7 @@ error:
 
 
 int uv_process_kill(uv_process_t* process, int signum) {
-  if (process->pid == 0)
+  if (process->flags & UV_HANDLE_ESRCH)
     return UV_ESRCH;
   return uv_kill(process->pid, signum);
 }
@@ -1123,9 +1123,9 @@ int uv_kill(int pid, int signum) {
 
 
 void uv__process_close(uv_process_t* handle) {
-  /* Warning: if handle->pid != 0, the caller is creating a zombie that we
-   * cannot reap. We assume here that it is intentional, and that the user will
-   * be wise and cleanup later. */
+  /* Warning: if UV_HANDLE_ESRCH is not set, the caller is creating a zombie
+   * that we cannot reap. We assume here that it is intentional, and that the
+   * user will be wise and cleanup later. */
   uv__queue_remove(&handle->queue);
   uv__handle_stop(handle);
 #ifdef UV_USE_SIGCHLD

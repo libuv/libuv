@@ -846,7 +846,7 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
   /* Clean-up the process handle eagerly. */
   CloseHandle(handle->process_handle);
   handle->process_handle = INVALID_HANDLE_VALUE;
-  handle->pid = 0;
+  handle->flags |= UV_HANDLE_ESRCH;
 
   /* Set the handle to inactive: no callbacks will be made after the exit
    * callback. */
@@ -1370,7 +1370,7 @@ static int uv__kill(HANDLE process_handle, int signum) {
 int uv_process_kill(uv_process_t* process, int signum) {
   int err;
 
-  if (process->process_handle == INVALID_HANDLE_VALUE) {
+  if (process->flags & UV_HANDLE_ESRCH) {
     return UV_ESRCH;
   }
 
