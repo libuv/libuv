@@ -172,7 +172,6 @@ if (MSVC)
 endif()
 
 set(uv_sources
-    src/fs-poll.c
     src/idna.c
     src/inet.c
     src/loop-watcher.c
@@ -555,7 +554,6 @@ if(LIBUV_BUILD_TESTS)
        test/test-fs-event.c
        test/test-fs-fd-hash.c
        test/test-fs-open-flags.c
-       test/test-fs-poll.c
        test/test-fs-readdir.c
        test/test-fs.c
        test/test-get-currentexe.c

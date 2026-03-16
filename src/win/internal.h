@@ -224,12 +224,6 @@ void uv__fs_event_endgame(uv_loop_t* loop, uv_fs_event_t* handle);
 
 
 /*
- * Stat poller.
- */
-void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle);
-
-
-/*
  * Utilities.
  */
 void uv__util_init(void);
