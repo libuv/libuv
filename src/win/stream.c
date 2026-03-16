@@ -29,7 +29,9 @@
 
 int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   int err;
-
+  if (uv__is_closing(stream)) {
+    return UV_EINVAL;
+  }
   err = ERROR_INVALID_PARAMETER;
   switch (stream->type) {
     case UV_TCP:
@@ -109,6 +111,23 @@ int uv_read_stop(uv_stream_t* handle) {
 }
 
 
+static int uv__check_before_write(uv_stream_t* handle, unsigned int nbufs) {
+  /* We're not beholden to IOV_MAX but limit the buffer count to catch sign
+   * conversion bugs where a caller passes in a signed negative number that
+   * then gets converted to a really large unsigned number.
+   */
+  if (nbufs < 1 || nbufs > 1024*1024) {
+    return UV_EINVAL;
+  }
+
+  if (!(handle->flags & UV_HANDLE_WRITABLE)) {
+    return UV_EPIPE;
+  }
+
+  return 0;
+}
+
+
 int uv_write(uv_write_t* req,
              uv_stream_t* handle,
              const uv_buf_t bufs[],
@@ -117,8 +136,9 @@ int uv_write(uv_write_t* req,
   uv_loop_t* loop = handle->loop;
   int err;
 
-  if (!(handle->flags & UV_HANDLE_WRITABLE)) {
-    return UV_EPIPE;
+  err = uv__check_before_write(handle, nbufs);
+  if (err != 0) {
+    return err;
   }
 
   err = ERROR_INVALID_PARAMETER;
@@ -129,7 +149,7 @@ int uv_write(uv_write_t* req,
     case UV_NAMED_PIPE:
       err = uv__pipe_write(
           loop, req, (uv_pipe_t*) handle, bufs, nbufs, NULL, cb);
-      break;
+      return uv_translate_write_sys_error(err);
     case UV_TTY:
       err = uv__tty_write(loop, req, (uv_tty_t*) handle, bufs, nbufs, cb);
       break;
@@ -154,25 +174,33 @@ int uv_write2(uv_write_t* req,
     return uv_write(req, handle, bufs, nbufs, cb);
   }
 
+  err = uv__check_before_write(handle, nbufs);
+  if (err != 0) {
+    return err;
+  }
+
   if (handle->type != UV_NAMED_PIPE || !((uv_pipe_t*) handle)->ipc) {
     return UV_EINVAL;
-  } else if (!(handle->flags & UV_HANDLE_WRITABLE)) {
-    return UV_EPIPE;
   }
 
   err = uv__pipe_write(
       loop, req, (uv_pipe_t*) handle, bufs, nbufs, send_handle, cb);
-  return uv_translate_sys_error(err);
+  return uv_translate_write_sys_error(err);
 }
 
 
 int uv_try_write(uv_stream_t* stream,
                  const uv_buf_t bufs[],
                  unsigned int nbufs) {
+  int err;
+
+  err = uv__check_before_write(stream, nbufs);
+  if (err != 0) {
+    return err;
+  }
+
   if (stream->flags & UV_HANDLE_CLOSING)
     return UV_EBADF;
-  if (!(stream->flags & UV_HANDLE_WRITABLE))
-    return UV_EPIPE;
 
   switch (stream->type) {
     case UV_TCP:
@@ -202,7 +230,7 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   uv_loop_t* loop = handle->loop;
 
   if (!(handle->flags & UV_HANDLE_WRITABLE) ||
-      handle->flags & UV_HANDLE_SHUTTING ||
+      uv__is_stream_shutting(handle) ||
       uv__is_closing(handle)) {
     return UV_ENOTCONN;
   }
@@ -212,12 +240,16 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* handle, uv_shutdown_cb cb) {
   req->cb = cb;
 
   handle->flags &= ~UV_HANDLE_WRITABLE;
-  handle->flags |= UV_HANDLE_SHUTTING;
   handle->stream.conn.shutdown_req = req;
   handle->reqs_pending++;
-  REGISTER_HANDLE_REQ(loop, handle, req);
+  REGISTER_HANDLE_REQ(loop, handle);
 
-  uv__want_endgame(loop, (uv_handle_t*)handle);
+  if (handle->stream.conn.write_reqs_pending == 0) {
+    if (handle->type == UV_NAMED_PIPE)
+      uv__pipe_shutdown(loop, (uv_pipe_t*) handle, req);
+    else
+      uv__insert_pending_req(loop, (uv_req_t*) req);
+  }
 
   return 0;
 }

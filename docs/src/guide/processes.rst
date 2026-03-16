@@ -53,6 +53,8 @@ ID of the child process.
 The exit callback will be invoked with the *exit status* and the type of *signal*
 which caused the exit.
 
+Note that it is important **not** to call ``uv_close`` before the exit callback.
+
 .. rubric:: spawn/main.c
 .. literalinclude:: ../../code/spawn/main.c
     :language: c
@@ -126,7 +128,8 @@ of ``uv_kill`` is::
 
 For processes started using libuv, you may use ``uv_process_kill`` instead,
 which accepts the ``uv_process_t`` watcher as the first argument, rather than
-the pid. In this case, **remember to call** ``uv_close`` on the watcher.
+the pid. In this case, **remember to call** ``uv_close`` on the watcher _after_
+the exit callback has been called.
 
 Signals
 -------
@@ -330,7 +333,7 @@ to hand off their I/O to other processes. Applications include load-balancing
 servers, worker processes and other ways to make optimum use of CPU. libuv only
 supports sending **TCP sockets or other pipes** over pipes for now.
 
-To demonstrate, we will look at a echo server implementation that hands of
+To demonstrate, we will look at an echo server implementation that hands off
 clients to worker processes in a round-robin fashion. This program is a bit
 involved, and while only snippets are included in the book, it is recommended
 to read the full code to really understand it.

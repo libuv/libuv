@@ -1,0 +1,181 @@
+name: CI-unix
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-unix.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: configure
+        run: |
+          ./autogen.sh
+          mkdir build
+          (cd build && ../configure)
+      - name: distcheck
+        run: |
+          make -C build distcheck
+
+  build-android:
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_AVD_HOME: /root/.android/avd
+    steps:
+      - uses: actions/checkout@v6
+      - name: Envinfo
+        run: npx envinfo
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Build and Test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          ram-size: 2048M
+          emulator-options: -no-audio -no-window -gpu off -no-boot-anim -netdelay none -netspeed full -writable-system -no-snapshot-save -no-snapshot-load -no-snapshot
+          disable-animations: true
+          script: |
+            echo "::group::Configure"
+            cmake -B build -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake -DCMAKE_BUILD_TYPE=Release -DANDROID_ABI="x86_64" -DANDROID_PLATFORM=android-30
+            echo "::endgroup::"
+
+            echo "::group::Build"
+            cmake --build build
+
+            ## Correct some ld bugs that cause problems with libuv tests
+            wget "https://github.com/termux/termux-elf-cleaner/releases/download/v2.2.1/termux-elf-cleaner" -P build
+            chmod a+x build/termux-elf-cleaner
+            build/termux-elf-cleaner --api-level 30 ./build/uv_run_tests
+            build/termux-elf-cleaner --api-level 30 ./build/uv_run_tests_a
+
+            adb shell "su 0 setenforce 0" # to allow some syscalls like link, chmod, etc.
+
+            ## Push the build and test fixtures to the device
+            adb push build /data/local/tmp
+            adb shell mkdir /data/local/tmp/build/test
+            adb push test/fixtures /data/local/tmp/build/test
+            echo "::endgroup::"
+
+            ## Run the tests
+            file build/uv_run_tests_a
+            adb shell "cd /data/local/tmp/build && env UV_TEST_TIMEOUT_MULTIPLIER=5 ./uv_run_tests_a"
+
+  build-macos:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15, macos-15-intel]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Envinfo
+        run: npx envinfo
+      - name: Disable Firewall
+        run: |
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+          sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 0
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+      - name: Setup
+        run: |
+          brew install ninja automake libtool
+      - name: Configure
+        run: |
+          cmake -B build -DBUILD_TESTING=ON -G Ninja
+      - name: Build
+        run: |
+          cmake --build build
+          ls -lh
+      - name: platform_output
+        run: |
+          ./build/uv_run_tests platform_output
+      - name: platform_output_a
+        run: |
+          ./build/uv_run_tests_a platform_output
+      - name: Test
+        if: ${{ matrix.os == 'macos-15' || matrix.os == 'macos-15-intel' }}
+        run: |
+          cd build && sudo UV_RUN_AS_ROOT=1 ctest -V
+      - name: Test
+        if: ${{ matrix.os != 'macos-15' && matrix.os != 'macos-15-intel' }}
+        run: |
+          cd build && ctest -V
+      - name: Autotools configure
+        if: always()
+        run: |
+          ./autogen.sh
+          mkdir build-auto
+          (cd build-auto && ../configure)
+          make -C build-auto -j4
+
+  build-ios:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Configure
+        run: |
+          cmake -B build-ios -GXcode -DCMAKE_SYSTEM_NAME:STRING=iOS -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED:BOOL=NO -DCMAKE_CONFIGURATION_TYPES:STRING=Release
+      - name: Build
+        run: |
+          cmake --build build-ios
+          ls -lh build-ios
+
+  build-cross-qemu:
+    runs-on: ubuntu-24.04
+    name: build-cross-qemu-${{ matrix.config.target }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {target: arm,                 toolchain: gcc-arm-linux-gnueabi,       cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm      }
+          - {target: armhf,               toolchain: gcc-arm-linux-gnueabihf,     cc: arm-linux-gnueabihf-gcc,    qemu: qemu-arm      }
+          - {target: aarch64,             toolchain: gcc-aarch64-linux-gnu,       cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64  }
+          - {target: riscv64,             toolchain: gcc-riscv64-linux-gnu,       cc: riscv64-linux-gnu-gcc,      qemu: qemu-riscv64  }
+          - {target: ppc,                 toolchain: gcc-powerpc-linux-gnu,       cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc      }
+          - {target: ppc64,               toolchain: gcc-powerpc64-linux-gnu,     cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64    }
+          - {target: ppc64le,             toolchain: gcc-powerpc64le-linux-gnu,   cc: powerpc64le-linux-gnu-gcc,  qemu: qemu-ppc64le  }
+          - {target: s390x,               toolchain: gcc-s390x-linux-gnu,         cc: s390x-linux-gnu-gcc,        qemu: qemu-s390x    }
+          - {target: mips,                toolchain: gcc-mips-linux-gnu,          cc: mips-linux-gnu-gcc,         qemu: qemu-mips     }
+          - {target: mips64,              toolchain: gcc-mips64-linux-gnuabi64,   cc: mips64-linux-gnuabi64-gcc,  qemu: qemu-mips64   }
+          - {target: mipsel,              toolchain: gcc-mipsel-linux-gnu,        cc: mipsel-linux-gnu-gcc,       qemu: qemu-mipsel   }
+          - {target: mips64el,            toolchain: gcc-mips64el-linux-gnuabi64, cc: mips64el-linux-gnuabi64-gcc,qemu: qemu-mips64el }
+          - {target: arm (u64 slots),     toolchain: gcc-arm-linux-gnueabi,       cc: arm-linux-gnueabi-gcc,      qemu: qemu-arm      }
+          - {target: aarch64 (u64 slots), toolchain: gcc-aarch64-linux-gnu,       cc: aarch64-linux-gnu-gcc,      qemu: qemu-aarch64  }
+          - {target: ppc (u64 slots),     toolchain: gcc-powerpc-linux-gnu,       cc: powerpc-linux-gnu-gcc,      qemu: qemu-ppc      }
+          - {target: ppc64 (u64 slots),   toolchain: gcc-powerpc64-linux-gnu,     cc: powerpc64-linux-gnu-gcc,    qemu: qemu-ppc64    }
+
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install qemu and ${{ matrix.config.toolchain }}
+        run: |
+          sudo apt update
+          sudo apt install qemu-user qemu-user-binfmt ${{ matrix.config.toolchain }} -y
+      - name: Configure with ${{ matrix.config.cc }}
+        run: |
+          cmake -B build -DBUILD_TESTING=ON -DQEMU=ON -DCMAKE_C_COMPILER=${{ matrix.config.cc }}
+      - name: Build
+        run: |
+          cmake --build build
+          ls -lh build
+      - name: Test
+        run: |
+          ${{ matrix.config.qemu }} build/uv_run_tests_a

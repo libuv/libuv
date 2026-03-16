@@ -220,7 +220,7 @@ progress with the download whenever libuv notifies of I/O readiness.
 .. literalinclude:: ../../code/uvwget/main.c
     :language: c
     :linenos:
-    :lines: 1-9,140-
+    :lines: 1-9,142-
     :emphasize-lines: 7,21,24-25
 
 The way each library is integrated with libuv will vary. In the case of
@@ -235,7 +235,7 @@ Our downloader is to be invoked as::
 
     $ ./uvwget [url1] [url2] ...
 
-So we add each argument as an URL
+So we add each argument as a URL
 
 .. rubric:: uvwget/main.c - Adding urls
 .. literalinclude:: ../../code/uvwget/main.c
@@ -363,7 +363,7 @@ to get the error message.
 argument. ``init_plugin_function`` is a function pointer to the sort of
 function we are looking for in the application's plugins.
 
-.. _shared libraries: https://en.wikipedia.org/wiki/Shared_library#Shared_libraries
+.. _shared libraries: https://en.wikipedia.org/wiki/Shared_library
 
 TTY
 ---
@@ -435,7 +435,7 @@ As you can see this is very useful to produce nicely formatted output, or even
 console based arcade games if that tickles your fancy. For fancier control you
 can try `ncurses`_.
 
-.. _ncurses: https://www.gnu.org/software/ncurses/ncurses.html
+.. _ncurses: https://invisible-island.net/ncurses/announce.html
 
 .. versionchanged:: 1.23.1: the `readable` parameter is now unused and ignored.
                     The appropriate value will now be auto-detected from the kernel.

@@ -1,0 +1,7 @@
+
+AC_PREREQ(2.71)
+AC_INIT([libuv-release-check], [0.0])
+AM_INIT_AUTOMAKE([1.16.5])
+LT_PREREQ(2.4.7)
+AC_OUTPUT
+

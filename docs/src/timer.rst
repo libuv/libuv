@@ -6,6 +6,15 @@
 
 Timer handles are used to schedule callbacks to be called in the future.
 
+Timers are either single-shot or repeating. Repeating timers do not adjust
+for overhead but are rearmed relative to the event loop's idea of "now".
+
+Libuv updates its idea of "now" right before executing timer callbacks, and
+right after waking up from waiting for I/O. See also :c:func:`uv_update_time`.
+
+Example: a repeating timer with a 50 ms interval whose callback takes 17 ms
+to complete, runs again 33 ms later. If other tasks take longer than 33 ms,
+the timer callback runs as soon as possible.
 
 Data types
 ----------
@@ -64,11 +73,6 @@ API
     duration, and will follow normal timer semantics in the case of a
     time-slice overrun.
 
-    For example, if a 50ms repeating timer first runs for 17ms, it will be
-    scheduled to run again 33ms later. If other tasks consume more than the
-    33ms following the first timer callback, then the callback will run as soon
-    as possible.
-
     .. note::
         If the repeat value is set from a timer callback it does not immediately take effect.
         If the timer was non-repeating before, it will have been stopped. If it was repeating,
@@ -81,7 +85,7 @@ API
 .. c:function:: uint64_t uv_timer_get_due_in(const uv_timer_t* handle)
 
     Get the timer due value or 0 if it has expired. The time is relative to
-    :c:func:`uv_now()`.
+    :c:func:`uv_now`.
 
     .. versionadded:: 1.40.0
 
