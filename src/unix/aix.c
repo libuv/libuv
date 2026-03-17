@@ -521,6 +521,8 @@ static int uv__make_subdirs_p(const char *filename) {
   char cmd[2048];
   char *p;
   int rc = 0;
+  size_t cmd_len;
+  ptrdiff_t dir_part_len;
 
   /* Strip off the monitor file name */
   p = strrchr(filename, '/');
@@ -533,6 +535,12 @@ static int uv__make_subdirs_p(const char *filename) {
   } else {
     sprintf(cmd, "/aha/fs/modFile.monFactory");
   }
+
+  cmd_len = strlen(cmd);
+  dir_part_len = p - filename;
+
+  if (cmd_len + (size_t)dir_part_len + 1 > sizeof(cmd))
+    return UV_ENAMETOOLONG;
 
   strncat(cmd, filename, (p - filename));
   rc = uv__makedir_p(cmd);
