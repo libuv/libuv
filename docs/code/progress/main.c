@@ -23,6 +23,10 @@ void fake_download(uv_work_t *req) {
         downloaded += (200+random())%1000; // can only download max 1000bytes/sec,
                                            // but at least a 200;
     }
+    // Ensure final 100% progress update is sent
+    pct = 100.0;
+    atomic_store_explicit(&percentage, pct, memory_order_release);
+    uv_async_send(&async);
 }
 
 void after(uv_work_t *req, int status) {
