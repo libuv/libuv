@@ -173,6 +173,22 @@ API
     .. versionadded:: 1.7.0
     .. versionchanged:: 1.37.0 added the `UV_UDP_RECVMMSG` flag.
 
+.. c:function:: int uv_udp_open_ex(uv_udp_t* handle, uv_os_sock_t sock, unsigned int flags)
+
+    Opens an existing file descriptor or Windows SOCKET as a UDP handle.
+
+    :param handle: UDP handle. Should have been initialized with
+        :c:func:`uv_udp_init`.
+
+    :param sock: An existing socket to associate with the handle.
+
+    :param flags: Flags that control socket behavior,
+        ``UV_UDP_REUSEADDR``, and ``UV_UDP_REUSEPORT`` are supported.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+
+    .. versionadded:: 1.52.0
+
 .. c:function:: int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock)
 
     Opens an existing file descriptor or Windows SOCKET as a UDP handle.
@@ -188,6 +204,10 @@ API
     .. note::
         The passed file descriptor or SOCKET is not checked for its type, but
         it's required that it represents a valid datagram socket.
+
+        Internally sets the SO_REUSEADDR socket option unconditionally. This
+        means the reuse flag is always enabled, regardless of user intent. For
+        more control use :c:func:`uv_udp_open_ex`.
 
 .. c:function:: int uv_udp_bind(uv_udp_t* handle, const struct sockaddr* addr, unsigned int flags)
 
@@ -314,7 +334,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param on: 1 for on, 0 for off.
 
@@ -327,7 +347,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param ttl: 1 through 255.
 
@@ -340,7 +360,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param interface_addr: interface address.
 
@@ -353,7 +373,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param on: 1 for on, 0 for off.
 
@@ -366,7 +386,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param ttl: 1 through 255.
 
@@ -425,6 +445,20 @@ API
         can't be sent immediately).
 
     .. versionchanged:: 1.27.0 added support for connected sockets
+
+.. c:function:: int uv_udp_try_send2(uv_udp_t* handle, unsigned int count, uv_buf_t* bufs[/*count*/], unsigned int nbufs[/*count*/], struct sockaddr* addrs[/*count*/], unsigned int flags)
+
+    Like :c:func:`uv_udp_try_send`, but can send multiple datagrams.
+    Lightweight abstraction around :man:`sendmmsg(2)`, with a :man:`sendmsg(2)`
+    fallback loop for platforms that do not support the former. The handle must
+    be fully initialized; call c:func:`uv_udp_bind` first.
+
+    :returns: >= 0: number of datagrams sent. Zero only if `count` was zero.
+        < 0: negative error code. Only if sending the first datagram fails,
+        otherwise returns a positive send count. ``UV_EAGAIN`` when datagrams
+        cannot be sent right now; fall back to :c:func:`uv_udp_send`.
+
+    .. versionadded:: 1.50.0
 
 .. c:function:: int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb, uv_udp_recv_cb recv_cb)
 

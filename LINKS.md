@@ -30,13 +30,13 @@
 * [node9](https://github.com/jvburnes/node9): A portable, hybrid, distributed OS based on Inferno, LuaJIT and Libuv
 * [node.js](http://www.nodejs.org/): Javascript (using Google's V8) + libuv
 * [node.native](https://github.com/d5/node.native): node.js-like API for C++11
-* [nodeuv](https://github.com/nodeuv): An organization with several c++ wrappers for libs which are used in node.js.
 * [phastlight](https://github.com/phastlight/phastlight): Command line tool and web server written in PHP 5.3+ inspired by Node.js
 * [pilight](https://www.pilight.org/): home automation ("domotica")
 * [pixie](https://github.com/pixie-lang/pixie): clojure-inspired lisp with a tracing JIT
 * [Pixie-io](https://github.com/pixie-io/pixie): Open-source observability tool for Kubernetes applications.
 * [potion](https://github.com/perl11/potion)/[p2](https://github.com/perl11/p2): runtime
 * [racer](https://libraries.io/rubygems/racer): Ruby web server written as an C extension
+* [scala-native-loop](https://github.com/scala-native/scala-native-loop): Extensible event loop and async-oriented IO for Scala Native; powered by libuv
 * [Socket Runtime](https://sockets.sh): A runtime for creating native cross-platform software on mobile and desktop using HTML, CSS, and JavaScript
 * [spider-gazelle](https://github.com/cotag/spider-gazelle): Ruby web server using libuv bindings
 * [Suave](http://suave.io/): A simple web development F# library providing a lightweight web server and a set of combinators to manipulate route flow and task composition
@@ -107,3 +107,7 @@
    * [node.pas](https://github.com/vovach777/node.pas) NodeJS-like ecosystem
 * Haskell
    * [Z.Haskell](https://z.haskell.world)
+* C3
+   * [libuv.c3l](https://github.com/velikoss/libuv.c3l)
+* C
+   * [c-asio](https://github.com/zelang-dev/c-asio) A memory safe focus *C framework*, combining [c-raii](https://zelang-dev.github.io/c-raii), `libuv`, **coroutine** and other concurrency primitives.

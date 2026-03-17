@@ -19,7 +19,7 @@ observable behavior. Libuv reverts to using its threadpool when the necessary
 kernel features are unavailable or unsuitable. Starting with libuv v1.49.0 this
 behavior was reverted and Libuv on Linux by default will be using the threadpool
 again. In order to enable io_uring the :c:type:`uv_loop_t` instance must be
-configured with the :c:type:`UV_LOOP_ENABLE_IO_URING_SQPOLL` option.
+configured with the :c:type:`UV_LOOP_USE_IO_URING_SQPOLL` option.
 
 .. note::
      On Windows `uv_fs_*` functions use utf-8 encoding.
@@ -129,7 +129,8 @@ Data types
             uint64_t f_bavail;
             uint64_t f_files;
             uint64_t f_ffree;
-            uint64_t f_spare[4];
+            uint64_t f_frsize;
+            uint64_t f_spare[3];
         } uv_statfs_t;
 
 .. c:enum:: uv_dirent_type_t
@@ -165,8 +166,8 @@ Data types
 .. c:type:: uv_dir_t
 
     Data type used for streaming directory iteration.
-    Used by :c:func:`uv_fs_opendir()`, :c:func:`uv_fs_readdir()`, and
-    :c:func:`uv_fs_closedir()`. `dirents` represents a user provided array of
+    Used by :c:func:`uv_fs_opendir`, :c:func:`uv_fs_readdir`, and
+    :c:func:`uv_fs_closedir`. `dirents` represents a user provided array of
     `uv_dirent_t`s used to hold results. `nentries` is the user provided maximum
     array size of `dirents`.
 
@@ -390,7 +391,7 @@ API
       create a copy-on-write reflink. If the underlying platform does not
       support copy-on-write, or an error occurs while attempting to use
       copy-on-write, a fallback copy mechanism based on
-      :c:func:`uv_fs_sendfile()` is used.
+      :c:func:`uv_fs_sendfile` is used.
     - `UV_FS_COPYFILE_FICLONE_FORCE`: If present, `uv_fs_copyfile()` will
       attempt to create a copy-on-write reflink. If the underlying platform does
       not support copy-on-write, or an error occurs while attempting to use
@@ -429,6 +430,12 @@ API
 .. c:function:: int uv_fs_lutime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime, double mtime, uv_fs_cb cb)
 
     Equivalent to :man:`utime(2)`, :man:`futimes(3)` and :man:`lutimes(3)` respectively.
+
+    Passing `UV_FS_UTIME_NOW` as the atime or mtime sets the timestamp to the
+    current time.
+
+    Passing `UV_FS_UTIME_OMIT` as the atime or mtime leaves the timestamp
+    untouched.
 
     .. note::
       z/OS: `uv_fs_lutime()` is not implemented for z/OS. It can still be called but will return

@@ -85,13 +85,10 @@
 struct uv__io_s;
 struct uv_loop_s;
 
-typedef void (*uv__io_cb)(struct uv_loop_s* loop,
-                          struct uv__io_s* w,
-                          unsigned int events);
 typedef struct uv__io_s uv__io_t;
 
 struct uv__io_s {
-  uv__io_cb cb;
+  uintptr_t bits;
   struct uv__queue pending_queue;
   struct uv__queue watcher_queue;
   unsigned int pevents; /* Pending event mask i.e. mask at next tick. */
@@ -271,7 +268,10 @@ typedef struct {
 
 #define UV_UDP_SEND_PRIVATE_FIELDS                                            \
   struct uv__queue queue;                                                     \
-  struct sockaddr_storage addr;                                               \
+  union {                                                                     \
+    struct sockaddr addr;                                                     \
+    struct sockaddr_storage storage;                                          \
+  } u;                                                                        \
   unsigned int nbufs;                                                         \
   uv_buf_t* bufs;                                                             \
   ssize_t status;                                                             \

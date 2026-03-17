@@ -59,6 +59,7 @@ static void worker(void* arg) {
   struct uv__queue* q;
   int is_slow_work;
 
+  uv_thread_setname("libuv-worker");
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
 
@@ -193,11 +194,21 @@ void uv__threadpool_cleanup(void) {
 static void init_threads(void) {
   uv_thread_options_t config;
   unsigned int i;
+  size_t buflen;
+  char buf[16];
   const char* val;
+  int err;
+
   uv_sem_t sem;
 
   nthreads = ARRAY_SIZE(default_threads);
-  val = getenv("UV_THREADPOOL_SIZE");
+
+  buflen = ARRAY_SIZE(buf);
+  err = uv_os_getenv("UV_THREADPOOL_SIZE", buf, &buflen);
+  val = NULL;
+  if (err == 0)
+    val = buf;
+  
   if (val != NULL)
     nthreads = atoi(val);
   if (nthreads == 0)

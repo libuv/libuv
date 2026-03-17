@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 
 if(POLICY CMP0091)
   cmake_policy(SET CMP0091 NEW) # Enable MSVC_RUNTIME_LIBRARY setting
@@ -20,9 +20,10 @@ include(CTest)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
-set(CMAKE_C_STANDARD 90)
+set(CMAKE_C_STANDARD 11)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 
 option(LIBUV_BUILD_SHARED "Build shared lib" ON)
 
@@ -186,7 +187,7 @@ set(uv_sources
     src/version.c)
 
 if(WIN32)
-  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0602 _CRT_DECLARE_NONSTDC_NAMES=0)
+  list(APPEND uv_defines WIN32_LEAN_AND_MEAN _WIN32_WINNT=0x0A00 _CRT_DECLARE_NONSTDC_NAMES=0)
   list(APPEND uv_libraries
        psapi
        user32
@@ -434,6 +435,7 @@ endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
   list(APPEND uv_test_libraries util)
+  list(APPEND uv_libraries m)
 endif()
 
 if(CYGWIN OR MSYS)
@@ -583,6 +585,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-loop-close.c
        test/test-loop-configure.c
        test/test-loop-handles.c
+       test/test-loop-oom.c
        test/test-loop-stop.c
        test/test-loop-time.c
        test/test-metrics.c
@@ -667,6 +670,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-thread-affinity.c
        test/test-thread-equal.c
        test/test-thread.c
+       test/test-thread-name.c
        test/test-thread-priority.c
        test/test-threadpool-cancel.c
        test/test-threadpool.c
@@ -693,10 +697,13 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-open.c
        test/test-udp-options.c
        test/test-udp-send-and-recv.c
+       test/test-udp-send-fail.c
        test/test-udp-send-hang-loop.c
        test/test-udp-send-immediate.c
        test/test-udp-sendmmsg-error.c
        test/test-udp-send-unreachable.c
+       test/test-udp-recv-cb-close-pollerr.c
+       test/test-udp-recvmsg-unreachable-error.c
        test/test-udp-try-send.c
        test/test-udp-recv-in-a-row.c
        test/test-udp-reuseport.c
@@ -744,6 +751,14 @@ if(LIBUV_BUILD_TESTS)
                        "$<TARGET_FILE:uv_run_tests_a>"
                        "$<TARGET_FILE_DIR:uv_run_tests_a>/uv_run_tests_a_no_ext")
   endif()
+
+  if(QNX)
+    install(TARGETS uv_run_tests uv_run_tests_a uv_run_benchmarks_a
+            DESTINATION ${CMAKE_INSTALL_BINDIR}/libuv_tests)
+
+    install(DIRECTORY test/fixtures
+            DESTINATION ${CMAKE_INSTALL_BINDIR}/libuv_tests)
+  endif()
 endif()
 
 # Now for some gibbering horrors from beyond the stars...
@@ -771,6 +786,11 @@ install(TARGETS uv_a EXPORT libuvConfig
 install(EXPORT libuvConfig
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv
 	NAMESPACE libuv::)
+write_basic_package_version_file(libuvConfigVersion.cmake
+                                 VERSION ${PACKAGE_VERSION}
+                                 COMPATIBILITY SameMajorVersion)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuvConfigVersion.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
 
 if(LIBUV_BUILD_SHARED)
   # The version in the filename is mirroring the behaviour of autotools.
@@ -811,3 +831,77 @@ message(STATUS "summary of build options:
       C compiler:    ${CMAKE_C_COMPILER} (${CMAKE_C_COMPILER_ID})
       CFLAGS:        ${CMAKE_C_FLAGS_${_build_type}} ${CMAKE_C_FLAGS}
 ")
+
+# clang-tidy support
+option(ENABLE_CLANG_TIDY "Enable clang-tidy checks" ON)
+if(ENABLE_CLANG_TIDY)
+  find_program(CLANG_TIDY_EXE NAMES "clang-tidy")
+  if(CLANG_TIDY_EXE)
+    set(CMAKE_C_CLANG_TIDY "${CLANG_TIDY_EXE}")
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+  else()
+    set(CMAKE_C_CLANG_TIDY "clang-tidy")
+    message(STATUS "clang-tidy not found: install clang-tidy or set -DCLANG_TIDY_EXE to run tidy analysis on this platform")
+  endif()
+
+  # Collect source files from existing targets (deduplicated)
+  set(ALL_SOURCE_FILES)
+  set(SRC_TARGETS)
+  set(TEST_TARGETS)
+  set(TIDY_TARGETS)
+
+  # Add main library sources
+  list(APPEND ALL_SOURCE_FILES ${uv_sources})
+
+  # Add test sources if tests are enabled
+  if(LIBUV_BUILD_TESTS)
+    list(APPEND ALL_SOURCE_FILES ${uv_test_sources})
+  endif()
+
+  # Remove duplicates and non-existent files
+  list(REMOVE_DUPLICATES ALL_SOURCE_FILES)
+
+  foreach(SOURCE_FILE ${ALL_SOURCE_FILES})
+    # Create a clean target name
+    string(REPLACE "/" "-" TARGET_NAME ${SOURCE_FILE})
+    string(REGEX REPLACE "\\.[^.]*$" "" TARGET_NAME ${TARGET_NAME})
+    set(FULL_TARGET_NAME "tidy-${TARGET_NAME}")
+
+    # Create individual target for this source file
+    add_custom_target(${FULL_TARGET_NAME}
+      COMMAND ${CMAKE_C_CLANG_TIDY} -p "${CMAKE_BINARY_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/${SOURCE_FILE}"
+      COMMENT "Running clang-tidy on ${SOURCE_FILE}"
+      VERBATIM)
+
+    # Add to appropriate folder list
+    if(SOURCE_FILE MATCHES "^src/")
+      list(APPEND SRC_TARGETS ${FULL_TARGET_NAME})
+    elseif(SOURCE_FILE MATCHES "^test/")
+      list(APPEND TEST_TARGETS ${FULL_TARGET_NAME})
+    endif()
+
+    # Add to list of all tidy targets
+    list(APPEND TIDY_TARGETS ${FULL_TARGET_NAME})
+  endforeach()
+
+  # Create folder-based targets
+  if(SRC_TARGETS)
+    add_custom_target(tidy-src
+      COMMENT "Running clang-tidy on src files"
+      VERBATIM)
+    add_dependencies(tidy-src ${SRC_TARGETS})
+  endif()
+
+  if(TEST_TARGETS)
+    add_custom_target(tidy-test
+      COMMENT "Running clang-tidy on test files"
+      VERBATIM)
+    add_dependencies(tidy-test ${TEST_TARGETS})
+  endif()
+
+  # Create main tidy target that depends on all individual targets
+  add_custom_target(tidy
+    COMMENT "Running clang-tidy on all source files"
+    VERBATIM)
+  add_dependencies(tidy ${TIDY_TARGETS})
+endif()

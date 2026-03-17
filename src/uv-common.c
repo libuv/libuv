@@ -492,6 +492,9 @@ int uv_udp_send(uv_udp_send_t* req,
                 uv_udp_send_cb send_cb) {
   int addrlen;
 
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
+
   addrlen = uv__udp_check_before_send(handle, addr);
   if (addrlen < 0)
     return addrlen;
@@ -506,11 +509,39 @@ int uv_udp_try_send(uv_udp_t* handle,
                     const struct sockaddr* addr) {
   int addrlen;
 
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
+
   addrlen = uv__udp_check_before_send(handle, addr);
   if (addrlen < 0)
     return addrlen;
 
   return uv__udp_try_send(handle, bufs, nbufs, addr, addrlen);
+}
+
+
+int uv_udp_try_send2(uv_udp_t* handle,
+                     unsigned int count,
+                     uv_buf_t* bufs[/*count*/],
+                     unsigned int nbufs[/*count*/],
+                     struct sockaddr* addrs[/*count*/],
+                     unsigned int flags) {
+  unsigned int i;
+
+  if (count < 1)
+    return UV_EINVAL;
+
+  if (flags != 0)
+    return UV_EINVAL;
+
+  for (i = 0; i < count; i++)
+    if (nbufs[i] < 1 || nbufs[i] > 1024 * 1024)
+      return UV_EINVAL;
+
+  if (handle->send_queue_count > 0)
+    return UV_EAGAIN;
+
+  return uv__udp_try_send2(handle, count, bufs, nbufs, addrs);
 }
 
 
@@ -556,11 +587,16 @@ static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
   struct uv__queue* q;
   uv_handle_t* h;
 
-  if (loop == NULL)
-    loop = uv_default_loop();
-
   if (stream == NULL)
     stream = stderr;
+
+  if (loop == NULL) {
+    loop = uv_default_loop();
+    if (loop == NULL) {
+      fprintf(stream, "uv_default_loop() failed\n");
+      return;
+    }
+  }
 
   uv__queue_foreach(q, &loop->handle_queue) {
     h = uv__queue_data(q, uv_handle_t, handle_queue);
@@ -643,6 +679,9 @@ int uv_send_buffer_size(uv_handle_t* handle, int *value) {
 
 int uv_fs_event_getpath(uv_fs_event_t* handle, char* buffer, size_t* size) {
   size_t required_len;
+
+  if (buffer == NULL || size == NULL || *size == 0)
+    return UV_EINVAL;
 
   if (!uv__is_active(handle)) {
     *size = 0;
@@ -930,7 +969,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; i++)
-    uv__free(cpu_infos[i].model);
+    uv__free((char*) cpu_infos[i].model);
 
   uv__free(cpu_infos);
 #endif  /* __linux__ */
@@ -1027,3 +1066,11 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
     idle_time += uv_hrtime() - entry_time;
   return idle_time;
 }
+
+/* OS390 needs a different implementation, already provided in os390.c. */
+#ifndef __MVS__
+void uv_free_interface_addresses(uv_interface_address_t* addresses,
+                                 int count) {
+  uv__free(addresses);
+}
+#endif  /* !__MVS__ */

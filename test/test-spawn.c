@@ -1329,9 +1329,7 @@ TEST_IMPL(environment_creation) {
       }
     }
     if (prev) { /* verify sort order */
-#if !defined(__MINGW32__) || defined(__MINGW64_VERSION_MAJOR)
       ASSERT_EQ(1, CompareStringOrdinal(prev, -1, str, -1, TRUE));
-#endif
     }
     ASSERT(found); /* verify that we expected this variable */
   }
@@ -1524,7 +1522,7 @@ TEST_IMPL(spawn_setuid_fails) {
   init_process_options("spawn_helper1", fail_cb);
 
   options.flags |= UV_PROCESS_SETUID;
-  /* On IBMi PASE, there is no root user. User may grant 
+  /* On IBMi PASE, there is no root user. User may grant
    * root-like privileges, including setting uid to 0.
    */
 #if defined(__PASE__)
@@ -1575,7 +1573,7 @@ TEST_IMPL(spawn_setgid_fails) {
   init_process_options("spawn_helper1", fail_cb);
 
   options.flags |= UV_PROCESS_SETGID;
-  /* On IBMi PASE, there is no root user. User may grant 
+  /* On IBMi PASE, there is no root user. User may grant
    * root-like privileges, including setting gid to 0.
    */
 #if defined(__MVS__) || defined(__PASE__)
@@ -1680,7 +1678,10 @@ TEST_IMPL(spawn_fs_open) {
 #ifdef _WIN32
   const char dev_null[] = "NUL";
   HMODULE kernelbase_module;
-  sCompareObjectHandles pCompareObjectHandles; /* function introduced in Windows 10 */
+  union {
+    FARPROC proc;
+    sCompareObjectHandles pCompareObjectHandles; /* Windows >= 10 */
+  } u;
 #else
   const char dev_null[] = "/dev/null";
 #endif
@@ -1703,12 +1704,10 @@ TEST_IMPL(spawn_fs_open) {
 #ifdef _WIN32
   ASSERT_NE(0, DuplicateHandle(GetCurrentProcess(), fd, GetCurrentProcess(), &dup_fd,
                                0, /* inherit */ TRUE, DUPLICATE_SAME_ACCESS));
-  kernelbase_module = GetModuleHandleA("kernelbase.dll");
-  pCompareObjectHandles = (sCompareObjectHandles)
-      GetProcAddress(kernelbase_module, "CompareObjectHandles");
-  ASSERT_NE(pCompareObjectHandles == NULL ||
-            pCompareObjectHandles(fd, dup_fd),
-            0);
+  kernelbase_module = GetModuleHandleW(L"kernelbase.dll");
+  u.proc = GetProcAddress(kernelbase_module, "CompareObjectHandles");
+  if (u.pCompareObjectHandles != NULL)
+    ASSERT_EQ(TRUE, u.pCompareObjectHandles(fd, dup_fd));
 #else
   dup_fd = dup(fd);
 #endif

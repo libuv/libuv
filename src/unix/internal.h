@@ -35,6 +35,10 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#if defined(__APPLE__) || defined(__DragonFly__) || \
+    defined(__FreeBSD__) || defined(__NetBSD__)
+#include <sys/event.h>
+#endif
 
 #define uv__msan_unpoison(p, n)                                               \
   do {                                                                        \
@@ -137,6 +141,11 @@ union uv__sockaddr {
 /* Leans on the fact that, on Linux, POLLRDHUP == EPOLLRDHUP. */
 #ifdef POLLRDHUP
 # define UV__POLLRDHUP POLLRDHUP
+#elif defined(__QNX__)
+/* On QNX, POLLRDHUP is not available and the 0x2000 workaround
+ * leads to undefined bahavior.
+ */
+# define UV__POLLRDHUP 0
 #else
 # define UV__POLLRDHUP 0x2000
 #endif
@@ -252,8 +261,66 @@ ssize_t uv__recvmsg(int fd, struct msghdr *msg, int flags);
 void uv__make_close_pending(uv_handle_t* handle);
 int uv__getiovmax(void);
 
-void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd);
-void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+typedef enum {
+    UV__NO_IO_CB,
+    UV__AHAFS_EVENT,
+    UV__ASYNC_IO,
+    UV__FS_EVENT,
+    UV__FS_EVENT_READ,
+    UV__INOTIFY_READ,
+    UV__POLL_IO,
+    UV__SIGNAL_EVENT,
+    UV__SERVER_IO,
+    UV__STREAM_IO,
+    UV__UDP_IO,
+} uv__io_cb_t;
+
+#define uv__io_cb_get(w)      ((uv__io_cb_t)((w)->bits & 15))
+#define uv__io_cb_set(w, cb)                                                  \
+  do {                                                                        \
+    (w)->bits -= uv__io_cb_get(w);                                            \
+    (w)->bits |= (cb) & 15;                                                   \
+  } while (0)
+
+void uv__ahafs_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__fs_event_read(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__inotify_read(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+
+#ifndef _AIX
+#define uv__ahafs_event(loop, w, events) UNREACHABLE()
+#endif
+
+#if !defined(__APPLE__) &&                                                    \
+    !defined(__DragonFly__) &&                                                \
+    !defined(__FreeBSD__) &&                                                  \
+    !defined(__NetBSD__) &&                                                   \
+    !defined(__OpenBSD__)
+#define uv__fs_event(loop, w, events) UNREACHABLE()
+#endif
+
+#ifndef __linux__
+#define uv__inotify_read(loop, w, events) UNREACHABLE()
+#endif
+
+#ifndef __sun__
+#define uv__fs_event_read(loop, w, events) UNREACHABLE()
+#endif
+
+void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__io_init(uv__io_t* w, uv__io_cb_t cb, int fd);
+int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+int uv__io_init_start(uv_loop_t* loop,
+                      uv__io_t* w,
+                      uv__io_cb_t cb,
+                      int fd,
+                      unsigned int events);
 void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 void uv__io_close(uv_loop_t* loop, uv__io_t* w);
 void uv__io_feed(uv_loop_t* loop, uv__io_t* w);
@@ -261,6 +328,8 @@ int uv__io_active(const uv__io_t* w, unsigned int events);
 int uv__io_check_fd(uv_loop_t* loop, int fd);
 void uv__io_poll(uv_loop_t* loop, int timeout); /* in milliseconds or -1 */
 int uv__io_fork(uv_loop_t* loop);
+void uv__io_poll_prepare(uv_loop_t* loop, sigset_t* pset, int timeout);
+void uv__io_poll_check(uv_loop_t* loop, sigset_t* pset);
 int uv__fd_exists(uv_loop_t* loop, int fd);
 
 /* async */
@@ -290,7 +359,11 @@ int uv__slurp(const char* filename, char* buf, size_t len);
 /* tcp */
 int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb);
 int uv__tcp_nodelay(int fd, int on);
-int uv__tcp_keepalive(int fd, int on, unsigned int delay);
+int uv__tcp_keepalive(int fd,
+                      int on,
+                      unsigned int idle,
+                      unsigned int intvl,
+                      unsigned int cnt);
 
 /* tty */
 void uv__tty_close(uv_tty_t* handle);
@@ -306,6 +379,7 @@ int uv__signal_loop_fork(uv_loop_t* loop);
 
 /* platform specific */
 uint64_t uv__hrtime(uv_clocktype_t type);
+uint64_t uv__get_rlimit_max_memory(void);
 int uv__kqueue_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
@@ -323,6 +397,8 @@ void uv__prepare_close(uv_prepare_t* handle);
 void uv__process_close(uv_process_t* handle);
 void uv__stream_close(uv_stream_t* handle);
 void uv__tcp_close(uv_tcp_t* handle);
+int uv__thread_setname(const char* name);
+int uv__thread_getname(uv_thread_t* tid, char* name, size_t size);
 size_t uv__thread_stack_size(void);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
@@ -394,12 +470,12 @@ UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
   loop->time = uv__hrtime(UV_CLOCK_FAST) / 1000000;
 }
 
-UV_UNUSED(static char* uv__basename_r(const char* path)) {
-  char* s;
+UV_UNUSED(static const char* uv__basename_r(const char* path)) {
+  const char* s;
 
   s = strrchr(path, '/');
   if (s == NULL)
-    return (char*) path;
+    return path;
 
   return s + 1;
 }
@@ -483,13 +559,7 @@ uv__fs_copy_file_range(int fd_in,
 #endif
 
 #ifdef __linux__
-typedef struct {
-  long long quota_per_period;
-  long long period_length;
-  double proportions;
-} uv__cpu_constraint;
-
-int uv__get_constrained_cpu(uv__cpu_constraint* constraint);
+int uv__get_constrained_cpu(long long* quota);
 #endif
 
 #if defined(__sun) && !defined(__illumos__)
@@ -503,5 +573,25 @@ int uv__get_constrained_cpu(uv__cpu_constraint* constraint);
 #define UV__SOLARIS_11_4 (0)
 #endif
 #endif
+
+#if defined(EVFILT_USER) && defined(NOTE_TRIGGER)
+/* EVFILT_USER is available since OS X 10.6, DragonFlyBSD 4.0,
+ * FreeBSD 8.1, and NetBSD 10.0.
+ *
+ * Note that even though EVFILT_USER is defined on the current system,
+ * it may still fail to work at runtime somehow. In that case, we fall
+ * back to pipe-based signaling.
+ */
+#define UV__KQUEUE_EVFILT_USER 1
+/* Magic number of identifier used for EVFILT_USER during runtime detection.
+ * There are no Google hits for this number when I create it. That way,
+ * people will be directed here if this number gets printed due to some
+ * kqueue error and they google for help. */
+#define UV__KQUEUE_EVFILT_USER_IDENT 0x1e7e7711
+#else
+#define UV__KQUEUE_EVFILT_USER 0
+#endif
+
+extern char* uv_saved_argv0;
 
 #endif /* UV_UNIX_INTERNAL_H_ */

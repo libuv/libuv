@@ -191,7 +191,7 @@ int uv_cwd(char* buffer, size_t* size) {
   WCHAR *utf16_buffer;
   int r;
 
-  if (buffer == NULL || size == NULL) {
+  if (buffer == NULL || size == NULL || *size == 0) {
     return UV_EINVAL;
   }
 
@@ -376,10 +376,10 @@ done:
 
 
 static int uv__get_process_title(void) {
-  WCHAR title_w[MAX_TITLE_LENGTH];
+  WCHAR title_w[MAX_PATH];
   DWORD wlen;
 
-  wlen = GetConsoleTitleW(title_w, sizeof(title_w) / sizeof(WCHAR));
+  wlen = GetModuleFileNameW(NULL, title_w, MAX_PATH);
   if (wlen == 0)
     return uv_translate_sys_error(GetLastError());
 
@@ -516,7 +516,7 @@ unsigned int uv_available_parallelism(void) {
    */
   count = 0;
   if (GetProcessAffinityMask(GetCurrentProcess(), &procmask, &sysmask))
-    for (i = 0; i < 8 * sizeof(procmask); i++)
+    for (i = 0; i < 8u * sizeof(procmask); i++)
       count += 1 & (procmask >> i);
 
   if (count > 0)
@@ -627,7 +627,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
     uv__convert_utf16_to_utf8(cpu_brand,
                               cpu_brand_size / sizeof(WCHAR),
-                              &(cpu_info->model));
+                              (char**) &(cpu_info->model));
   }
 
   uv__free(sppi);
@@ -639,12 +639,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 
  error:
   if (cpu_infos != NULL) {
-    /* This is safe because the cpu_infos array is zeroed on allocation. */
-    for (i = 0; i < cpu_count; i++)
-      uv__free(cpu_infos[i].model);
+    uv_free_cpu_info(cpu_infos, cpu_count);
   }
-
-  uv__free(cpu_infos);
   uv__free(sppi);
 
   return uv_translate_sys_error(err);
@@ -867,63 +863,101 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-    int count) {
-  uv__free(addresses);
-}
-
-
 int uv_getrusage(uv_rusage_t *uv_rusage) {
-  FILETIME createTime, exitTime, kernelTime, userTime;
-  SYSTEMTIME kernelSystemTime, userSystemTime;
-  PROCESS_MEMORY_COUNTERS memCounters;
-  IO_COUNTERS ioCounters;
+  FILETIME create_time, exit_time, kernel_time, user_time;
+  SYSTEMTIME kernel_system_time, user_system_time;
+  PROCESS_MEMORY_COUNTERS mem_counters;
+  IO_COUNTERS io_counters;
   int ret;
 
-  ret = GetProcessTimes(GetCurrentProcess(), &createTime, &exitTime, &kernelTime, &userTime);
+  ret = GetProcessTimes(GetCurrentProcess(),
+                        &create_time,
+                        &exit_time,
+                        &kernel_time,
+                        &user_time);
   if (ret == 0) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  ret = FileTimeToSystemTime(&kernelTime, &kernelSystemTime);
+  ret = FileTimeToSystemTime(&kernel_time, &kernel_system_time);
   if (ret == 0) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  ret = FileTimeToSystemTime(&userTime, &userSystemTime);
+  ret = FileTimeToSystemTime(&user_time, &user_system_time);
   if (ret == 0) {
     return uv_translate_sys_error(GetLastError());
   }
 
   ret = GetProcessMemoryInfo(GetCurrentProcess(),
-                             &memCounters,
-                             sizeof(memCounters));
+                             &mem_counters,
+                             sizeof(mem_counters));
   if (ret == 0) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  ret = GetProcessIoCounters(GetCurrentProcess(), &ioCounters);
+  ret = GetProcessIoCounters(GetCurrentProcess(), &io_counters);
   if (ret == 0) {
     return uv_translate_sys_error(GetLastError());
   }
 
   memset(uv_rusage, 0, sizeof(*uv_rusage));
 
-  uv_rusage->ru_utime.tv_sec = userSystemTime.wHour * 3600 +
-                               userSystemTime.wMinute * 60 +
-                               userSystemTime.wSecond;
-  uv_rusage->ru_utime.tv_usec = userSystemTime.wMilliseconds * 1000;
+  uv_rusage->ru_utime.tv_sec = user_system_time.wHour * 3600 +
+                               user_system_time.wMinute * 60 +
+                               user_system_time.wSecond;
+  uv_rusage->ru_utime.tv_usec = user_system_time.wMilliseconds * 1000;
 
-  uv_rusage->ru_stime.tv_sec = kernelSystemTime.wHour * 3600 +
-                               kernelSystemTime.wMinute * 60 +
-                               kernelSystemTime.wSecond;
-  uv_rusage->ru_stime.tv_usec = kernelSystemTime.wMilliseconds * 1000;
+  uv_rusage->ru_stime.tv_sec = kernel_system_time.wHour * 3600 +
+                               kernel_system_time.wMinute * 60 +
+                               kernel_system_time.wSecond;
+  uv_rusage->ru_stime.tv_usec = kernel_system_time.wMilliseconds * 1000;
 
-  uv_rusage->ru_majflt = (uint64_t) memCounters.PageFaultCount;
-  uv_rusage->ru_maxrss = (uint64_t) memCounters.PeakWorkingSetSize / 1024;
+  uv_rusage->ru_majflt = (uint64_t) mem_counters.PageFaultCount;
+  uv_rusage->ru_maxrss = (uint64_t) mem_counters.PeakWorkingSetSize / 1024;
 
-  uv_rusage->ru_oublock = (uint64_t) ioCounters.WriteOperationCount;
-  uv_rusage->ru_inblock = (uint64_t) ioCounters.ReadOperationCount;
+  uv_rusage->ru_oublock = (uint64_t) io_counters.WriteOperationCount;
+  uv_rusage->ru_inblock = (uint64_t) io_counters.ReadOperationCount;
+
+  return 0;
+}
+
+
+int uv_getrusage_thread(uv_rusage_t* uv_rusage) {
+  FILETIME create_time, exit_time, kernel_time, user_time;
+  SYSTEMTIME kernel_system_time, user_system_time;
+  int ret;
+
+  ret = GetThreadTimes(GetCurrentThread(),
+                       &create_time,
+                       &exit_time,
+                       &kernel_time,
+                       &user_time);
+  if (ret == 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  ret = FileTimeToSystemTime(&kernel_time, &kernel_system_time);
+  if (ret == 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  ret = FileTimeToSystemTime(&user_time, &user_system_time);
+  if (ret == 0) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  memset(uv_rusage, 0, sizeof(*uv_rusage));
+
+  uv_rusage->ru_utime.tv_sec = user_system_time.wHour * 3600 +
+                               user_system_time.wMinute * 60 +
+                               user_system_time.wSecond;
+  uv_rusage->ru_utime.tv_usec = user_system_time.wMilliseconds * 1000;
+
+  uv_rusage->ru_stime.tv_sec = kernel_system_time.wHour * 3600 +
+                               kernel_system_time.wMinute * 60 +
+                               kernel_system_time.wSecond;
+  uv_rusage->ru_stime.tv_usec = kernel_system_time.wMilliseconds * 1000;
 
   return 0;
 }
@@ -972,6 +1006,7 @@ int uv_os_homedir(char* buffer, size_t* size) {
 
 
 int uv_os_tmpdir(char* buffer, size_t* size) {
+  int r;
   wchar_t *path;
   size_t len;
 
@@ -1010,7 +1045,9 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
     path[len] = L'\0';
   }
 
-  return uv__copy_utf16_to_utf8(path, len, buffer, size);
+  r = uv__copy_utf16_to_utf8(path, len, buffer, size);
+  uv__free(path);
+  return r;
 }
 
 
@@ -1234,7 +1271,7 @@ fail:
   FreeEnvironmentStringsW(env);
 
   for (i = 0; i < cnt; i++) {
-    envitem = &(*envitems)[cnt];
+    envitem = &(*envitems)[i];
     uv__free(envitem->name);
   }
   uv__free(*envitems);
@@ -1472,20 +1509,26 @@ int uv_os_setpriority(uv_pid_t pid, int priority) {
 }
 
 int uv_thread_getpriority(uv_thread_t tid, int* priority) {
+  DWORD err;
   int r;
 
   if (priority == NULL)
     return UV_EINVAL;
 
   r = GetThreadPriority(tid);
-  if (r == THREAD_PRIORITY_ERROR_RETURN)
-    return uv_translate_sys_error(GetLastError());
+  if (r == THREAD_PRIORITY_ERROR_RETURN) {
+    err = GetLastError();
+    if (err == ERROR_INVALID_HANDLE)
+      return UV_ESRCH;
+    return uv_translate_sys_error(err);
+  }
 
   *priority = r;
   return 0;
 }
 
 int uv_thread_setpriority(uv_thread_t tid, int priority) {
+  DWORD err;
   int r;
 
   switch (priority) {
@@ -1508,8 +1551,12 @@ int uv_thread_setpriority(uv_thread_t tid, int priority) {
       return 0;
   }
 
-  if (r == 0)
-    return uv_translate_sys_error(GetLastError());
+  if (r == 0) {
+    err = GetLastError();
+    if (err == ERROR_INVALID_HANDLE)
+      return UV_ESRCH;
+    return uv_translate_sys_error(err);
+  }
 
   return 0;
 }
@@ -1589,7 +1636,7 @@ int uv_os_uname(uv_utsname_t* buffer) {
     version_size = sizeof(buffer->version) - version_size;
     r = uv__copy_utf16_to_utf8(os_info.szCSDVersion,
                                -1,
-                               buffer->version + 
+                               buffer->version +
                                  sizeof(buffer->version) - version_size,
                                &version_size);
     if (r)
@@ -1656,6 +1703,9 @@ int uv_os_uname(uv_utsname_t* buffer) {
     case PROCESSOR_ARCHITECTURE_ARM:
       uv__strscpy(buffer->machine, "arm", sizeof(buffer->machine));
       break;
+    case PROCESSOR_ARCHITECTURE_ARM64:
+      uv__strscpy(buffer->machine, "arm64", sizeof(buffer->machine));
+      break;
     default:
       uv__strscpy(buffer->machine, "unknown", sizeof(buffer->machine));
       break;
@@ -1688,8 +1738,11 @@ int uv_gettimeofday(uv_timeval64_t* tv) {
   return 0;
 }
 
-int uv__random_rtlgenrandom(void* buf, size_t buflen) {
+int uv__random_winrandom(void* buf, size_t buflen) {
   if (buflen == 0)
+    return 0;
+
+  if (pProcessPrng != NULL && pProcessPrng(buf, buflen))
     return 0;
 
   if (SystemFunction036(buf, buflen) == FALSE)

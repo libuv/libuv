@@ -36,10 +36,9 @@ static uv_udp_t client;
 static uv_udp_send_t req;
 static uv_udp_send_t req_ss;
 
+static int darwin_ebusy_errors;
 static int cl_recv_cb_called;
-
 static int sv_send_cb_called;
-
 static int close_cb_called;
 
 static void alloc_cb(uv_handle_t* handle,
@@ -128,6 +127,13 @@ static void cl_recv_cb(uv_udp_t* handle,
 
 #if !defined(__NetBSD__)
     r = uv_udp_set_source_membership(&server, MULTICAST_ADDR, NULL, source_addr, UV_JOIN_GROUP);
+#if defined(__APPLE__)
+    if (r == UV_EBUSY) {
+      uv_close((uv_handle_t*) &server, close_cb);
+      darwin_ebusy_errors++;
+      return;
+    }
+#endif
     ASSERT_OK(r);
 #endif
 
@@ -138,8 +144,8 @@ static void cl_recv_cb(uv_udp_t* handle,
 
 
 TEST_IMPL(udp_multicast_join) {
-#if defined(__OpenBSD__)
-  RETURN_SKIP("Test does not currently work in OpenBSD");
+#if defined(__OpenBSD__) || defined(QNX_IOPKT)
+  RETURN_SKIP("Test does not currently work in OpenBSD or QNX");
 #endif
   int r;
   struct sockaddr_in addr;
@@ -160,7 +166,15 @@ TEST_IMPL(udp_multicast_join) {
   r = uv_udp_set_membership(&server, MULTICAST_ADDR, NULL, UV_JOIN_GROUP);
   if (r == UV_ENODEV)
     RETURN_SKIP("No multicast support.");
+  if (r == UV_ENOEXEC)
+    RETURN_SKIP("No multicast support (likely a firewall issue).");
+  if (r == UV_ENOSYS)
+    RETURN_SKIP("No multicast support (likely a platform issue).");
   ASSERT_OK(r);
+#if defined(__ANDROID__)
+  /* It returns an ENOSYS error */
+  RETURN_SKIP("Test does not currently work in ANDROID");
+#endif
 
   r = uv_udp_recv_start(&server, alloc_cb, cl_recv_cb);
   ASSERT_OK(r);
@@ -174,6 +188,9 @@ TEST_IMPL(udp_multicast_join) {
 
   /* run the loop till all events are processed */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  if (darwin_ebusy_errors > 0)
+    RETURN_SKIP("Unexplained macOS IP_ADD_SOURCE_MEMBERSHIP EBUSY bug");
 
   ASSERT_EQ(2, cl_recv_cb_called);
   ASSERT_EQ(2, sv_send_cb_called);
