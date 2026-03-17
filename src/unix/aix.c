@@ -523,7 +523,6 @@ static int uv__make_subdirs_p(const char *filename) {
   int rc = 0;
   size_t cmd_len;
   ptrdiff_t dir_part_len;
-
   /* Strip off the monitor file name */
   p = strrchr(filename, '/');
 
