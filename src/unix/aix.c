@@ -542,7 +542,7 @@ static int uv__make_subdirs_p(const char *filename) {
   if (cmd_len + (size_t)dir_part_len + 1 > sizeof(cmd))
     return UV_ENAMETOOLONG;
 
-  strncat(cmd, filename, (p - filename));
+  strncat(cmd, filename, dir_part_len);
   rc = uv__makedir_p(cmd);
 
   if (rc == -1 && errno != EEXIST){
