@@ -1,6 +1,7 @@
 # primary
 furo==2024.8.6
 Sphinx==7.0.1
+sphinx-copybutton==0.5.2
 
 # dependencies
 alabaster==0.7.16
@@ -27,4 +28,3 @@ sphinxcontrib-qthelp==2.0.0
 sphinxcontrib-serializinghtml==2.0.0
 typing_extensions==4.13.0
 urllib3==2.3.0
-sphinx-copybutton==0.5.2
