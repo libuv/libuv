@@ -333,7 +333,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
       UNREACHABLE();
   }
 
-  /* Apply changes after draining */
+  /* Apply changes now, to avoid blocking. */
   rc = uv__tcsetattr(fd, TCSANOW, &tmp);
   if (rc == 0)
     tty->mode = mode;
