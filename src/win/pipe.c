@@ -1622,6 +1622,9 @@ static int uv__pipe_write_data(uv_loop_t* loop,
       return err;
   }
 
+  if (write_buf.len > IO_MAX_BYTES)
+    return ERROR_INVALID_PARAMETER; /* Maps to UV_EINVAL. */
+
   if ((handle->flags &
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) ==
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) {
@@ -1968,8 +1971,11 @@ static int uv__pipe_read_data(uv_loop_t* loop,
   /* Ensure we read at most the smaller of:
    *   (a) the length of the user-allocated buffer.
    *   (b) the maximum data length as specified by the `max_bytes` argument.
-   *   (c) the amount of data that can be read non-blocking
+   *   (c) the amount of data that can be read non-blocking.
+   *   (d) IO_MAX_BYTES.
    */
+  if (buf.len > IO_MAX_BYTES)
+    buf.len = IO_MAX_BYTES;
   if (max_bytes > buf.len)
     max_bytes = buf.len;
 

@@ -1103,6 +1103,8 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
         break;
       }
       assert(buf.base != NULL);
+      if (buf.len > IO_MAX_BYTES)
+        buf.len = IO_MAX_BYTES;
 
       flags = 0;
       if (WSARecv(handle->socket,
