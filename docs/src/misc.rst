@@ -282,13 +282,15 @@ API
     .. warning:: Don't call libuv functions after calling
                  :c:func:`uv_library_shutdown()`.
 
-.. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
+.. c:function:: uv_buf_t uv_buf_init(char* base, size_t len)
 
     Constructor for :c:type:`uv_buf_t`.
 
     Due to platform differences the user cannot rely on the ordering of the
     `base` and `len` members of the uv_buf_t struct. The user is responsible for
     freeing `base` after the uv_buf_t is done. Return struct passed by value.
+
+    .. versionchanged:: 2.0.0 `buf.len` is capped to INT32_MAX.
 
 .. c:function:: char** uv_setup_args(int argc, char** argv)
 

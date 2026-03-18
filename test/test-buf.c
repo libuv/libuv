@@ -18,21 +18,29 @@
 
 #include <stdint.h>
 
+
 TEST_IMPL(buf_large) {
   uv_buf_t buf;
 
   buf = uv_buf_init(NULL, SIZE_MAX);
+  ASSERT(buf.len == INT32_MAX);
+
 #ifdef _WIN32
   WSABUF* wbuf;
 
   wbuf = (WSABUF*) &buf;
   ASSERT(wbuf->len == buf.len);
+  ASSERT(sizeof(uv_buf_t) == sizeof(WSABUF));
+  ASSERT(sizeof(((uv_buf_t*) 0)->base) ==
+         sizeof(((WSABUF*) 0)->buf));
+  ASSERT(sizeof(((uv_buf_t*) 0)->len) == sizeof(((WSABUF*) 0)->len));
+  ASSERT(offsetof(uv_buf_t, base) == offsetof(WSABUF, buf));
+  ASSERT(offsetof(uv_buf_t, len) == offsetof(WSABUF, len));
 #else
   struct iovec* iobuf;
 
   iobuf = (struct iovec*) &buf;
   ASSERT(iobuf->iov_len == buf.len);
-  ASSERT(buf.len == SIZE_MAX);
 
   /* Verify that uv_buf_t is ABI-compatible with struct iovec. */
   ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));
