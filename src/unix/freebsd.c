@@ -26,7 +26,12 @@
 #include <errno.h>
 
 #include <paths.h>
-#include <sys/user.h>
+#if defined(__DragonFly__)
+# include <sys/event.h>
+# include <sys/kinfo.h>
+#else
+# include <sys/user.h>
+#endif
 #include <sys/types.h>
 #include <sys/resource.h>
 #include <sys/sysctl.h>
@@ -112,7 +117,7 @@ uint64_t uv_get_total_memory(void) {
 
 
 uint64_t uv_get_constrained_memory(void) {
-  return 0;  /* Memory constraints are unknown. */
+  return uv__get_rlimit_max_memory();
 }
 
 

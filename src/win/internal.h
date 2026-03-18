@@ -134,8 +134,6 @@ int uv__pipe_write(uv_loop_t* loop,
                    uv_stream_t* send_handle,
                    uv_write_cb cb);
 void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t* req);
-int uv__pipe_try_write(uv_pipe_t* handle, const uv_buf_t bufs[],
-    unsigned int nbufs);
 
 void uv__process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_req_t* req);
@@ -170,18 +168,8 @@ void uv__process_tty_read_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* req);
 void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_write_t* req);
-/*
- * uv__process_tty_accept_req() is a stub to keep DELEGATE_STREAM_REQ working
- * TODO: find a way to remove it
- */
-void uv__process_tty_accept_req(uv_loop_t* loop, uv_tty_t* handle,
-    uv_req_t* raw_req);
-/*
- * uv__process_tty_connect_req() is a stub to keep DELEGATE_STREAM_REQ working
- * TODO: find a way to remove it
- */
-void uv__process_tty_connect_req(uv_loop_t* loop, uv_tty_t* handle,
-    uv_connect_t* req);
+#define uv__process_tty_accept_req(loop, handle, req) abort()
+#define uv__process_tty_connect_req(loop, handle, req) abort()
 void uv__process_tty_shutdown_req(uv_loop_t* loop,
                                   uv_tty_t* stream,
                                   uv_shutdown_t* req);
@@ -269,9 +257,9 @@ void uv__util_init(void);
 
 uint64_t uv__hrtime(unsigned int scale);
 __declspec(noreturn) void uv_fatal_error(const int errorno, const char* syscall);
-int uv__getpwuid_r(uv_passwd_t* pwd);
-int uv__convert_utf16_to_utf8(const WCHAR* utf16, int utf16len, char** utf8);
-int uv__convert_utf8_to_utf16(const char* utf8, int utf8len, WCHAR** utf16);
+int uv__convert_utf16_to_utf8(const WCHAR* utf16, size_t utf16len, char** utf8);
+int uv__copy_utf16_to_utf8(const WCHAR* utf16, size_t utf16len, char* utf8, size_t *size);
+int uv__convert_utf8_to_utf16(const char* utf8, WCHAR** utf16);
 
 typedef int (WINAPI *uv__peersockfunc)(SOCKET, struct sockaddr*, int*);
 
@@ -281,7 +269,7 @@ int uv__getsockpeername(const uv_handle_t* handle,
                         int* namelen,
                         int delayed_error);
 
-int uv__random_rtlgenrandom(void* buf, size_t buflen);
+int uv__random_winrandom(void* buf, size_t buflen);
 
 
 /*
@@ -341,5 +329,7 @@ void uv__wake_all_loops(void);
  * Init system wake-up detection
  */
 void uv__init_detect_system_wakeup(void);
+
+int uv_translate_write_sys_error(int sys_errno);
 
 #endif /* UV_WIN_INTERNAL_H_ */

@@ -49,22 +49,98 @@ static int uv__tcp_nodelay(uv_tcp_t* handle, SOCKET socket, int enable) {
 }
 
 
-static int uv__tcp_keepalive(uv_tcp_t* handle, SOCKET socket, int enable, unsigned int delay) {
+/*
+ * Check if Windows version is 10.0.16299 (Windows 10, version 1709) or later.
+ */
+static int uv__windows10_version1709(void) {
+  OSVERSIONINFOW os_info;
+  if (!pRtlGetVersion)
+    return 0;
+  pRtlGetVersion(&os_info);
+  if (os_info.dwMajorVersion < 10)
+    return 0;
+  if (os_info.dwMajorVersion > 10)
+    return 1;
+  if (os_info.dwMinorVersion > 0)
+    return 1;
+  return os_info.dwBuildNumber >= 16299;
+}
+
+
+static int uv__tcp_keepalive(uv_tcp_t* handle,
+                             SOCKET socket,
+                             int on,
+                             unsigned int idle,
+                             unsigned int intvl,
+                             unsigned int cnt) {
   if (setsockopt(socket,
                  SOL_SOCKET,
                  SO_KEEPALIVE,
-                 (const char*)&enable,
-                 sizeof enable) == -1) {
+                 (const char*)&on,
+                 sizeof on) == -1) {
     return WSAGetLastError();
   }
 
-  if (enable && setsockopt(socket,
-                           IPPROTO_TCP,
-                           TCP_KEEPALIVE,
-                           (const char*)&delay,
-                           sizeof delay) == -1) {
-    return WSAGetLastError();
+  if (!on)
+    return 0;
+
+  if (idle < 1 || intvl < 1 || cnt < 1)
+    return UV_EINVAL;
+
+  /* Windows 10, version 1709 (build 10.0.16299) and later require second units
+   * for TCP keepalive options. */
+  if (uv__windows10_version1709()) {
+    if (setsockopt(socket,
+                   IPPROTO_TCP,
+                   TCP_KEEPIDLE,
+                   (const char*)&idle,
+                   sizeof idle) == -1) {
+      return WSAGetLastError();
+    }
+
+    if (setsockopt(socket,
+                   IPPROTO_TCP,
+                   TCP_KEEPINTVL,
+                   (const char*)&intvl,
+                   sizeof intvl) == -1) {
+      return WSAGetLastError();
+    }
+
+    if (setsockopt(socket,
+                   IPPROTO_TCP,
+                   TCP_KEEPCNT,
+                   (const char*)&cnt,
+                   sizeof cnt) == -1) {
+      return WSAGetLastError();
+    }
+
+    return 0;
   }
+
+  /* For those versions prior to Windows 10 version 1709,
+   * we fall back to SIO_KEEPALIVE_VALS that expects millisecond units.
+   * The SIO_KEEPALIVE_VALS IOCTL is supported on Windows 2000
+   * and later versions of the operating system. */
+  struct tcp_keepalive keepalive;
+  keepalive.onoff = on;
+  keepalive.keepalivetime = idle * 1000;
+  keepalive.keepaliveinterval = intvl * 1000;
+  /* On Windows Vista and later, the number of keep-alive probes
+   * (data retransmissions) is set to 10 and cannot be changed.
+   * On Windows Server 2003, Windows XP, and Windows 2000, the default setting
+   * for number of keep-alive probes is 5 and cannot be changed programmatically.
+   */
+  DWORD dummy;
+  if (WSAIoctl(socket,
+               SIO_KEEPALIVE_VALS,
+               (LPVOID) &keepalive,
+               sizeof keepalive,
+               NULL,
+               0,
+               &dummy,
+               NULL,
+               NULL) == -1)
+    return WSAGetLastError();
 
   return 0;
 }
@@ -126,7 +202,7 @@ static int uv__tcp_set_socket(uv_loop_t* loop,
 
   /* TODO: Use stored delay. */
   if (handle->flags & UV_HANDLE_TCP_KEEPALIVE) {
-    err = uv__tcp_keepalive(handle, socket, 1, 60);
+    err = uv__tcp_keepalive(handle, socket, 1, 60, 1, 10);
     if (err)
       return err;
   }
@@ -175,14 +251,14 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* handle, unsigned int flags) {
     sock = socket(domain, SOCK_STREAM, 0);
     if (sock == INVALID_SOCKET) {
       err = WSAGetLastError();
-      QUEUE_REMOVE(&handle->handle_queue);
+      uv__queue_remove(&handle->handle_queue);
       return uv_translate_sys_error(err);
     }
 
     err = uv__tcp_set_socket(handle->loop, handle, sock, domain, 0);
     if (err) {
       closesocket(sock);
-      QUEUE_REMOVE(&handle->handle_queue);
+      uv__queue_remove(&handle->handle_queue);
       return uv_translate_sys_error(err);
     }
 
@@ -206,7 +282,7 @@ void uv__process_tcp_shutdown_req(uv_loop_t* loop, uv_tcp_t* stream, uv_shutdown
   assert(stream->flags & UV_HANDLE_CONNECTION);
 
   stream->stream.conn.shutdown_req = NULL;
-  UNREGISTER_HANDLE_REQ(loop, stream, req);
+  UNREGISTER_HANDLE_REQ(loop, stream);
 
   err = 0;
   if (stream->flags & UV_HANDLE_CLOSING)
@@ -285,6 +361,12 @@ static int uv__tcp_try_bind(uv_tcp_t* handle,
                             unsigned int flags) {
   DWORD err;
   int r;
+
+  /* There is no SO_REUSEPORT on Windows, Windows only knows SO_REUSEADDR.
+   * so we just return an error directly when UV_TCP_REUSEPORT is requested
+   * for binding the socket. */
+  if (flags & UV_TCP_REUSEPORT)
+    return ERROR_NOT_SUPPORTED;
 
   if (handle->socket == INVALID_SOCKET) {
     SOCKET sock;
@@ -737,20 +819,6 @@ static int uv__is_loopback(const struct sockaddr_storage* storage) {
   return 0;
 }
 
-// Check if Windows version is 10.0.16299 or later
-static int uv__is_fast_loopback_fail_supported(void) {
-  OSVERSIONINFOW os_info;
-  if (!pRtlGetVersion)
-    return 0;
-  pRtlGetVersion(&os_info);
-  if (os_info.dwMajorVersion < 10)
-    return 0;
-  if (os_info.dwMajorVersion > 10)
-    return 1;
-  if (os_info.dwMinorVersion > 0)
-    return 1;
-  return os_info.dwBuildNumber >= 16299;
-}
 
 static int uv__tcp_try_connect(uv_connect_t* req,
                               uv_tcp_t* handle,
@@ -797,7 +865,7 @@ static int uv__tcp_try_connect(uv_connect_t* req,
    * is not reachable, instead of waiting for 2s. We do not care if this fails.
    * This only works on Windows version 10.0.16299 and later.
    */
-  if (uv__is_fast_loopback_fail_supported() && uv__is_loopback(&converted)) {
+  if (uv__windows10_version1709() && uv__is_loopback(&converted)) {
     memset(&retransmit_ioctl, 0, sizeof(retransmit_ioctl));
     retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
     retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
@@ -822,7 +890,7 @@ out:
   if (handle->delayed_error != 0) {
     /* Process the req without IOCP. */
     handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
     uv__insert_pending_req(loop, (uv_req_t*)req);
     return 0;
   }
@@ -838,12 +906,12 @@ out:
   if (UV_SUCCEEDED_WITHOUT_IOCP(success)) {
     /* Process the req without IOCP. */
     handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
     uv__insert_pending_req(loop, (uv_req_t*)req);
   } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
     /* The req will be processed with IOCP. */
     handle->reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
   } else {
     return WSAGetLastError();
   }
@@ -913,14 +981,14 @@ int uv__tcp_write(uv_loop_t* loop,
     req->u.io.queued_bytes = 0;
     handle->reqs_pending++;
     handle->stream.conn.write_reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
     uv__insert_pending_req(loop, (uv_req_t*) req);
   } else if (UV_SUCCEEDED_WITH_IOCP(result == 0)) {
     /* Request queued by the kernel. */
     req->u.io.queued_bytes = uv__count_bufs(bufs, nbufs);
     handle->reqs_pending++;
     handle->stream.conn.write_reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
     handle->write_queue_size += req->u.io.queued_bytes;
     if (handle->flags & UV_HANDLE_EMULATE_IOCP &&
         !RegisterWaitForSingleObject(&req->wait_handle,
@@ -934,7 +1002,7 @@ int uv__tcp_write(uv_loop_t* loop,
     req->u.io.queued_bytes = 0;
     handle->reqs_pending++;
     handle->stream.conn.write_reqs_pending++;
-    REGISTER_HANDLE_REQ(loop, handle, req);
+    REGISTER_HANDLE_REQ(loop, handle);
     SET_REQ_ERROR(req, WSAGetLastError());
     uv__insert_pending_req(loop, (uv_req_t*) req);
   }
@@ -1105,7 +1173,7 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
 
-  UNREGISTER_HANDLE_REQ(loop, handle, req);
+  UNREGISTER_HANDLE_REQ(loop, handle);
 
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
     if (req->wait_handle != INVALID_HANDLE_VALUE) {
@@ -1197,7 +1265,7 @@ void uv__process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   assert(handle->type == UV_TCP);
 
-  UNREGISTER_HANDLE_REQ(loop, handle, req);
+  UNREGISTER_HANDLE_REQ(loop, handle);
 
   err = 0;
   if (handle->delayed_error) {
@@ -1323,22 +1391,30 @@ int uv_tcp_nodelay(uv_tcp_t* handle, int enable) {
 }
 
 
-int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay) {
+int uv_tcp_keepalive(uv_tcp_t* handle, int on, unsigned int idle) {
+  return uv_tcp_keepalive_ex(handle, on, idle, 1, 10);
+}
+
+int uv_tcp_keepalive_ex(uv_tcp_t* handle,
+                        int on,
+                        unsigned int idle,
+                        unsigned int intvl,
+                        unsigned int cnt) {
   int err;
 
   if (handle->socket != INVALID_SOCKET) {
-    err = uv__tcp_keepalive(handle, handle->socket, enable, delay);
+    err = uv__tcp_keepalive(handle, handle->socket, on, idle, intvl, cnt);
     if (err)
       return uv_translate_sys_error(err);
   }
 
-  if (enable) {
+  if (on) {
     handle->flags |= UV_HANDLE_TCP_KEEPALIVE;
   } else {
     handle->flags &= ~UV_HANDLE_TCP_KEEPALIVE;
   }
 
-  /* TODO: Store delay if handle->socket isn't created yet. */
+  /* TODO: Store idle if handle->socket isn't created yet. */
 
   return 0;
 }
@@ -1551,11 +1627,6 @@ int uv__tcp_connect(uv_connect_t* req,
   return 0;
 }
 
-#ifndef WSA_FLAG_NO_HANDLE_INHERIT
-/* Added in Windows 7 SP1. Specify this to avoid race conditions, */
-/* but also manually clear the inherit flag in case this failed. */
-#define WSA_FLAG_NO_HANDLE_INHERIT 0x80
-#endif
 
 int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int flags1) {
   SOCKET server = INVALID_SOCKET;

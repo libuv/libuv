@@ -183,7 +183,7 @@ After all threads are done, ``i == 1``.
 libuv v0.11.11 onwards also added a ``uv_key_t`` struct and api_ for
 thread-local storage.
 
-.. _api: http://docs.libuv.org/en/v1.x/threading.html#thread-local-storage
+.. _api: https://docs.libuv.org/en/v1.x/threading.html#thread-local-storage
 
 libuv work queue
 ----------------
@@ -258,7 +258,8 @@ up a signal handler for termination.
     :lines: 43-
 
 When the user triggers the signal by pressing ``Ctrl+C`` we send
-``uv_cancel()`` to all the workers. ``uv_cancel()`` will return ``0`` for those that are already executing or finished.
+``uv_cancel()`` to all the workers. ``uv_cancel()`` will return ``0`` for those
+tasks that are pending execution and could be cancelled.
 
 .. rubric:: queue-cancel/main.c
 .. literalinclude:: ../../code/queue-cancel/main.c

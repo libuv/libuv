@@ -213,8 +213,8 @@ download files. Rather than give all control to libcurl, we'll instead be
 using the libuv event loop, and use the non-blocking, async multi_ interface to
 progress with the download whenever libuv notifies of I/O readiness.
 
-.. _libcurl: https://curl.haxx.se/libcurl/
-.. _multi: https://curl.haxx.se/libcurl/c/libcurl-multi.html
+.. _libcurl: https://curl.se/libcurl/
+.. _multi: https://curl.se/libcurl/c/libcurl-multi.html
 
 .. rubric:: uvwget/main.c - The setup
 .. literalinclude:: ../../code/uvwget/main.c
@@ -235,7 +235,7 @@ Our downloader is to be invoked as::
 
     $ ./uvwget [url1] [url2] ...
 
-So we add each argument as an URL
+So we add each argument as a URL
 
 .. rubric:: uvwget/main.c - Adding urls
 .. literalinclude:: ../../code/uvwget/main.c
@@ -363,7 +363,7 @@ to get the error message.
 argument. ``init_plugin_function`` is a function pointer to the sort of
 function we are looking for in the application's plugins.
 
-.. _shared libraries: https://en.wikipedia.org/wiki/Shared_library#Shared_libraries
+.. _shared libraries: https://en.wikipedia.org/wiki/Shared_library
 
 TTY
 ---
@@ -390,7 +390,7 @@ It is then best to use ``uv_tty_set_mode`` to set the mode to *normal*
 which enables most TTY formatting, flow-control and other settings. Other_ modes
 are also available.
 
-.. _Other: http://docs.libuv.org/en/v1.x/tty.html#c.uv_tty_mode_t
+.. _Other: https://docs.libuv.org/en/v1.x/tty.html#c.uv_tty_mode_t
 
 Remember to call ``uv_tty_reset_mode`` when your program exits to restore the
 state of the terminal. Just good manners. Another set of good manners is to be
@@ -435,7 +435,7 @@ As you can see this is very useful to produce nicely formatted output, or even
 console based arcade games if that tickles your fancy. For fancier control you
 can try `ncurses`_.
 
-.. _ncurses: https://www.gnu.org/software/ncurses/ncurses.html
+.. _ncurses: https://invisible-island.net/ncurses/announce.html
 
 .. versionchanged:: 1.23.1: the `readable` parameter is now unused and ignored.
                     The appropriate value will now be auto-detected from the kernel.
@@ -444,7 +444,8 @@ can try `ncurses`_.
 
 .. [#] I was first introduced to the term baton in this context, in Konstantin
        Käfer's excellent slides on writing node.js bindings --
-       https://kkaefer.com/node-cpp-modules/#baton
+       https://kkaefer.github.io/node-cpp-modules/#baton
+       (`video <https://youtu.be/GajiVsJwSkY?list=PL37ZVnwpeshEVYiRemhMII6ORJmsJuqP7&t=1009>`_)
 .. [#] mfp is My Fancy Plugin
 
 .. _libev man page: http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#COMMON_OR_USEFUL_IDIOMS_OR_BOTH

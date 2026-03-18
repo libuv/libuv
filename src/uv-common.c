@@ -128,6 +128,39 @@ int uv_replace_allocator(uv_malloc_func malloc_func,
   return 0;
 }
 
+
+void uv_os_free_passwd(uv_passwd_t* pwd) {
+  if (pwd == NULL)
+    return;
+
+  /* On unix, the memory for name, shell, and homedir are allocated in a single
+   * uv__malloc() call. The base of the pointer is stored in pwd->username, so
+   * that is the field that needs to be freed.
+   */
+  uv__free(pwd->username);
+#ifdef _WIN32
+  uv__free(pwd->homedir);
+#endif
+  pwd->username = NULL;
+  pwd->shell = NULL;
+  pwd->homedir = NULL;
+}
+
+
+void uv_os_free_group(uv_group_t *grp) {
+  if (grp == NULL)
+    return;
+
+  /* The memory for is allocated in a single uv__malloc() call. The base of the
+   * pointer is stored in grp->members, so that is the only field that needs to
+   * be freed.
+   */
+  uv__free(grp->members);
+  grp->members = NULL;
+  grp->groupname = NULL;
+}
+
+
 #define XX(uc, lc) case UV_##uc: return sizeof(uv_##lc##_t);
 
 size_t uv_handle_size(uv_handle_type type) {
@@ -459,6 +492,9 @@ int uv_udp_send(uv_udp_send_t* req,
                 uv_udp_send_cb send_cb) {
   int addrlen;
 
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
+
   addrlen = uv__udp_check_before_send(handle, addr);
   if (addrlen < 0)
     return addrlen;
@@ -473,11 +509,39 @@ int uv_udp_try_send(uv_udp_t* handle,
                     const struct sockaddr* addr) {
   int addrlen;
 
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
+
   addrlen = uv__udp_check_before_send(handle, addr);
   if (addrlen < 0)
     return addrlen;
 
   return uv__udp_try_send(handle, bufs, nbufs, addr, addrlen);
+}
+
+
+int uv_udp_try_send2(uv_udp_t* handle,
+                     unsigned int count,
+                     uv_buf_t* bufs[/*count*/],
+                     unsigned int nbufs[/*count*/],
+                     struct sockaddr* addrs[/*count*/],
+                     unsigned int flags) {
+  unsigned int i;
+
+  if (count < 1)
+    return UV_EINVAL;
+
+  if (flags != 0)
+    return UV_EINVAL;
+
+  for (i = 0; i < count; i++)
+    if (nbufs[i] < 1 || nbufs[i] > 1024 * 1024)
+      return UV_EINVAL;
+
+  if (handle->send_queue_count > 0)
+    return UV_EAGAIN;
+
+  return uv__udp_try_send2(handle, count, bufs, nbufs, addrs);
 }
 
 
@@ -500,17 +564,17 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
 
 
 void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
-  QUEUE queue;
-  QUEUE* q;
+  struct uv__queue queue;
+  struct uv__queue* q;
   uv_handle_t* h;
 
-  QUEUE_MOVE(&loop->handle_queue, &queue);
-  while (!QUEUE_EMPTY(&queue)) {
-    q = QUEUE_HEAD(&queue);
-    h = QUEUE_DATA(q, uv_handle_t, handle_queue);
+  uv__queue_move(&loop->handle_queue, &queue);
+  while (!uv__queue_empty(&queue)) {
+    q = uv__queue_head(&queue);
+    h = uv__queue_data(q, uv_handle_t, handle_queue);
 
-    QUEUE_REMOVE(q);
-    QUEUE_INSERT_TAIL(&loop->handle_queue, q);
+    uv__queue_remove(q);
+    uv__queue_insert_tail(&loop->handle_queue, q);
 
     if (h->flags & UV_HANDLE_INTERNAL) continue;
     walk_cb(h, arg);
@@ -520,14 +584,22 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
 
 static void uv__print_handles(uv_loop_t* loop, int only_active, FILE* stream) {
   const char* type;
-  QUEUE* q;
+  struct uv__queue* q;
   uv_handle_t* h;
 
-  if (loop == NULL)
-    loop = uv_default_loop();
+  if (stream == NULL)
+    stream = stderr;
 
-  QUEUE_FOREACH(q, &loop->handle_queue) {
-    h = QUEUE_DATA(q, uv_handle_t, handle_queue);
+  if (loop == NULL) {
+    loop = uv_default_loop();
+    if (loop == NULL) {
+      fprintf(stream, "uv_default_loop() failed\n");
+      return;
+    }
+  }
+
+  uv__queue_foreach(q, &loop->handle_queue) {
+    h = uv__queue_data(q, uv_handle_t, handle_queue);
 
     if (only_active && !uv__is_active(h))
       continue;
@@ -607,6 +679,9 @@ int uv_send_buffer_size(uv_handle_t* handle, int *value) {
 
 int uv_fs_event_getpath(uv_fs_event_t* handle, char* buffer, size_t* size) {
   size_t required_len;
+
+  if (buffer == NULL || size == NULL || *size == 0)
+    return UV_EINVAL;
 
   if (!uv__is_active(handle)) {
     *size = 0;
@@ -813,7 +888,7 @@ uv_loop_t* uv_loop_new(void) {
 
 
 int uv_loop_close(uv_loop_t* loop) {
-  QUEUE* q;
+  struct uv__queue* q;
   uv_handle_t* h;
 #ifndef NDEBUG
   void* saved_data;
@@ -822,8 +897,8 @@ int uv_loop_close(uv_loop_t* loop) {
   if (uv__has_active_reqs(loop))
     return UV_EBUSY;
 
-  QUEUE_FOREACH(q, &loop->handle_queue) {
-    h = QUEUE_DATA(q, uv_handle_t, handle_queue);
+  uv__queue_foreach(q, &loop->handle_queue) {
+    h = uv__queue_data(q, uv_handle_t, handle_queue);
     if (!(h->flags & UV_HANDLE_INTERNAL))
       return UV_EBUSY;
   }
@@ -887,12 +962,17 @@ void uv_os_free_environ(uv_env_item_t* envitems, int count) {
 
 
 void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
+#ifdef __linux__
+  (void) &count;
+  uv__free(cpu_infos);
+#else
   int i;
 
   for (i = 0; i < count; i++)
-    uv__free(cpu_infos[i].model);
+    uv__free((char*) cpu_infos[i].model);
 
   uv__free(cpu_infos);
+#endif  /* __linux__ */
 }
 
 
@@ -906,7 +986,7 @@ __attribute__((destructor))
 void uv_library_shutdown(void) {
   static int was_shutdown;
 
-  if (uv__load_relaxed(&was_shutdown))
+  if (uv__exchange_int_relaxed(&was_shutdown, 1))
     return;
 
   uv__process_title_cleanup();
@@ -917,7 +997,6 @@ void uv_library_shutdown(void) {
 #else
   uv__threadpool_cleanup();
 #endif
-  uv__store_relaxed(&was_shutdown, 1);
 }
 
 
@@ -987,3 +1066,11 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
     idle_time += uv_hrtime() - entry_time;
   return idle_time;
 }
+
+/* OS390 needs a different implementation, already provided in os390.c. */
+#ifndef __MVS__
+void uv_free_interface_addresses(uv_interface_address_t* addresses,
+                                 int count) {
+  uv__free(addresses);
+}
+#endif  /* !__MVS__ */

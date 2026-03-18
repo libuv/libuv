@@ -27,6 +27,11 @@
 #include "task.h"
 #include "uv.h"
 
+/* Refs: https://github.com/libuv/libuv/issues/4369 */
+#if defined(__ANDROID__)
+#include <android/fdsan.h>
+#endif
+
 char executable_path[sizeof(executable_path)];
 
 
@@ -37,28 +42,14 @@ static int compare_task(const void* va, const void* vb) {
 }
 
 
-const char* fmt(double d) {
-  static char buf[1024];
-  static char* p;
+char* fmt(char (*buf)[32], double d) {
   uint64_t v;
+  char* p;
 
-  if (p == NULL)
-    p = buf;
-
-  p += 31;
-
-  if (p >= buf + sizeof(buf))
-    return "<buffer too small>";
-
+  p = &(*buf)[32];
   v = (uint64_t) d;
 
-#if 0 /* works but we don't care about fractional precision */
-  if (d - v >= 0.01) {
-    *--p = '0' + (uint64_t) (d * 100) % 10;
-    *--p = '0' + (uint64_t) (d * 10) % 10;
-    *--p = '.';
-  }
-#endif
+  *--p = '\0';
 
   if (v == 0)
     *--p = '0';
@@ -156,6 +147,13 @@ void log_tap_result(int test_count,
   fflush(stdout);
 }
 
+void enable_fdsan(void) {
+/* Refs: https://github.com/libuv/libuv/issues/4369 */
+#if defined(__ANDROID__)
+  android_fdsan_set_error_level(ANDROID_FDSAN_ERROR_LEVEL_WARN_ALWAYS);
+#endif
+}
+
 
 int run_test(const char* test,
              int benchmark_output,
@@ -173,6 +171,8 @@ int run_test(const char* test,
   status = 255;
   main_proc = NULL;
   process_count = 0;
+
+  enable_fdsan();
 
 #ifndef _WIN32
   /* Clean up stale socket from previous run. */
@@ -426,13 +426,17 @@ void print_tests(FILE* stream) {
 }
 
 
-void print_lines(const char* buffer, size_t size, FILE* stream) {
+int print_lines(const char* buffer, size_t size, FILE* stream, int partial) {
   const char* start;
   const char* end;
 
   start = buffer;
   while ((end = memchr(start, '\n', &buffer[size] - start))) {
-    fputs("# ", stream);
+    if (partial == 0)
+      fputs("# ", stream);
+    else
+      partial = 0;
+
     fwrite(start, 1, (int)(end - start), stream);
     fputs("\n", stream);
     fflush(stream);
@@ -441,9 +445,13 @@ void print_lines(const char* buffer, size_t size, FILE* stream) {
 
   end = &buffer[size];
   if (start < end) {
-    fputs("# ", stream);
+    if (partial == 0)
+      fputs("# ", stream);
+
     fwrite(start, 1, (int)(end - start), stream);
-    fputs("\n", stream);
     fflush(stream);
+    return 1;
   }
+
+  return 0;
 }

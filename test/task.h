@@ -54,9 +54,9 @@
 # define TEST_PIPENAME_2 "\\\\.\\pipe\\uv-test2"
 # define TEST_PIPENAME_3 "\\\\.\\pipe\\uv-test3"
 #else
-# define TEST_PIPENAME "/tmp/uv-test-sock"
-# define TEST_PIPENAME_2 "/tmp/uv-test-sock2"
-# define TEST_PIPENAME_3 "/tmp/uv-test-sock3"
+# define TEST_PIPENAME "uv-test-sock"
+# define TEST_PIPENAME_2 "uv-test-sock2"
+# define TEST_PIPENAME_3 "uv-test-sock3"
 #endif
 
 #ifdef _WIN32
@@ -109,8 +109,8 @@ typedef enum {
 
 #define ASSERT_BASE(a, operator, b, type, conv)              \
  do {                                                        \
-  volatile type eval_a = (type) (a);                         \
-  volatile type eval_b = (type) (b);                         \
+  type const eval_a = (a);                                   \
+  type const eval_b = (b);                                   \
   if (!(eval_a operator eval_b)) {                           \
     fprintf(stderr,                                          \
             "Assertion failed in %s on line %d: `%s %s %s` " \
@@ -123,6 +123,21 @@ typedef enum {
             eval_a,                                          \
             #operator,                                       \
             eval_b);                                         \
+    abort();                                                 \
+  }                                                          \
+ } while (0)
+
+#define ASSERT_OK(a)                                         \
+ do {                                                        \
+  int64_t const eval_a = (a);                                \
+  if (eval_a) {                                              \
+    fprintf(stderr,                                          \
+            "Assertion failed in %s on line %d: `%s` okay "  \
+            "(error: %"PRId64")\n",                          \
+            __FILE__,                                        \
+            __LINE__,                                        \
+            #a,                                              \
+            eval_a);                                         \
     abort();                                                 \
   }                                                          \
  } while (0)
@@ -169,8 +184,8 @@ typedef enum {
  do {                                                          \
   if (!(expr)) {                                               \
     int i;                                                     \
-    unsigned char* a_ = (unsigned char*)a;                     \
-    unsigned char* b_ = (unsigned char*)b;                     \
+    const unsigned char* a_ = (a);                             \
+    const unsigned char* b_ = (b);                             \
     fprintf(stderr,                                            \
             "Assertion failed in %s on line %d: `%s %s %s` (", \
             __FILE__,                                          \
@@ -206,12 +221,12 @@ typedef enum {
 #define ASSERT_UINT64_LT(a, b) ASSERT_BASE(a, <, b, uint64_t, PRIu64)
 #define ASSERT_UINT64_NE(a, b) ASSERT_BASE(a, !=, b, uint64_t, PRIu64)
 
-#define ASSERT_DOUBLE_EQ(a, b) ASSERT_BASE(a, ==, b, double, "f")
-#define ASSERT_DOUBLE_GE(a, b) ASSERT_BASE(a, >=, b, double, "f")
-#define ASSERT_DOUBLE_GT(a, b) ASSERT_BASE(a, >, b, double, "f")
-#define ASSERT_DOUBLE_LE(a, b) ASSERT_BASE(a, <=, b, double, "f")
-#define ASSERT_DOUBLE_LT(a, b) ASSERT_BASE(a, <, b, double, "f")
-#define ASSERT_DOUBLE_NE(a, b) ASSERT_BASE(a, !=, b, double, "f")
+#define ASSERT_DOUBLE_EQ(a, b) ASSERT_BASE(a, ==, b, volatile double, "f")
+#define ASSERT_DOUBLE_GE(a, b) ASSERT_BASE(a, >=, b, volatile double, "f")
+#define ASSERT_DOUBLE_GT(a, b) ASSERT_BASE(a, >, b, volatile double, "f")
+#define ASSERT_DOUBLE_LE(a, b) ASSERT_BASE(a, <=, b, volatile double, "f")
+#define ASSERT_DOUBLE_LT(a, b) ASSERT_BASE(a, <, b, volatile double, "f")
+#define ASSERT_DOUBLE_NE(a, b) ASSERT_BASE(a, !=, b, volatile double, "f")
 
 #define ASSERT_STR_EQ(a, b) \
   ASSERT_BASE_STR(strcmp(a, b) == 0, a, == , b, char*, "s")
@@ -232,24 +247,31 @@ typedef enum {
   ASSERT_BASE_HEX(memcmp(a, b, size) != 0, a, !=, b, size)
 
 #define ASSERT_NULL(a) \
-  ASSERT_BASE(a, ==, NULL, void*, "p")
+  ASSERT_BASE(a, ==, NULL, const void*, "p")
 
 #define ASSERT_NOT_NULL(a) \
-  ASSERT_BASE(a, !=, NULL, void*, "p")
+  ASSERT_BASE(a, !=, NULL, const void*, "p")
 
 #define ASSERT_PTR_EQ(a, b) \
-  ASSERT_BASE(a, ==, b, void*, "p")
+  ASSERT_BASE(a, ==, b, const void*, "p")
 
 #define ASSERT_PTR_NE(a, b) \
-  ASSERT_BASE(a, !=, b, void*, "p")
+  ASSERT_BASE(a, !=, b, const void*, "p")
 
-/* This macro cleans up the main loop. This is used to avoid valgrind
- * warnings about memory being "leaked" by the main event loop.
+#define ASSERT_PTR_LT(a, b) \
+  ASSERT_BASE(a, <, b, const void*, "p")
+#define ASSERT_PTR_LE(a, b) \
+  ASSERT_BASE(a, <=, b, const void*, "p")
+#define ASSERT_PTR_GE(a, b) \
+  ASSERT_BASE(a, >=, b, const void*, "p")
+
+/* This macro cleans up the event loop. This is used to avoid valgrind
+ * warnings about memory being "leaked" by the event loop.
  */
-#define MAKE_VALGRIND_HAPPY()                       \
+#define MAKE_VALGRIND_HAPPY(loop)                   \
   do {                                              \
-    close_loop(uv_default_loop());                  \
-    ASSERT(0 == uv_loop_close(uv_default_loop()));  \
+    close_loop(loop);                               \
+    ASSERT_EQ(0, uv_loop_close(loop));              \
     uv_library_shutdown();                          \
   } while (0)
 
@@ -262,12 +284,25 @@ typedef enum {
   int run_benchmark_##name(void);                                             \
   int run_benchmark_##name(void)
 
+#ifdef __linux__
+#define TEST_FS_IMPL(name)                                                    \
+  int run_test_##name(void);                                                  \
+  int run_test_##name##_iouring(void) {                                       \
+    uv_os_setenv("UV_USE_IO_URING", "1");                                     \
+    uv_loop_configure(uv_default_loop(), UV_LOOP_USE_IO_URING_SQPOLL);        \
+    return run_test_##name();                                                 \
+  }                                                                           \
+  int run_test_##name(void)
+#else
+#define TEST_FS_IMPL(name) TEST_IMPL(name)
+#endif
+
 #define HELPER_IMPL(name)                                                     \
   int run_helper_##name(void);                                                \
   int run_helper_##name(void)
 
-/* Format big numbers nicely. WARNING: leaks memory. */
-const char* fmt(double d);
+/* Format big numbers nicely. */
+char* fmt(char (*buf)[32], double d);
 
 /* Reserved test exit codes. */
 enum test_status {
@@ -316,11 +351,7 @@ extern int snprintf(char*, size_t, const char*, ...);
 # define UNUSED
 #endif
 
-#if defined(_WIN32)
-#define notify_parent_process() ((void) 0)
-#else
 extern void notify_parent_process(void);
-#endif
 
 /* Fully close a loop */
 static void close_walk_cb(uv_handle_t* handle, void* arg) {
@@ -350,7 +381,7 @@ UNUSED static int can_ipv6(void) {
   return supported;
 }
 
-#if defined(__CYGWIN__) || defined(__MSYS__) || defined(__PASE__)
+#if defined(__CYGWIN__) || defined(__MSYS__) || defined(__PASE__) || defined(__QNX__)
 # define NO_FS_EVENTS "Filesystem watching not supported on this platform."
 #endif
 
@@ -371,7 +402,7 @@ UNUSED static int can_ipv6(void) {
 #endif
 
 #if !defined(__linux__) && \
-    !defined(__FreeBSD__) && \
+    !(defined(__FreeBSD__) && __FreeBSD_version >= 1301000) && \
     !defined(_WIN32)
 # define NO_CPU_AFFINITY \
   "affinity not supported on this platform."

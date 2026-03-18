@@ -2,10 +2,14 @@ version: 2
 
 sphinx:
   builder: html
-  configuration: null
+  configuration: docs/src/conf.py
   fail_on_warning: false
 
+build:
+  os: "ubuntu-22.04"
+  tools:
+    python: "3.9"
+
 python:
-  version: 3.8
   install:
     - requirements: docs/requirements.txt
