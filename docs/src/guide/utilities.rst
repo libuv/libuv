@@ -213,8 +213,8 @@ download files. Rather than give all control to libcurl, we'll instead be
 using the libuv event loop, and use the non-blocking, async multi_ interface to
 progress with the download whenever libuv notifies of I/O readiness.
 
-.. _libcurl: https://curl.haxx.se/libcurl/
-.. _multi: https://curl.haxx.se/libcurl/c/libcurl-multi.html
+.. _libcurl: https://curl.se/libcurl/
+.. _multi: https://curl.se/libcurl/c/libcurl-multi.html
 
 .. rubric:: uvwget/main.c - The setup
 .. literalinclude:: ../../code/uvwget/main.c
@@ -390,7 +390,7 @@ It is then best to use ``uv_tty_set_mode`` to set the mode to *normal*
 which enables most TTY formatting, flow-control and other settings. Other_ modes
 are also available.
 
-.. _Other: http://docs.libuv.org/en/v1.x/tty.html#c.uv_tty_mode_t
+.. _Other: https://docs.libuv.org/en/v1.x/tty.html#c.uv_tty_mode_t
 
 Remember to call ``uv_tty_reset_mode`` when your program exits to restore the
 state of the terminal. Just good manners. Another set of good manners is to be
@@ -444,7 +444,8 @@ can try `ncurses`_.
 
 .. [#] I was first introduced to the term baton in this context, in Konstantin
        Käfer's excellent slides on writing node.js bindings --
-       https://kkaefer.com/node-cpp-modules/#baton
+       https://kkaefer.github.io/node-cpp-modules/#baton
+       (`video <https://youtu.be/GajiVsJwSkY?list=PL37ZVnwpeshEVYiRemhMII6ORJmsJuqP7&t=1009>`_)
 .. [#] mfp is My Fancy Plugin
 
 .. _libev man page: http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#COMMON_OR_USEFUL_IDIOMS_OR_BOTH
