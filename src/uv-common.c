@@ -486,7 +486,7 @@ int uv__udp_check_before_send(uv_udp_t* handle,
   if (nbufs < 1 || nbufs > 1024 * 1024)
     return UV_EINVAL;
 
-  if (uv__count_bufs(bufs, nbufs) > IO_MAX_BYTES)
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
     return UV_EINVAL;
 
   return addrlen;

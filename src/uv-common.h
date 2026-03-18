@@ -230,7 +230,7 @@ size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
  * an EINVAL. On Linux, IO syscalls will transfer at most this many bytes.
  * Use this limit everywhere to avoid platform-specific failures.
  */
-#define IO_MAX_BYTES 0x7ffff000
+#define UV__IO_MAX_BYTES 0x7ffff000
 
 int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value);
 

@@ -78,7 +78,6 @@ static size_t uv__write_req_size(uv_write_t* req);
 static void uv__drain(uv_stream_t* stream);
 
 
-
 void uv__stream_init(uv_loop_t* loop,
                      uv_stream_t* stream,
                      uv_handle_type type) {
@@ -1058,15 +1057,15 @@ static void uv__read(uv_stream_t* stream) {
     assert(uv__stream_fd(stream) >= 0);
 
     if (!is_ipc) {
-      do
+      do {
         nread = read(uv__stream_fd(stream),
                      buf.base,
-                     buf.len > IO_MAX_BYTES ? IO_MAX_BYTES : buf.len);
-      while (nread < 0 && errno == EINTR);
+                     buf.len > UV__IO_MAX_BYTES ? UV__IO_MAX_BYTES : buf.len);
+      } while (nread < 0 && errno == EINTR);
     } else {
       /* ipc uses recvmsg */
-      if (buf.len > IO_MAX_BYTES)
-        buf.len = IO_MAX_BYTES;
+      if (buf.len > UV__IO_MAX_BYTES)
+        buf.len = UV__IO_MAX_BYTES;
       msg.msg_flags = 0;
       msg.msg_iov = (struct iovec*) &buf;
       msg.msg_iovlen = 1;
@@ -1078,8 +1077,7 @@ static void uv__read(uv_stream_t* stream) {
 
       do {
         nread = uv__recvmsg(uv__stream_fd(stream), &msg, 0);
-      }
-      while (nread < 0 && errno == EINTR);
+      } while (nread < 0 && errno == EINTR);
     }
 
     if (nread < 0) {
@@ -1314,11 +1312,11 @@ static int uv__check_before_write(uv_stream_t* stream,
   if (nbufs < 1 || nbufs > 1024*1024)
     return UV_EINVAL;
 
-  /* Reject writes above IO_MAX_BYTES to be consistent with EINVAL on platforms
+  /* Reject writes above UV__IO_MAX_BYTES to be consistent with EINVAL on platforms
    * such as macOS that fail when the total size of the iov exceeds 2GB,
    * and catch/prevent sign-extension bugs.
    */
-  if (uv__count_bufs(bufs, nbufs) > IO_MAX_BYTES)
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
     return UV_EINVAL;
 
   if (uv__stream_fd(stream) < 0)

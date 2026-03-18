@@ -122,7 +122,7 @@ static int uv__check_before_write(uv_stream_t* handle,
     return UV_EINVAL;
   }
 
-  if (uv__count_bufs(bufs, nbufs) > IO_MAX_BYTES) {
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES) {
     return UV_EINVAL;
   }
 

@@ -520,33 +520,35 @@ static int uv__fs_read(uv_fs_t* req) {
   if (nbufs > iovmax)
     nbufs = iovmax;
 
-  /* Truncate multi-buf reads to IO_MAX_BYTES total, dropping trailing bufs. */
+  /* Truncate multi-buf reads to UV__IO_MAX_BYTES total, dropping trailing bufs. */
   if (nbufs > 1) {
     size_t total;
     size_t n;
     for (total = 0, n = 0; n < nbufs; n++) {
-      if (bufs[n].iov_len > IO_MAX_BYTES - total)
+      if (bufs[n].iov_len > UV__IO_MAX_BYTES - total)
         break;
       total += bufs[n].iov_len;
     }
-    if (n < nbufs)
-      nbufs = n > 0 ? n : 1;
+    nbufs = n > 0 ? n : 1;
   }
 
   r = 0;
   if (off < 0) {
-    if (nbufs == 1)
+    if (nbufs == 1) {
       r = read(fd, bufs->iov_base,
-               bufs->iov_len > IO_MAX_BYTES ? IO_MAX_BYTES : bufs->iov_len);
-    else if (nbufs > 1)
+               bufs->iov_len > UV__IO_MAX_BYTES ? UV__IO_MAX_BYTES : bufs->iov_len);
+    } else if (nbufs > 1) {
       r = readv(fd, bufs, nbufs);
+    }
   } else {
-    if (nbufs == 1)
+    if (nbufs == 1) {
       r = pread(fd, bufs->iov_base,
-                bufs->iov_len > IO_MAX_BYTES ? IO_MAX_BYTES : bufs->iov_len,
+                bufs->iov_len > UV__IO_MAX_BYTES ? UV__IO_MAX_BYTES : bufs->iov_len,
                 off);
-    else if (nbufs > 1)
+    }
+    else if (nbufs > 1) {
       r = uv__preadv(fd, bufs, nbufs, off);
+    }
   }
 
 #ifdef __PASE__
@@ -2166,7 +2168,7 @@ int uv_fs_sendfile(uv_loop_t* loop,
   req->flags = in_fd; /* hack */
   req->file = out_fd;
   req->off = off;
-  if (len > IO_MAX_BYTES)
+  if (len > UV__IO_MAX_BYTES)
     return UV_EINVAL;
   req->bufsml[0].len = len;
   POST;
@@ -2235,7 +2237,7 @@ int uv_fs_write(uv_loop_t* loop,
   if (bufs == NULL || nbufs == 0)
     return UV_EINVAL;
 
-  if (uv__count_bufs(bufs, nbufs) > IO_MAX_BYTES)
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
     return UV_EINVAL;
 
   req->file = file;

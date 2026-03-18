@@ -20,7 +20,7 @@
  */
 
 /* Verify that passing INT32_MAX as a buffer length is rejected with UV_EINVAL
- * at the various I/O entry points that enforce IO_MAX_BYTES.
+ * at the various I/O entry points that enforce UV__IO_MAX_BYTES.
  */
 
 #include "uv.h"
@@ -59,17 +59,17 @@ TEST_IMPL(io_64_safe) {
 
   loop = uv_default_loop();
 
-  /* A buf whose length just exceeds IO_MAX_BYTES (0x7ffff000). */
+  /* A buf whose length just exceeds UV__IO_MAX_BYTES (0x7ffff000). */
   buf = uv_buf_init(NULL, INT32_MAX);
 
   /* Two buffers whose individual sizes are reasonable but whose sum exceeds
-   * IO_MAX_BYTES (0x7ffff000).  Each is 1 GiB + 1 byte.
+   * UV__IO_MAX_BYTES (0x7ffff000).  Each is 1 GiB + 1 byte.
    */
   bufs2[0] = uv_buf_init(NULL, 0x40000001u);
   bufs2[1] = uv_buf_init(NULL, 0x40000001u);
 
   /* ------------------------------------------------------------------ */
-  /* uv_fs_write: reject synchronous filesystem write > IO_MAX_BYTES.   */
+  /* uv_fs_write: reject synchronous filesystem write > UV__IO_MAX_BYTES.   */
   /* ------------------------------------------------------------------ */
   {
     fd = uv_fs_open(NULL, &open_req, TEST_FILE,
@@ -80,7 +80,7 @@ TEST_IMPL(io_64_safe) {
     ASSERT_EQ(UV_EINVAL, uv_fs_write(NULL, &fs_req, fd, &buf, 1, 0, NULL));
     uv_fs_req_cleanup(&fs_req);
 
-    /* nbufs > 1 where sum > IO_MAX_BYTES */
+    /* nbufs > 1 where sum > UV__IO_MAX_BYTES */
     ASSERT_EQ(UV_EINVAL, uv_fs_write(NULL, &fs_req, fd, bufs2, 2, 0, NULL));
     uv_fs_req_cleanup(&fs_req);
 
@@ -89,7 +89,7 @@ TEST_IMPL(io_64_safe) {
   }
 
   /* ------------------------------------------------------------------ */
-  /* uv_fs_sendfile: reject len > IO_MAX_BYTES.                         */
+  /* uv_fs_sendfile: reject len > UV__IO_MAX_BYTES.                         */
   /* ------------------------------------------------------------------ */
   {
     in_fd = uv_fs_open(NULL, &open_req, TEST_FILE,
@@ -118,12 +118,12 @@ TEST_IMPL(io_64_safe) {
   uv_fs_req_cleanup(&fs_req);
 
   {
-    /* uv_write: reject stream write > IO_MAX_BYTES before queuing. */
+    /* uv_write: reject stream write > UV__IO_MAX_BYTES before queuing. */
     ASSERT_OK(uv_tcp_init(loop, &tcp));
     ASSERT_EQ(UV_EINVAL,
               uv_write(&write_req, (uv_stream_t*) &tcp, &buf, 1, NULL));
 
-    /* nbufs > 1 where sum > IO_MAX_BYTES */
+    /* nbufs > 1 where sum > UV__IO_MAX_BYTES */
     ASSERT_EQ(UV_EINVAL,
               uv_write(&write_req, (uv_stream_t*) &tcp, bufs2, 2, NULL));
 
@@ -140,7 +140,7 @@ TEST_IMPL(io_64_safe) {
     ASSERT_OK(uv_udp_init(loop, &udp));
     ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
-    /* uv_udp_try_send: reject UDP send > IO_MAX_BYTES. */
+    /* uv_udp_try_send: reject UDP send > UV__IO_MAX_BYTES. */
     ASSERT_EQ(UV_EINVAL,
               uv_udp_try_send(&udp, &buf, 1,
                               (const struct sockaddr*) &addr));
@@ -160,7 +160,7 @@ TEST_IMPL(io_64_safe) {
               uv_udp_send(&send_req, &udp, bufs2, 2,
                           (const struct sockaddr*) &addr, on_udp_send));
 
-    /* uv_udp_try_send2: reject per-batch size > IO_MAX_BYTES. */
+    /* uv_udp_try_send2: reject per-batch size > UV__IO_MAX_BYTES. */
     t2_bufs[0]  = &buf;
     t2_nbufs[0] = 1;
     t2_addrs[0] = (struct sockaddr*) &addr;

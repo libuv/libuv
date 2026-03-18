@@ -898,8 +898,8 @@ void fs__read(uv_fs_t* req) {
     }
 
     to_read = req->fs.info.bufs[index].len;
-    if (to_read > IO_MAX_BYTES)
-      to_read = IO_MAX_BYTES;
+    if (to_read > UV__IO_MAX_BYTES)
+      to_read = UV__IO_MAX_BYTES;
     result = ReadFile(handle,
                       req->fs.info.bufs[index].base,
                       to_read,
@@ -3333,7 +3333,7 @@ int uv_fs_write(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
-  if (uv__count_bufs(bufs, nbufs) > IO_MAX_BYTES) {
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES) {
     SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
     return UV_EINVAL;
   }
@@ -3707,7 +3707,7 @@ int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_file fd_out,
   req->file.fd = fd_in;
   req->fs.info.fd_out = fd_out;
   req->fs.info.offset = in_offset;
-  if (length > IO_MAX_BYTES)
+  if (length > UV__IO_MAX_BYTES)
     return UV_EINVAL;
   req->fs.info.bufsml[0].len = length;
   POST;
