@@ -1144,11 +1144,7 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
     /* Process the req without IOCP. */
     SET_REQ_SUCCESS(req);
     uv__insert_pending_req(loop, (uv_req_t*) req);
-    handle->reqs_pending++;
-  } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
-    /* The req will be processed with IOCP. */
-    handle->reqs_pending++;
-  } else {
+  } else if (!UV_SUCCEEDED_WITH_IOCP(success)) {
     if (GetLastError() == ERROR_PIPE_CONNECTED) {
       SET_REQ_SUCCESS(req);
     } else {
@@ -1157,8 +1153,8 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
       SET_REQ_ERROR(req, GetLastError());
     }
     uv__insert_pending_req(loop, (uv_req_t*) req);
-    handle->reqs_pending++;
   }
+  handle->reqs_pending++;
 }
 
 
@@ -1415,8 +1411,6 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
     if (!QueueUserWorkItem(&uv_pipe_zero_readfile_thread_proc,
                            req,
                            WT_EXECUTELONGFUNCTION)) {
-      /* Make this req pending reporting an error. */
-      SET_REQ_ERROR(req, GetLastError());
       goto error;
     }
   } else {
@@ -1434,24 +1428,14 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
                       &req->u.io.overlapped);
 
     if (UV_SUCCEEDED_WITHOUT_IOCP(result)) {
-      /* Process the req without IOCP. */
-      eof_timer_start(handle);
-      handle->flags |= UV_HANDLE_READ_PENDING;
-      handle->reqs_pending++;
       uv__insert_pending_req(loop, (uv_req_t*) req);
-      return;
     } else if (!UV_SUCCEEDED_WITH_IOCP(result)) {
-      /* Make this req pending reporting an error. */
-      SET_REQ_ERROR(req, GetLastError());
       goto error;
-    }
-
-    if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
+    } else if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
       assert(req->wait_handle == INVALID_HANDLE_VALUE);
       if (!RegisterWaitForSingleObject(&req->wait_handle,
           req->event_handle, post_completion_read_wait, (void*) req,
           INFINITE, WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE)) {
-        SET_REQ_ERROR(req, GetLastError());
         goto error;
       }
     }
@@ -1464,6 +1448,8 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
   return;
 
 error:
+  /* Make this req pending reporting an error. */
+  SET_REQ_ERROR(req, GetLastError());
   uv__insert_pending_req(loop, (uv_req_t*)req);
   handle->flags |= UV_HANDLE_READ_PENDING;
   handle->reqs_pending++;
@@ -1733,12 +1719,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
       handle->write_queue_size += req->u.io.queued_bytes;
     }
     if (UV_SUCCEEDED_WITHOUT_IOCP(result)) {
-      /* Request completed immediately without IOCP packet. */
-      REGISTER_HANDLE_REQ(loop, handle);
-      handle->reqs_pending++;
-      handle->stream.conn.write_reqs_pending++;
       uv__insert_pending_req(loop, (uv_req_t*) req);
-      return 0;
     } else if (!UV_SUCCEEDED_WITH_IOCP(result)) {
       return GetLastError();
     } else if (handle->flags & UV_HANDLE_EMULATE_IOCP) {
