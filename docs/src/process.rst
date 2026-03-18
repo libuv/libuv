@@ -262,16 +262,14 @@ API
     Initializes the process handle and starts the process. If the process is
     successfully spawned, this function will return 0. Otherwise, the
     negative error code corresponding to the reason it couldn't spawn is
-    returned. Note that either way you must eventually call :c:func:`uv_close`
-    to close the handle again.
+    returned. Note that either way-success or failure--you must eventually call
+    :c:func:`uv_close` to close the handle again before freeing the memory of
+    the handle, unlike other the other init functions in libuv.
 
     Possible reasons for failing to spawn would include (but not be limited to)
     the file to execute not existing, not having permissions to use the setuid or
     setgid specified, or not having enough memory to allocate for the new
     process.
-
-    Whether the call succeeds or fails, you must call :c:func:`uv_close` before
-    freeing the memory of handle (unlike other init function in libuv).
 
     .. warning::
         On unix, if the process has not yet exited when you call `uv_close`,
@@ -289,9 +287,10 @@ API
     Sends the specified signal to the given process handle. Check the documentation
     on :c:ref:`signal` for signal support, specially on Windows.
 
-    If the specified process is already dead, this will not kill a random
-    process. By contrast, `uv_kill` may kill an random process if you use a
-    cached value of :c:func:`uv_process_get_pid`.
+    If the specified process is already dead, this will not kill a different
+    process which happened to reuse the same pid. By contrast, `uv_kill` may
+    kill an arbitrary other process if you use a cached value of
+    :c:func:`uv_process_get_pid`.
 
 .. c:function:: int uv_kill(int pid, int signum)
 
