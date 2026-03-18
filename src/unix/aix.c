@@ -576,6 +576,8 @@ static int uv__setup_ahafs(const char* filename, int *fd) {
 
   /* Make the necessary subdirectories for the monitor file */
   rc = uv__make_subdirs_p(filename);
+  if (rc == UV_ENAMETOOLONG)
+	  return rc;
   if (rc == -1 && errno != EEXIST)
     return rc;
 
