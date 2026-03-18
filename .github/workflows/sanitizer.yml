@@ -56,6 +56,12 @@ jobs:
 
   sanitizers-macos:
     runs-on: macos-14
+    env:
+      # The sanitizer interferes with malloc memory preallocation causing a
+      # harmless warning, which interferes with tests that assert program
+      # output. This env var gets rid of the warning.
+      # See https://stackoverflow.com/a/70209891
+      MallocNanoZone: 0
     strategy:
       matrix:
         config:
