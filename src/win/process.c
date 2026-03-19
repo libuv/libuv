@@ -836,16 +836,21 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
     handle->wait_handle = INVALID_HANDLE_VALUE;
   }
 
-  /* Set the handle to inactive: no callbacks will be made after the exit
-   * callback. */
-  uv__handle_stop(handle);
-
   if (GetExitCodeProcess(handle->process_handle, &status)) {
     exit_code = status;
   } else {
     /* Unable to obtain the exit code. This should never happen. */
     exit_code = uv_translate_sys_error(GetLastError());
   }
+
+  /* Clean-up the process handle eagerly. */
+  CloseHandle(handle->process_handle);
+  handle->process_handle = INVALID_HANDLE_VALUE;
+  handle->flags |= UV_HANDLE_ESRCH;
+
+  /* Set the handle to inactive: no callbacks will be made after the exit
+   * callback. */
+  uv__handle_stop(handle);
 
   /* Fire the exit callback. */
   if (handle->exit_cb) {
@@ -881,7 +886,8 @@ void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle) {
   assert(!(handle->flags & UV_HANDLE_CLOSED));
 
   /* Clean-up the process handle. */
-  CloseHandle(handle->process_handle);
+  if (handle->process_handle != INVALID_HANDLE_VALUE)
+    CloseHandle(handle->process_handle);
 
   uv__handle_close(handle);
 }
@@ -1364,8 +1370,8 @@ static int uv__kill(HANDLE process_handle, int signum) {
 int uv_process_kill(uv_process_t* process, int signum) {
   int err;
 
-  if (process->process_handle == INVALID_HANDLE_VALUE) {
-    return UV_EINVAL;
+  if (process->flags & UV_HANDLE_ESRCH) {
+    return UV_ESRCH;
   }
 
   err = uv__kill(process->process_handle, signum);
