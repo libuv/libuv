@@ -78,9 +78,11 @@ Data types
 Public members
 ^^^^^^^^^^^^^^
 
-.. c:member:: size_t uv_stream_t.write_queue_size
+.. c:member:: uint64_t uv_stream_t.write_queue_size
 
     Contains the amount of queued bytes waiting to be sent. Readonly.
+
+    .. versionchanged:: 2.0.0 Made uint64_t to avoid overflow.
 
 .. c:member:: uv_stream_t* uv_connect_t.handle
 
@@ -254,10 +256,11 @@ API
 
     .. versionchanged:: 1.4.0 UNIX implementation added.
 
-.. c:function:: size_t uv_stream_get_write_queue_size(const uv_stream_t* stream)
+.. c:function:: uint64_t uv_stream_get_write_queue_size(const uv_stream_t* stream)
 
     Returns `stream->write_queue_size`.
 
     .. versionadded:: 1.19.0
+    .. versionchanged:: 2.0.0 Return type made uint64_t
 
 .. seealso:: The :c:type:`uv_handle_t` API functions also apply.
