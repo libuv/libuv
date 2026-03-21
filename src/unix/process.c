@@ -292,6 +292,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
   sigset_t signewset;
   int close_fd;
   int use_fd;
+  int err;
   int fd;
   int n;
 
@@ -334,9 +335,9 @@ static void uv__process_child_init(const uv_process_options_t* options,
     if (pipes[fd][1] == -1)
       uv__write_errno(error_fd);
 #ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
-    n = uv__cloexec(pipes[fd][1], 1);
-    if (n)
-      uv__write_int(error_fd, n);
+    err = uv__cloexec(pipes[fd][1], 1);
+    if (err)
+      uv__write_int(error_fd, err);
 #endif
   }
 
@@ -361,9 +362,9 @@ static void uv__process_child_init(const uv_process_options_t* options,
 
     if (fd == use_fd) {
       if (close_fd == -1) {
-        n = uv__cloexec(use_fd, 0);
-        if (n)
-          uv__write_int(error_fd, n);
+        err = uv__cloexec(use_fd, 0);
+        if (err)
+          uv__write_int(error_fd, err);
       }
     }
     else {
@@ -373,8 +374,11 @@ static void uv__process_child_init(const uv_process_options_t* options,
     if (fd == -1)
       uv__write_errno(error_fd);
 
-    if (fd <= 2 && close_fd == -1)
-      uv__nonblock_fcntl(fd, 0);
+    if (fd <= 2 && close_fd == -1) {
+      err = uv__nonblock_fcntl(fd, 0);
+      if (err)
+        uv__write_int(error_fd, err);
+    }
 
     if (close_fd >= stdio_count)
       uv__close(close_fd);
