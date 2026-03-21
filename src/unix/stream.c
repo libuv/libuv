@@ -1218,16 +1218,15 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    * operating systems, devices like PTYs sometimes produce partial reads even
    * when more data is available.
    */
-  if ((events & POLLHUP) &&
+  if ((events & (POLLHUP | UV__POLLRDHUP)) &&
       !(events & POLLIN) &&
       (stream->flags & UV_HANDLE_READING) &&
       !(stream->flags & UV_HANDLE_READ_EOF)) {
     uv_buf_t buf = { NULL, 0 };
     uv__stream_eof(stream, &buf);
+    if (uv__stream_fd(stream) == -1)
+      return;  /* read_cb closed stream. */
   }
-
-  if (uv__stream_fd(stream) == -1)
-    return;  /* read_cb closed stream. */
 
   if (events & (POLLOUT | POLLERR | POLLHUP)) {
     uv__write(stream);
