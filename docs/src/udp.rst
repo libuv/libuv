@@ -334,7 +334,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param on: 1 for on, 0 for off.
 
@@ -347,7 +347,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param ttl: 1 through 255.
 
@@ -360,7 +360,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param interface_addr: interface address.
 
@@ -373,7 +373,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param on: 1 for on, 0 for off.
 
@@ -386,7 +386,7 @@ API
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
         been bound to an address explicitly with :c:func:`uv_udp_bind`, or
-        implicitly with :c:func:`uv_udp_send()` or :c:func:`uv_udp_recv_start`.
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
 
     :param ttl: 1 through 255.
 

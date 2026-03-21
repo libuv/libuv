@@ -81,7 +81,6 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_ASYNC);
   handle->async_cb = async_cb;
   handle->pending = 0;
-  handle->u.fd = 0; /* This will be used as a busy flag. */
 
   uv__queue_insert_tail(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
@@ -92,49 +91,56 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 
 int uv_async_send(uv_async_t* handle) {
   _Atomic int* pending;
-  _Atomic int* busy;
+  int current;
 
   pending = (_Atomic int*) &handle->pending;
-  busy = (_Atomic int*) &handle->u.fd;
 
   /* Do a cheap read first. */
-  if (atomic_load_explicit(pending, memory_order_relaxed) != 0)
+  current = atomic_load_explicit(pending, memory_order_relaxed);
+  if (current & 1)
     return 0;
 
-  /* Set the loop to busy. */
-  atomic_fetch_add(busy, 1);
+  /* Atomically set the pending flag (bit 0) and increment the busy counter
+   * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once,
+   * so both operations appear atomic to other threads. */
+  while (!atomic_compare_exchange_weak_explicit(pending,
+                                                &current,
+                                                current + 3,
+                                                memory_order_relaxed,
+                                                memory_order_relaxed))
+    if (current & 1)
+      return 0;
 
-  /* Wake up the other thread's event loop. */
-  if (atomic_exchange(pending, 1) == 0)
-    uv__async_send(handle->loop);
+  /* Wake up the other thread's event loop. The write establishes a
+   * happens-before relationship with the reader via the kernel. */
+  uv__async_send(handle->loop);
 
-  /* Set the loop to not-busy. */
-  atomic_fetch_add(busy, -1);
+  /* Decrement the busy counter (bits 1+). */
+  atomic_fetch_add_explicit(pending, -2, memory_order_relaxed);
 
   return 0;
 }
 
 
-/* Wait for the busy flag to clear before closing.
+/* Wait for the busy counter to clear before closing.
  * Only call this from the event loop thread. */
 static void uv__async_spin(uv_async_t* handle) {
   _Atomic int* pending;
-  _Atomic int* busy;
   int i;
 
   pending = (_Atomic int*) &handle->pending;
-  busy = (_Atomic int*) &handle->u.fd;
 
-  /* Set the pending flag first, so no new events will be added by other
+  /* Set the pending flag (bit 0) so no new events will be added by other
    * threads after this function returns. */
-  atomic_store(pending, 1);
+  atomic_fetch_or_explicit(pending, 1, memory_order_relaxed);
 
   for (;;) {
     /* 997 is not completely chosen at random. It's a prime number, acyclic by
      * nature, and should therefore hopefully dampen sympathetic resonance.
      */
     for (i = 0; i < 997; i++) {
-      if (atomic_load(busy) == 0)
+      /* Wait until the busy counter (bits 1+) is zero. */
+      if ((atomic_load(pending) & ~1) == 0)
         return;
 
       /* Other thread is busy with this handle, spin until it's done. */
@@ -197,9 +203,9 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     uv__queue_remove(q);
     uv__queue_insert_tail(&loop->async_handles, q);
 
-    /* Atomically fetch and clear pending flag */
+    /* Atomically clear the pending flag (bit 0) and check if it was set. */
     pending = (_Atomic int*) &h->pending;
-    if (atomic_exchange(pending, 0) == 0)
+    if (!(atomic_fetch_and(pending, ~1) & 1))
       continue;
 
     if (h->async_cb == NULL)
@@ -385,9 +391,7 @@ int uv__async_fork(uv_loop_t* loop) {
      * behavior anyways, unless async-signal-safe, for multithreaded programs
      * like libuv, and nothing interesting in pthreads is async-signal-safe.
      */
-    h->pending = 0;
-    /* This is the busy flag, and we just abruptly lost all other threads. */
-    h->u.fd = 0;
+    h->pending = 0; /* Clears both the pending flag and busy counter. */
   }
 
   /* Recreate these, since they still exist, but belong to the wrong pid now. */
@@ -414,5 +418,7 @@ static void uv__cpu_relax(void) {
   __asm volatile ("" : : : "memory");
 #elif !defined(__APPLE__) && (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))
   __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
+#elif defined(__riscv) && __riscv_xlen == 64
+  __asm__ volatile(".insn 0x0100000f" ::: "memory");  /* FENCE */
 #endif
 }

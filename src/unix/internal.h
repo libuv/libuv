@@ -379,6 +379,7 @@ int uv__signal_loop_fork(uv_loop_t* loop);
 
 /* platform specific */
 uint64_t uv__hrtime(uv_clocktype_t type);
+uint64_t uv__get_rlimit_max_memory(void);
 int uv__kqueue_init(uv_loop_t* loop);
 int uv__platform_loop_init(uv_loop_t* loop);
 void uv__platform_loop_delete(uv_loop_t* loop);
@@ -469,12 +470,12 @@ UV_UNUSED(static void uv__update_time(uv_loop_t* loop)) {
   loop->time = uv__hrtime(UV_CLOCK_FAST) / 1000000;
 }
 
-UV_UNUSED(static char* uv__basename_r(const char* path)) {
-  char* s;
+UV_UNUSED(static const char* uv__basename_r(const char* path)) {
+  const char* s;
 
   s = strrchr(path, '/');
   if (s == NULL)
-    return (char*) path;
+    return path;
 
   return s + 1;
 }
@@ -590,5 +591,7 @@ int uv__get_constrained_cpu(long long* quota);
 #else
 #define UV__KQUEUE_EVFILT_USER 0
 #endif
+
+extern char* uv_saved_argv0;
 
 #endif /* UV_UNIX_INTERNAL_H_ */

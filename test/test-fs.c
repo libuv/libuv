@@ -73,12 +73,6 @@ static const int is_win32 = 1;
 static const int is_win32 = 0;
 #endif
 
-#if defined(__APPLE__) || defined(__SUNPRO_C)
-static const int is_apple_or_sunpro_c = 1;
-#else
-static const int is_apple_or_sunpro_c = 0;
-#endif
-
 typedef struct {
   const char* path;
   double atime;
@@ -882,9 +876,10 @@ static void check_utime(const char* path,
       ASSERT_LE(s->st_atim.tv_sec, (long) atime);
     } else {
       double st_atim;
+#ifndef __APPLE__
       /* TODO(vtjnash): would it be better to normalize this? */
-      if (!is_apple_or_sunpro_c)
-        ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
+      ASSERT_DOUBLE_GE(s->st_atim.tv_nsec, 0);
+#endif
       st_atim = s->st_atim.tv_sec + s->st_atim.tv_nsec / 1e9;
       /* Linux does not allow reading reliably the atime of a symlink
        * since readlink() can update it
@@ -917,9 +912,10 @@ static void check_utime(const char* path,
       ASSERT_LE(s->st_mtim.tv_sec, (long) mtime);
     } else {
       double st_mtim;
+#ifndef __APPLE__
       /* TODO(vtjnash): would it be better to normalize this? */
-      if (!is_apple_or_sunpro_c)
-        ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
+      ASSERT_DOUBLE_GE(s->st_mtim.tv_nsec, 0);
+#endif
       st_mtim = s->st_mtim.tv_sec + s->st_mtim.tv_nsec / 1e9;
       ASSERT_DOUBLE_EQ(st_mtim, mtime);
     }
@@ -4915,21 +4911,41 @@ TEST_FS_IMPL(fs_invalid_mkdir_name) {
 
 TEST_FS_IMPL(fs_statfs) {
   uv_fs_t req;
+  uv_fs_t req1;
   int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  r = uv_fs_open(NULL, &req, "test_file", UV_FS_O_WRONLY | UV_FS_O_CREAT,
+      S_IRUSR | S_IWUSR, NULL);
+  ASSERT_GT(r, 0);
+
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, req.result, NULL);
+  ASSERT_OK(r);
+
+  uv_fs_req_cleanup(&req);
 
   loop = uv_default_loop();
 
-  /* Test the synchronous version. */
+  /* Test the synchronous version for both a directory and a file. */
   r = uv_fs_statfs(NULL, &req, ".", NULL);
   ASSERT_OK(r);
   statfs_cb(&req);
-  ASSERT_EQ(1, statfs_cb_count);
+  r = uv_fs_statfs(NULL, &req, "test_file", NULL);
+  ASSERT_OK(r);
+  statfs_cb(&req);
+  ASSERT_EQ(2, statfs_cb_count);
 
-  /* Test the asynchronous version. */
+  /* Test the asynchronous version too. */
   r = uv_fs_statfs(loop, &req, ".", statfs_cb);
   ASSERT_OK(r);
+  r = uv_fs_statfs(loop, &req1, "test_file", statfs_cb);
+  ASSERT_OK(r);
   uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(2, statfs_cb_count);
+  ASSERT_EQ(4, statfs_cb_count);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

@@ -66,9 +66,9 @@ that other events can continue to be handled as fast as they come in [#]_.
     processor, libuv and OSes will usually run background/worker threads and/or
     polling to perform tasks in a non-blocking manner.
 
-Bert Belder, one of the libuv core developers has a small video explaining the
+Bert Belder, one of the libuv core developers, has a small video explaining the
 architecture of libuv and its background. If you have no prior experience with
-either libuv or libev, it is a quick, useful watch.
+libuv, it is a quick, useful watch.
 
 libuv's event loop is explained in more detail in the `documentation
 <https://docs.libuv.org/en/v1.x/design.html#the-i-o-loop>`_.

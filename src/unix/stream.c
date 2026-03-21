@@ -1297,11 +1297,17 @@ static void uv__stream_connect(uv_stream_t* stream) {
 static int uv__check_before_write(uv_stream_t* stream,
                                   unsigned int nbufs,
                                   uv_stream_t* send_handle) {
-  assert(nbufs > 0);
   assert((stream->type == UV_TCP ||
           stream->type == UV_NAMED_PIPE ||
           stream->type == UV_TTY) &&
          "uv_write (unix) does not yet support other types of streams");
+
+  /* We're not beholden to IOV_MAX but limit the buffer count to catch sign
+   * conversion bugs where a caller passes in a signed negative number that
+   * then gets converted to a really large unsigned number.
+   */
+  if (nbufs < 1 || nbufs > 1024*1024)
+    return UV_EINVAL;
 
   if (uv__stream_fd(stream) < 0)
     return UV_EBADF;
@@ -1430,7 +1436,7 @@ int uv_try_write2(uv_stream_t* stream,
   if (stream->connect_req != NULL || stream->write_queue_size != 0)
     return UV_EAGAIN;
 
-  err = uv__check_before_write(stream, nbufs, NULL);
+  err = uv__check_before_write(stream, nbufs, send_handle);
   if (err < 0)
     return err;
 

@@ -281,13 +281,13 @@ API
     do so automatically when it is unloaded but it can be instructed to perform
     cleanup manually.
 
-    .. warning:: Only call :c:func:`uv_library_shutdown()` once.
+    .. warning:: Only call :c:func:`uv_library_shutdown` once.
 
-    .. warning:: Don't call :c:func:`uv_library_shutdown()` when there are
+    .. warning:: Don't call :c:func:`uv_library_shutdown` when there are
                  still event loops or I/O requests active.
 
     .. warning:: Don't call libuv functions after calling
-                 :c:func:`uv_library_shutdown()`.
+                 :c:func:`uv_library_shutdown`.
 
 .. c:function:: uv_buf_t uv_buf_init(char* base, unsigned int len)
 
@@ -521,6 +521,10 @@ API
 
     Gets the executable path. You *must* call `uv_setup_args` before calling
     this function.
+
+    Be careful in setuid executables. On some platforms the executable path
+    is an arbitrary string that is controlled by the user. On other platforms
+    environment variables are consulted that may be under control of the user.
 
 .. c:function:: int uv_cwd(char* buffer, size_t* size)
 

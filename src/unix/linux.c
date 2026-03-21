@@ -1739,7 +1739,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     unsigned model;
   };
   FILE* fp;
-  char* p;
+  const char* p;
   int found;
   int n;
   unsigned i;
@@ -2201,11 +2201,20 @@ static uint64_t uv__get_cgroup_constrained_memory(char buf[static 1024]) {
 
 uint64_t uv_get_constrained_memory(void) {
   char buf[1024];
+  uint64_t cgroup_limit;
+  uint64_t rlimit_limit;
 
-  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
-    return 0;
+  cgroup_limit = 0;
+  if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)) == 0)
+    cgroup_limit = uv__get_cgroup_constrained_memory(buf);
+  rlimit_limit = uv__get_rlimit_max_memory();
 
-  return uv__get_cgroup_constrained_memory(buf);
+  /* Return the minimum of cgroup and rlimit constraints. */
+  if (cgroup_limit == 0)
+    return rlimit_limit;
+  if (rlimit_limit == 0)
+    return cgroup_limit;
+  return cgroup_limit < rlimit_limit ? cgroup_limit : rlimit_limit;
 }
 
 
@@ -2362,10 +2371,10 @@ next:
   return 0;
 }
 
-static char* uv__cgroup1_find_cpu_controller(const char* cgroup,
+static const char* uv__cgroup1_find_cpu_controller(const char* cgroup,
                                              int* cgroup_size) {
   /* Seek to the cpu controller line. */
-  char* cgroup_cpu = strstr(cgroup, ":cpu,");
+  const char* cgroup_cpu = strstr(cgroup, ":cpu,");
 
   if (cgroup_cpu != NULL) {
     /* Skip the controller prefix to the start of the cgroup path. */
@@ -2382,7 +2391,7 @@ static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
   char path[256];
   char buf[1024];
   int cgroup_size;
-  char* cgroup_cpu;
+  const char* cgroup_cpu;
   long long period_length;
   long long quota_per_period;
 
