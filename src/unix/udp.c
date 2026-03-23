@@ -217,6 +217,8 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf, int flag) {
 
   /* prepare structures for recvmmsg */
   chunks = buf->len / UV__UDP_DGRAM_MAXSIZE;
+  if (chunks == 0)
+    return UV_EINVAL;
   if (chunks > ARRAY_SIZE(iov))
     chunks = ARRAY_SIZE(iov);
   for (k = 0; k < chunks; ++k) {
@@ -316,8 +318,11 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
 
     if (uv_udp_using_recvmmsg(handle)) {
       nread = uv__udp_recvmmsg(handle, &buf, flag);
-      if (nread > 0)
-        count -= nread;
+      if (nread <= 0) {
+        handle->recv_cb(handle, nread, &buf, NULL, 0);
+        return;
+      }
+      count -= nread;
       continue;
     }
 

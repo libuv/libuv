@@ -106,6 +106,30 @@ static void recv_cb(uv_udp_t* handle,
 }
 
 
+static void small_alloc_cb(uv_handle_t* handle,
+                           size_t suggested_size,
+                           uv_buf_t* buf) {
+  CHECK_HANDLE(handle);
+  buf->len = 64;
+  buf->base = malloc(buf->len);
+  ASSERT_NOT_NULL(buf->base);
+  alloc_cb_called++;
+}
+
+
+static void small_recv_cb(uv_udp_t* handle,
+                          ssize_t nread,
+                          const uv_buf_t* rcvbuf,
+                          const struct sockaddr* addr,
+                          unsigned flags) {
+  CHECK_HANDLE(handle);
+  ASSERT_EQ(UV_EINVAL, nread);
+  uv_close((uv_handle_t*) &recver, close_cb);
+  uv_close((uv_handle_t*) &sender, close_cb);
+  free(rcvbuf->base);
+}
+
+
 TEST_IMPL(udp_mmsg) {
   struct sockaddr_in addr;
   uv_buf_t buf;
@@ -146,5 +170,31 @@ TEST_IMPL(udp_mmsg) {
     ASSERT_EQ(alloc_cb_called, recv_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+TEST_IMPL(udp_mmsg_small_buf) {
+  struct sockaddr_in addr;
+  uv_loop_t* loop;
+  uv_buf_t buf;
+
+  loop = uv_default_loop();
+  ASSERT_OK(uv_udp_init_ex(loop, &recver, AF_UNSPEC | UV_UDP_RECVMMSG));
+  if (uv_udp_using_recvmmsg(&recver)) {
+    ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+    ASSERT_OK(uv_udp_bind(&recver, (const struct sockaddr*) &addr, 0));
+    ASSERT_OK(uv_udp_recv_start(&recver, small_alloc_cb, small_recv_cb));
+    ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+    ASSERT_OK(uv_udp_init(loop, &sender));
+    buf = uv_buf_init("PING", 4);
+    ASSERT_EQ(4, uv_udp_try_send(&sender, &buf, 1, (const struct sockaddr*) &addr));
+    ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  } else {
+    uv_close((uv_handle_t*) &recver, close_cb);
+    ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+    ASSERT_EQ(1, close_cb_called);
+  }
+  MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
