@@ -249,7 +249,8 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
                                    size_t name_len,
                                    WCHAR *cwd,
                                    size_t cwd_len,
-                                   int name_has_ext) {
+                                   int name_has_ext,
+                                   int resolve_batch) {
   WCHAR* result;
 
   /* If the name itself has a nonempty extension, try this extension first */
@@ -276,6 +277,28 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
   result = search_path_join_test(dir, dir_len,
                                  name, name_len,
                                  L"exe", 3,
+                                 cwd, cwd_len);
+  if (result != NULL) {
+    return result;
+  }
+
+  if (!resolve_batch) {
+    return NULL;
+  }
+
+  /* Try .cmd extension */
+  result = search_path_join_test(dir, dir_len,
+                                 name, name_len,
+                                 L"cmd", 3,
+                                 cwd, cwd_len);
+  if (result != NULL) {
+    return result;
+  }
+
+  /* Try .bat extension */
+  result = search_path_join_test(dir, dir_len,
+                                 name, name_len,
+                                 L"bat", 3,
                                  cwd, cwd_len);
   if (result != NULL) {
     return result;
@@ -340,6 +363,7 @@ static WCHAR* search_path(const WCHAR *file,
   const WCHAR *dir_start, *dir_end, *dir_path;
   size_t dir_len;
   int name_has_ext;
+  int resolve_batch = flags & UV_PROCESS_WINDOWS_RESOLVE_BATCH;
 
   size_t file_len = wcslen(file);
   size_t cwd_len = wcslen(cwd);
@@ -373,7 +397,8 @@ static WCHAR* search_path(const WCHAR *file,
         file, file_name_start - file,
         file_name_start, file_len - (file_name_start - file),
         cwd, cwd_len,
-        name_has_ext || (flags & UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME));
+        name_has_ext || (flags & UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME),
+        resolve_batch);
 
   } else {
     dir_end = path;
@@ -383,7 +408,7 @@ static WCHAR* search_path(const WCHAR *file,
       result = path_search_walk_ext(L"", 0,
                                     file, file_len,
                                     cwd, cwd_len,
-                                    name_has_ext);
+                                    name_has_ext, resolve_batch);
     }
 
     while (result == NULL) {
@@ -433,7 +458,7 @@ static WCHAR* search_path(const WCHAR *file,
       result = path_search_walk_ext(dir_path, dir_len,
                                     file, file_len,
                                     cwd, cwd_len,
-                                    name_has_ext);
+                                    name_has_ext, resolve_batch);
     }
   }
 
@@ -928,6 +953,7 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
                               UV_PROCESS_WINDOWS_HIDE_GUI |
+                              UV_PROCESS_WINDOWS_RESOLVE_BATCH |
                               UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);

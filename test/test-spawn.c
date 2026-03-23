@@ -1532,6 +1532,7 @@ TEST_IMPL(spawn_setuid_fails) {
 #endif
 
   /* These flags should be ignored on Unices. */
+  options.flags |= UV_PROCESS_WINDOWS_RESOLVE_BATCH;
   options.flags |= UV_PROCESS_WINDOWS_HIDE;
   options.flags |= UV_PROCESS_WINDOWS_HIDE_CONSOLE;
   options.flags |= UV_PROCESS_WINDOWS_HIDE_GUI;
@@ -2110,4 +2111,37 @@ TEST_IMPL(spawn_relative_path) {
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
+}
+
+TEST_IMPL(spawn_batch_file) {
+#ifndef _WIN32
+  RETURN_SKIP("Test for Windows");
+#else
+  char filename[1024];
+  FILE* file;
+  uv_process_t process2;
+
+  snprintf(exepath, sizeof(exepath), "test_file_foo");
+  snprintf(filename, sizeof(filename), "%s.bat", exepath);
+  file = fopen(filename, "w");
+  fprintf(file, "exit /B 1\r\n");
+  fclose(file);
+
+  args[0] = exepath;
+  args[1] = NULL;
+  options.file = args[0];
+  options.args = args;
+  options.exit_cb = exit_cb;
+  options.flags = 0;
+
+  ASSERT_EQ(uv_spawn(uv_default_loop(), &process, &options), UV_ENOENT);
+
+  options.flags |= UV_PROCESS_WINDOWS_RESOLVE_BATCH;
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process2, &options));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  remove(filename);
+  return 0;
+#endif
 }
