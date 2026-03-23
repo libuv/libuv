@@ -127,6 +127,7 @@ static void small_recv_cb(uv_udp_t* handle,
   uv_close((uv_handle_t*) &recver, close_cb);
   uv_close((uv_handle_t*) &sender, close_cb);
   free(rcvbuf->base);
+  recv_cb_called++;
 }
 
 
@@ -190,6 +191,8 @@ TEST_IMPL(udp_mmsg_small_buf) {
     buf = uv_buf_init("PING", 4);
     ASSERT_EQ(4, uv_udp_try_send(&sender, &buf, 1, (const struct sockaddr*) &addr));
     ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+    ASSERT_EQ(1, recv_cb_called);
+    ASSERT_EQ(2, close_cb_called);
   } else {
     uv_close((uv_handle_t*) &recver, close_cb);
     ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
