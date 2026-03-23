@@ -95,7 +95,7 @@ int uv__io_fork(uv_loop_t* loop) {
 
 
 int uv__io_check_fd(uv_loop_t* loop, int fd) {
-  KEVENT_S ev[2];
+  UV__KEVENT_S ev[2];
   struct stat sb;
 #ifdef __APPLE__
   char path[MAXPATHLEN];
@@ -130,21 +130,21 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   }
 #endif
 
-  SET_EVENT(ev, fd, EVFILT_READ, EV_ADD, 0);
-  SET_EVENT(ev + 1, fd, EVFILT_READ, EV_DELETE, 0);
-  if (KEVENT(loop->backend_fd, ev, 2, NULL, 0, 0, NULL))
+  UV__SET_EVENT(ev, fd, EVFILT_READ, EV_ADD, 0);
+  UV__SET_EVENT(ev + 1, fd, EVFILT_READ, EV_DELETE, 0);
+  if (UV__KEVENT(loop->backend_fd, ev, 2, NULL, 0, 0, NULL))
     return UV__ERR(errno);
 
   return 0;
 }
 
 
-static void uv__kqueue_delete(int kqfd, const KEVENT_S *ev) {
-  KEVENT_S change;
+static void uv__kqueue_delete(int kqfd, const UV__KEVENT_S *ev) {
+  UV__KEVENT_S change;
 
-  SET_EVENT(&change, ev->ident, ev->filter, EV_DELETE, 0);
+  UV__SET_EVENT(&change, ev->ident, ev->filter, EV_DELETE, 0);
 
-  if (0 == KEVENT(kqfd, &change, 1, NULL, 0, 0, NULL))
+  if (0 == UV__KEVENT(kqfd, &change, 1, NULL, 0, 0, NULL))
     return;
 
   if (errno == EBADF || errno == ENOENT)
@@ -156,8 +156,8 @@ static void uv__kqueue_delete(int kqfd, const KEVENT_S *ev) {
 
 void uv__io_poll(uv_loop_t* loop, int timeout) {
   uv__loop_internal_fields_t* lfields;
-  KEVENT_S events[1024];
-  KEVENT_S* ev;
+  UV__KEVENT_S events[1024];
+  UV__KEVENT_S* ev;
   struct timespec spec;
   unsigned int nevents;
   unsigned int revents;
@@ -209,20 +209,20 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
         op = EV_ADD | EV_ONESHOT; /* Stop the event from firing repeatedly. */
       }
 
-      SET_EVENT(events + nevents, w->fd, filter, op, fflags);
+      UV__SET_EVENT(events + nevents, w->fd, filter, op, fflags);
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
+        if (UV__KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
           abort();
         nevents = 0;
       }
     }
 
     if ((w->events & POLLOUT) == 0 && (w->pevents & POLLOUT) != 0) {
-      SET_EVENT(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0);
+      UV__SET_EVENT(events + nevents, w->fd, EVFILT_WRITE, EV_ADD, 0);
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
+        if (UV__KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
           abort();
         nevents = 0;
       }
@@ -235,13 +235,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
        * FreeBSD does not.
        * Refs: https://github.com/libuv/libuv/issues/3947
        */
-      SET_EVENT(events + nevents, w->fd, EV_OOBAND, EV_ADD, NOTE_OOB);
+      UV__SET_EVENT(events + nevents, w->fd, EV_OOBAND, EV_ADD, NOTE_OOB);
 #else
-      SET_EVENT(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0);
+      UV__SET_EVENT(events + nevents, w->fd, EV_OOBAND, EV_ADD, 0);
 #endif
 
       if (++nevents == ARRAY_SIZE(events)) {
-        if (KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
+        if (UV__KEVENT(loop->backend_fd, events, nevents, NULL, 0, 0, NULL))
           abort();
         nevents = 0;
       }
@@ -276,7 +276,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     uv__io_poll_prepare(loop, pset, timeout);
-    nfds = KEVENT(loop->backend_fd,
+    nfds = UV__KEVENT(loop->backend_fd,
                   events,
                   nevents,
                   events,
@@ -489,7 +489,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 
 void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
-  KEVENT_S ev;
+  UV__KEVENT_S ev;
   int events;
   const char* path;
 #if defined(F_GETPATH)
@@ -542,9 +542,9 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
          | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE;
 
-  SET_EVENT(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags);
+  UV__SET_EVENT(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags);
 
-  if (KEVENT(loop->backend_fd, &ev, 1, NULL, 0, 0, NULL))
+  if (UV__KEVENT(loop->backend_fd, &ev, 1, NULL, 0, 0, NULL))
     abort();
 }
 

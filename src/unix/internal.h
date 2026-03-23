@@ -452,14 +452,14 @@ int uv___stream_fd(const uv_stream_t* handle);
 #define uv__stream_fd(handle) (uv___stream_fd((const uv_stream_t*) (handle)))
 
 #if defined(__LP64__)
-#define SET_EVENT(a, b, c, d, e) EV_SET64(a, b, c, d, e, 0, 0, 0, 0)
-#define KEVENT(a, b, c, d, e, f, g) kevent64(a, b, c, d, e, f, g)
-#define KEVENT_S struct kevent64_s
+#define UV__SET_EVENT(a, b, c, d, e) EV_SET64(a, b, c, d, e, 0, 0, 0, 0)
+#define UV__KEVENT(a, b, c, d, e, f, g) kevent64(a, b, c, d, e, f, g)
+#define UV__KEVENT_S struct kevent64_s
 #else
-#define SET_EVENT(a, b, c, d, e) EV_SET(a, b, c, d, e, 0, 0)
-#define KEVENT(a, b, c, d, e, f, g) kevent(a, b, c, d, e, g)
-#define KEVENT_S struct kevent
-#endif
+#define UV__SET_EVENT(a, b, c, d, e) EV_SET(a, b, c, d, e, 0, 0)
+#define UV__KEVENT(a, b, c, d, e, f, g) kevent(a, b, c, d, e, g)
+#define UV__KEVENT_S struct kevent
+#endif /* defined(__LP64__) */
 #ifndef KEVENT_FLAG_IMMEDIATE
 #define KEVENT_FLAG_IMMEDIATE 1
 #endif

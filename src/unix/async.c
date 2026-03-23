@@ -45,17 +45,17 @@ static int kqueue_evfilt_user_support = 1;
 
 static void uv__kqueue_runtime_detection(void) {
   int kq;
-  KEVENT_S ev[2];
+  UV__KEVENT_S ev[2];
   struct timespec timeout = {0, 0};
 
   /* Perform the runtime detection to ensure that kqueue with
    * EVFILT_USER actually works. */
   kq = kqueue();
-  SET_EVENT(ev, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
+  UV__SET_EVENT(ev, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
          EV_ADD | EV_CLEAR, 0);
-  SET_EVENT(ev + 1, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
+  UV__SET_EVENT(ev + 1, UV__KQUEUE_EVFILT_USER_IDENT, EVFILT_USER,
          0, NOTE_TRIGGER);
-  if (KEVENT(kq, ev, 2, ev, 1, 0, &timeout) < 1 ||
+  if (UV__KEVENT(kq, ev, 2, ev, 1, 0, &timeout) < 1 ||
       ev[0].filter != EVFILT_USER ||
       ev[0].ident != UV__KQUEUE_EVFILT_USER_IDENT ||
       ev[0].flags & EV_ERROR)
@@ -234,12 +234,12 @@ static void uv__async_send(uv_loop_t* loop) {
     fd = loop->async_io_watcher.fd;  /* eventfd */
   }
 #elif UV__KQUEUE_EVFILT_USER
-  KEVENT_S ev;
+  UV__KEVENT_S ev;
 
   if (kqueue_evfilt_user_support) {
     fd = loop->async_io_watcher.fd; /* magic number for EVFILT_USER */
-    SET_EVENT(&ev, fd, EVFILT_USER, 0, NOTE_TRIGGER);
-    r = KEVENT(loop->backend_fd, &ev, 1, NULL, 0, 0, NULL);
+    UV__SET_EVENT(&ev, fd, EVFILT_USER, 0, NOTE_TRIGGER);
+    r = UV__KEVENT(loop->backend_fd, &ev, 1, NULL, 0, 0, NULL);
     if (r == 0)
       return;
     abort();
@@ -265,7 +265,7 @@ static int uv__async_start(uv_loop_t* loop) {
   int pipefd[2];
   int err;
 #if UV__KQUEUE_EVFILT_USER
-  KEVENT_S ev;
+  UV__KEVENT_S ev;
 #endif
 
   if (loop->async_io_watcher.fd != -1)
@@ -299,8 +299,8 @@ static int uv__async_start(uv_loop_t* loop) {
      * Since uv__async_send() may happen before uv__io_poll() with multi-threads,
      * we can't defer this registration of EVFILT_USER event as we did for other
      * events, but must perform it right away. */
-    SET_EVENT(&ev, err, EVFILT_USER, EV_ADD | EV_CLEAR, 0);
-    err = KEVENT(loop->backend_fd, &ev, 1, NULL, 0, 0, NULL);
+    UV__SET_EVENT(&ev, err, EVFILT_USER, EV_ADD | EV_CLEAR, 0);
+    err = UV__KEVENT(loop->backend_fd, &ev, 1, NULL, 0, 0, NULL);
     if (err < 0)
       return UV__ERR(errno);
   } else {
