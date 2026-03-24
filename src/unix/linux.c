@@ -57,7 +57,7 @@
 #include <time.h>
 #include <unistd.h>
 
-// android ndk workaround
+/* android ndk workaround */
 #ifndef LLONG_MAX
 #define LLONG_MAX 9223372036854775807LL
 #endif
