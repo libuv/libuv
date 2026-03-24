@@ -111,12 +111,18 @@ int uv_read_stop(uv_stream_t* handle) {
 }
 
 
-static int uv__check_before_write(uv_stream_t* handle, unsigned int nbufs) {
+static int uv__check_before_write(uv_stream_t* handle,
+                                  const uv_buf_t bufs[],
+                                  unsigned int nbufs) {
   /* We're not beholden to IOV_MAX but limit the buffer count to catch sign
    * conversion bugs where a caller passes in a signed negative number that
    * then gets converted to a really large unsigned number.
    */
   if (nbufs < 1 || nbufs > 1024*1024) {
+    return UV_EINVAL;
+  }
+
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES) {
     return UV_EINVAL;
   }
 
@@ -136,7 +142,7 @@ int uv_write(uv_write_t* req,
   uv_loop_t* loop = handle->loop;
   int err;
 
-  err = uv__check_before_write(handle, nbufs);
+  err = uv__check_before_write(handle, bufs, nbufs);
   if (err != 0) {
     return err;
   }
@@ -174,7 +180,7 @@ int uv_write2(uv_write_t* req,
     return uv_write(req, handle, bufs, nbufs, cb);
   }
 
-  err = uv__check_before_write(handle, nbufs);
+  err = uv__check_before_write(handle, bufs, nbufs);
   if (err != 0) {
     return err;
   }
@@ -194,7 +200,7 @@ int uv_try_write(uv_stream_t* stream,
                  unsigned int nbufs) {
   int err;
 
-  err = uv__check_before_write(stream, nbufs);
+  err = uv__check_before_write(stream, bufs, nbufs);
   if (err != 0) {
     return err;
   }

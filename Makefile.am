@@ -259,6 +259,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-socket-buffer-size.c \
                          test/test-spawn.c \
                          test/test-stdio-over-pipes.c \
+                         test/test-io-64-safe.c \
                          test/test-strscpy.c \
                          test/test-strtok.c \
                          test/test-tcp-alloc-cb-fail.c \
