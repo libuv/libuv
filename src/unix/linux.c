@@ -27,6 +27,7 @@
 #include "internal.h"
 
 #include <inttypes.h>
+#include <limits.h>
 #include <stdatomic.h>
 #include <stddef.h>  /* offsetof */
 #include <stdint.h>
@@ -55,6 +56,14 @@
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
+
+/* android ndk workaround */
+#ifndef LLONG_MAX
+#define LLONG_MAX 9223372036854775807LL
+#endif
+#ifndef LLONG_MIN
+#define LLONG_MIN (-9223372036854775807LL - 1)
+#endif
 
 #ifndef __NR_io_uring_setup
 # define __NR_io_uring_setup 425
