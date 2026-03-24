@@ -95,7 +95,7 @@ Changing the UID/GID is only supported on Unix, ``uv_spawn`` will fail on
 Windows with ``UV_ENOTSUP``.
 
 * ``UV_PROCESS_WINDOWS_RESOLVE_BATCH`` - Considers .cmd and .bat files
-  when resolving an executable without an explicit extensionon on Windows.
+  when resolving an executable without an explicit extension on Windows.
   Ignored on Unix.
 * ``UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS`` - No quoting or escaping of
   ``uv_process_options_t.args`` is done on Windows. Ignored on Unix.
