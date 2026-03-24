@@ -543,7 +543,9 @@ static int uv__set_pipe_handle(uv_loop_t* loop,
     handle->pipe.conn.readfile_thread_handle = NULL;
     InitializeCriticalSection(&handle->pipe.conn.readfile_thread_lock);
   } else {
-    /* Overlapped pipe.  Try to associate with IOCP. */
+    /* Overlapped pipe. Try to associate with IOCP.
+     * Will set compatibility flags internally if this fails
+     * (because some other process already has activated IOCP). */
     uv__pipe_attach_iocp(pipeHandle, loop->iocp, handle);
   }
 
