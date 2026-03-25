@@ -60,6 +60,12 @@ void uv__poll_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (events & UV__POLLRDHUP)
     pevents |= UV_DISCONNECT;
 
+  /* On error or hangup, mix in events the user is interested in so the
+   * appropriate read/write callbacks are invoked. */
+  if (events & (POLLERR | POLLHUP))
+    pevents |=
+      w->pevents & (UV_READABLE | UV_PRIORITIZED | UV_WRITABLE | UV_DISCONNECT);
+
   handle->poll_cb(handle, 0, pevents);
 }
 

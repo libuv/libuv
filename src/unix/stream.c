@@ -1058,11 +1058,14 @@ static void uv__read(uv_stream_t* stream) {
 
     if (!is_ipc) {
       do {
-        nread = read(uv__stream_fd(stream), buf.base, buf.len);
-      }
-      while (nread < 0 && errno == EINTR);
+        nread = read(uv__stream_fd(stream),
+                     buf.base,
+                     buf.len > UV__IO_MAX_BYTES ? UV__IO_MAX_BYTES : buf.len);
+      } while (nread < 0 && errno == EINTR);
     } else {
       /* ipc uses recvmsg */
+      if (buf.len > UV__IO_MAX_BYTES)
+        buf.len = UV__IO_MAX_BYTES;
       msg.msg_flags = 0;
       msg.msg_iov = (struct iovec*) &buf;
       msg.msg_iovlen = 1;
@@ -1074,8 +1077,7 @@ static void uv__read(uv_stream_t* stream) {
 
       do {
         nread = uv__recvmsg(uv__stream_fd(stream), &msg, 0);
-      }
-      while (nread < 0 && errno == EINTR);
+      } while (nread < 0 && errno == EINTR);
     }
 
     if (nread < 0) {
@@ -1218,16 +1220,15 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    * operating systems, devices like PTYs sometimes produce partial reads even
    * when more data is available.
    */
-  if ((events & POLLHUP) &&
+  if ((events & (POLLHUP | UV__POLLRDHUP)) &&
       !(events & POLLIN) &&
       (stream->flags & UV_HANDLE_READING) &&
       !(stream->flags & UV_HANDLE_READ_EOF)) {
     uv_buf_t buf = { NULL, 0 };
     uv__stream_eof(stream, &buf);
+    if (uv__stream_fd(stream) == -1)
+      return;  /* read_cb closed stream. */
   }
-
-  if (uv__stream_fd(stream) == -1)
-    return;  /* read_cb closed stream. */
 
   if (events & (POLLOUT | POLLERR | POLLHUP)) {
     uv__write(stream);
@@ -1295,6 +1296,7 @@ static void uv__stream_connect(uv_stream_t* stream) {
 
 
 static int uv__check_before_write(uv_stream_t* stream,
+                                  const uv_buf_t bufs[],
                                   unsigned int nbufs,
                                   uv_stream_t* send_handle) {
   assert((stream->type == UV_TCP ||
@@ -1307,6 +1309,13 @@ static int uv__check_before_write(uv_stream_t* stream,
    * then gets converted to a really large unsigned number.
    */
   if (nbufs < 1 || nbufs > 1024*1024)
+    return UV_EINVAL;
+
+  /* Reject writes above UV__IO_MAX_BYTES to be consistent with EINVAL on platforms
+   * such as macOS that fail when the total size of the iov exceeds 2GB,
+   * and catch/prevent sign-extension bugs.
+   */
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
     return UV_EINVAL;
 
   if (uv__stream_fd(stream) < 0)
@@ -1347,7 +1356,7 @@ int uv_write2(uv_write_t* req,
   int empty_queue;
   int err;
 
-  err = uv__check_before_write(stream, nbufs, send_handle);
+  err = uv__check_before_write(stream, bufs, nbufs, send_handle);
   if (err < 0)
     return err;
 
@@ -1436,7 +1445,7 @@ int uv_try_write2(uv_stream_t* stream,
   if (stream->connect_req != NULL || stream->write_queue_size != 0)
     return UV_EAGAIN;
 
-  err = uv__check_before_write(stream, nbufs, send_handle);
+  err = uv__check_before_write(stream, bufs, nbufs, send_handle);
   if (err < 0)
     return err;
 
