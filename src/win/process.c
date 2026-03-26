@@ -1047,7 +1047,10 @@ int uv_spawn(uv_loop_t* loop,
    * inherited, closing the race condition where concurrent uv_spawn calls
    * could cause handles intended for one child to leak into another. */
   {
-    int count = uv__stdio_size(child_stdio_buffer);
+#define CHILD_STDIO_COUNT(buffer)                   \
+    *((unsigned int*) (buffer))
+    int count = CHILD_STDIO_COUNT(child_stdio_buffer);
+#undef CHILD_STDIO_COUNT
     int n = 0;
     SIZE_T attr_size = 0;
 
