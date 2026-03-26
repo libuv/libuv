@@ -178,7 +178,11 @@ void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   handle = container_of(w, uv_udp_t, io_watcher);
   assert(handle->type == UV_UDP);
 
-  if (revents & POLLIN)
+  /* Trigger a recv and send to find out what POLLERR occurred. */
+  if (revents & POLLERR)
+    revents |= POLLIN | POLLOUT;
+
+  if (revents & (POLLIN | POLLERR))
     uv__udp_recvmsg(handle, 0);
 
   /* Just Linux support for now. */
@@ -213,6 +217,8 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf, int flag) {
 
   /* prepare structures for recvmmsg */
   chunks = buf->len / UV__UDP_DGRAM_MAXSIZE;
+  if (chunks == 0)
+    return UV_EINVAL;
   if (chunks > ARRAY_SIZE(iov))
     chunks = ARRAY_SIZE(iov);
   for (k = 0; k < chunks; ++k) {
@@ -312,8 +318,11 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
 
     if (uv_udp_using_recvmmsg(handle)) {
       nread = uv__udp_recvmmsg(handle, &buf, flag);
-      if (nread > 0)
-        count -= nread;
+      if (nread <= 0) {
+        handle->recv_cb(handle, nread, &buf, NULL, 0);
+        return;
+      }
+      count -= nread;
       continue;
     }
 
@@ -720,9 +729,6 @@ int uv__udp_try_send(uv_udp_t* handle,
                      const struct sockaddr* addr,
                      unsigned int addrlen) {
   int err;
-
-  if (nbufs < 1)
-    return UV_EINVAL;
 
   /* already sending a message */
   if (handle->send_queue_count != 0)

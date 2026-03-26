@@ -371,11 +371,12 @@ TEST_IMPL(pipe_getsockname_blocking) {
   return 0;
 }
 
+#ifdef SOCK_MAXADDRLEN
 static void long_path_connect_cb(uv_connect_t* req, int status) {
   ASSERT_OK(status);
   uv_close((uv_handle_t*) req->handle, NULL);
 }
-
+#endif
 
 TEST_IMPL(pipe_getsockname_long_path) {
 #ifndef SOCK_MAXADDRLEN

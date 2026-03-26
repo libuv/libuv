@@ -705,7 +705,8 @@ enum uv_udp_flags {
    */
   UV_UDP_REUSEPORT = 64,
   /*
-   * Indicates that recvmmsg should be used, if available.
+   * Indicates that recvmmsg should be used, if available. The uv_alloc_cb
+   * for this handle should create buffers that are multiples of 64 KiB.
    */
   UV_UDP_RECVMMSG = 256
 };
