@@ -682,7 +682,7 @@ void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
                           FROM_PROTOCOL_INFO,
                           &xfer_queue_item->xfer_info.socket_info,
                           0,
-                          WSA_FLAG_OVERLAPPED);
+                          WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
       uv__free(xfer_queue_item);
 
       if (socket != INVALID_SOCKET)
