@@ -495,8 +495,10 @@ static int uv__makedir_p(const char *dir) {
   size_t len;
   int err;
 
-  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-  uv__strscpy(tmp, dir, sizeof(tmp));
+  ssize_t rc = uv__strscpy(tmp, dir, sizeof(tmp));
+  if (rc == UV_E2BIG)
+    return UV_ENAMETOOLONG;
+
   len = strlen(tmp);
   if (tmp[len - 1] == '/')
     tmp[len - 1] = 0;
