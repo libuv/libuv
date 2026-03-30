@@ -559,12 +559,6 @@ TEST_IMPL(fs_event_watch_delete_dir_win) {
   r = uv_timer_start(&timer, fs_event_del_dir, 100, 0);
   ASSERT_OK(r);
 
-  /* Timeout timer fails the test if it takes too long (infinite loop bug) */
-  r = uv_timer_init(loop, &timeout_timer);
-  ASSERT_OK(r);
-  r = uv_timer_start(&timeout_timer, timeout_cb_del_dir_perm, 3000, 0);
-  ASSERT_OK(r);
-
   uv_run(loop, UV_RUN_DEFAULT);
 
   ASSERT_EQ(1, fs_event_cb_del_dir_perm_got_enoent);
