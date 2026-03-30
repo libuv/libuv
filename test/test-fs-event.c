@@ -534,12 +534,6 @@ static void fs_event_cb_del_dir_perm(uv_fs_event_t* handle,
   }
 }
 
-static void timeout_cb_del_dir_perm(uv_timer_t* handle) {
-  uv_close((uv_handle_t*)&fs_event, NULL);
-  uv_close((uv_handle_t*)handle, NULL);
-  FATAL("Test timed out: fs_event watcher did not receive UV_ENOENT");
-}
-
 TEST_IMPL(fs_event_watch_delete_dir_win) {
   uv_loop_t* loop = uv_default_loop();
   int r;
