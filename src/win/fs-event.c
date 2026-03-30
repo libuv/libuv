@@ -615,7 +615,7 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
       DWORD path_len = GetFinalPathNameByHandleW(handle->dir_handle,
                                                  path_buf,
                                                  ARRAY_SIZE(path_buf),
-                                                 FILE_NAME_NORMALIZED);
+                                                 FILE_NAME_NORMALIZED | VOLUME_NAME_NONE);
 
       if (path_len > 0 && path_len < ARRAY_SIZE(path_buf)) {
         if (wcsstr(path_buf, L"\\$Extend\\$Deleted\\") != NULL) {
