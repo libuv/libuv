@@ -521,7 +521,6 @@ TEST_IMPL(fs_event_watch_delete_dir) {
 
 #ifdef _WIN32
 static int fs_event_cb_del_dir_perm_got_enoent;
-static uv_timer_t timeout_timer;
 
 static void fs_event_cb_del_dir_perm(uv_fs_event_t* handle,
                                      const char* filename,
@@ -529,7 +528,6 @@ static void fs_event_cb_del_dir_perm(uv_fs_event_t* handle,
                                      int status) {
   if (status == UV_ENOENT) {
     fs_event_cb_del_dir_perm_got_enoent = 1;
-    uv_close((uv_handle_t*)&timeout_timer, close_cb);
     uv_close((uv_handle_t*)handle, close_cb);
   }
 }
@@ -556,7 +554,7 @@ TEST_IMPL(fs_event_watch_delete_dir_win) {
   uv_run(loop, UV_RUN_DEFAULT);
 
   ASSERT_EQ(1, fs_event_cb_del_dir_perm_got_enoent);
-  ASSERT_EQ(3, close_cb_called);
+  ASSERT_EQ(2, close_cb_called);
 
   /* Cleanup */
   fs_event_unlink_files(NULL);
