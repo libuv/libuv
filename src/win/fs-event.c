@@ -617,7 +617,7 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
                                                  ARRAY_SIZE(path_buf),
                                                  FILE_NAME_NORMALIZED);
 
-      if (path_len > 0 && path_len < MAX_PATH) {
+      if (path_len > 0 && path_len < ARRAY_SIZE(path_buf)) {
         if (wcsstr(path_buf, L"\\$Extend\\$Deleted\\") != NULL) {
           handle->cb(handle, NULL, 0, UV_ENOENT);
           return;
