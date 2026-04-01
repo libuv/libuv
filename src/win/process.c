@@ -548,6 +548,12 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
    * every character needs escaping, so we need twice as much space. */
   dst_len = dst_len * 2 + arg_count * 2;
 
+  /* If there is no argument, early return. */
+  if (dst_len == 0) {
+    *dst_ptr = NULL;
+    return 0;
+  }
+
   /* Allocate buffer for the final command line. */
   dst = uv__malloc(dst_len * sizeof(WCHAR));
   if (dst == NULL) {
