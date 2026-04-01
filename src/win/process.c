@@ -61,6 +61,16 @@ static const env_var_t required_vars[] = { /* keep me sorted */
   E_V("WINDIR"),
 };
 
+typedef enum  {
+  PATHEXT_NONE,
+  PATHEXT_COM,
+  PATHEXT_EXE,
+  PATHEXT_BAT,
+  PATHEXT_CMD,
+} uv__supported_path_ext_t;
+
+#define MAX_PATH_EXT_LEN 4 /* including '.' */
+
 
 static HANDLE uv_global_job_handle_;
 static uv_once_t uv_global_job_handle_init_guard_ = UV_ONCE_INIT;
@@ -122,6 +132,17 @@ static void uv__init_global_job_handle(void) {
 }
 
 
+static uv__supported_path_ext_t uv__get_path_ext(WCHAR* ext) {
+  if (wcslen(ext) == 4) {
+    if (CompareStringOrdinal(ext, 4, L".com", 4, TRUE) == CSTR_EQUAL) return PATHEXT_COM;
+    if (CompareStringOrdinal(ext, 4, L".exe", 4, TRUE) == CSTR_EQUAL) return PATHEXT_EXE;
+    if (CompareStringOrdinal(ext, 4, L".bat", 4, TRUE) == CSTR_EQUAL) return PATHEXT_BAT;
+    if (CompareStringOrdinal(ext, 4, L".cmd", 4, TRUE) == CSTR_EQUAL) return PATHEXT_CMD;
+  }
+  return PATHEXT_NONE;
+}
+
+
 static int uv__utf8_to_utf16_alloc(const char* s, WCHAR** ws_ptr) {
   return uv__convert_utf8_to_utf16(s, ws_ptr);
 }
@@ -152,12 +173,15 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
                                     size_t dir_len,
                                     const WCHAR* name,
                                     size_t name_len,
-                                    const WCHAR* ext,
-                                    size_t ext_len,
                                     const WCHAR* cwd,
-                                    size_t cwd_len) {
+                                    size_t cwd_len,
+                                    int allowed_exts) {
   WCHAR *result, *result_pos;
-  DWORD attrs;
+  HANDLE find;
+  WIN32_FIND_DATAW find_data;
+  int exts_seen = 0;
+  uv__supported_path_ext_t cur_pathext;
+  int exact_name_allowed = (allowed_exts & (1 << PATHEXT_NONE)) != 0;
   if (dir_len > 2 &&
       ((dir[0] == L'\\' || dir[0] == L'/') &&
        (dir[1] == L'\\' || dir[1] == L'/'))) {
@@ -187,7 +211,7 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
 
   /* Allocate buffer for output */
   result = result_pos = (WCHAR*)uv__malloc(sizeof(WCHAR) *
-      (cwd_len + 1 + dir_len + 1 + name_len + 1 + ext_len + 1));
+      (cwd_len + 1 + dir_len + 1 + name_len + 1 + MAX_PATH_EXT_LEN + 1));
 
   /* Copy cwd */
   wcsncpy(result_pos, cwd, cwd_len);
@@ -213,28 +237,73 @@ static WCHAR* search_path_join_test(const WCHAR* dir,
   wcsncpy(result_pos, name, name_len);
   result_pos += name_len;
 
-  if (ext_len) {
-    /* Add a dot if the filename didn't end with one */
-    if (name_len && result_pos[-1] != '.') {
+  /* If the exact name is disallowed, append a '.' before the wildcard
+   * to cut down on potential false positive matches. */
+  if (!exact_name_allowed) {
       result_pos[0] = L'.';
       result_pos++;
-    }
-
-    /* Copy extension */
-    wcsncpy(result_pos, ext, ext_len);
-    result_pos += ext_len;
   }
 
+  /* Wildcard */
+  result_pos[0] = L'*';
+  result_pos++;
   /* Null terminator */
   result_pos[0] = L'\0';
 
-  attrs = GetFileAttributesW(result);
+  find = FindFirstFileExW(result, FindExInfoBasic, &find_data, FindExSearchNameMatch, NULL, 0);
+  if (find == INVALID_HANDLE_VALUE) {
+    goto not_found;
+  }
+  do {
+    if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
+    if (wcslen(find_data.cFileName) == name_len) {
+      /* The exact name is always prioritized if it's allowed,
+       * so an early return is possible. */
+      if (exact_name_allowed) {
+        /* Remove the wildcard */
+        result_pos--;
+        result_pos[0] = L'\0';
+        FindClose(find);
+        return result;
+      }
+    } else {
+      /* Can't early return in this branch.
+       * Order of iteration may be arbitrary depending on the filesystem */
+      cur_pathext = uv__get_path_ext(find_data.cFileName + name_len);
+      if (cur_pathext != PATHEXT_NONE) {
+        exts_seen |= 1 << cur_pathext;
+      }
+    }
+  } while (FindNextFileW(find, &find_data));
+  FindClose(find);
 
-  if (attrs != INVALID_FILE_ATTRIBUTES &&
-      !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
-    return result;
+  if (exts_seen == 0) {
+    goto not_found;
   }
 
+  /* Remove the wildcard and append the extension before returning. */
+  result_pos--;
+  /* Only append the '.' now if it wasn't already added earlier. */
+  if (exact_name_allowed) {
+      result_pos[0] = L'.';
+      result_pos++;
+  }
+  /* Prioritize using the standard PATHEXT order. */
+  if (exts_seen & (1 << PATHEXT_COM)) {
+    wcsncpy(result_pos, L"com", 4);
+  } else if (exts_seen & (1 << PATHEXT_EXE)) {
+    wcsncpy(result_pos, L"exe", 4);
+  } else if (exts_seen & (1 << PATHEXT_BAT)) {
+    wcsncpy(result_pos, L"bat", 4);
+  } else if (exts_seen & (1 << PATHEXT_CMD)) {
+    wcsncpy(result_pos, L"cmd", 4);
+  }
+  result_pos += 3;
+  /* Null terminator */
+  result_pos[0] = L'\0';
+  return result;
+
+not_found:
   uv__free(result);
   return NULL;
 }
@@ -251,32 +320,13 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
                                    size_t cwd_len,
                                    int name_has_ext) {
   WCHAR* result;
+  int allowed_exts = (1 << PATHEXT_COM) | (1 << PATHEXT_EXE);
+  if (name_has_ext) allowed_exts |= (1 << PATHEXT_NONE);
 
-  /* If the name itself has a nonempty extension, try this extension first */
-  if (name_has_ext) {
-    result = search_path_join_test(dir, dir_len,
-                                   name, name_len,
-                                   L"", 0,
-                                   cwd, cwd_len);
-    if (result != NULL) {
-      return result;
-    }
-  }
-
-  /* Try .com extension */
   result = search_path_join_test(dir, dir_len,
                                  name, name_len,
-                                 L"com", 3,
-                                 cwd, cwd_len);
-  if (result != NULL) {
-    return result;
-  }
-
-  /* Try .exe extension */
-  result = search_path_join_test(dir, dir_len,
-                                 name, name_len,
-                                 L"exe", 3,
-                                 cwd, cwd_len);
+                                 cwd, cwd_len,
+                                 allowed_exts);
   if (result != NULL) {
     return result;
   }
