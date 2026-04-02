@@ -101,6 +101,9 @@ TEST_IMPL(udp_connect) {
 #if defined(__OpenBSD__)
   RETURN_SKIP("Test does not currently work in OpenBSD");
 #endif
+#if defined(__FreeBSD__) && __FreeBSD_version >= 1500043
+  RETURN_SKIP("FreeBSD >= 15.0 disables connect() to INADDR_ANY by default");
+#endif
   uv_udp_send_t req;
   struct sockaddr_in ext_addr;
   struct sockaddr_in tmp_addr;
