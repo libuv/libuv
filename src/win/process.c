@@ -546,13 +546,7 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
 
   /* Adjust for potential quotes. Also assume the worst-case scenario that
    * every character needs escaping, so we need twice as much space. */
-  dst_len = dst_len * 2 + arg_count * 2;
-
-  /* If there is no argument, early return. */
-  if (dst_len == 0) {
-    *dst_ptr = NULL;
-    return 0;
-  }
+  dst_len = (dst_len * 2 + arg_count * 2) + 1;
 
   /* Allocate buffer for the final command line. */
   dst = uv__malloc(dst_len * sizeof(WCHAR));
@@ -560,38 +554,41 @@ int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr) {
     err = UV_ENOMEM;
     goto error;
   }
-
-  /* Allocate temporary working buffer. */
-  temp_buffer = uv__malloc(temp_buffer_len * sizeof(WCHAR));
-  if (temp_buffer == NULL) {
-    err = UV_ENOMEM;
-    goto error;
-  }
-
-  pos = dst;
-  for (arg = args; *arg; arg++) {
-    ssize_t arg_len;
-
-    /* Convert argument to wide char. */
-    arg_len = uv_wtf8_length_as_utf16(*arg);
-    assert(arg_len > 0);
-    assert(temp_buffer_len >= (size_t) arg_len);
-    uv_wtf8_to_utf16(*arg, temp_buffer, arg_len);
-
-    if (verbatim_arguments) {
-      /* Copy verbatim. */
-      wcscpy(pos, temp_buffer);
-      pos += arg_len - 1;
-    } else {
-      /* Quote/escape, if needed. */
-      pos = quote_cmd_arg(temp_buffer, pos);
+  
+  dst[0] = '\0';
+  if (arg_count > 0) {
+    /* Allocate temporary working buffer. */
+    temp_buffer = uv__malloc(temp_buffer_len * sizeof(WCHAR));
+    if (temp_buffer == NULL) {
+      err = UV_ENOMEM;
+      goto error;
     }
 
-    *pos++ = *(arg + 1) ? L' ' : L'\0';
-    assert(pos <= dst + dst_len);
-  }
+    pos = dst;
+    for (arg = args; *arg; arg++) {
+      ssize_t arg_len;
 
-  uv__free(temp_buffer);
+      /* Convert argument to wide char. */
+      arg_len = uv_wtf8_length_as_utf16(*arg);
+      assert(arg_len > 0);
+      assert(temp_buffer_len >= (size_t) arg_len);
+      uv_wtf8_to_utf16(*arg, temp_buffer, arg_len);
+
+      if (verbatim_arguments) {
+        /* Copy verbatim. */
+        wcscpy(pos, temp_buffer);
+        pos += arg_len - 1;
+      } else {
+        /* Quote/escape, if needed. */
+        pos = quote_cmd_arg(temp_buffer, pos);
+      }
+
+      *pos++ = *(arg + 1) ? L' ' : L'\0';
+      assert(pos <= dst + dst_len);
+    }
+
+    uv__free(temp_buffer);
+  }
 
   *dst_ptr = dst;
   return 0;
