@@ -1083,3 +1083,117 @@ void uv_free_interface_addresses(uv_interface_address_t* addresses,
   uv__free(addresses);
 }
 #endif  /* !__MVS__ */
+
+int uv_socket_get_tos(const uv_handle_t* handle, int* tos) {
+  int addrlen;
+  int fd;
+  int level;
+  int option;
+  int r;
+  int tos_;
+  socklen_t optlen;
+  struct sockaddr_storage storage;
+
+#if defined(_WIN32)
+  return UV_ENOSYS;
+#endif
+
+  addrlen = sizeof(storage);
+  tos_ = 0;
+  optlen = sizeof(tos_);
+
+  switch (handle->type) {
+    case UV_TCP:
+      r = uv_tcp_getsockname((uv_tcp_t*)handle,
+                             (struct sockaddr*)&storage,
+                             &addrlen);
+      break;
+    case UV_UDP:
+      r = uv_udp_getsockname((uv_udp_t*)handle,
+                             (struct sockaddr*)&storage,
+                             &addrlen);
+      break;
+    default:
+      return UV_EINVAL;
+  }
+
+  if (r)
+    return r;
+
+  r = uv_fileno(handle, &fd);
+  if (r)
+    return r;
+
+  switch (storage.ss_family) {
+    case AF_INET:
+      level = IPPROTO_IP;
+      option = IP_TOS;
+      break;
+    case AF_INET6:
+      level = IPPROTO_IPV6;
+      option = IPV6_TCLASS;
+      break;
+    default:
+      return UV_EAFNOSUPPORT;
+  }
+
+  r = getsockopt(fd, level, option, &tos_, &optlen);
+  if (r)
+    return r;
+
+  *tos = tos_;
+
+  return 0;
+}
+
+int uv_socket_set_tos(const uv_handle_t* handle, int tos) {
+  int fd;
+  int r;
+  struct sockaddr_storage storage;
+  int addrlen;
+  int level;
+  int option;
+
+#if defined(_WIN32)
+  return UV_ENOSYS;
+#endif
+
+  addrlen = sizeof(storage);
+
+  if (tos < 0 || tos > 255)
+    return UV_EINVAL;
+
+  switch (handle->type) {
+    case UV_TCP:
+      r = uv_tcp_getsockname((uv_tcp_t*)handle, (struct sockaddr*)&storage, &addrlen);
+      break;
+    case UV_UDP:
+      r = uv_udp_getsockname((uv_udp_t*)handle, (struct sockaddr*)&storage, &addrlen);
+      break;
+    default:
+      return UV_EINVAL;
+  }
+
+  if (r)
+    return r;
+
+  r = uv_fileno(handle, &fd);
+  if (r)
+    return r;
+
+  switch (storage.ss_family) {
+    case AF_INET:
+      level = IPPROTO_IP;
+      option = IP_TOS;
+      break;
+    case AF_INET6:
+      level = IPPROTO_IPV6;
+      option = IPV6_TCLASS;
+      break;
+    default:
+      return UV_EAFNOSUPPORT;
+  }
+
+  r = setsockopt(fd, level, option, &tos, sizeof(tos));
+  return UV__ERR(r);
+}
