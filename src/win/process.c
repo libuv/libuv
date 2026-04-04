@@ -286,19 +286,19 @@ static WCHAR* path_search_walk_ext(const WCHAR *dir,
     return NULL;
   }
 
-  /* Try .cmd extension */
+ /* Try .bat extension */
   result = search_path_join_test(dir, dir_len,
                                  name, name_len,
-                                 L"cmd", 3,
+                                 L"bat", 3,
                                  cwd, cwd_len);
   if (result != NULL) {
     return result;
   }
 
-  /* Try .bat extension */
+  /* Try .cmd extension */
   result = search_path_join_test(dir, dir_len,
                                  name, name_len,
-                                 L"bat", 3,
+                                 L"cmd", 3,
                                  cwd, cwd_len);
   if (result != NULL) {
     return result;
