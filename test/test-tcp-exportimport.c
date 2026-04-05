@@ -111,7 +111,7 @@ void on_parent_msg(uv_async_t* handle) {
   ASSERT_OK(uv_tcp_import(parent.loop, dup_fd_handle, &parent.server, 0));
 
   ASSERT_OK(uv_listen((uv_stream_t*)&parent.server, 12, on_connection));
-  ASSERT_EQ(parent.loop, parent.server.loop);
+  ASSERT(parent.loop == parent.server.loop);
 
   /* Create a bunch of connections to get both servers to accept. */
   make_many_connections();
