@@ -1673,7 +1673,7 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
     return uv_translate_sys_error(err);
 }
 
-int uv_tcp_export(uv_tcp_t* stream, uv_os_sock_t* fd) {
+int uv_tcp_export(uv_tcp_t* stream, uv_os_sock_t* sock) {
   WSAPROTOCOL_INFOW protocol_info;
   SOCKET dup_socket;
 
@@ -1733,19 +1733,19 @@ int uv_tcp_export(uv_tcp_t* stream, uv_os_sock_t* fd) {
   if (dup_socket == INVALID_SOCKET)
     return uv_translate_sys_error(WSAGetLastError());
 
-  *fd = dup_socket;
+  *sock = dup_socket;
   return 0;
 }
 
 
-int uv_tcp_import(uv_loop_t* loop, uv_os_sock_t fd, uv_tcp_t* out, unsigned int flags) {
+int uv_tcp_import(uv_loop_t* loop, uv_os_sock_t sock, uv_tcp_t* out, unsigned int flags) {
   int err;
 
   err = uv_tcp_init_ex(loop, out, flags);
   if (err)
     return err;
 
-  err = uv_tcp_open(out, fd);
+  err = uv_tcp_open(out, sock);
   if (err) {
     uv_close((uv_handle_t*) out, NULL);
     return err;

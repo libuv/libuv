@@ -2725,7 +2725,7 @@ done:
 }
 
 
-int uv_pipe_export(uv_pipe_t* handle, uv_file* fd) {
+int uv_pipe_export(uv_pipe_t* handle, uv_file* file) {
   HANDLE dup_handle;
   int crt_fd;
 
@@ -2760,7 +2760,7 @@ int uv_pipe_export(uv_pipe_t* handle, uv_file* fd) {
 
   /* Wrap the HANDLE in a CRT file descriptor so uv_pipe_open (which takes a
    * uv_file / int) can accept it on the import side.  _open_osfhandle
-   * transfers ownership: closing the CRT fd via _close or uv_pipe_open's
+   * transfers ownership: closing the CRT file via _close or uv_pipe_open's
    * internal machinery will close the underlying HANDLE. */
   crt_fd = _open_osfhandle((intptr_t) dup_handle, 0);
   if (crt_fd == -1) {
@@ -2768,21 +2768,21 @@ int uv_pipe_export(uv_pipe_t* handle, uv_file* fd) {
     return UV_UNKNOWN;
   }
 
-  *fd = crt_fd;
+  *file = crt_fd;
   return 0;
 }
 
 
-int uv_pipe_import(uv_loop_t* loop, uv_file fd, uv_pipe_t* out, int ipc) {
+int uv_pipe_import(uv_loop_t* loop, uv_file file, uv_pipe_t* out, int ipc) {
   int err;
 
   err = uv_pipe_init(loop, out, ipc);
   if (err)
     return err;
 
-  /* uv_pipe_open converts the CRT fd back to a HANDLE via _get_osfhandle
+  /* uv_pipe_open converts the CRT file back to a HANDLE via _get_osfhandle
    * and registers it with the loop's IOCP. */
-  err = uv_pipe_open(out, fd);
+  err = uv_pipe_open(out, file);
   if (err) {
     uv_close((uv_handle_t*) out, NULL);
     return err;
