@@ -188,3 +188,34 @@ API
     Equivalent to :man:`socketpair(2)` with a domain of AF_UNIX.
 
     .. versionadded:: 1.41.0
+
+.. c:function:: int uv_tcp_export(uv_tcp_t* handle, uv_os_sock_t* sock)
+
+    Duplicate the underlying socket of a TCP handle into a new, independently
+    owned socket descriptor.  The resulting descriptor can be transferred to
+    another thread or process and imported into a fresh :c:type:`uv_tcp_t`
+    handle via :c:func:`uv_tcp_import`.
+
+    The original handle continues to function normally after the call; both
+    the original and the duplicated socket are independently valid and must
+    each be closed by their respective owner.
+
+    :param handle: An initialised, non-closing TCP handle whose underlying
+        socket is open (i.e. bound, listening, or connected).
+    :param sock: Output parameter.  Receives the duplicated socket descriptor.
+
+.. c:function:: int uv_tcp_import(uv_loop_t* loop, uv_os_sock_t sock, uv_tcp_t* out, unsigned int flags)
+
+    Import a duplicated TCP socket descriptor (obtained via
+    :c:func:`uv_tcp_export`) into a new :c:type:`uv_tcp_t` handle associated
+    with `loop`.
+
+    The imported handle takes ownership of `sock`; the caller must not close
+    it separately after a successful call. If opening fails the handle is closed and the caller should not use `out`.
+
+    :param loop: Event loop that will own the new handle.
+    :param sock: A socket descriptor previously returned by
+        :c:func:`uv_tcp_export`.
+    :param out: Uninitialized :c:type:`uv_tcp_t` to fill in.
+    :param flags: Passed to :c:func:`uv_tcp_init_ex`; use ``0`` for
+        defaults or an address-family flag such as ``AF_INET6``.
