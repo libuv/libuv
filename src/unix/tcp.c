@@ -671,3 +671,64 @@ fail:
   uv__close(temp[1]);
   return err;
 }
+
+
+int uv_tcp_export(uv_tcp_t* stream, int* fd) {
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  int err;
+#endif
+
+  if (stream->type != UV_TCP)
+    return UV_EINVAL;
+
+  /* A handle being closed (or already closed) has no usable fd.
+   * UV_HANDLE_CLOSING is set by uv_close() before the close callback fires;
+   * UV_HANDLE_CLOSED means teardown is complete.  Either way the fd is gone
+   * or about to disappear and duplicating it would hand the caller a
+   * descriptor that may close under them. */
+  if (uv__is_closing((uv_handle_t*) stream))
+    return UV_EINVAL;
+
+  /* An initialised-but-not-yet-connected/bound TCP handle has
+   * io_watcher.fd == -1.  fcntl(-1, ...) would return EBADF, which is
+   * technically correct but confusing; return it explicitly instead. */
+  if (stream->io_watcher.fd == -1)
+    return UV_EBADF;
+
+  /* Clone the inner fd. Start from a safe number (3). */
+#ifdef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  *fd = fcntl(stream->io_watcher.fd, F_DUPFD_CLOEXEC, 3);
+#else
+  *fd = fcntl(stream->io_watcher.fd, F_DUPFD, 3);
+#endif
+  if (*fd == -1)
+    return UV__ERR(errno);
+
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  /* F_DUPFD_CLOEXEC is unavailable; set close-on-exec in a separate step. */
+  err = uv__cloexec(*fd, 1);
+  if (err != 0) {
+    uv__close(*fd);
+    *fd = -1;
+    return err;
+  }
+#endif
+  return 0;
+}
+
+
+int uv_tcp_import(uv_loop_t* loop, int fd, uv_tcp_t* out, unsigned int flags) {
+  int err;
+
+  err = uv_tcp_init_ex(loop, out, flags);
+  if (err)
+    return err;
+
+  err = uv_tcp_open(out, fd);
+  if (err) {
+    uv_close((uv_handle_t*)out, NULL);
+    return err;
+  }
+
+  return 0;
+}

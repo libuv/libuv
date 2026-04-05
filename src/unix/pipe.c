@@ -550,9 +550,6 @@ int uv_pipe_export(uv_pipe_t* handle, int* fd) {
   int err;
 #endif
 
-  /* Set a safe sentinel so callers don't observe garbage on any error path. */
-  *fd = -1;
-
   if (handle->type != UV_NAMED_PIPE)
     return UV_EINVAL;
 

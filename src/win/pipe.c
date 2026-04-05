@@ -2729,9 +2729,6 @@ int uv_pipe_export(uv_pipe_t* handle, int* fd) {
   HANDLE dup_handle;
   int crt_fd;
 
-  /* Set a safe sentinel so callers don't observe garbage on any error path. */
-  *fd = -1;
-
   if (handle->type != UV_NAMED_PIPE)
     return UV_EINVAL;
 
