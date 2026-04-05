@@ -39,7 +39,6 @@ static uv_async_t recv_channel;
 static worker_t parent;
 static worker_t child;
 
-static int dup_fd_handle = -1;
 
 typedef struct {
   uv_connect_t conn_req;
@@ -105,10 +104,14 @@ static void make_many_connections(void) {
 
 
 void on_parent_msg(uv_async_t* handle) {
+  /* The fd was passed via handle->data by the child thread before async_send. */
+  int fd = (int)(intptr_t) uv_handle_get_data((uv_handle_t*) handle);
+  /* Restore data pointer so close_cb can reach the worker. */
+  uv_handle_set_data((uv_handle_t*) handle, &parent);
   parent.server.data = &parent;
 
   /* Import the shared TCP server, and start listening on it. */
-  ASSERT_OK(uv_tcp_import(parent.loop, dup_fd_handle, &parent.server, 0));
+  ASSERT_OK(uv_tcp_import(parent.loop, fd, &parent.server, 0));
 
   ASSERT_OK(uv_listen((uv_stream_t*)&parent.server, 12, on_connection));
   ASSERT(parent.loop == parent.server.loop);
@@ -137,8 +140,14 @@ static void child_thread_entry(void* arg) {
   if (!listen_after_write)
     ASSERT_OK(uv_listen((uv_stream_t*)&child.server, 12, on_connection));
 
-  ASSERT_OK(uv_tcp_export(&child.server, &dup_fd_handle));
-  ASSERT_GT(dup_fd_handle, -1);
+  {
+    int fd;
+    ASSERT_OK(uv_tcp_export(&child.server, &fd));
+    ASSERT_GT(fd, -1);
+    /* Pass fd to the parent loop callback via the async handle's data field.
+     * uv_async_send provides the happens-before edge so no extra barrier needed. */
+    uv_handle_set_data((uv_handle_t*) child.send_channel, (void*)(intptr_t) fd);
+  }
 
   ASSERT_OK(uv_async_send(child.send_channel));
 
@@ -163,7 +172,6 @@ static void run_tcp_exportimport_test(int listen_after_write) {
   ASSERT(child.loop);
 
   ASSERT_OK(uv_async_init(parent.loop, parent.recv_channel, on_parent_msg));
-  parent.recv_channel->data = &parent;
 
   ASSERT_OK(uv_async_init(child.loop, child.recv_channel, on_child_msg));
   child.recv_channel->data = &child;
