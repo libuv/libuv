@@ -37,6 +37,7 @@
 #include "uv.h"
 #include "task.h"
 
+#include <stdatomic.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -48,7 +49,7 @@ static uv_loop_t*  server_loop;
 static uv_thread_t server_thread;
 static uv_barrier_t server_ready;   /* server → main: listening */
 static uv_async_t  fd_ready;        /* server → parent: fd exported */
-static int         exported_fd = -1;
+static _Atomic int exported_fd = -1;
 
 static uv_pipe_t   server_handle;
 static uv_pipe_t   server_conn;     /* accepted on server side, then exported */
@@ -114,7 +115,7 @@ static void client_connect_cb(uv_connect_t* req, int status) {
 static void on_fd_ready(uv_async_t* handle) {
   (void) handle;
   /* Import the exported connection into the parent loop and start reading. */
-  ASSERT_OK(uv_pipe_import(parent_loop, exported_fd, &parent_conn, 0));
+  ASSERT_OK(uv_pipe_import(parent_loop, atomic_load(&exported_fd), &parent_conn, 0));
   ASSERT_OK(uv_read_start((uv_stream_t*) &parent_conn, alloc_cb, read_cb));
 }
 
@@ -126,8 +127,12 @@ static void on_connection(uv_stream_t* server, int status) {
   ASSERT_OK(uv_accept(server, (uv_stream_t*) &server_conn));
 
   /* Export the accepted endpoint; the parent loop will take ownership. */
-  ASSERT_OK(uv_pipe_export(&server_conn, &exported_fd));
-  ASSERT_GT(exported_fd, -1);
+  {
+    int fd;
+    ASSERT_OK(uv_pipe_export(&server_conn, &fd));
+    ASSERT_GT(fd, -1);
+    atomic_store(&exported_fd, fd);
+  }
 
   /* Surrender our copy so the imported handle is the sole owner. */
   uv_close((uv_handle_t*) &server_conn, close_noop);

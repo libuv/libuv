@@ -23,6 +23,8 @@
 #include "runner.h"
 #include "task.h"
 
+#include <stdatomic.h>
+
 typedef struct {
   uv_loop_t* loop;
   uv_thread_t thread;
@@ -39,7 +41,7 @@ static uv_async_t recv_channel;
 static worker_t parent;
 static worker_t child;
 
-static int dup_fd_handle = -1;
+static _Atomic int dup_fd_handle = -1;
 
 typedef struct {
   uv_connect_t conn_req;
@@ -108,7 +110,7 @@ void on_parent_msg(uv_async_t* handle) {
   parent.server.data = &parent;
 
   /* Import the shared TCP server, and start listening on it. */
-  ASSERT_OK(uv_tcp_import(parent.loop, dup_fd_handle, &parent.server, 0));
+  ASSERT_OK(uv_tcp_import(parent.loop, atomic_load(&dup_fd_handle), &parent.server, 0));
 
   ASSERT_OK(uv_listen((uv_stream_t*)&parent.server, 12, on_connection));
   ASSERT(parent.loop == parent.server.loop);
@@ -137,8 +139,12 @@ static void child_thread_entry(void* arg) {
   if (!listen_after_write)
     ASSERT_OK(uv_listen((uv_stream_t*)&child.server, 12, on_connection));
 
-  ASSERT_OK(uv_tcp_export(&child.server, &dup_fd_handle));
-  ASSERT_GT(dup_fd_handle, -1);
+  {
+    int fd;
+    ASSERT_OK(uv_tcp_export(&child.server, &fd));
+    ASSERT_GT(fd, -1);
+    atomic_store(&dup_fd_handle, fd);
+  }
 
   ASSERT_OK(uv_async_send(child.send_channel));
 
