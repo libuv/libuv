@@ -594,6 +594,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-osx-select.c
        test/test-pass-always.c
        test/test-ping-pong.c
+       test/test-pipe-exportimport.c
        test/test-pipe-bind-error.c
        test/test-pipe-close-stdout-read-stdin.c
        test/test-pipe-connect-error.c

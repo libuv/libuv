@@ -914,6 +914,22 @@ UV_EXTERN int uv_pipe_pending_count(uv_pipe_t* handle);
 UV_EXTERN uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
 UV_EXTERN int uv_pipe_chmod(uv_pipe_t* handle, int flags);
 
+/*
+ * Exports a uv_pipe_t handle by duplicating its underlying file descriptor
+ * (Unix) or pipe HANDLE (Windows, returned as a CRT fd via _open_osfhandle).
+ *
+ * The returned fd must be passed to uv_pipe_import() or closed by the caller.
+ */
+UV_EXTERN int uv_pipe_export(uv_pipe_t* handle, int* fd);
+
+/*
+ * Imports a pipe file descriptor into a libuv pipe handle.
+ *
+ * Initializes `out` and binds it to `fd` (obtained via uv_pipe_export).
+ * `ipc` must match the ipc setting of the exported handle.
+ */
+UV_EXTERN int uv_pipe_import(uv_loop_t* loop, int fd, uv_pipe_t* out, int ipc);
+
 
 struct uv_poll_s {
   UV_HANDLE_FIELDS

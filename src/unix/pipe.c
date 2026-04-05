@@ -543,3 +543,65 @@ int uv__make_pipe(int fds[2], int flags) {
                  flags & UV_NONBLOCK_PIPE,
                  flags & UV_NONBLOCK_PIPE);
 }
+
+
+int uv_pipe_export(uv_pipe_t* handle, int* fd) {
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  int err;
+#endif
+
+  /* Set a safe sentinel so callers don't observe garbage on any error path. */
+  *fd = -1;
+
+  if (handle->type != UV_NAMED_PIPE)
+    return UV_EINVAL;
+
+  /* A handle being closed (or already closed) has no usable fd.
+   * UV_HANDLE_CLOSING is set by uv_close() before the close callback fires;
+   * UV_HANDLE_CLOSED means teardown is complete.  Either way duplicating the
+   * fd would hand the caller something that may vanish under them. */
+  if (uv__is_closing((uv_handle_t*) handle))
+    return UV_EINVAL;
+
+  /* An initialised-but-not-yet-opened pipe handle has io_watcher.fd == -1. */
+  if (handle->io_watcher.fd == -1)
+    return UV_EBADF;
+
+  /* Clone the inner fd. Start from a safe number (3). */
+#ifdef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  *fd = fcntl(handle->io_watcher.fd, F_DUPFD_CLOEXEC, 3);
+#else
+  *fd = fcntl(handle->io_watcher.fd, F_DUPFD, 3);
+#endif
+  if (*fd == -1)
+    return UV__ERR(errno);
+
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  /* F_DUPFD_CLOEXEC is unavailable; set close-on-exec in a separate step.
+   * NOTE: pass *fd (the descriptor value), not fd (the pointer). */
+  err = uv__cloexec(*fd, 1);
+  if (err != 0) {
+    uv__close(*fd);
+    *fd = -1;
+    return err;
+  }
+#endif
+  return 0;
+}
+
+
+int uv_pipe_import(uv_loop_t* loop, int fd, uv_pipe_t* out, int ipc) {
+  int err;
+
+  err = uv_pipe_init(loop, out, ipc);
+  if (err)
+    return err;
+
+  err = uv_pipe_open(out, fd);
+  if (err) {
+    uv_close((uv_handle_t*) out, NULL);
+    return err;
+  }
+
+  return 0;
+}

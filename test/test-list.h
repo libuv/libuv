@@ -199,6 +199,7 @@ TEST_DECLARE   (udp_send_unix)
 #endif
 TEST_DECLARE   (udp_sendmmsg_error)
 TEST_DECLARE   (udp_try_send)
+TEST_DECLARE   (pipe_exportimport)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
 TEST_DECLARE   (pipe_bind_error_inval)
@@ -621,6 +622,8 @@ TASK_LIST_START
   TEST_ENTRY  (semaphore_1)
   TEST_ENTRY  (semaphore_2)
   TEST_ENTRY  (semaphore_3)
+
+  TEST_ENTRY  (pipe_exportimport)
 
   TEST_ENTRY  (pipe_connect_bad_name)
   TEST_ENTRY  (pipe_connect_to_file)
