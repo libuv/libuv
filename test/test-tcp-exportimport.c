@@ -188,15 +188,18 @@ static void run_tcp_exportimport_test(int listen_after_write) {
                              &listen_after_write));
 
   ASSERT_OK(uv_run(parent.loop, UV_RUN_DEFAULT));
-  MAKE_VALGRIND_HAPPY(parent.loop);
 
   ASSERT_EQ(parent.connection_accepted, 1);
   ASSERT_EQ(parent.close_cb_called, 3);
 
+  /* Join before closing loops: uv_thread_join provides the TSan happens-before
+   * edge that orders child's uv_async_send reads against our uv_loop_close
+   * writes on parent.loop. */
   ASSERT_OK(uv_thread_join(&child.thread));
 
   uv_mutex_destroy(&fd_mutex);
 
+  MAKE_VALGRIND_HAPPY(parent.loop);
   MAKE_VALGRIND_HAPPY(child.loop);
 }
 
