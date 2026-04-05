@@ -644,7 +644,7 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
  * This allows the socket to be safely imported and used by another
  * libuv event loop or thread using `uv_tcp_import()`.
  */
-UV_EXTERN int uv_tcp_export(uv_tcp_t* stream, int* fd);
+UV_EXTERN int uv_tcp_export(uv_tcp_t* stream, uv_os_sock_t* fd);
 
 /*
  * Imports a TCP socket file descriptor into a libuv TCP handle.
@@ -653,7 +653,7 @@ UV_EXTERN int uv_tcp_export(uv_tcp_t* stream, int* fd);
  * to an existing, valid file descriptor (mostly obtained via `uv_tcp_export`)
  */
 UV_EXTERN int uv_tcp_import(uv_loop_t* loop,
-                            int fd,
+                            uv_os_sock_t fd,
                             uv_tcp_t* out,
                             unsigned int flags);
 
@@ -920,7 +920,7 @@ UV_EXTERN int uv_pipe_chmod(uv_pipe_t* handle, int flags);
  *
  * The returned fd must be passed to uv_pipe_import() or closed by the caller.
  */
-UV_EXTERN int uv_pipe_export(uv_pipe_t* handle, int* fd);
+UV_EXTERN int uv_pipe_export(uv_pipe_t* handle, uv_file* fd);
 
 /*
  * Imports a pipe file descriptor into a libuv pipe handle.
@@ -928,7 +928,7 @@ UV_EXTERN int uv_pipe_export(uv_pipe_t* handle, int* fd);
  * Initializes `out` and binds it to `fd` (obtained via uv_pipe_export).
  * `ipc` must match the ipc setting of the exported handle.
  */
-UV_EXTERN int uv_pipe_import(uv_loop_t* loop, int fd, uv_pipe_t* out, int ipc);
+UV_EXTERN int uv_pipe_import(uv_loop_t* loop, uv_file fd, uv_pipe_t* out, int ipc);
 
 
 struct uv_poll_s {

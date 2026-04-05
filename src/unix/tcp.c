@@ -673,7 +673,7 @@ fail:
 }
 
 
-int uv_tcp_export(uv_tcp_t* stream, int* fd) {
+int uv_tcp_export(uv_tcp_t* stream, uv_os_sock_t* fd) {
 #ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
   int err;
 #endif
@@ -717,7 +717,7 @@ int uv_tcp_export(uv_tcp_t* stream, int* fd) {
 }
 
 
-int uv_tcp_import(uv_loop_t* loop, int fd, uv_tcp_t* out, unsigned int flags) {
+int uv_tcp_import(uv_loop_t* loop, uv_os_sock_t fd, uv_tcp_t* out, unsigned int flags) {
   int err;
 
   err = uv_tcp_init_ex(loop, out, flags);

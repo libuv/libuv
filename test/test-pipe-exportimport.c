@@ -49,7 +49,7 @@ static uv_thread_t server_thread;
 static uv_barrier_t server_ready;   /* server → main: listening */
 static uv_async_t  fd_ready;        /* server → parent: fd exported */
 static uv_mutex_t  fd_mutex;
-static int         exported_fd = -1;
+static uv_file     exported_fd = -1;
 
 static uv_pipe_t   server_handle;
 static uv_pipe_t   server_conn;     /* accepted on server side, then exported */
@@ -113,7 +113,7 @@ static void client_connect_cb(uv_connect_t* req, int status) {
 
 
 static void on_fd_ready(uv_async_t* handle) {
-  int fd;
+  uv_file fd;
   (void) handle;
   uv_mutex_lock(&fd_mutex);
   fd = exported_fd;
@@ -132,7 +132,7 @@ static void on_connection(uv_stream_t* server, int status) {
 
   /* Export the accepted endpoint; the parent loop will take ownership. */
   {
-    int fd;
+    uv_file fd;
     ASSERT_OK(uv_pipe_export(&server_conn, &fd));
     ASSERT_GT(fd, -1);
     uv_mutex_lock(&fd_mutex);

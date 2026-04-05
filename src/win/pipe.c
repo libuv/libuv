@@ -2725,7 +2725,7 @@ done:
 }
 
 
-int uv_pipe_export(uv_pipe_t* handle, int* fd) {
+int uv_pipe_export(uv_pipe_t* handle, uv_file* fd) {
   HANDLE dup_handle;
   int crt_fd;
 
@@ -2773,7 +2773,7 @@ int uv_pipe_export(uv_pipe_t* handle, int* fd) {
 }
 
 
-int uv_pipe_import(uv_loop_t* loop, int fd, uv_pipe_t* out, int ipc) {
+int uv_pipe_import(uv_loop_t* loop, uv_file fd, uv_pipe_t* out, int ipc) {
   int err;
 
   err = uv_pipe_init(loop, out, ipc);

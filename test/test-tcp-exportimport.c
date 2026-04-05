@@ -40,7 +40,7 @@ static worker_t parent;
 static worker_t child;
 
 static uv_mutex_t fd_mutex;
-static int dup_fd_handle = -1;
+static uv_os_sock_t dup_fd_handle = (uv_os_sock_t)(-1);
 
 typedef struct {
   uv_connect_t conn_req;
@@ -106,7 +106,7 @@ static void make_many_connections(void) {
 
 
 void on_parent_msg(uv_async_t* handle) {
-  int fd;
+  uv_os_sock_t fd;
   (void) handle;
   uv_mutex_lock(&fd_mutex);
   fd = dup_fd_handle;
@@ -145,9 +145,9 @@ static void child_thread_entry(void* arg) {
     ASSERT_OK(uv_listen((uv_stream_t*)&child.server, 12, on_connection));
 
   {
-    int fd;
+    uv_os_sock_t fd;
     ASSERT_OK(uv_tcp_export(&child.server, &fd));
-    ASSERT_GT(fd, -1);
+    ASSERT(fd != (uv_os_sock_t)(-1));
     uv_mutex_lock(&fd_mutex);
     dup_fd_handle = fd;
     uv_mutex_unlock(&fd_mutex);

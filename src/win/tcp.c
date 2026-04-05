@@ -1673,7 +1673,7 @@ int uv_socketpair(int type, int protocol, uv_os_sock_t fds[2], int flags0, int f
     return uv_translate_sys_error(err);
 }
 
-int uv_tcp_export(uv_tcp_t* stream, int* fd) {
+int uv_tcp_export(uv_tcp_t* stream, uv_os_sock_t* fd) {
   WSAPROTOCOL_INFOW protocol_info;
   SOCKET dup_socket;
 
@@ -1733,26 +1733,19 @@ int uv_tcp_export(uv_tcp_t* stream, int* fd) {
   if (dup_socket == INVALID_SOCKET)
     return uv_translate_sys_error(WSAGetLastError());
 
-  /* SOCKET is UINT_PTR (64-bit on x64), but Winsock2 guarantees that valid
-   * socket values fit in 32 bits for compatibility with legacy 32-bit code,
-   * so casting to int is safe.  The import side must reverse this with an
-   * unsigned cast to avoid sign-extending a high-bit value. */
-  *fd = (int) dup_socket;
+  *fd = dup_socket;
   return 0;
 }
 
 
-int uv_tcp_import(uv_loop_t* loop, int fd, uv_tcp_t* out, unsigned int flags) {
+int uv_tcp_import(uv_loop_t* loop, uv_os_sock_t fd, uv_tcp_t* out, unsigned int flags) {
   int err;
 
   err = uv_tcp_init_ex(loop, out, flags);
   if (err)
     return err;
 
-  /* Reverse the cast done in uv_tcp_export: go through unsigned int first to
-   * zero-extend to UINT_PTR.  A plain (SOCKET)(int) cast would sign-extend a
-   * value whose bit 31 is set, producing a garbage 64-bit socket number. */
-  err = uv_tcp_open(out, (uv_os_sock_t)(UINT_PTR)(unsigned int) fd);
+  err = uv_tcp_open(out, fd);
   if (err) {
     uv_close((uv_handle_t*) out, NULL);
     return err;

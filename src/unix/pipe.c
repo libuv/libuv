@@ -545,7 +545,7 @@ int uv__make_pipe(int fds[2], int flags) {
 }
 
 
-int uv_pipe_export(uv_pipe_t* handle, int* fd) {
+int uv_pipe_export(uv_pipe_t* handle, uv_file* fd) {
 #ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
   int err;
 #endif
@@ -587,7 +587,7 @@ int uv_pipe_export(uv_pipe_t* handle, int* fd) {
 }
 
 
-int uv_pipe_import(uv_loop_t* loop, int fd, uv_pipe_t* out, int ipc) {
+int uv_pipe_import(uv_loop_t* loop, uv_file fd, uv_pipe_t* out, int ipc) {
   int err;
 
   err = uv_pipe_init(loop, out, ipc);
