@@ -47,7 +47,9 @@ static uv_loop_t*  parent_loop;
 static uv_loop_t*  server_loop;
 static uv_thread_t server_thread;
 static uv_barrier_t server_ready;   /* server → main: listening */
-static uv_async_t  fd_ready;        /* server → parent: fd exported (fd in handle->data) */
+static uv_async_t  fd_ready;        /* server → parent: fd exported */
+static uv_mutex_t  fd_mutex;
+static int         exported_fd = -1;
 
 static uv_pipe_t   server_handle;
 static uv_pipe_t   server_conn;     /* accepted on server side, then exported */
@@ -111,8 +113,11 @@ static void client_connect_cb(uv_connect_t* req, int status) {
 
 
 static void on_fd_ready(uv_async_t* handle) {
-  /* fd was passed via handle->data by the server thread before async_send. */
-  int fd = (int)(intptr_t) uv_handle_get_data((uv_handle_t*) handle);
+  int fd;
+  (void) handle;
+  uv_mutex_lock(&fd_mutex);
+  fd = exported_fd;
+  uv_mutex_unlock(&fd_mutex);
   /* Import the exported connection into the parent loop and start reading. */
   ASSERT_OK(uv_pipe_import(parent_loop, fd, &parent_conn, 0));
   ASSERT_OK(uv_read_start((uv_stream_t*) &parent_conn, alloc_cb, read_cb));
@@ -130,9 +135,9 @@ static void on_connection(uv_stream_t* server, int status) {
     int fd;
     ASSERT_OK(uv_pipe_export(&server_conn, &fd));
     ASSERT_GT(fd, -1);
-    /* Pass fd to the parent loop callback via the async handle's data field.
-     * uv_async_send provides the happens-before edge so no extra barrier needed. */
-    uv_handle_set_data((uv_handle_t*) &fd_ready, (void*)(intptr_t) fd);
+    uv_mutex_lock(&fd_mutex);
+    exported_fd = fd;
+    uv_mutex_unlock(&fd_mutex);
   }
 
   /* Surrender our copy so the imported handle is the sole owner. */
@@ -169,6 +174,7 @@ TEST_IMPL(pipe_exportimport) {
   ASSERT_NOT_NULL(server_loop);
 
   ASSERT_OK(uv_barrier_init(&server_ready, 2));
+  ASSERT_OK(uv_mutex_init(&fd_mutex));
 
   /* fd_ready lives on the parent loop. */
   ASSERT_OK(uv_async_init(parent_loop, &fd_ready, on_fd_ready));
@@ -189,6 +195,8 @@ TEST_IMPL(pipe_exportimport) {
   ASSERT_EQ(read_cb_called, 1);
 
   ASSERT_OK(uv_thread_join(&server_thread));
+
+  uv_mutex_destroy(&fd_mutex);
 
   MAKE_VALGRIND_HAPPY(parent_loop);
   MAKE_VALGRIND_HAPPY(server_loop);
