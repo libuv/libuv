@@ -19,9 +19,6 @@
  * IN THE SOFTWARE.
  */
 
-/* Win implementation is not done yet. */
-#ifndef _WIN32
-
 #include "uv.h"
 #include "runner.h"
 #include "task.h"
@@ -197,5 +194,3 @@ TEST_IMPL(tcp_exportimport_listen_before_write) {
   run_tcp_exportimport_test(0);
   return 0;
 }
-
-#endif  /* !_WIN32 */
