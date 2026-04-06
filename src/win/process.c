@@ -647,6 +647,203 @@ error:
 }
 
 
+/*
+ * Quotes an argument in order to mitigate an arbitrary command execution
+ * vulnerability when spawning .bat/.cmd scripts.
+ * Returns a pointer to the end (next char to be written) of the buffer
+ */
+WCHAR* quote_script_arg(const WCHAR *source, WCHAR *target) {
+  size_t len = wcslen(source);
+  size_t i;
+  int needs_quotes;
+  size_t backslash_i = 0;
+  size_t backslashes = 0;
+
+  /* Need quotes for empty arguments to avoid them being lost.
+   * Also quote if the last character is '\' to avoid accidental escaping
+   * in the batch script itself. For example, something like "%~2" in a
+   * batch script would cause the closing " to be escaped by the '\'. */
+  needs_quotes = len == 0 || source[len - 1] == L'\\';
+  if (!needs_quotes) {
+    for (i = 0; i < len; i++) {
+      WCHAR c = source[i];
+      /* Known good characters that don't need quotes */
+      if ((c >= L'A' && c <= L'Z') ||
+        (c >= L'a' && c <= L'z') ||
+        (c >= L'0' && c <= L'9') ||
+        c == L'#' || c == L'$' ||
+        c == L'*' || c == L'+' ||
+        c == L'-' || c == L'.' ||
+        c == L'/' || c == L':' ||
+        c == L'?' || c == L'@' ||
+        c == L'\\' || c == L'_') {
+        continue;
+      /* When in doubt, quote */
+      } else {
+        needs_quotes = 1;
+        break;
+      }
+    }
+  }
+
+  if (needs_quotes)
+    *(target++) = L'"';
+
+  for (i = 0; i < len; i++) {
+    switch (source[i]) {
+    case L'\\':
+      /* Backslashes may need to be escaped, but only backslashes that precede
+       * a double quote. So, keep track of how many consecutive backslashes are
+       * encountered in case the next character is a double quote. */
+      backslashes += 1;
+      break;
+    case L'"':
+      /* Double quotes are escaped by using two double quotes, e.g. " -> "".
+       * However, first, emit any deferred backslash escapes now that a double
+       * quote has been encountered. */
+      for (backslash_i = 0; backslash_i < backslashes; backslash_i++)
+        *(target++) = L'\\';
+      *(target++) = L'"';
+      backslashes = 0;
+      break;
+    case L'%':
+      /* Replace % with %%cd:~,%
+       *
+       * This takes advantage of the syntax to extract a substring from an
+       * environment variable via %foo:~<start_index>,<end_index>%. Therefore,
+       * %cd:~,% will always expand to an empty string since both the start and
+       * end indexes are blank, and it is assumed that %cd% is always available
+       * since it is a built-in variable that corresponds to the current
+       * directory.
+       *
+       * So, replacing %foo% with %%cd:~,%foo%%cd:~,% will stop %foo% from being
+       * expanded, and after environment variable expansion what remains will
+       * be the literal characters %foo%. */
+      wcscpy(target, L"%%cd:~,"); /* the last % is added outside the switch */
+      target += 7;
+      backslashes = 0;
+      break;
+    default:
+      /* Not a double quote, so reset the deferred backslash count */
+      backslashes = 0;
+      break;
+    }
+    *(target++) = source[i];
+  }
+
+  if (needs_quotes) {
+    for (backslash_i = 0; backslash_i < backslashes; backslash_i++)
+      *(target++) = L'\\';
+    *(target++) = L'"';
+  }
+  return target;
+}
+
+
+int make_safe_script_args(WCHAR* script_path, char** args, WCHAR** dst_ptr) {
+  char** arg;
+  WCHAR* dst = NULL;
+  WCHAR* temp_buffer = NULL;
+  size_t max_dst_len = 30; /* size of `cmd.exe /d /e:ON /v:OFF ""` + null */
+  size_t temp_buffer_len = 0;
+  size_t script_path_len = wcslen(script_path);
+  ssize_t arg_len;
+  WCHAR* pos;
+  int err = 0;
+
+  /* Count the required size. */
+  max_dst_len += script_path_len;
+  max_dst_len += 2; /* always quoted */
+  max_dst_len += 1; /* space separator or null terminator */
+  for (arg = args; *arg; arg++) {
+    arg_len = uv_wtf8_length_as_utf16(*arg);
+    if (arg_len < 0)
+      return arg_len;
+
+    /* These characters aren't necessarily a security issue, but they cannot
+     * be passed to .bat/.cmd files successfully, since \r gets stripped and
+     * \n acts as a terminator (so anything afterwards would be lost). */
+    if (strpbrk(*arg, "\r\n") != NULL) {
+      return UV_EINVAL;
+    }
+
+    if (strchr(*arg, '%')) {
+      /* Assume every character is '%', which each need to be transformed
+       * into an 8 character sequence. */
+      max_dst_len += arg_len * 8;
+    } else {
+      /* Assume every character needs escaping */
+      max_dst_len += arg_len * 2;
+    }
+    /* Assume the argument needs to be quoted */
+    max_dst_len += 2;
+    /* Space separator or null terminator */
+    max_dst_len += 1;
+
+    /* Enough room to store the WTF-8 version of the longest argument */
+    if ((size_t) arg_len > temp_buffer_len)
+      temp_buffer_len = arg_len;
+  }
+
+  /* Allocate buffer for the final command line. */
+  dst = uv__malloc(max_dst_len * sizeof(WCHAR));
+  if (dst == NULL) {
+    err = UV_ENOMEM;
+    goto error;
+  }
+
+  /* Allocate temporary working buffer. */
+  temp_buffer = uv__malloc(temp_buffer_len * sizeof(WCHAR));
+  if (temp_buffer == NULL) {
+    err = UV_ENOMEM;
+    goto error;
+  }
+
+  pos = dst;
+
+  wcscpy(pos, L"cmd.exe /d /e:ON /v:OFF /c \"");
+  pos += 28;
+
+  /* Quoted path to the script file. No need to escape anything since the path
+   * has been previously verified to exist, and therefore it's safe to assume
+   * that no escape-worthy characters are present since they are disallowed
+   * at the OS level. */
+  *pos++ = L'"';
+  wcscpy(pos, script_path);
+  pos += script_path_len;
+  *pos++ = L'"';
+
+  for (arg = args; *arg; arg++) {
+    /* Separate args with a space */
+    *pos++ = L' ';
+
+    /* Convert argument to wide char. */
+    arg_len = uv_wtf8_length_as_utf16(*arg);
+    assert(arg_len > 0); /* includes the null terminator */
+    assert(temp_buffer_len >= (size_t) arg_len);
+    uv_wtf8_to_utf16(*arg, temp_buffer, arg_len);
+
+    /* Quote/escape, if needed. */
+    pos = quote_script_arg(temp_buffer, pos);
+  }
+
+  /* End quote of the `cmd.exe ... /c ""` incantation */
+  *pos++ = L'"';
+  *pos++ = L'\0';
+  assert(pos <= dst + max_dst_len);
+
+  uv__free(temp_buffer);
+
+  *dst_ptr = dst;
+  return 0;
+
+error:
+  uv__free(dst);
+  uv__free(temp_buffer);
+  return err;
+}
+
+
 static int env_strncmp(const wchar_t* a, int na, const wchar_t* b) {
   wchar_t* a_eq;
   wchar_t* b_eq;
@@ -951,11 +1148,12 @@ int uv_spawn(uv_loop_t* loop,
   WCHAR* path = NULL, *alloc_path = NULL;
   BOOL result;
   WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
-         *env = NULL, *cwd = NULL;
+         *env = NULL, *cwd = NULL, *ext = NULL;
   STARTUPINFOW startup;
   PROCESS_INFORMATION info;
   DWORD process_flags, cwd_len;
   BYTE* child_stdio_buffer;
+  uv__supported_path_ext_t app_ext;
 
   uv__process_init(loop, process);
   process->exit_cb = options->exit_cb;
@@ -981,13 +1179,6 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);
-  if (err)
-    goto done_uv;
-
-  err = make_program_args(
-      options->args,
-      options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS,
-      &arguments);
   if (err)
     goto done_uv;
 
@@ -1070,6 +1261,75 @@ int uv_spawn(uv_loop_t* loop,
     /* Not found. */
     err = ERROR_FILE_NOT_FOUND;
     goto done;
+  }
+
+  /* Need to wait until the application path is known in order to know how the
+   * args need to be escaped, since .bat and .cmd need special handling. */
+  ext = wcsrchr(application_path, '.');
+  app_ext = ext != NULL ? uv__get_path_ext(ext) : PATHEXT_NONE;
+  if (((options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS) == 0) &&
+    (app_ext == PATHEXT_BAT || app_ext == PATHEXT_CMD)) {
+    /* Zero args is enough of a special case that handling it separately
+     * avoids complicating the > 0 args case (the common case). */
+    if (options->args[0] == NULL) {
+      /* Pass an empty string as the command line, and let CreateProcessW
+       * take care of the cmd.exe spawning of the .bat/.cmd file since
+       * there's no risk of the command line being malicious. */
+      arguments = uv__malloc(sizeof(WCHAR)); /* null terminator */
+      if (arguments == NULL) {
+        err = UV_ENOMEM;
+        goto done_uv;
+      }
+      arguments[0] = L'\0';
+    } else {
+      UINT sys_dir_len;
+      size_t initial_app_len = wcslen(application_path);
+      size_t required_len;
+      WCHAR* path_buf;
+
+      err = make_safe_script_args(
+        application_path,
+        /* Skip the first argument since it's the .bat or .cmd name
+         * and we're going to use application_path instead. */
+        options->args + 1,
+        &arguments);
+      if (err)
+        goto done_uv;
+
+      /* Switch the application path to cmd.exe.
+       * Attempt to re-use the existing buffer. */
+      sys_dir_len = GetSystemDirectoryW(application_path,
+        initial_app_len);
+      if (sys_dir_len == 0) {
+        err = GetLastError();
+        goto done;
+      }
+
+      /* Need enough for <system32 path>\cmd.exe + terminator */
+      required_len = sys_dir_len + 9;
+      if (required_len > initial_app_len) {
+        path_buf = uv__realloc(application_path, required_len * sizeof(WCHAR));
+        if (path_buf == NULL) {
+          err = UV_ENOMEM;
+          goto done_uv;
+        }
+        application_path = path_buf;
+        sys_dir_len = GetSystemDirectoryW(application_path, required_len);
+        if (sys_dir_len == 0) {
+          err = GetLastError();
+          goto done;
+        }
+      }
+
+      wcscpy(application_path + sys_dir_len, L"\\cmd.exe");
+    }
+  } else {
+    err = make_program_args(
+        options->args,
+        options->flags & UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS,
+        &arguments);
+    if (err)
+      goto done_uv;
   }
 
   startup.cb = sizeof(startup);
