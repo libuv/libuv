@@ -56,6 +56,7 @@ int ipc_helper_send_zero(void);
 int stdio_over_pipes_helper(void);
 void spawn_stdin_stdout(void);
 void process_title_big_argv(void);
+void spawn_echo_args(int argc, char **argv);
 int spawn_tcp_server_helper(void);
 
 static int maybe_run_test(int argc, char **argv);
@@ -75,6 +76,12 @@ int main(int argc, char **argv) {
 
   platform_init(argc, argv);
   argv = uv_setup_args(argc, argv);
+
+  /* Special case since this needs to be able to forward arbitrary numbers of arguments */
+  if (argc > 1 && strcmp(argv[1], "spawn_helper_echo_args") == 0) {
+      spawn_echo_args(argc, argv);
+      return 1;
+  }
 
   switch (argc) {
   case 1: return run_tests(0);
