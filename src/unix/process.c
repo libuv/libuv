@@ -37,6 +37,15 @@
 #include <paths.h>
 #include <dlfcn.h>
 
+#if defined(__PASE__)
+#define _PATH_DEFPATH "/QOpenSys/pkgs/bin:/usr/bin:/bin"
+#elif defined(_AIX)
+#define _PATH_DEFPATH "/opt/freeware/bin:/usr/bin:/bin"
+#endif
+#ifndef NAME_MAX
+#define NAME_MAX 255
+#endif
+
 #if defined(__APPLE__)
 # include <sys/kauth.h>
 # include <sys/sysctl.h>
@@ -455,7 +464,7 @@ static void uv__spawn_init_can_use_setsid(void) {
 
 
 static void uv__spawn_init_posix_spawn(void) {
-#if !defined(__linux__)
+#if !defined(__linux__) && !defined(_AIX) && !defined(__PASE__)
   posix_spawn_works = 1;
 #elif !defined(__ANDROID__)
   pid_t pid;
