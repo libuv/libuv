@@ -699,6 +699,14 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-try-send.c
        test/test-udp-recv-in-a-row.c
        test/test-udp-reuseport.c
+       test/test-udp-ecn.c
+       test/test-udp-pmtud.c
+       test/test-udp-pktinfo.c
+       test/test-udp-gso-gro.c
+       test/test-udp-gro.c
+       test/test-udp-gro-raw.c
+       test/test-udp-configure.c
+       test/test-udp-ext-misc.c
        test/test-uname.c
        test/test-walk-handles.c
        test/test-watcher-cross-stop.c)
