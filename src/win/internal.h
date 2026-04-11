@@ -116,6 +116,17 @@ void uv__udp_endgame(uv_loop_t* loop, uv_udp_t* handle);
 
 
 /*
+ * UDP2
+ */
+void uv__process_udp2_recv_req(uv_loop_t* loop, uv_udp2_t* handle,
+    uv_req_t* req);
+void uv__process_udp2_send_req(uv_loop_t* loop, uv_udp2_t* handle,
+    uv_udp2_send_t* req);
+void uv__udp2_close(uv_loop_t* loop, uv_udp2_t* handle);
+void uv__udp2_endgame(uv_loop_t* loop, uv_udp2_t* handle);
+
+
+/*
  * Pipes
  */
 int uv__create_stdio_pipe_pair(uv_loop_t* loop,
