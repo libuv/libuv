@@ -597,9 +597,11 @@ TEST_DECLARE  (iouring_pollhup)
 
 TEST_DECLARE  (wtf8)
 TEST_DECLARE  (utf16_to_wtf8_exact_fill)
+#ifndef USING_UV_SHARED
 TEST_DECLARE  (idna_toascii)
 TEST_DECLARE  (utf8_decode1)
 TEST_DECLARE  (utf8_decode1_overrun)
+#endif
 TEST_DECLARE  (uname)
 
 TEST_DECLARE  (metrics_info_check)
@@ -1273,13 +1275,17 @@ TASK_LIST_START
 
   TEST_ENTRY  (wtf8)
   TEST_ENTRY  (utf16_to_wtf8_exact_fill)
+#ifndef USING_UV_SHARED
   TEST_ENTRY  (utf8_decode1)
   TEST_ENTRY  (utf8_decode1_overrun)
+#endif
   TEST_ENTRY  (uname)
 
 /* Doesn't work on z/OS because that platform uses EBCDIC, not ASCII. */
 #ifndef __MVS__
+#ifndef USING_UV_SHARED
   TEST_ENTRY  (idna_toascii)
+#endif
 #endif
 
   TEST_ENTRY    (not_writable_after_shutdown)

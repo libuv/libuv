@@ -26,11 +26,17 @@
  * libuv.dll and one in this translation unit, but it works out fine in
  * the end.
  */
+#ifndef USING_UV_SHARED
 #define UV_EXTERN
+#endif
 #include "task.h"
 #define uv__malloc malloc
+#ifndef USING_UV_SHARED
 #include "../src/idna.c"
+#endif
 #include <string.h>
+
+#ifndef USING_UV_SHARED
 
 TEST_IMPL(utf8_decode1) {
   const char* p;
@@ -226,6 +232,8 @@ TEST_IMPL(idna_toascii) {
 #undef T
 
 #endif  /* __MVS__ */
+
+#endif  /* ifndef USING_UV_SHARED */
 
 TEST_IMPL(wtf8) {
   static const char input[] = "ᜄȺy𐞲:𞢢𘴇𐀀'¥3̞[<i$";
