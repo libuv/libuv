@@ -137,6 +137,7 @@ enum {
   UV_HANDLE_POLL_SLOW                   = 0x01000000,
 
   /* Only used by uv_process_t handles. */
+  UV_HANDLE_ESRCH                       = 0x01000000,
   UV_HANDLE_REAP                        = 0x10000000
 };
 
@@ -225,6 +226,12 @@ void uv__work_submit(uv_loop_t* loop,
 void uv__work_done(uv_async_t* handle);
 
 size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
+
+/* On some platforms, notably macOS, attempting a read or write > 2GB returns
+ * an EINVAL. On Linux, IO syscalls will transfer at most this many bytes.
+ * Use this limit everywhere to avoid platform-specific failures.
+ */
+#define UV__IO_MAX_BYTES 0x7ffff000
 
 int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value);
 

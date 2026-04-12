@@ -453,7 +453,10 @@ int uv__udp_is_connected(uv_udp_t* handle) {
 }
 
 
-int uv__udp_check_before_send(uv_udp_t* handle, const struct sockaddr* addr) {
+int uv__udp_check_before_send(uv_udp_t* handle,
+                              const uv_buf_t bufs[],
+                              unsigned int nbufs,
+                              const struct sockaddr* addr) {
   unsigned int addrlen;
 
   if (handle->type != UV_UDP)
@@ -480,6 +483,12 @@ int uv__udp_check_before_send(uv_udp_t* handle, const struct sockaddr* addr) {
     addrlen = 0;
   }
 
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
+
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
+    return UV_EINVAL;
+
   return addrlen;
 }
 
@@ -492,7 +501,7 @@ int uv_udp_send(uv_udp_send_t* req,
                 uv_udp_send_cb send_cb) {
   int addrlen;
 
-  addrlen = uv__udp_check_before_send(handle, addr);
+  addrlen = uv__udp_check_before_send(handle, bufs, nbufs, addr);
   if (addrlen < 0)
     return addrlen;
 
@@ -506,7 +515,7 @@ int uv_udp_try_send(uv_udp_t* handle,
                     const struct sockaddr* addr) {
   int addrlen;
 
-  addrlen = uv__udp_check_before_send(handle, addr);
+  addrlen = uv__udp_check_before_send(handle, bufs, nbufs, addr);
   if (addrlen < 0)
     return addrlen;
 
@@ -520,11 +529,20 @@ int uv_udp_try_send2(uv_udp_t* handle,
                      unsigned int nbufs[/*count*/],
                      struct sockaddr* addrs[/*count*/],
                      unsigned int flags) {
+  unsigned int i;
+  int addrlen;
+
   if (count < 1)
     return UV_EINVAL;
 
   if (flags != 0)
     return UV_EINVAL;
+
+  for (i = 0; i < count; i++) {
+    addrlen = uv__udp_check_before_send(handle, bufs[i], nbufs[i], addrs[i]);
+    if (addrlen < 0)
+      return addrlen;
+  }
 
   if (handle->send_queue_count > 0)
     return UV_EAGAIN;
@@ -651,8 +669,11 @@ size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs) {
   size_t bytes;
 
   bytes = 0;
-  for (i = 0; i < nbufs; i++)
-    bytes += (size_t) bufs[i].len;
+  for (i = 0; i < nbufs; i++) {
+    if (bufs[i].len > (size_t) INT32_MAX - bytes)
+      return INT32_MAX;
+    bytes += bufs[i].len;
+  }
 
   return bytes;
 }
@@ -957,7 +978,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   int i;
 
   for (i = 0; i < count; i++)
-    uv__free(cpu_infos[i].model);
+    uv__free((char*) cpu_infos[i].model);
 
   uv__free(cpu_infos);
 #endif  /* __linux__ */

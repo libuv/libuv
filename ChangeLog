@@ -1,3 +1,34 @@
+2026.03.06, Version 1.52.1 (Stable), 1cfa32ff59c076ffb6ed735bbc8c18361558661f
+
+Changes since version 1.52.0:
+
+* misc: add simple clang-tidy setup (Jameson Nash)
+
+* unix: check RLIMIT_AS and RLIMIT_DATA in uv_get_constrained_memory (Jameson
+  Nash)
+
+* win: add fs-fd-hash-inl.h to tarball (tobil4sk)
+
+* unix,win: support NULL loop for sync uv_getaddrinfo (Saúl Ibarra Corretgé)
+
+* Fix const-correctness warning in linux.c (Quaylyn Rimer)
+
+* build(deps): bump actions/upload-artifact from 6 to 7 (dependabot[bot])
+
+* build(deps): bump actions/download-artifact from 7 to 8 (dependabot[bot])
+
+* unix: fix compilation warnings with GCC 15 (Saúl Ibarra Corretgé)
+
+* test: remove conditionals from `uv_thread_self` usage (Yasser Nascimento)
+
+* unix: fix discard const (Rudi Heitbaum)
+
+* unix: do not cast to char variables that are const char (Rudi Heitbaum)
+
+* linux: fix crash if poll callback closes handle before `POLLERR` (Juan José
+  Arboleda)
+
+
 2026.02.11, Version 1.52.0 (Stable), b556c0629d0fd250b5feefbc91b84c6f5e3dae48
 
 Changes since version 1.51.0:

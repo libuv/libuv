@@ -27,6 +27,7 @@
 #include "internal.h"
 
 #include <inttypes.h>
+#include <limits.h>
 #include <stdatomic.h>
 #include <stddef.h>  /* offsetof */
 #include <stdint.h>
@@ -55,6 +56,14 @@
 #include <sys/utsname.h>
 #include <time.h>
 #include <unistd.h>
+
+/* android ndk workaround */
+#ifndef LLONG_MAX
+#define LLONG_MAX 9223372036854775807LL
+#endif
+#ifndef LLONG_MIN
+#define LLONG_MIN (-9223372036854775807LL - 1)
+#endif
 
 #ifndef __NR_io_uring_setup
 # define __NR_io_uring_setup 425
@@ -1516,25 +1525,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
        */
       pe->events &= w->pevents | POLLERR | POLLHUP;
 
-      /* Work around an epoll quirk where it sometimes reports just the
-       * EPOLLERR or EPOLLHUP event.  In order to force the event loop to
-       * move forward, we merge in the read/write events that the watcher
-       * is interested in; uv__read() and uv__write() will then deal with
-       * the error or hangup in the usual fashion.
-       *
-       * Note to self: happens when epoll reports EPOLLIN|EPOLLHUP, the user
-       * reads the available data, calls uv_read_stop(), then sometime later
-       * calls uv_read_start() again.  By then, libuv has forgotten about the
-       * hangup and the kernel won't report EPOLLIN again because there's
-       * nothing left to read.  If anything, libuv is to blame here.  The
-       * current hack is just a quick bandaid; to properly fix it, libuv
-       * needs to remember the error/hangup event.  We should get that for
-       * free when we switch over to edge-triggered I/O.
-       */
-      if (pe->events == POLLERR || pe->events == POLLHUP)
-        pe->events |=
-          w->pevents & (POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI);
-
       if (pe->events != 0) {
         /* Run signal watchers last.  This also affects child process watchers
          * because those are implemented in terms of signal watchers.
@@ -2371,10 +2361,10 @@ next:
   return 0;
 }
 
-static char* uv__cgroup1_find_cpu_controller(const char* cgroup,
+static const char* uv__cgroup1_find_cpu_controller(const char* cgroup,
                                              int* cgroup_size) {
   /* Seek to the cpu controller line. */
-  char* cgroup_cpu = strstr(cgroup, ":cpu,");
+  const char* cgroup_cpu = strstr(cgroup, ":cpu,");
 
   if (cgroup_cpu != NULL) {
     /* Skip the controller prefix to the start of the cgroup path. */
@@ -2391,7 +2381,7 @@ static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
   char path[256];
   char buf[1024];
   int cgroup_size;
-  char* cgroup_cpu;
+  const char* cgroup_cpu;
   long long period_length;
   long long quota_per_period;
 

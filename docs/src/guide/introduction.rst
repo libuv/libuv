@@ -67,7 +67,7 @@ There is no need to ``make install``. To build the examples run ``make`` in the
 .. _V8: https://v8.dev
 .. _libev: http://software.schmorp.de/pkg/libev.html
 .. _libuv: https://github.com/libuv/libuv
-.. _node.js: https://www.nodejs.org
+.. _node.js: https://nodejs.org
 .. _libev was removed: https://github.com/joyent/libuv/issues/485
-.. _Rust: https://www.rust-lang.org
+.. _Rust: https://rust-lang.org/
 .. _variety: https://github.com/libuv/libuv/blob/v1.x/LINKS.md

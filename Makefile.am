@@ -259,6 +259,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-socket-buffer-size.c \
                          test/test-spawn.c \
                          test/test-stdio-over-pipes.c \
+                         test/test-io-64-safe.c \
                          test/test-strscpy.c \
                          test/test-strtok.c \
                          test/test-tcp-alloc-cb-fail.c \
@@ -322,10 +323,12 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-open.c \
                          test/test-udp-options.c \
                          test/test-udp-send-and-recv.c \
+                         test/test-udp-send-fail.c \
                          test/test-udp-send-hang-loop.c \
                          test/test-udp-send-immediate.c \
                          test/test-udp-sendmmsg-error.c \
                          test/test-udp-send-unreachable.c \
+                         test/test-udp-recv-cb-close-pollerr.c \
                          test/test-udp-recvmsg-unreachable-error.c \
                          test/test-udp-try-send.c \
                          test/test-udp-recv-in-a-row.c \
