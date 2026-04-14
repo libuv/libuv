@@ -2112,7 +2112,11 @@ TEST_IMPL(spawn_relative_path) {
   return 0;
 }
 
-#ifdef _WIN32
+/* This test relies on the newer incarnation of command line argument parsing.
+ * MinGW may link against msvcrt.dll which uses the old version of the parsing
+ * to maintain compatibility. This test would work when linking against ucrt
+ * using MinGW, though. */
+#if defined(_WIN32) && !defined(__MINGW32__)
 static int test_batch_script(char* file, int argc, char** argv) {
   uv_stdio_container_t stdio[2];
   uv_pipe_t out;
@@ -2404,7 +2408,7 @@ TEST_IMPL(spawn_batch_script_arguments) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
-#endif
+#endif /* _WIN32 && !__MINGW32__ */
 
 /* Called by spawn_helper_echo_args. */
 void spawn_echo_args(int argc, char **argv) {
