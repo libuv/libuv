@@ -352,7 +352,7 @@ TEST_DECLARE   (spawn_quoted_path)
 TEST_DECLARE   (spawn_tcp_server)
 TEST_DECLARE   (spawn_exercise_sigchld_issue)
 TEST_DECLARE   (spawn_relative_path)
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
 TEST_DECLARE   (spawn_batch_script_arguments)
 #endif
 TEST_DECLARE   (fs_poll)
@@ -1054,7 +1054,7 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_tcp_server)
   TEST_ENTRY  (spawn_exercise_sigchld_issue)
   TEST_ENTRY  (spawn_relative_path)
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__MINGW32__)
   TEST_ENTRY  (spawn_batch_script_arguments)
 #endif
   TEST_ENTRY  (fs_poll)
