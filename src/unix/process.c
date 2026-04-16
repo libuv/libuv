@@ -38,7 +38,7 @@
 #include <dlfcn.h>
 
 #if defined(__PASE__)
-#define _PATH_DEFPATH "/QOpenSys/pkgs/bin:/usr/bin:/bin"
+#define _PATH_DEFPATH "/QOpenSys/pkgs/bin:/QOpenSys/usr/bin:/usr/bin"
 #elif defined(_AIX)
 #define _PATH_DEFPATH "/opt/freeware/bin:/usr/bin:/bin"
 #endif
