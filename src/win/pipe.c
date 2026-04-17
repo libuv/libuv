@@ -2026,19 +2026,18 @@ static int uv__pipe_read_data(uv_loop_t* loop,
       if (r == ERROR_IO_PENDING) {
         r = CancelIoEx(handle->handle, &req->u.io.overlapped);
         assert(r || GetLastError() == ERROR_NOT_FOUND);
-        if (GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE)) {
+        if (GetOverlappedResult(handle->handle, &req->u.io.overlapped, bytes_read, TRUE))
           r = ERROR_SUCCESS;
-        } else {
+        else
           r = GetLastError();
-          *bytes_read = 0;
-        }
       }
     }
     more = *bytes_read == max_bytes;
   }
 
   /* Call the read callback. */
-  if (r == ERROR_SUCCESS || r == ERROR_OPERATION_ABORTED)
+  if (r == ERROR_SUCCESS || r == ERROR_OPERATION_ABORTED ||
+      (r == ERROR_BROKEN_PIPE && *bytes_read > 0))
     handle->read_cb((uv_stream_t*) handle, *bytes_read, &buf);
   else
     uv__pipe_read_error_or_eof(loop, handle, r, buf);
