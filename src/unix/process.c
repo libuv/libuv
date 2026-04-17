@@ -1078,9 +1078,9 @@ int uv_spawn(uv_loop_t* loop,
    * with waitpid. */
   if (exec_errorno == 0) {
 #ifndef UV_USE_SIGCHLD
-    struct kevent event;
-    EV_SET(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT, 0, 0);
-    if (kevent(loop->backend_fd, &event, 1, NULL, 0, NULL)) {
+    UV__KEVENT_S event;
+    UV__SET_EVENT(&event, pid, EVFILT_PROC, EV_ADD | EV_ONESHOT, NOTE_EXIT);
+    if (UV__KEVENT(loop->backend_fd, &event, 1, NULL, 0, 0, NULL)) {
       if (errno != ESRCH)
         abort();
       /* Process already exited. Call waitpid on the next loop iteration. */
