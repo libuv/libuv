@@ -191,8 +191,6 @@ static int fs__readlink_handle(HANDLE handle,
   WCHAR* w_target;
   DWORD w_target_len;
   DWORD bytes;
-  size_t i;
-  size_t len;
 
   if (!DeviceIoControl(handle,
                        FSCTL_GET_REPARSE_POINT,
@@ -303,38 +301,6 @@ static int fs__readlink_handle(HANDLE handle,
     w_target += 4;
     w_target_len -= 4;
 
-  } else if (reparse_data->ReparseTag == IO_REPARSE_TAG_APPEXECLINK) {
-    /* String #3 in the list has the target filename. */
-    if (reparse_data->AppExecLinkReparseBuffer.StringCount < 3) {
-      SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
-      return -1;
-    }
-    w_target = reparse_data->AppExecLinkReparseBuffer.StringList;
-    /* The StringList buffer contains a list of strings separated by "\0",   */
-    /* with "\0\0" terminating the list. Move to the 3rd string in the list: */
-    for (i = 0; i < 2; ++i) {
-      len = wcslen(w_target);
-      if (len == 0) {
-        SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
-        return -1;
-      }
-      w_target += len + 1;
-    }
-    w_target_len = wcslen(w_target);
-    if (w_target_len == 0) {
-      SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
-      return -1;
-    }
-    /* Make sure it is an absolute path. */
-    if (!(w_target_len >= 3 &&
-         ((w_target[0] >= L'a' && w_target[0] <= L'z') ||
-          (w_target[0] >= L'A' && w_target[0] <= L'Z')) &&
-         w_target[1] == L':' &&
-         w_target[2] == L'\\')) {
-      SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
-      return -1;
-    }
-
   } else {
     /* Reparse tag does not indicate a symlink. */
     SetLastError(ERROR_SYMLINK_NOT_SUPPORTED);
@@ -343,6 +309,33 @@ static int fs__readlink_handle(HANDLE handle,
 
   assert(target_ptr == NULL || *target_ptr == NULL);
   return uv_utf16_to_wtf8(w_target, w_target_len, target_ptr, target_len_ptr);
+}
+
+/* CreateFileW wrapper. Treats reparse points which windows can't resolve as regular files */
+static HANDLE fs__create_file(WCHAR* path, DWORD desired_access, int do_lstat) {
+  if (!do_lstat) {
+    HANDLE handle;
+    handle = CreateFileW(path,
+                         desired_access,
+                         FILE_SHARE_READ | FILE_SHARE_WRITE |
+                         FILE_SHARE_DELETE,
+                         NULL,
+                         OPEN_EXISTING,
+                         FILE_FLAG_BACKUP_SEMANTICS,
+                         NULL);
+
+    if (handle != INVALID_HANDLE_VALUE
+        || GetLastError() != ERROR_CANT_ACCESS_FILE)
+        return handle;
+  }
+
+  return CreateFileW(path,
+                     desired_access,
+                     FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                     NULL,
+                     OPEN_EXISTING,
+                     FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT,
+                     NULL);
 }
 
 
@@ -2216,17 +2209,7 @@ static DWORD fs__stat_impl_from_path(WCHAR* path,
   }
 
   /* If the new API does not exist, use the old API. */
-  flags = FILE_FLAG_BACKUP_SEMANTICS;
-  if (do_lstat)
-    flags |= FILE_FLAG_OPEN_REPARSE_POINT;
-
-  handle = CreateFileW(path,
-                       FILE_READ_ATTRIBUTES,
-                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                       NULL,
-                       OPEN_EXISTING,
-                       flags,
-                       NULL);
+  handle = fs__create_file(path, FILE_READ_ATTRIBUTES, do_lstat);
 
   if (handle == INVALID_HANDLE_VALUE) {
     ret = GetLastError();
