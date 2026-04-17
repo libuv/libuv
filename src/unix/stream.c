@@ -547,7 +547,6 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
                             server->accepted_fd,
                             UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
       if (err) {
-        /* TODO handle error */
         uv__close(server->accepted_fd);
         goto done;
       }
@@ -590,8 +589,7 @@ done:
     }
   } else {
     server->accepted_fd = -1;
-    if (err == 0)
-      uv__io_start(server->loop, &server->io_watcher, POLLIN);
+    uv__io_start(server->loop, &server->io_watcher, POLLIN);
   }
   return err;
 }
@@ -1264,12 +1262,15 @@ static void uv__stream_connect(uv_stream_t* stream) {
   } else {
     /* Normal situation: we need to get the socket error from the kernel. */
     assert(uv__stream_fd(stream) >= 0);
-    getsockopt(uv__stream_fd(stream),
-               SOL_SOCKET,
-               SO_ERROR,
-               &error,
-               &errorsize);
-    error = UV__ERR(error);
+    if (getsockopt(uv__stream_fd(stream),
+                   SOL_SOCKET,
+                   SO_ERROR,
+                   &error,
+                   &errorsize)) {
+      error = UV__ERR(errno);
+    } else {
+      error = UV__ERR(error);
+    }
   }
 
   if (error == UV__ERR(EINPROGRESS))
