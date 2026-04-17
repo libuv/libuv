@@ -89,6 +89,7 @@ typedef struct {
   uv_write_t* user_req; /* Pointer to user-specified uv_write_t. */
 } uv__coalesced_write_t;
 
+static uv__pipe_handle_data_s* uv__pipe_handle_data;
 
 static void eof_timer_init(uv_pipe_t* pipe);
 static void eof_timer_start(uv_pipe_t* pipe);
@@ -123,7 +124,7 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
   handle->pipe.conn.ipc_xfer_queue_length = 0;
   handle->ipc = ipc;
   handle->pipe.conn.non_overlapped_writes_tail = NULL;
-
+  uv__pipe_handle_data = (uv__pipe_handle_data_s*)handle->data;
   return 0;
 }
 
@@ -218,7 +219,7 @@ static int uv__pipe_server(
     pipeHandle = CreateNamedPipeA(name,
       access | FILE_FLAG_FIRST_PIPE_INSTANCE,
       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 65536, 65536, 0,
-      NULL);
+      uv__pipe_handle_data->acl);
 
     if (pipeHandle != INVALID_HANDLE_VALUE) {
       /* No name collisions.  We're done. */
@@ -563,12 +564,17 @@ static int pipe_alloc_accept(uv_loop_t* loop, uv_pipe_t* handle,
 
   assert(req->pipeHandle == INVALID_HANDLE_VALUE);
 
+  uv__pipe_handle_data_s* server_handle_data = NULL;
+  if(handle && handle->data) {
+    server_handle_data = (uv__pipe_handle_data_s*)handle->data;
+  }
+  
   req->pipeHandle =
       CreateNamedPipeW(handle->name,
                        PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | WRITE_DAC |
                          (firstInstance ? FILE_FLAG_FIRST_PIPE_INSTANCE : 0),
                        PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-                       PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, NULL);
+                       PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, (handle && handle->data) ? (LPSECURITY_ATTRIBUTES)server_handle_data->acl : NULL);
 
   if (req->pipeHandle == INVALID_HANDLE_VALUE) {
     return 0;
