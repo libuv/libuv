@@ -30,6 +30,10 @@
 #include "unix/internal.h"
 #endif
 
+#ifndef UV__PATH_MAX
+# define UV__PATH_MAX 8192
+#endif
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -77,6 +81,8 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
 
   loop = handle->loop;
   len = strlen(path);
+  if (len >= UV__PATH_MAX)
+    return UV_ENAMETOOLONG;
   ctx = uv__calloc(1, sizeof(*ctx) + len);
 
   if (ctx == NULL)
