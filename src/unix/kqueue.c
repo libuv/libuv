@@ -109,7 +109,7 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
    *
    * On Darwin, DragonFlyBSD, NetBSD and OpenBSD, kqueue reports ready events for
    * regular files as readable and writable only once, acting like an EV_ONESHOT.
-   * 
+   *
    * Neither of the above cases should be added to the kqueue.
    */
   if (S_ISREG(sb.st_mode) || S_ISDIR(sb.st_mode))
@@ -119,9 +119,9 @@ int uv__io_check_fd(uv_loop_t* loop, int fd) {
   /* On Darwin (both macOS and iOS), in addition to regular files, FIFOs also don't
    * work properly with kqueue: the disconnection from the last writer won't trigger
    * an event for kqueue in spite of what the man pages say. Thus, we also disallow
-   * the case of S_IFIFO. */ 
+   * the case of S_IFIFO. */
   if (S_ISFIFO(sb.st_mode)) {
-    /* File descriptors of FIFO, pipe and kqueue share the same type of file, 
+    /* File descriptors of FIFO, pipe and kqueue share the same type of file,
      * therefore there is no way to tell them apart via stat.st_mode&S_IFMT.
      * Fortunately, FIFO is the only one that has a persisted file on filesystem,
      * from which we're able to make the distinction for it. */

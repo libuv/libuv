@@ -82,12 +82,12 @@ int uv_resident_set_memory(size_t* rss) {
 uint64_t uv_get_free_memory(void) {
   kern_return_t err;
   struct vm_statistics vmstats;
-  
+
   err = vm_statistics(mach_task_self(), &vmstats);
 
   if (err)
     return 0;
-  
+
   return vmstats.free_count * vm_page_size;
 }
 
@@ -96,9 +96,9 @@ uint64_t uv_get_total_memory(void) {
   kern_return_t err;
   host_basic_info_data_t hbi;
   mach_msg_type_number_t cnt;
-  
+
   cnt = HOST_BASIC_INFO_COUNT;
-  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt); 
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt);
 
   if (err)
     return 0;
@@ -135,10 +135,10 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   kern_return_t err;
   host_basic_info_data_t hbi;
   mach_msg_type_number_t cnt;
-  
+
   /* Get count of cpus  */
   cnt = HOST_BASIC_INFO_COUNT;
-  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt); 
+  err = host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t) &hbi, &cnt);
 
   if (err) {
     err = UV__ERR(err);
@@ -155,7 +155,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
   *count = hbi.avail_cpus;
 
   return 0;
-  
+
  abort:
   *cpu_infos = NULL;
   *count = 0;
