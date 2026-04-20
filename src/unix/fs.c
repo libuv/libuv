@@ -334,8 +334,11 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   }
 #endif  /* O_CLOEXEC */
 
-  if (req->cb != NULL)
+  if (req->cb != NULL) {
     uv_rwlock_rdlock(&req->loop->cloexec_lock);
+    /* Tell analyzer we will later release the read lock */
+    uv_rwlock_assume_rdunlocked(&req->loop->cloexec_lock);
+  }
 
   r = mkstemp(path);
 
@@ -349,8 +352,11 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
     r = -1;
   }
 
-  if (req->cb != NULL)
+  if (req->cb != NULL) {
+    /* Tell analyzer we earlier acquired the read lock */
+    uv_rwlock_assume_rdlocked(&req->loop->cloexec_lock);
     uv_rwlock_rdunlock(&req->loop->cloexec_lock);
+  }
 
 clobber:
   if (r < 0)

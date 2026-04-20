@@ -914,7 +914,11 @@ static int uv__spawn_and_init_child(
     const uv_process_options_t* options,
     int stdio_count,
     int (*pipes)[2],
-    pid_t* pid) {
+    pid_t* pid)
+#if defined(__APPLE__)
+    UV_EXCLUDES(&posix_spawn_init_once)
+#endif
+{
   int signal_pipe[2] = { -1, -1 };
   int status;
   int err;
@@ -1003,7 +1007,11 @@ static int uv__spawn_and_init_child(
 
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
-             const uv_process_options_t* options) {
+             const uv_process_options_t* options)
+#if defined(__APPLE__)
+    UV_EXCLUDES(&posix_spawn_init_once)
+#endif
+{
 #if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
   /* fork is marked __WATCHOS_PROHIBITED __TVOS_PROHIBITED. */
   uv__handle_init(loop, (uv_handle_t*)process, UV_PROCESS);

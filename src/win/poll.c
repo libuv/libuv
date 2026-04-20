@@ -63,7 +63,7 @@ static void uv__init_overlapped_dummy(void) {
 }
 
 
-static OVERLAPPED* uv__get_overlapped_dummy(void) {
+static OVERLAPPED* uv__get_overlapped_dummy(void) UV_EXCLUDES(&overlapped_dummy_init_guard_) {
   uv_once(&overlapped_dummy_init_guard_, uv__init_overlapped_dummy);
   return &overlapped_dummy_;
 }
@@ -530,7 +530,7 @@ void uv__process_poll_req(uv_loop_t* loop, uv_poll_t* handle, uv_req_t* req) {
 }
 
 
-int uv__poll_close(uv_loop_t* loop, uv_poll_t* handle) {
+int uv__poll_close(uv_loop_t* loop, uv_poll_t* handle) UV_EXCLUDES(&overlapped_dummy_init_guard_) {
   AFD_POLL_INFO afd_poll_info;
   DWORD error;
   int result;

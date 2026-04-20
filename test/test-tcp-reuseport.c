@@ -80,7 +80,7 @@ static void on_close(uv_handle_t* handle) {
   free(handle);
 }
 
-static void ticktack(uv_timer_t* timer) {
+static void ticktack(uv_timer_t* timer) UV_EXCLUDES(&mutex) {
   ASSERT(timer == &thread_timer_handle1 || timer == &thread_timer_handle2);
 
   int done = 0;
@@ -99,8 +99,7 @@ static void ticktack(uv_timer_t* timer) {
   }
 }
 
-static void on_connection(uv_stream_t* server, int status)
-{
+static void on_connection(uv_stream_t* server, int status) UV_EXCLUDES(&mutex) {
   ASSERT_OK(status);
   ASSERT(server == (uv_stream_t*) &thread_handle1 || \
          server == (uv_stream_t*) &thread_handle2);

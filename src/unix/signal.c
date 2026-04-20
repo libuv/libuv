@@ -107,7 +107,7 @@ static void uv__signal_global_reinit(void) {
 }
 
 
-void uv__signal_global_once_init(void) {
+void uv__signal_global_once_init(void) UV_EXCLUDES(&uv__signal_global_init_guard) {
   uv_once(&uv__signal_global_init_guard, uv__signal_global_init);
 }
 

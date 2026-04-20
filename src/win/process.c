@@ -895,7 +895,7 @@ void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle) {
 
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
-             const uv_process_options_t* options) {
+             const uv_process_options_t* options) UV_EXCLUDES(&uv_global_job_handle_init_guard_) {
   int i;
   int err = 0;
   WCHAR* path = NULL, *alloc_path = NULL;

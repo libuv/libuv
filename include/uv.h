@@ -58,6 +58,174 @@ extern "C" {
 #include <stdint.h>
 #include <math.h>
 
+/* Clang thread safety analysis annotations */
+#if defined(__clang__)
+# define UV__THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
+#else
+# define UV__THREAD_ANNOTATION_ATTRIBUTE__(x)  /* no-op */
+#endif
+
+#define UV_CAPABILITY(x) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(capability(x))
+
+#define UV_ACQUIRE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
+
+#define UV_RELEASE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
+
+#define UV_TRY_ACQUIRE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(try_acquire_capability(__VA_ARGS__))
+
+#define UV_REQUIRES(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+
+#define UV_RELOCKS(...) \
+    UV_REQUIRES(__VA_ARGS__) UV_RELEASE(__VA_ARGS__) UV_ACQUIRE(__VA_ARGS__);
+
+/* Macro trickery needed to negate each __VA_ARGS__ argument (up to 5). */
+#define UV__NEGATE_ARGS_1(a) !a
+#define UV__NEGATE_ARGS_2(a, b) !a, !b
+#define UV__NEGATE_ARGS_3(a, b, c) !a, !b, !c
+#define UV__NEGATE_ARGS_4(a, b, c, d) !a, !b, !c, !d
+#define UV__NEGATE_ARGS_5(a, b, c, d, e) !a, !b, !c, !d, !e
+#define UV__COUNT_ARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
+#define UV__COUNT_ARGS(...) UV__COUNT_ARGS_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1, 0)
+#define UV__NEGATE_DISPATCH(N) UV__NEGATE_ARGS_##N
+#define UV__NEGATE_ARGS_APPLY(N, ...) UV__NEGATE_DISPATCH(N)(__VA_ARGS__)
+#define UV__NEGATE_ALL_ARGS(...) UV__NEGATE_ARGS_APPLY(UV__COUNT_ARGS(__VA_ARGS__), __VA_ARGS__)
+
+/* UV_EXCLUDES is intentionally mapped to requires_capability(!x) instead of
+ * locks_excluded(x) because negative capabilities are more precise and integrate
+ * better with the capability analysis system. While locks_excluded is an older
+ * annotation that simply checks a lock isn't held, requires_capability(!x)
+ * participates in the full capability analysis, allowing for better
+ * composability and more accurate tracking of lock states. */
+#define UV_EXCLUDES(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(UV__NEGATE_ALL_ARGS(__VA_ARGS__)))
+
+#define UV_ACQUIRE_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquire_shared_capability(__VA_ARGS__))
+
+#define UV_RELEASE_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(release_shared_capability(__VA_ARGS__))
+
+#define UV_TRY_ACQUIRE_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(try_acquire_shared_capability(__VA_ARGS__))
+
+#define UV_REQUIRES_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(requires_shared_capability(__VA_ARGS__))
+
+/* Data annotations - specify which locks protect which data members */
+#define UV_GUARDED_BY(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(guarded_by(__VA_ARGS__))
+
+#define UV_PT_GUARDED_BY(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(pt_guarded_by(__VA_ARGS__))
+
+/* Lock ordering annotations - prevent deadlock by specifying acquisition order */
+#define UV_ACQUIRED_BEFORE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquired_before(__VA_ARGS__))
+
+#define UV_ACQUIRED_AFTER(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquired_after(__VA_ARGS__))
+
+/* Use this assert where it is not possible to use UV_REQUIRES, such as at the
+ * start of a callback. */
+#define UV_ASSERT_CAPABILITY(x) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(assert_capability(x))
+
+#define UV_ASSERT_SHARED_CAPABILITY(x) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(assert_shared_capability(x))
+
+/* Disable analysis for specific functions. */
+#define UV_NO_THREAD_SAFETY_ANALYSIS \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
+
+/* Clang thread safety analysis annotations */
+#if defined(__clang__)
+# define UV__THREAD_ANNOTATION_ATTRIBUTE__(x) __attribute__((x))
+#else
+# define UV__THREAD_ANNOTATION_ATTRIBUTE__(x)  /* no-op */
+#endif
+
+#define UV_CAPABILITY(x) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(capability(x))
+
+#define UV_ACQUIRE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquire_capability(__VA_ARGS__))
+
+#define UV_RELEASE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(release_capability(__VA_ARGS__))
+
+#define UV_TRY_ACQUIRE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(try_acquire_capability(__VA_ARGS__))
+
+#define UV_REQUIRES(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(__VA_ARGS__))
+
+#define UV_RELOCKS(...) \
+    UV_REQUIRES(__VA_ARGS__) UV_RELEASE(__VA_ARGS__) UV_ACQUIRE(__VA_ARGS__);
+
+/* Macro trickery needed to negate each __VA_ARGS__ argument (up to 5). */
+#define UV__NEGATE_ARGS_1(a) !a
+#define UV__NEGATE_ARGS_2(a, b) !a, !b
+#define UV__NEGATE_ARGS_3(a, b, c) !a, !b, !c
+#define UV__NEGATE_ARGS_4(a, b, c, d) !a, !b, !c, !d
+#define UV__NEGATE_ARGS_5(a, b, c, d, e) !a, !b, !c, !d, !e
+#define UV__COUNT_ARGS_IMPL(_1, _2, _3, _4, _5, N, ...) N
+#define UV__COUNT_ARGS(...) UV__COUNT_ARGS_IMPL(__VA_ARGS__, 5, 4, 3, 2, 1, 0)
+#define UV__NEGATE_DISPATCH(N) UV__NEGATE_ARGS_##N
+#define UV__NEGATE_ARGS_APPLY(N, ...) UV__NEGATE_DISPATCH(N)(__VA_ARGS__)
+#define UV__NEGATE_ALL_ARGS(...) UV__NEGATE_ARGS_APPLY(UV__COUNT_ARGS(__VA_ARGS__), __VA_ARGS__)
+
+/* UV_EXCLUDES is intentionally mapped to requires_capability(!x) instead of
+ * locks_excluded(x) because negative capabilities are more precise and integrate
+ * better with the capability analysis system. While locks_excluded is an older
+ * annotation that simply checks a lock isn't held, requires_capability(!x)
+ * participates in the full capability analysis, allowing for better
+ * composability and more accurate tracking of lock states. */
+#define UV_EXCLUDES(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(requires_capability(UV__NEGATE_ALL_ARGS(__VA_ARGS__)))
+
+#define UV_ACQUIRE_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquire_shared_capability(__VA_ARGS__))
+
+#define UV_RELEASE_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(release_shared_capability(__VA_ARGS__))
+
+#define UV_TRY_ACQUIRE_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(try_acquire_shared_capability(__VA_ARGS__))
+
+#define UV_REQUIRES_SHARED(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(requires_shared_capability(__VA_ARGS__))
+
+/* Data annotations - specify which locks protect which data members */
+#define UV_GUARDED_BY(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(guarded_by(__VA_ARGS__))
+
+#define UV_PT_GUARDED_BY(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(pt_guarded_by(__VA_ARGS__))
+
+/* Lock ordering annotations - prevent deadlock by specifying acquisition order */
+#define UV_ACQUIRED_BEFORE(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquired_before(__VA_ARGS__))
+
+#define UV_ACQUIRED_AFTER(...) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(acquired_after(__VA_ARGS__))
+
+/* Use this assert where it is not possible to use UV_REQUIRES, such as at the
+ * start of a callback. */
+#define UV_ASSERT_CAPABILITY(x) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(assert_capability(x))
+
+#define UV_ASSERT_SHARED_CAPABILITY(x) \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(assert_shared_capability(x))
+
+/* Disable analysis for specific functions. */
+#define UV_NO_THREAD_SAFETY_ANALYSIS \
+  UV__THREAD_ANNOTATION_ATTRIBUTE__(no_thread_safety_analysis)
+
 /* Internal type, do not use. */
 struct uv__queue {
   struct uv__queue* next;
@@ -509,6 +677,14 @@ UV_EXTERN int uv_recv_buffer_size(uv_handle_t* handle, int* value);
 UV_EXTERN int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd);
 
 UV_EXTERN uv_buf_t uv_buf_init(char* base, unsigned int len);
+
+#if defined(_MSC_VER)
+# define INLINE __inline
+#elif defined(__GNUC__) || defined(__MVS__)
+# define INLINE __inline__
+#else
+# define INLINE inline
+#endif
 
 UV_EXTERN int uv_pipe(uv_file fds[2], int read_flags, int write_flags);
 UV_EXTERN int uv_socketpair(int type,
@@ -1845,21 +2021,38 @@ UV_EXTERN void uv_dlclose(uv_lib_t* lib);
 UV_EXTERN int uv_dlsym(uv_lib_t* lib, const char* name, void** ptr);
 UV_EXTERN const char* uv_dlerror(const uv_lib_t* lib);
 
+
 UV_EXTERN int uv_mutex_init(uv_mutex_t* handle);
 UV_EXTERN int uv_mutex_init_recursive(uv_mutex_t* handle);
 UV_EXTERN void uv_mutex_destroy(uv_mutex_t* handle);
-UV_EXTERN void uv_mutex_lock(uv_mutex_t* handle);
-UV_EXTERN int uv_mutex_trylock(uv_mutex_t* handle);
-UV_EXTERN void uv_mutex_unlock(uv_mutex_t* handle);
+UV_EXTERN void uv_mutex_lock(uv_mutex_t* handle) UV_ACQUIRE(handle);
+UV_EXTERN int uv_mutex_trylock(uv_mutex_t* handle) UV_TRY_ACQUIRE(0, handle);
+UV_EXTERN void uv_mutex_unlock(uv_mutex_t* handle) UV_RELEASE(handle);
+static INLINE void uv_mutex_assume_locked(uv_mutex_t* handle)
+UV_ASSERT_CAPABILITY(handle) {};
+static INLINE void uv_mutex_assume_unlocked(uv_mutex_t* handle)
+UV_RELEASE(handle) UV_NO_THREAD_SAFETY_ANALYSIS {};
+static INLINE void uv_mutex_assert_unlocked(uv_mutex_t* handle)
+UV_EXCLUDES(handle) {};
 
 UV_EXTERN int uv_rwlock_init(uv_rwlock_t* rwlock);
 UV_EXTERN void uv_rwlock_destroy(uv_rwlock_t* rwlock);
-UV_EXTERN void uv_rwlock_rdlock(uv_rwlock_t* rwlock);
-UV_EXTERN int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock);
-UV_EXTERN void uv_rwlock_rdunlock(uv_rwlock_t* rwlock);
-UV_EXTERN void uv_rwlock_wrlock(uv_rwlock_t* rwlock);
-UV_EXTERN int uv_rwlock_trywrlock(uv_rwlock_t* rwlock);
-UV_EXTERN void uv_rwlock_wrunlock(uv_rwlock_t* rwlock);
+UV_EXTERN void uv_rwlock_rdlock(uv_rwlock_t* rwlock) UV_ACQUIRE_SHARED(rwlock);
+UV_EXTERN int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) UV_TRY_ACQUIRE_SHARED(0, rwlock);
+UV_EXTERN void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) UV_RELEASE_SHARED(rwlock);
+UV_EXTERN void uv_rwlock_wrlock(uv_rwlock_t* rwlock) UV_ACQUIRE(rwlock);
+UV_EXTERN int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) UV_TRY_ACQUIRE(0, rwlock);
+UV_EXTERN void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) UV_RELEASE(rwlock);
+static INLINE void uv_rwlock_assume_rdlocked(uv_rwlock_t* handle)
+UV_ASSERT_SHARED_CAPABILITY(handle) {};
+static INLINE void uv_rwlock_assume_wrlocked(uv_rwlock_t* handle)
+UV_ASSERT_CAPABILITY(handle) {};
+static INLINE void uv_rwlock_assume_rdunlocked(uv_rwlock_t* handle)
+UV_RELEASE_SHARED(handle) UV_NO_THREAD_SAFETY_ANALYSIS {};
+static INLINE void uv_rwlock_assume_wrunlocked(uv_rwlock_t* handle)
+UV_RELEASE(handle) UV_NO_THREAD_SAFETY_ANALYSIS {};
+static INLINE void uv_rwlock_assert_unlocked(uv_rwlock_t* handle)
+UV_EXCLUDES(handle) {};
 
 UV_EXTERN int uv_sem_init(uv_sem_t* sem, unsigned int value);
 UV_EXTERN void uv_sem_destroy(uv_sem_t* sem);
@@ -1876,12 +2069,19 @@ UV_EXTERN int uv_barrier_init(uv_barrier_t* barrier, unsigned int count);
 UV_EXTERN void uv_barrier_destroy(uv_barrier_t* barrier);
 UV_EXTERN int uv_barrier_wait(uv_barrier_t* barrier);
 
-UV_EXTERN void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex);
+UV_EXTERN void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) UV_RELOCKS(mutex);
 UV_EXTERN int uv_cond_timedwait(uv_cond_t* cond,
                                 uv_mutex_t* mutex,
-                                uint64_t timeout);
+                                uint64_t timeout) UV_RELOCKS(mutex);
 
-UV_EXTERN void uv_once(uv_once_t* guard, void (*callback)(void));
+/* Annotate this function for thread safety analysis purposes such that uv_once
+ * can acquire the guard with UV_ACQUIRE internally for the callback to write any
+ * values, then return with it in the SHARED state for the callee to read any
+ * values it protects. */
+UV_EXTERN void uv_once(uv_once_t* guard, void (*callback)(void))
+UV_EXCLUDES(guard) UV_ASSERT_SHARED_CAPABILITY(guard);
+static INLINE void uv_once_assume_ran(uv_once_t* handle)
+UV_ASSERT_SHARED_CAPABILITY(handle) UV_NO_THREAD_SAFETY_ANALYSIS {}
 
 UV_EXTERN int uv_key_create(uv_key_t* key);
 UV_EXTERN void uv_key_delete(uv_key_t* key);
@@ -1988,6 +2188,8 @@ UV_EXTERN void uv_wtf8_to_utf16(const char* wtf8,
 #undef UV_SIGNAL_PRIVATE_FIELDS
 #undef UV_LOOP_PRIVATE_FIELDS
 #undef UV__ERR
+#undef INLINE
+
 
 #ifdef __cplusplus
 }
