@@ -152,19 +152,41 @@ static int getexe(char* buf, size_t len) {
  * or through some libc APIs. The below approach is to parse the argv[0]'s pattern
  * and use it in conjunction with PATH environment variable to craft one.
  */
+extern char* original_exepath;
+extern uv_mutex_t process_title_mutex;
+extern uv_once_t process_title_mutex_once;
+extern void init_process_title_mutex_once(void);
+
 int uv_exepath(char* buffer, size_t* size) {
   int res;
   char args[PATH_MAX];
-  int pid;
+  size_t cached_len;
 
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
+
+  uv_once(&process_title_mutex_once, init_process_title_mutex_once);
+  uv_mutex_lock(&process_title_mutex);
+  if (original_exepath != NULL) {
+    cached_len = strlen(original_exepath);
+    *size -= 1;
+    if (*size > cached_len)
+      *size = cached_len;
+    memcpy(buffer, original_exepath, *size);
+    buffer[*size] = '\0';
+    uv_mutex_unlock(&process_title_mutex);
+    return 0;
+  }
+  uv_mutex_unlock(&process_title_mutex);
 
   res = getexe(args, sizeof(args));
   if (res < 0)
     return UV_EINVAL;
 
-  return uv__search_path(args, buffer, size);
+  uv_mutex_lock(&process_title_mutex);
+  res = uv__search_path(args, buffer, size);
+  uv_mutex_unlock(&process_title_mutex);
+  return res;
 }
 
 

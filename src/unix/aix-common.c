@@ -85,5 +85,8 @@ int uv_exepath(char* buffer, size_t* size) {
   if (res < 0)
     return UV_EINVAL;
 
-  return uv__search_path(args, buffer, size);
+  uv_mutex_lock(&process_title_mutex);
+  res = uv__search_path(args, buffer, size);
+  uv_mutex_unlock(&process_title_mutex);
+  return res;
 }
