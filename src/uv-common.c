@@ -949,8 +949,13 @@ int uv_read_start(uv_stream_t* stream,
   if (stream->flags & UV_HANDLE_CLOSING)
     return UV_EINVAL;
 
-  if (stream->flags & UV_HANDLE_READING)
+#ifdef _WIN32
+   if (stream->flags & UV_HANDLE_READING)
+     return UV_EALREADY;
+#else
+  if (stream->read_cb != NULL)
     return UV_EALREADY;
+#endif
 
   if (!(stream->flags & UV_HANDLE_READABLE))
     return UV_ENOTCONN;
