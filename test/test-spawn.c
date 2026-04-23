@@ -2111,3 +2111,16 @@ TEST_IMPL(spawn_relative_path) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+TEST_IMPL(spawn_empty_command_line) {
+  init_process_options("spawn_empty_command_line", exit_cb);
+  options.args[1] = NULL;
+  
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+}
