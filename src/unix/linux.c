@@ -1340,6 +1340,16 @@ static void uv__epoll_ctl_flush(int epollfd,
     if (op != EPOLL_CTL_ADD)
       abort();
 
+    /* An -EBADF/-ENOENT/-EPERM/-EINVAL here means the FD was closed
+     * between staging and submission (concurrent close from another
+     * thread). Drop the registration silently — same spirit as the
+     * CTL_DEL "Ignore errors, may be racing with another thread"
+     * tolerance already applied above.
+     */
+    if (cqe->res == -EBADF || cqe->res == -ENOENT ||
+        cqe->res == -EPERM || cqe->res == -EINVAL)
+      continue;
+
     if (cqe->res != -EEXIST)
       abort();
 
@@ -1430,6 +1440,16 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     }
 
     if (!epoll_ctl(epollfd, op, fd, &e))
+      continue;
+
+    /* An EBADF/ENOENT/EPERM/EINVAL here means the FD was closed
+     * between staging and submission (concurrent close from another
+     * thread). Drop the registration silently — same spirit as the
+     * CTL_DEL "Ignore errors, may be racing with another thread"
+     * tolerance already applied in uv__epoll_ctl_prep.
+     */
+    if (errno == EBADF || errno == ENOENT ||
+        errno == EPERM || errno == EINVAL)
       continue;
 
     assert(op == EPOLL_CTL_ADD);

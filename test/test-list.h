@@ -504,6 +504,7 @@ TEST_DECLARE   (poll_oob)
 TEST_DECLARE   (poll_duplex)
 TEST_DECLARE   (poll_unidirectional)
 TEST_DECLARE   (poll_close)
+TEST_DECLARE   (poll_close_fd_underneath)
 TEST_DECLARE   (poll_bad_fdtype)
 #ifdef __linux__
 TEST_DECLARE   (poll_nested_epoll)
@@ -1003,6 +1004,9 @@ TASK_LIST_START
   TEST_ENTRY  (poll_duplex)
   TEST_ENTRY  (poll_unidirectional)
   TEST_ENTRY  (poll_close)
+#ifdef __linux__
+  TEST_ENTRY  (poll_close_fd_underneath)
+#endif
   TEST_ENTRY  (poll_bad_fdtype)
 #if (defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))) && \
     !defined(__sun)

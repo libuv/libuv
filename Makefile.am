@@ -236,6 +236,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-poll.c \
                          test/test-poll-close.c \
                          test/test-poll-close-doesnt-corrupt-stack.c \
+                         test/test-poll-close-fd-underneath.c \
                          test/test-poll-closesocket.c \
                          test/test-poll-multiple-handles.c \
                          test/test-poll-oob.c \

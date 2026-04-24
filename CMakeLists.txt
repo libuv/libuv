@@ -609,6 +609,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-pipe-set-non-blocking.c
        test/test-platform-output.c
        test/test-poll-close-doesnt-corrupt-stack.c
+       test/test-poll-close-fd-underneath.c
        test/test-poll-close.c
        test/test-poll-closesocket.c
        test/test-poll-multiple-handles.c
