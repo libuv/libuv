@@ -690,6 +690,7 @@ static int uv__write_req_update(uv_stream_t* stream,
 
   assert(n <= stream->write_queue_size);
   stream->write_queue_size -= n;
+  req->write_extra.nwritten += n;
 
   buf = req->bufs + req->write_index;
 
@@ -913,6 +914,9 @@ static void uv__write_callbacks(uv_stream_t* stream) {
     uv__req_unregister(stream->loop);
 
     if (req->bufs != NULL) {
+      /* bufs are non-NULL on errors (including cancel and stream close).
+       * Success path sets bufs to NULL after adjusting size in uv__write. */
+      assert(req->error != 0);
       stream->write_queue_size -= uv__write_req_size(req);
       if (req->bufs != req->bufsml)
         uv__free(req->bufs);
@@ -1375,6 +1379,7 @@ int uv_write2(uv_write_t* req,
   req->handle = stream;
   req->error = 0;
   req->send_handle = send_handle;
+  req->write_extra.nwritten = 0;
   uv__queue_init(&req->queue);
 
   req->bufs = req->bufsml;
@@ -1411,6 +1416,35 @@ int uv_write2(uv_write_t* req,
     assert(!(stream->flags & UV_HANDLE_BLOCKING_WRITES));
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
     uv__stream_osx_interrupt_select(stream);
+  }
+
+  return 0;
+}
+
+
+size_t uv_write_nwritten(const uv_write_t* req) {
+  return req->write_extra.nwritten;
+}
+
+
+int uv__write_cancel(uv_write_t* req) {
+  struct uv__queue* q;
+  uv_stream_t* stream;
+
+  stream = req->handle;
+
+  /* N.B.: If the request already completed, we still return 0, but the callback
+    will not return ECANCELED - nothing to do here. */
+  uv__queue_foreach(q, &stream->write_queue) {
+    if (q == &req->queue) {
+      uv__queue_remove(&req->queue);
+      req->error = UV_ECANCELED;
+
+      /* uv__write_callbacks will handle write_queue_size and freeing bufs. */
+      uv__queue_insert_tail(&stream->write_completed_queue, &req->queue);
+      uv__io_feed(stream->loop, &stream->io_watcher);
+      break;
+    }
   }
 
   return 0;
