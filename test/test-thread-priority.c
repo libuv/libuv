@@ -100,7 +100,7 @@ TEST_IMPL(thread_priority) {
   uv_sem_destroy(&sem);
 
   /* Now that the thread no longer exists, verify that the relevant error is returned */
-#if !defined(__ANDROID__)
+#if defined (__GLIBC__) || !defined(__linux__) // exclude android and musl libc
   ASSERT_EQ(UV_ESRCH, uv_thread_getpriority(task_id, &priority));
   ASSERT_EQ(UV_ESRCH, uv_thread_setpriority(task_id, UV_THREAD_PRIORITY_LOWEST));
 #endif

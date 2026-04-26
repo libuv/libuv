@@ -27,6 +27,27 @@ jobs:
         run: |
           make -C build distcheck
 
+  build-musl:
+    runs-on: ubuntu-latest
+    container:
+      image: alpine:3.23
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup
+        run: |
+          apk add --no-cache build-base cmake linux-headers
+          adduser -D libuv
+          chown -R libuv:libuv "$GITHUB_WORKSPACE"
+      - name: Configure
+        run: |
+          su libuv -c 'cmake -B build -DBUILD_TESTING=ON'
+      - name: Build
+        run: |
+          su libuv -c 'cmake --build build'
+      - name: Test
+        run: |
+          su libuv -c 'cd build && ctest -V --output-on-failure'
+
   build-android:
     runs-on: ubuntu-latest
     env:
