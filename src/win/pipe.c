@@ -1584,7 +1584,6 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
     /* Initialize the client handle and copy the pipeHandle to the client */
     pipe_client->handle = req->pipeHandle;
     pipe_client->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
-    pipe_client->flags |= UV_HANDLE_SYNC_BYPASS_IOCP;
 
     /* A unix domain socket server */
     if (server->flags & UV_HANDLE_WIN_UDS_PIPE) {
@@ -1597,9 +1596,17 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
           return GetLastError();
       }
 
+      if (SetFileCompletionNotificationModes(req->pipeHandle,
+              FILE_SKIP_SET_EVENT_ON_HANDLE |
+              FILE_SKIP_COMPLETION_PORT_ON_SUCCESS)) {
+        pipe_client->flags |= UV_HANDLE_SYNC_BYPASS_IOCP;
+      }
+
       /* AcceptEx() implicitly binds the accepted socket. */
       pipe_client->flags |= UV_HANDLE_BOUND;
       pipe_client->flags |= UV_HANDLE_WIN_UDS_PIPE;
+    } else {
+      pipe_client->flags |= UV_HANDLE_SYNC_BYPASS_IOCP;
     }
 
     /* Prepare the req to pick up a new connection */
