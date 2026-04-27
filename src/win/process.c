@@ -902,14 +902,20 @@ int uv_spawn(uv_loop_t* loop,
   BOOL result;
   WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
          *env = NULL, *cwd = NULL;
-  STARTUPINFOW startup;
+  STARTUPINFOEXW startup;
   PROCESS_INFORMATION info;
   DWORD process_flags, cwd_len;
   BYTE* child_stdio_buffer;
+  HANDLE* handle_list;
+  LPPROC_THREAD_ATTRIBUTE_LIST attr_list;
+  int attr_list_initialized;
 
   uv__process_init(loop, process);
   process->exit_cb = options->exit_cb;
   child_stdio_buffer = NULL;
+  handle_list = NULL;
+  attr_list = NULL;
+  attr_list_initialized = 0;
 
   if (options->flags & (UV_PROCESS_SETGID | UV_PROCESS_SETUID)) {
     return UV_ENOTSUP;
@@ -1022,20 +1028,70 @@ int uv_spawn(uv_loop_t* loop,
     goto done;
   }
 
-  startup.cb = sizeof(startup);
-  startup.lpReserved = NULL;
-  startup.lpDesktop = NULL;
-  startup.lpTitle = NULL;
-  startup.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+  memset(&startup, 0, sizeof startup);
+  startup.StartupInfo.cb = sizeof(startup);
+  startup.StartupInfo.lpReserved = NULL;
+  startup.StartupInfo.lpDesktop = NULL;
+  startup.StartupInfo.lpTitle = NULL;
+  startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 
-  startup.cbReserved2 = uv__stdio_size(child_stdio_buffer);
-  startup.lpReserved2 = (BYTE*) child_stdio_buffer;
+  startup.StartupInfo.cbReserved2 = uv__stdio_size(child_stdio_buffer);
+  startup.StartupInfo.lpReserved2 = (BYTE*) child_stdio_buffer;
 
-  startup.hStdInput = uv__stdio_handle(child_stdio_buffer, 0);
-  startup.hStdOutput = uv__stdio_handle(child_stdio_buffer, 1);
-  startup.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
+  startup.StartupInfo.hStdInput = uv__stdio_handle(child_stdio_buffer, 0);
+  startup.StartupInfo.hStdOutput = uv__stdio_handle(child_stdio_buffer, 1);
+  startup.StartupInfo.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
 
-  process_flags = CREATE_UNICODE_ENVIRONMENT;
+  /* Build the list of handles to inherit. Using
+   * PROC_THREAD_ATTRIBUTE_HANDLE_LIST ensures only these specific handles are
+   * inherited, closing the race condition where concurrent uv_spawn calls
+   * could cause handles intended for one child to leak into another. */
+  {
+#define CHILD_STDIO_COUNT(buffer)                   \
+    *((unsigned int*) (buffer))
+    int count = CHILD_STDIO_COUNT(child_stdio_buffer);
+#undef CHILD_STDIO_COUNT
+    int n = 0;
+    SIZE_T attr_size = 0;
+
+    handle_list = (HANDLE*) uv__malloc(count * sizeof(HANDLE));
+    if (handle_list == NULL) {
+      err = ERROR_OUTOFMEMORY;
+      goto done;
+    }
+
+    for (i = 0; i < count; i++) {
+      HANDLE h = uv__stdio_handle(child_stdio_buffer, i);
+      if (h != INVALID_HANDLE_VALUE)
+        handle_list[n++] = h;
+    }
+
+    InitializeProcThreadAttributeList(NULL, 1, 0, &attr_size);
+    attr_list = (LPPROC_THREAD_ATTRIBUTE_LIST) uv__malloc(attr_size);
+    if (attr_list == NULL) {
+      err = ERROR_OUTOFMEMORY;
+      goto done;
+    }
+    if (!InitializeProcThreadAttributeList(attr_list, 1, 0, &attr_size)) {
+      err = GetLastError();
+      goto done;
+    }
+    attr_list_initialized = 1;
+    if (!UpdateProcThreadAttribute(attr_list,
+                                   0,
+                                   PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                   handle_list,
+                                   n * sizeof(HANDLE),
+                                   NULL,
+                                   NULL)) {
+      err = GetLastError();
+      goto done;
+    }
+  }
+
+  startup.lpAttributeList = attr_list;
+
+  process_flags = CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT;
 
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_CONSOLE) ||
       (options->flags & UV_PROCESS_WINDOWS_HIDE)) {
@@ -1050,9 +1106,9 @@ int uv_spawn(uv_loop_t* loop,
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_GUI) ||
       (options->flags & UV_PROCESS_WINDOWS_HIDE)) {
     /* Use SW_HIDE to avoid any potential process window. */
-    startup.wShowWindow = SW_HIDE;
+    startup.StartupInfo.wShowWindow = SW_HIDE;
   } else {
-    startup.wShowWindow = SW_SHOWDEFAULT;
+    startup.StartupInfo.wShowWindow = SW_SHOWDEFAULT;
   }
 
   if (options->flags & UV_PROCESS_DETACHED) {
@@ -1078,7 +1134,7 @@ int uv_spawn(uv_loop_t* loop,
                      process_flags,
                      env,
                      cwd,
-                     &startup,
+                     &startup.StartupInfo,
                      &info)) {
     /* CreateProcessW failed. */
     err = GetLastError();
@@ -1160,6 +1216,14 @@ int uv_spawn(uv_loop_t* loop,
   uv__free(cwd);
   uv__free(env);
   uv__free(alloc_path);
+
+  if (attr_list != NULL) {
+    if (attr_list_initialized)
+      DeleteProcThreadAttributeList(attr_list);
+    uv__free(attr_list);
+    attr_list = NULL;
+  }
+  uv__free(handle_list);
 
   if (child_stdio_buffer != NULL) {
     /* Clean up child stdio handles. */
