@@ -252,36 +252,38 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf, int flag) {
 #endif
 
   if (nread < 1) {
+    /* uv__udp_recvmsg() emits the terminal callback for nread <= 0. */
     if (nread == 0 || errno == EAGAIN || errno == EWOULDBLOCK)
-      handle->recv_cb(handle, 0, buf, NULL, 0);
-    else
-      handle->recv_cb(handle, UV__ERR(errno), buf, NULL, 0);
-  } else {
-    /* pass each chunk to the application */
-    for (k = 0; k < (size_t) nread && handle->recv_cb != NULL; k++) {
-      flags = UV_UDP_MMSG_CHUNK;
-      if (msgs[k].msg_hdr.msg_flags & MSG_TRUNC)
-        flags |= UV_UDP_PARTIAL;
+      return 0;
 
-      chunk_buf = uv_buf_init(iov[k].iov_base, iov[k].iov_len);
-#if defined(__linux__)
-      if ((flag & MSG_ERRQUEUE) &&
-          uv__udp_recvmsg_errqueue(handle, &msgs[k].msg_hdr, &chunk_buf,
-                                   (const struct sockaddr*) &peers[k], flags)) {
-        continue;
-      }
-#endif
-      handle->recv_cb(handle,
-                      msgs[k].msg_len,
-                      &chunk_buf,
-                      msgs[k].msg_hdr.msg_name,
-                      flags);
-    }
-
-    /* one last callback so the original buffer is freed */
-    if (handle->recv_cb != NULL)
-      handle->recv_cb(handle, 0, buf, NULL, UV_UDP_MMSG_FREE);
+    return UV__ERR(errno);
   }
+
+  /* pass each chunk to the application */
+  for (k = 0; k < (size_t) nread && handle->recv_cb != NULL; k++) {
+    flags = UV_UDP_MMSG_CHUNK;
+    if (msgs[k].msg_hdr.msg_flags & MSG_TRUNC)
+      flags |= UV_UDP_PARTIAL;
+
+    chunk_buf = uv_buf_init(iov[k].iov_base, iov[k].iov_len);
+#if defined(__linux__)
+    if ((flag & MSG_ERRQUEUE) &&
+        uv__udp_recvmsg_errqueue(handle, &msgs[k].msg_hdr, &chunk_buf,
+                                 (const struct sockaddr*) &peers[k], flags)) {
+      continue;
+    }
+#endif
+    handle->recv_cb(handle,
+                    msgs[k].msg_len,
+                    &chunk_buf,
+                    msgs[k].msg_hdr.msg_name,
+                    flags);
+  }
+
+  /* one last callback so the original buffer is freed */
+  if (handle->recv_cb != NULL)
+    handle->recv_cb(handle, 0, buf, NULL, UV_UDP_MMSG_FREE);
+
   return nread;
 #else  /* __linux__ || ____FreeBSD__ || __APPLE__ */
   return UV_ENOSYS;
