@@ -2111,3 +2111,308 @@ TEST_IMPL(spawn_relative_path) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+/* This test relies on the newer incarnation of command line argument parsing.
+ * MinGW may link against msvcrt.dll which uses the old version of the parsing
+ * to maintain compatibility. This test would work when linking against ucrt
+ * using MinGW, though. */
+#if defined(_WIN32) && !defined(__MINGW32__)
+static int test_batch_script(char* file, int argc, char** argv) {
+  uv_stdio_container_t stdio[2];
+  uv_pipe_t out;
+  int i, arg_i = 0;
+  const char* out_args;
+  int r;
+
+  output_used = exit_cb_called = close_cb_called = 0;
+
+  args[0] = file;
+  for (i=0; i<argc; i++) {
+    args[i+1] = argv[i];
+  }
+  args[i+1] = NULL;
+
+  r = uv_pipe_init(uv_default_loop(), &out, 0);
+  ASSERT_OK(r);
+
+  options.exit_cb = exit_cb;
+  options.file = file;
+  options.args = args;
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_IGNORE;
+  options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  options.stdio[1].data.stream = (uv_stream_t*) &out;
+  options.stdio_count = 2;
+  options.flags = 0;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  /* Return the error to allow checking for expected failure */
+  if (r != 0) {
+    /* Fully close the process and the pipe to avoid a dangling pointer to &out */
+    uv_close((uv_handle_t*)&process, NULL);
+    uv_close((uv_handle_t*)&out, NULL);
+    ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+    return r;
+  }
+
+  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT_OK(r);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT_OK(r);
+
+  ASSERT_NE(0, output_used);
+  output[output_used] = '\0';
+
+  out_args = output;
+  do
+  {
+    const char* start = out_args;
+    out_args = strpbrk(out_args, "\r\n");
+    if (out_args) {
+      int len = out_args - start;
+      printf("out_args[%d] is: %.*s\n", arg_i, len, start);
+      ASSERT_MEM_EQ(argv[arg_i], start, len);
+      ASSERT_EQ(len, strlen(argv[arg_i]));
+      out_args += strspn(out_args, "\r\n");
+    }
+    arg_i++;
+  }
+  while(out_args && *out_args);
+
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(2, close_cb_called); /* Once for process once for the pipe. */
+  return 0;
+}
+
+TEST_IMPL(spawn_batch_script_arguments) {
+  char* batch_file = "args.bat";
+  uv_fs_t fs_req;
+  uv_file file;
+  char test_buf[1024];
+  size_t test_len;
+  uv_buf_t iov;
+
+  /* set-up */
+  unlink(batch_file);
+  unlink("file.txt");
+
+  int r = uv_exepath(exepath, &exepath_size);
+  ASSERT_OK(r);
+  exepath[exepath_size] = '\0';
+  test_len = snprintf(test_buf, sizeof(test_buf), 
+    "@echo off\r\n\"%s\" spawn_helper_echo_args %%*\r\n", exepath);
+
+  r = uv_fs_open(NULL, &fs_req, batch_file, UV_FS_O_WRONLY | UV_FS_O_CREAT,
+      S_IWUSR | S_IRUSR, NULL);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(fs_req.result, 0);
+  file = fs_req.result;
+  uv_fs_req_cleanup(&fs_req);
+
+  iov = uv_buf_init(test_buf, test_len);
+  r = uv_fs_write(NULL, &fs_req, file, &iov, 1, -1, NULL);
+  ASSERT_EQ(r, test_len);
+  ASSERT_EQ(fs_req.result, test_len);
+  uv_fs_req_cleanup(&fs_req);
+
+  uv_fs_close(uv_default_loop(), &fs_req, file, NULL);
+
+  /* test */
+  {
+    /* Trailing '.' and space characters are silently stripped in certain cases,
+     * so "foo.bat .. " could lead to batch script execution that evades
+     * BatBadBut mitigation if that possibility is not accounted for.
+     *
+     * This is currently handled safely somewhat by happenstance, since before
+     * calling CreateProcess, the file path is checked using a wildcard match,
+     * so any trailing characters will cause that wildcard match to fail
+     * (e.g. `foo.bat .. *` will not match `foo.bat`; only `foo.bat*` will). */
+    WCHAR wtf16_buf[MAX_PATH];
+    DWORD wtf16_len;
+    char* test_ptr = test_buf;
+
+    /* Relative path */
+    r = test_batch_script("args.bat .. ", 0, NULL);
+    ASSERT_EQ(r, UV_ENOENT);
+
+    /* Absolute path */
+    wtf16_len = GetFullPathNameW(L"args.bat", MAX_PATH, wtf16_buf, NULL);
+    ASSERT_NE(wtf16_len, 0);
+
+    test_len = uv_utf16_length_as_wtf8(wtf16_buf, wtf16_len);
+    ASSERT_GT(test_len, 0);
+    r = uv_utf16_to_wtf8(wtf16_buf, wtf16_len, &test_ptr, &test_len);
+    ASSERT_OK(r);
+    test_ptr += test_len;
+    *test_ptr++ = ' ';
+    *test_ptr++ = '.';
+    *test_ptr++ = '.';
+    *test_ptr++ = ' ';
+    *test_ptr++ = '\0';
+
+    r = test_batch_script(test_buf, 0, NULL);
+    ASSERT_EQ(r, UV_ENOENT);
+  }
+  {
+    /* \r is rejected since it can't round trip */
+    char* test_args[] = {"\r"};
+    r = test_batch_script("args.bat", 1, test_args);
+    ASSERT_EQ(r, UV_EINVAL);
+  }
+  {
+    /* \n is rejected since it can't round trip */
+    char* test_args[] = {"\n"};
+    r = test_batch_script("args.bat", 1, test_args);
+    ASSERT_EQ(r, UV_EINVAL);
+  }
+  {
+    char* test_args[2] = {"a", "b"};
+    ASSERT_OK(test_batch_script(batch_file, 2, test_args));
+  }
+  {
+    char* test_args[2] = {"c is for cat", "d is for dog"};
+    ASSERT_OK(test_batch_script(batch_file, 2, test_args));
+  }
+  {
+    char* test_args[2] = {"\"", " \""};
+    ASSERT_OK(test_batch_script(batch_file, 2, test_args));
+  }
+  {
+    char* test_args[2] = {"\\", "\\"};
+    ASSERT_OK(test_batch_script(batch_file, 2, test_args));
+  }
+  {
+    char* test_args[1] = {">file.txt"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {">file.txt"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"whoami.exe"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"&a.exe"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"&echo hello "};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[3] = {"&echo hello", "&whoami", ">file.txt"};
+    ASSERT_OK(test_batch_script(batch_file, 3, test_args));
+  }
+  {
+    char* test_args[1] = {"!TMP!"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key=value"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"\"key=value\""};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key = value"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key=[\"value\"]"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[2] = {"", "a=b"};
+    ASSERT_OK(test_batch_script(batch_file, 2, test_args));
+  }
+  {
+    char* test_args[1] = {"key=\"foo bar\""};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key=[\"my_value]"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key=[\"my_value\",\"other-value\"]"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key\\=value"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key=\"&whoami\""};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key=\"value\"=5"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"key=[\">file.txt\"]"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"%hello"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"%PATH%"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"%%cd:~,%"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"%PATH%PATH%"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"\">file.txt"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"abc\"&echo hello"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"123\">file.txt"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[1] = {"\"&echo hello&whoami.exe"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+  {
+    char* test_args[2] = {"\"hello^\"world\"", "hello &echo oh no >file.txt"};
+    ASSERT_OK(test_batch_script(batch_file, 2, test_args));
+  }
+  {
+    char* test_args[1] = {"&whoami.exe"};
+    ASSERT_OK(test_batch_script(batch_file, 1, test_args));
+  }
+
+  /* Ensure that file.txt was not created by any >file.txt arguments */
+  r = uv_fs_stat(NULL, &fs_req, "file.txt", NULL);
+  ASSERT_EQ(r, UV_ENOENT);
+  ASSERT_EQ(fs_req.result, UV_ENOENT);
+  uv_fs_req_cleanup(&fs_req);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+#endif /* _WIN32 && !__MINGW32__ */
+
+/* Called by spawn_helper_echo_args. */
+void spawn_echo_args(int argc, char **argv) {
+  for (int i=2; i<argc; i++) {
+    printf("%s\n", argv[i]);
+  }
+}

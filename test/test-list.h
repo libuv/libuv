@@ -352,6 +352,9 @@ TEST_DECLARE   (spawn_quoted_path)
 TEST_DECLARE   (spawn_tcp_server)
 TEST_DECLARE   (spawn_exercise_sigchld_issue)
 TEST_DECLARE   (spawn_relative_path)
+#if defined(_WIN32) && !defined(__MINGW32__)
+TEST_DECLARE   (spawn_batch_script_arguments)
+#endif
 TEST_DECLARE   (fs_poll)
 TEST_DECLARE   (fs_poll_getpath)
 TEST_DECLARE   (fs_poll_close_request)
@@ -594,9 +597,11 @@ TEST_DECLARE  (iouring_pollhup)
 
 TEST_DECLARE  (wtf8)
 TEST_DECLARE  (utf16_to_wtf8_exact_fill)
+#ifndef USING_UV_SHARED
 TEST_DECLARE  (idna_toascii)
 TEST_DECLARE  (utf8_decode1)
 TEST_DECLARE  (utf8_decode1_overrun)
+#endif
 TEST_DECLARE  (uname)
 
 TEST_DECLARE  (metrics_info_check)
@@ -1049,6 +1054,9 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_tcp_server)
   TEST_ENTRY  (spawn_exercise_sigchld_issue)
   TEST_ENTRY  (spawn_relative_path)
+#if defined(_WIN32) && !defined(__MINGW32__)
+  TEST_ENTRY  (spawn_batch_script_arguments)
+#endif
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (fs_poll_getpath)
   TEST_ENTRY  (fs_poll_close_request)
@@ -1267,13 +1275,17 @@ TASK_LIST_START
 
   TEST_ENTRY  (wtf8)
   TEST_ENTRY  (utf16_to_wtf8_exact_fill)
+#ifndef USING_UV_SHARED
   TEST_ENTRY  (utf8_decode1)
   TEST_ENTRY  (utf8_decode1_overrun)
+#endif
   TEST_ENTRY  (uname)
 
 /* Doesn't work on z/OS because that platform uses EBCDIC, not ASCII. */
 #ifndef __MVS__
+#ifndef USING_UV_SHARED
   TEST_ENTRY  (idna_toascii)
+#endif
 #endif
 
   TEST_ENTRY    (not_writable_after_shutdown)
