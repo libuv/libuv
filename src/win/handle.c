@@ -92,6 +92,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb cb) {
       uv__udp_close(loop, (uv_udp_t*) handle);
       return;
 
+    case UV_UDP2:
+      uv__udp2_close(loop, (uv_udp2_t*) handle);
+      return;
+
     case UV_POLL:
       uv__poll_close(loop, (uv_poll_t*) handle);
       return;

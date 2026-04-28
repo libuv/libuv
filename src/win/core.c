@@ -592,13 +592,21 @@ static void uv__process_reqs(uv_loop_t* loop) {
         break;
 
       case UV_UDP_RECV:
-        uv__process_udp_recv_req(loop, (uv_udp_t*) req->data, req);
+        if (((uv_handle_t*) req->data)->type == UV_UDP2)
+          uv__process_udp2_recv_req(loop, (uv_udp2_t*) req->data, req);
+        else
+          uv__process_udp_recv_req(loop, (uv_udp_t*) req->data, req);
         break;
 
       case UV_UDP_SEND:
-        uv__process_udp_send_req(loop,
-                                 ((uv_udp_send_t*) req)->handle,
-                                 (uv_udp_send_t*) req);
+        if (((uv_handle_t*) ((uv_udp_send_t*) req)->handle)->type == UV_UDP2)
+          uv__process_udp2_send_req(loop,
+                                    (uv_udp2_t*) ((uv_udp_send_t*) req)->handle,
+                                    (uv_udp2_send_t*) req);
+        else
+          uv__process_udp_send_req(loop,
+                                   ((uv_udp_send_t*) req)->handle,
+                                   (uv_udp_send_t*) req);
         break;
 
       case UV_WAKEUP:
@@ -653,6 +661,10 @@ static void uv__process_endgames(uv_loop_t* loop) {
 
       case UV_UDP:
         uv__udp_endgame(loop, (uv_udp_t*) handle);
+        break;
+
+      case UV_UDP2:
+        uv__udp2_endgame(loop, (uv_udp2_t*) handle);
         break;
 
       case UV_POLL:
@@ -782,6 +794,10 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
 
   case UV_UDP:
     fd_out = (uv_os_fd_t)((uv_udp_t*) handle)->socket;
+    break;
+
+  case UV_UDP2:
+    fd_out = (uv_os_fd_t)((uv_udp2_t*) handle)->socket;
     break;
 
   case UV_POLL:

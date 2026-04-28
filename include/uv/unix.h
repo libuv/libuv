@@ -303,6 +303,25 @@ typedef struct {
   struct uv__queue write_queue;                                               \
   struct uv__queue write_completed_queue;                                     \
 
+#define UV_UDP2_PRIVATE_FIELDS                                                \
+  uv_udp2_alloc_cb alloc_cb;                                                  \
+  uv_udp2_recv_cb recv_cb;                                                    \
+  uv__io_t io_watcher;                                                        \
+  struct uv__queue write_queue;                                               \
+  struct uv__queue write_completed_queue;                                     \
+
+#define UV_UDP2_SEND_PRIVATE_FIELDS                                           \
+  struct uv__queue queue;                                                     \
+  union {                                                                     \
+    struct sockaddr addr;                                                     \
+    struct sockaddr_storage storage;                                          \
+  } u;                                                                        \
+  unsigned int nbufs;                                                         \
+  uv_buf_t* bufs;                                                             \
+  ssize_t status;                                                             \
+  uv_udp2_send_cb send_cb;                                                    \
+  uv_buf_t bufsml[4];                                                         \
+
 #define UV_PIPE_PRIVATE_FIELDS                                                \
   const char* pipe_fname; /* NULL or strdup'ed */
 
