@@ -873,6 +873,12 @@ struct uv_pipe_s {
   UV_PIPE_PRIVATE_FIELDS
 };
 
+/* Server Pipe ACL */
+typedef struct {
+  void* data;
+  void* acl;
+}uv__pipe_handle_data_s;
+
 UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
