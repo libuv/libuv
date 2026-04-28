@@ -505,5 +505,6 @@ typedef struct {
 #define UV_FS_O_SHORT_LIVED   0
 #define UV_FS_O_SEQUENTIAL    0
 #define UV_FS_O_TEMPORARY     0
+#define UV_FS_O_SHARE_RDONLY  0
 
 #endif /* UV_UNIX_H */
