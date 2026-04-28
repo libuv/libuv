@@ -495,8 +495,10 @@ static int uv__makedir_p(const char *dir) {
   size_t len;
   int err;
 
-  /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-  uv__strscpy(tmp, dir, sizeof(tmp));
+  ssize_t rc = uv__strscpy(tmp, dir, sizeof(tmp));
+  if (rc == UV_E2BIG)
+    return UV_ENAMETOOLONG;
+
   len = strlen(tmp);
   if (tmp[len - 1] == '/')
     tmp[len - 1] = 0;
@@ -521,7 +523,8 @@ static int uv__make_subdirs_p(const char *filename) {
   char cmd[2048];
   char *p;
   int rc = 0;
-
+  size_t cmd_len;
+  ptrdiff_t dir_part_len;
   /* Strip off the monitor file name */
   p = strrchr(filename, '/');
 
@@ -534,7 +537,13 @@ static int uv__make_subdirs_p(const char *filename) {
     sprintf(cmd, "/aha/fs/modFile.monFactory");
   }
 
-  strncat(cmd, filename, (p - filename));
+  cmd_len = strlen(cmd);
+  dir_part_len = p - filename;
+
+  if (cmd_len + (size_t)dir_part_len + 1 > sizeof(cmd))
+    return UV_ENAMETOOLONG;
+
+  strncat(cmd, filename, dir_part_len);
   rc = uv__makedir_p(cmd);
 
   if (rc == -1 && errno != EEXIST){
@@ -569,7 +578,7 @@ static int uv__setup_ahafs(const char* filename, int *fd) {
 
   /* Make the necessary subdirectories for the monitor file */
   rc = uv__make_subdirs_p(filename);
-  if (rc == -1 && errno != EEXIST)
+  if (rc != 0)
     return rc;
 
   strcat(mon_file, filename);
