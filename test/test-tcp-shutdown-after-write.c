@@ -74,6 +74,8 @@ static void timer_cb(uv_timer_t* handle) {
 
 
 static void read_cb(uv_stream_t* handle, ssize_t nread, const uv_buf_t* buf) {
+  if (nread == UV_EOF)
+    uv_close((uv_handle_t*)&conn, close_cb);
 }
 
 
@@ -97,7 +99,6 @@ static void write_cb(uv_write_t* req, int status) {
 static void shutdown_cb(uv_shutdown_t* req, int status) {
   ASSERT_OK(status);
   shutdown_cb_called++;
-  uv_close((uv_handle_t*)&conn, close_cb);
 }
 
 
