@@ -263,7 +263,7 @@ int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
 
 
 int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
-  char address_part[40];
+  char address_part[INET6_ADDRSTRLEN];
   size_t address_part_size;
   const char* zone_index;
 
