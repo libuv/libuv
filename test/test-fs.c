@@ -4662,6 +4662,61 @@ TEST_FS_IMPL(fs_exclusive_sharing_mode) {
 #endif
 
 #ifdef _WIN32
+TEST_FS_IMPL(fs_readonly_sharing_mode) {
+  int r;
+
+  /* Setup. */
+  unlink("test_file");
+
+  ASSERT_GT(UV_FS_O_SHARE_RDONLY, 0);
+
+  r = uv_fs_open(NULL,
+                 &open_req1,
+                 "test_file",
+                 UV_FS_O_RDWR | UV_FS_O_CREAT | UV_FS_O_SHARE_RDONLY,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(open_req1.result, 0);
+  uv_fs_req_cleanup(&open_req1);
+
+  r = uv_fs_open(NULL,
+                 &open_req2,
+                 "test_file", UV_FS_O_RDWR,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_LT(r, 0);
+  ASSERT_LT(open_req2.result, 0);
+  uv_fs_req_cleanup(&open_req2);
+
+  r = uv_fs_open(NULL,
+                 &open_req2,
+                 "test_file", UV_FS_O_RDONLY,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_GE(r, 0);
+  ASSERT_GE(open_req2.result, 0);
+  uv_fs_req_cleanup(&open_req2);
+
+  r = uv_fs_close(NULL, &close_req, open_req2.result, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(close_req.result);
+  uv_fs_req_cleanup(&close_req);
+
+  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(close_req.result);
+  uv_fs_req_cleanup(&close_req);
+
+  /* Cleanup */
+  unlink("test_file");
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+#endif
+
+#ifdef _WIN32
 TEST_FS_IMPL(fs_file_flag_no_buffering) {
   int r;
 

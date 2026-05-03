@@ -684,6 +684,7 @@ typedef struct {
 #define UV_FS_O_TEMPORARY    _O_TEMPORARY
 #define UV_FS_O_TRUNC        _O_TRUNC
 #define UV_FS_O_WRONLY       _O_WRONLY
+#define UV_FS_O_SHARE_RDONLY 0x40000000 /* FILE_SHARE_READ  */
 
 /* fs open() flags supported on other platforms (or mapped on this platform): */
 #define UV_FS_O_DIRECT       0x02000000 /* FILE_FLAG_NO_BUFFERING */

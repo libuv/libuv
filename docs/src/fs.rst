@@ -689,6 +689,15 @@ File open constants
         `UV_FS_O_SEQUENTIAL` is only supported on Windows via
         `FILE_FLAG_SEQUENTIAL_SCAN <https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew>`_.
 
+.. c:macro:: UV_FS_O_SHARE_RDONLY
+
+    Open the file with read sharing mode (FILE_SHARE_READ) only. This means that other
+    processes can open the file for reading, but not for writing or deleting.
+
+    .. note::
+        `UV_FS_O_SHARE_RDONLY` is only supported on Windows via
+        `FILE_FLAG_SEQUENTIAL_SCAN <https://docs.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-createfilew>`_.
+
 .. c:macro:: UV_FS_O_SHORT_LIVED
 
     The file is temporary and should not be flushed to disk if possible.
