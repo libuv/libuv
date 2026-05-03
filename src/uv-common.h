@@ -119,6 +119,15 @@ enum {
   UV_HANDLE_UDP_CONNECTED               = 0x02000000,
   UV_HANDLE_UDP_RECVMMSG                = 0x04000000,
 
+  /* Only used by uv_udp2_t handles. */
+  UV_HANDLE_UDP2_PROCESSING             = 0x01000000,
+  UV_HANDLE_UDP2_CONNECTED              = 0x02000000,
+  UV_HANDLE_UDP2_RECVMMSG               = 0x04000000,
+  UV_HANDLE_UDP2_RECVECN                = 0x08000000,
+  UV_HANDLE_UDP2_RECVPKTINFO            = 0x10000000,
+  UV_HANDLE_UDP2_GRO                    = 0x20000000,
+  UV_HANDLE_UDP2_GRO_RAW               = 0x40000000,
+
   /* Only used by uv_pipe_t handles. */
   UV_HANDLE_NON_OVERLAPPED_PIPE         = 0x01000000,
   UV_HANDLE_PIPESERVER                  = 0x02000000,
@@ -169,6 +178,11 @@ int uv__udp_init_ex(uv_loop_t* loop,
                     unsigned flags,
                     int domain);
 
+int uv__udp2_init_ex(uv_loop_t* loop,
+                     uv_udp2_t* handle,
+                     unsigned flags,
+                     int domain);
+
 int uv__udp_bind(uv_udp_t* handle,
                  const struct sockaddr* addr,
                  unsigned int  addrlen,
@@ -206,6 +220,44 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloccb,
                        uv_udp_recv_cb recv_cb);
 
 int uv__udp_recv_stop(uv_udp_t* handle);
+
+int uv__udp2_bind(uv_udp2_t* handle,
+                  const struct sockaddr* addr,
+                  unsigned int addrlen,
+                  unsigned int flags);
+
+int uv__udp2_connect(uv_udp2_t* handle,
+                     const struct sockaddr* addr,
+                     unsigned int addrlen);
+
+int uv__udp2_disconnect(uv_udp2_t* handle);
+
+int uv__udp2_is_connected(uv_udp2_t* handle);
+
+int uv__udp2_send(uv_udp2_send_t* req,
+                  uv_udp2_t* handle,
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  const struct sockaddr* addr,
+                  unsigned int addrlen,
+                  uv_udp2_send_cb send_cb);
+
+int uv__udp2_try_send(uv_udp2_t* handle,
+                      const uv_buf_t bufs[],
+                      unsigned int nbufs,
+                      const struct sockaddr* addr,
+                      unsigned int addrlen);
+
+int uv__udp2_try_send2(uv_udp2_t* handle,
+                       unsigned int count,
+                       uv_buf_t* bufs[/*count*/],
+                       unsigned int nbufs[/*count*/],
+                       struct sockaddr* addrs[/*count*/]);
+
+int uv__udp2_recv_start(uv_udp2_t* handle, uv_udp2_alloc_cb alloccb,
+                        uv_udp2_recv_cb recv_cb);
+
+int uv__udp2_recv_stop(uv_udp2_t* handle);
 
 void uv__fs_poll_close(uv_fs_poll_t* handle);
 

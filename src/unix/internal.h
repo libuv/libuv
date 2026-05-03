@@ -273,6 +273,7 @@ typedef enum {
     UV__SERVER_IO,
     UV__STREAM_IO,
     UV__UDP_IO,
+    UV__UDP2_IO,
 } uv__io_cb_t;
 
 #define uv__io_cb_get(w)      ((uv__io_cb_t)((w)->bits & 15))
@@ -292,6 +293,7 @@ void uv__signal_event(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
+void uv__udp2_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
 
 #ifndef _AIX
 #define uv__ahafs_event(loop, w, events) UNREACHABLE()
@@ -402,6 +404,8 @@ int uv__thread_getname(uv_thread_t* tid, char* name, size_t size);
 size_t uv__thread_stack_size(void);
 void uv__udp_close(uv_udp_t* handle);
 void uv__udp_finish_close(uv_udp_t* handle);
+void uv__udp2_close(uv_udp2_t* handle);
+void uv__udp2_finish_close(uv_udp2_t* handle);
 FILE* uv__open_file(const char* path);
 int uv__search_path(const char* prog, char* buf, size_t* buflen);
 void uv__wait_children(uv_loop_t* loop);

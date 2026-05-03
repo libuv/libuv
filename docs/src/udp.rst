@@ -520,4 +520,8 @@ API
 
     .. versionadded:: 1.19.0
 
-.. seealso:: The :c:type:`uv_handle_t` API functions also apply.
+.. seealso::
+
+    The :c:type:`uv_handle_t` API functions also apply.
+
+    :c:type:`uv_udp2_t` --- UDP handle with ECN, PMTUD, and pktinfo support.

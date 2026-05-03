@@ -179,6 +179,10 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     uv__udp_close((uv_udp_t*)handle);
     break;
 
+  case UV_UDP2:
+    uv__udp2_close((uv_udp2_t*)handle);
+    break;
+
   case UV_PREPARE:
     uv__prepare_close((uv_prepare_t*)handle);
     break;
@@ -249,6 +253,8 @@ int uv__socket_sockopt(uv_handle_t* handle, int optname, int* value) {
     fd = uv__stream_fd((uv_stream_t*) handle);
   else if (handle->type == UV_UDP)
     fd = ((uv_udp_t *) handle)->io_watcher.fd;
+  else if (handle->type == UV_UDP2)
+    fd = ((uv_udp2_t *) handle)->io_watcher.fd;
   else
     return UV_ENOTSUP;
 
@@ -349,6 +355,10 @@ static void uv__finish_close(uv_handle_t* handle) {
 
     case UV_UDP:
       uv__udp_finish_close((uv_udp_t*)handle);
+      break;
+
+    case UV_UDP2:
+      uv__udp2_finish_close((uv_udp2_t*)handle);
       break;
 
     default:
@@ -823,6 +833,10 @@ int uv_fileno(const uv_handle_t* handle, uv_os_fd_t* fd) {
     fd_out = ((uv_udp_t *) handle)->io_watcher.fd;
     break;
 
+  case UV_UDP2:
+    fd_out = ((uv_udp2_t *) handle)->io_watcher.fd;
+    break;
+
   case UV_POLL:
     fd_out = ((uv_poll_t *) handle)->io_watcher.fd;
     break;
@@ -932,6 +946,9 @@ void uv__io_cb(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   case UV__UDP_IO:
     uv__udp_io(loop, w, events);
     break;
+  case UV__UDP2_IO:
+    uv__udp2_io(loop, w, events);
+    break;
   default:
     UNREACHABLE();
   }
@@ -954,7 +971,7 @@ int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   int err;
 
   assert(uv__io_cb_get(w) >= UV__AHAFS_EVENT);
-  assert(uv__io_cb_get(w) <= UV__UDP_IO);
+  assert(uv__io_cb_get(w) <= UV__UDP2_IO);
   assert(0 == (events & ~(POLLIN | POLLOUT | UV__POLLRDHUP | UV__POLLPRI)));
   assert(0 != events);
   assert(w->fd >= 0);

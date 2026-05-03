@@ -569,6 +569,202 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
 }
 
 
+int uv_udp2_init_ex(uv_loop_t* loop, uv_udp2_t* handle, unsigned flags) {
+  unsigned extra_flags;
+  int domain;
+
+  /* Use the lower 8 bits for the domain. */
+  domain = flags & 0xFF;
+  if (domain != AF_INET && domain != AF_INET6 && domain != AF_UNSPEC)
+    return UV_EINVAL;
+
+  /* Use the higher bits for extra flags. */
+  extra_flags = flags & ~0xFF;
+  if (extra_flags & ~UV_UDP2_RECVMMSG)
+    return UV_EINVAL;
+
+  return uv__udp2_init_ex(loop, handle, flags, domain);
+}
+
+
+int uv_udp2_init(uv_loop_t* loop, uv_udp2_t* handle) {
+  return uv_udp2_init_ex(loop, handle, AF_UNSPEC);
+}
+
+
+int uv_udp2_bind(uv_udp2_t* handle,
+                 const struct sockaddr* addr,
+                 unsigned int flags) {
+  unsigned int addrlen;
+
+  if (handle->type != UV_UDP2)
+    return UV_EINVAL;
+
+  if (addr->sa_family == AF_INET)
+    addrlen = sizeof(struct sockaddr_in);
+  else if (addr->sa_family == AF_INET6)
+    addrlen = sizeof(struct sockaddr_in6);
+  else
+    return UV_EINVAL;
+
+  return uv__udp2_bind(handle, addr, addrlen, flags);
+}
+
+
+int uv_udp2_connect(uv_udp2_t* handle, const struct sockaddr* addr) {
+  unsigned int addrlen;
+
+  if (handle->type != UV_UDP2)
+    return UV_EINVAL;
+
+  /* Disconnect the handle */
+  if (addr == NULL) {
+    if (!(handle->flags & UV_HANDLE_UDP2_CONNECTED))
+      return UV_ENOTCONN;
+
+    return uv__udp2_disconnect(handle);
+  }
+
+  if (addr->sa_family == AF_INET)
+    addrlen = sizeof(struct sockaddr_in);
+  else if (addr->sa_family == AF_INET6)
+    addrlen = sizeof(struct sockaddr_in6);
+  else
+    return UV_EINVAL;
+
+  if (handle->flags & UV_HANDLE_UDP2_CONNECTED)
+    return UV_EISCONN;
+
+  return uv__udp2_connect(handle, addr, addrlen);
+}
+
+
+static int uv__udp2_check_before_send(uv_udp2_t* handle,
+                                      const uv_buf_t bufs[],
+                                      unsigned int nbufs,
+                                      const struct sockaddr* addr) {
+  unsigned int addrlen;
+
+  if (handle->type != UV_UDP2)
+    return UV_EINVAL;
+
+  if (addr != NULL && (handle->flags & UV_HANDLE_UDP2_CONNECTED))
+    return UV_EISCONN;
+
+  if (addr == NULL && !(handle->flags & UV_HANDLE_UDP2_CONNECTED))
+    return UV_EDESTADDRREQ;
+
+  if (addr != NULL) {
+    if (addr->sa_family == AF_INET)
+      addrlen = sizeof(struct sockaddr_in);
+    else if (addr->sa_family == AF_INET6)
+      addrlen = sizeof(struct sockaddr_in6);
+#if defined(AF_UNIX) && !defined(_WIN32)
+    else if (addr->sa_family == AF_UNIX)
+      addrlen = sizeof(struct sockaddr_un);
+#endif
+    else
+      return UV_EINVAL;
+  } else {
+    addrlen = 0;
+  }
+
+  if (nbufs < 1 || nbufs > 1024 * 1024)
+    return UV_EINVAL;
+
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
+    return UV_EINVAL;
+
+  return addrlen;
+}
+
+
+int uv_udp2_send(uv_udp2_send_t* req,
+                 uv_udp2_t* handle,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs,
+                 const struct sockaddr* addr,
+                 uv_udp2_send_cb send_cb) {
+  int addrlen;
+
+  addrlen = uv__udp2_check_before_send(handle, bufs, nbufs, addr);
+  if (addrlen < 0)
+    return addrlen;
+
+  return uv__udp2_send(req, handle, bufs, nbufs, addr, addrlen, send_cb);
+}
+
+
+int uv_udp2_try_send(uv_udp2_t* handle,
+                     const uv_buf_t bufs[],
+                     unsigned int nbufs,
+                     const struct sockaddr* addr) {
+  int addrlen;
+
+  addrlen = uv__udp2_check_before_send(handle, bufs, nbufs, addr);
+  if (addrlen < 0)
+    return addrlen;
+
+  return uv__udp2_try_send(handle, bufs, nbufs, addr, addrlen);
+}
+
+
+int uv_udp2_try_send2(uv_udp2_t* handle,
+                      unsigned int count,
+                      uv_buf_t* bufs[/*count*/],
+                      unsigned int nbufs[/*count*/],
+                      struct sockaddr* addrs[/*count*/],
+                      unsigned int flags) {
+  unsigned int i;
+  int addrlen;
+
+  if (count < 1)
+    return UV_EINVAL;
+
+  if (flags != 0)
+    return UV_EINVAL;
+
+  for (i = 0; i < count; i++) {
+    addrlen = uv__udp2_check_before_send(handle, bufs[i], nbufs[i], addrs[i]);
+    if (addrlen < 0)
+      return addrlen;
+  }
+
+  if (handle->send_queue_count > 0)
+    return UV_EAGAIN;
+
+  return uv__udp2_try_send2(handle, count, bufs, nbufs, addrs);
+}
+
+
+int uv_udp2_recv_start(uv_udp2_t* handle,
+                       uv_udp2_alloc_cb alloc_cb,
+                       uv_udp2_recv_cb recv_cb) {
+  if (handle->type != UV_UDP2 || alloc_cb == NULL || recv_cb == NULL)
+    return UV_EINVAL;
+  else
+    return uv__udp2_recv_start(handle, alloc_cb, recv_cb);
+}
+
+
+int uv_udp2_recv_stop(uv_udp2_t* handle) {
+  if (handle->type != UV_UDP2)
+    return UV_EINVAL;
+  else
+    return uv__udp2_recv_stop(handle);
+}
+
+
+size_t uv_udp2_get_send_queue_size(const uv_udp2_t* handle) {
+  return handle->send_queue_size;
+}
+
+
+size_t uv_udp2_get_send_queue_count(const uv_udp2_t* handle) {
+  return handle->send_queue_count;
+}
+
+
 void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
   struct uv__queue queue;
   struct uv__queue* q;

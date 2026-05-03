@@ -24,6 +24,7 @@ API documentation
    pipe
    tty
    udp
+   udp2
    fs_event
    fs_poll
    fs

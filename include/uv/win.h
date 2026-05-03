@@ -194,6 +194,13 @@ typedef int (WSAAPI* LPFN_WSARECVFROM)
              LPWSAOVERLAPPED overlapped,
              LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
 
+typedef INT (WSAAPI* LPFN_WSARECVMSG)
+            (SOCKET socket,
+             LPWSAMSG msg,
+             LPDWORD bytes,
+             LPWSAOVERLAPPED overlapped,
+             LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
+
 #ifndef _NTDEF_
   typedef LONG NTSTATUS;
   typedef NTSTATUS *PNTSTATUS;
@@ -396,6 +403,9 @@ typedef struct {
 #define UV_UDP_SEND_PRIVATE_FIELDS                                            \
   /* empty */
 
+#define UV_UDP2_SEND_PRIVATE_FIELDS                                           \
+  /* empty */
+
 #define UV_PRIVATE_REQ_TYPES                                                  \
   typedef struct uv_pipe_accept_s {                                           \
     UV_REQ_FIELDS                                                             \
@@ -464,6 +474,20 @@ typedef struct {
   uv_alloc_cb alloc_cb;                                                       \
   LPFN_WSARECV func_wsarecv;                                                  \
   LPFN_WSARECVFROM func_wsarecvfrom;
+
+#define UV_UDP2_PRIVATE_FIELDS                                                \
+  SOCKET socket;                                                              \
+  unsigned int reqs_pending;                                                  \
+  int activecnt;                                                              \
+  uv_req_t recv_req;                                                          \
+  uv_buf_t recv_buffer;                                                       \
+  struct sockaddr_storage recv_from;                                          \
+  int recv_from_len;                                                          \
+  uv_udp2_recv_cb recv_cb;                                                    \
+  uv_udp2_alloc_cb alloc_cb;                                                  \
+  LPFN_WSARECV func_wsarecv;                                                  \
+  LPFN_WSARECVFROM func_wsarecvfrom;                                          \
+  LPFN_WSARECVMSG func_wsarecvmsg;
 
 #define uv_pipe_server_fields                                                 \
   int pending_instances;                                                      \
