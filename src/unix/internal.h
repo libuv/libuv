@@ -93,12 +93,6 @@
 # endif
 #endif
 
-#if defined(PATH_MAX)
-# define UV__PATH_MAX PATH_MAX
-#else
-# define UV__PATH_MAX 8192
-#endif
-
 union uv__sockaddr {
   struct sockaddr_in6 in6;
   struct sockaddr_in in;
