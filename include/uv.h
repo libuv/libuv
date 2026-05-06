@@ -640,6 +640,26 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              const struct sockaddr* addr,
                              uv_connect_cb cb);
 
+
+/*
+ * Exports a uv_tcp_t handle by duplicating its underlying file descriptor.
+ *
+ * This allows the socket to be safely imported and used by another
+ * libuv event loop or thread using `uv_tcp_import()`.
+ */
+UV_EXTERN int uv_tcp_export(uv_tcp_t* stream, uv_os_sock_t* sock);
+
+/*
+ * Imports a TCP socket file descriptor into a libuv TCP handle.
+ *
+ * This function initializes a user-provided `uv_tcp_t` structure and binds it
+ * to an existing, valid file descriptor (mostly obtained via `uv_tcp_export`)
+ */
+UV_EXTERN int uv_tcp_import(uv_loop_t* loop,
+                            uv_os_sock_t sock,
+                            uv_tcp_t* out,
+                            unsigned int flags);
+
 /* uv_connect_t is a subclass of uv_req_t. */
 struct uv_connect_s {
   UV_REQ_FIELDS
@@ -900,6 +920,22 @@ UV_EXTERN void uv_pipe_pending_instances(uv_pipe_t* handle, int count);
 UV_EXTERN int uv_pipe_pending_count(uv_pipe_t* handle);
 UV_EXTERN uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
 UV_EXTERN int uv_pipe_chmod(uv_pipe_t* handle, int flags);
+
+/*
+ * Exports a uv_pipe_t handle by duplicating its underlying file descriptor
+ * (Unix) or pipe HANDLE (Windows, returned as a CRT fd via _open_osfhandle).
+ *
+ * The returned fd must be passed to uv_pipe_import() or closed by the caller.
+ */
+UV_EXTERN int uv_pipe_export(uv_pipe_t* handle, uv_file* file);
+
+/*
+ * Imports a pipe file descriptor into a libuv pipe handle.
+ *
+ * Initializes `out` and binds it to `fd` (obtained via uv_pipe_export).
+ * `ipc` must match the ipc setting of the exported handle.
+ */
+UV_EXTERN int uv_pipe_import(uv_loop_t* loop, uv_file file, uv_pipe_t* out, int ipc);
 
 
 struct uv_poll_s {
