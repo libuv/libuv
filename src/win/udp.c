@@ -467,9 +467,11 @@ static int uv__udp_win_parse_ecn(WSAMSG* msg, int is_ipv6) {
   WSACMSGHDR* cm;
 
   for (cm = WSA_CMSG_FIRSTHDR(msg); cm; cm = WSA_CMSG_NXTHDR(msg, cm)) {
+    /* Windows may deliver IPv4 TOS as cmsg_type IP_TOS or IP_RECVTOS
+     * depending on the platform version. Check both. */
     if (!is_ipv6 &&
         cm->cmsg_level == IPPROTO_IP &&
-        cm->cmsg_type == IP_TOS) {
+        (cm->cmsg_type == IP_TOS || cm->cmsg_type == IP_RECVTOS)) {
       return *(unsigned char*) WSA_CMSG_DATA(cm) & 0x03;
     }
     if (is_ipv6 &&

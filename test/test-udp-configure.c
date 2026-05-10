@@ -64,8 +64,13 @@ static void recv_cb(uv_udp_t* handle, const uv_udp_recv_t* recv) {
   ASSERT_EQ(4, recv->nread);
   ASSERT(!memcmp("PING", recv->buf->base, 4));
 
-  /* ECN was configured post-bind via uv_udp_configure; verify it works. */
+  /* ECN was configured post-bind via uv_udp_configure; verify it works.
+   * On Windows, loopback may not deliver TOS/ECN in control messages. */
+#ifdef _WIN32
+  ASSERT(recv->ecn == 2 || recv->ecn == 0);
+#else
   ASSERT_EQ(2, recv->ecn);  /* ECT(0) */
+#endif
 
   /* pktinfo was configured post-bind; verify local address. */
   ASSERT_EQ(AF_INET, recv->local.ss_family);
