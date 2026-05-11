@@ -101,6 +101,13 @@ typedef int (WSAAPI* LPFN_WSARECVFROM)
              LPWSAOVERLAPPED overlapped,
              LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
 
+typedef INT (WSAAPI* LPFN_WSARECVMSG)
+            (SOCKET socket,
+             LPWSAMSG msg,
+             LPDWORD bytes,
+             LPWSAOVERLAPPED overlapped,
+             LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine);
+
 #ifndef _NTDEF_
   typedef LONG NTSTATUS;
   typedef NTSTATUS *PNTSTATUS;
@@ -342,7 +349,8 @@ typedef struct {
   uv_udp_recv_cb recv_cb;                                                     \
   uv_alloc_cb alloc_cb;                                                       \
   LPFN_WSARECV func_wsarecv;                                                  \
-  LPFN_WSARECVFROM func_wsarecvfrom;
+  LPFN_WSARECVFROM func_wsarecvfrom;                                          \
+  LPFN_WSARECVMSG func_wsarecvmsg;
 
 #define uv_pipe_server_fields                                                 \
   int pending_instances;                                                      \

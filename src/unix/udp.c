@@ -32,6 +32,41 @@
 #endif
 #include <sys/un.h>
 
+/* BSD/macOS need net/if_dl.h for struct sockaddr_dl (IP_RECVIF path). */
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || \
+    defined(__NetBSD__) || defined(__DragonFly__)
+#include <net/if_dl.h>
+#endif
+
+#ifndef SOL_UDP
+# define SOL_UDP 17
+#endif
+#ifndef UDP_SEGMENT
+# define UDP_SEGMENT 103
+#endif
+#ifndef UDP_GRO
+# define UDP_GRO 104
+#endif
+#ifndef SO_TXTIME
+# define SO_TXTIME 61
+#endif
+#ifndef SCM_TXTIME
+# define SCM_TXTIME SO_TXTIME
+#endif
+#ifndef SO_INCOMING_CPU
+# define SO_INCOMING_CPU 49
+#endif
+
+#if defined(__linux__)
+struct uv__sock_txtime {
+  uint32_t clockid;    /* CLOCK_TAI = 11 */
+  uint32_t flags;      /* 0 or SOF_TXTIME_DEADLINE_MODE etc */
+};
+# ifndef CLOCK_TAI
+#  define CLOCK_TAI 11
+# endif
+#endif
+
 #if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
 # define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
 #endif
@@ -43,6 +78,7 @@
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_recvmsg(uv_udp_t* handle);
+static void uv__udp_recvmsg2(uv_udp_t* handle);
 static void uv__udp_sendmsg(uv_udp_t* handle);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
                                        int domain,
@@ -88,6 +124,7 @@ void uv__udp_finish_close(uv_udp_t* handle) {
   /* Now tear down the handle. */
   handle->recv_cb = NULL;
   handle->alloc_cb = NULL;
+  handle->flags &= ~UV_HANDLE_UDP_RECV2;
   /* but _do not_ touch close_cb */
 }
 
@@ -142,8 +179,12 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents) {
   handle = container_of(w, uv_udp_t, io_watcher);
   assert(handle->type == UV_UDP);
 
-  if (revents & POLLIN)
-    uv__udp_recvmsg(handle);
+  if (revents & POLLIN) {
+    if (handle->flags & UV_HANDLE_UDP_RECV2)
+      uv__udp_recvmsg2(handle);
+    else
+      uv__udp_recvmsg(handle);
+  }
 
   if (revents & POLLOUT && !uv__is_closing(handle)) {
     uv__udp_sendmsg(handle);
@@ -352,6 +393,11 @@ static int uv__set_recverr(int fd, sa_family_t ss_family) {
 }
 
 
+/* Forward declarations for enhanced UDP helpers. */
+static int uv__udp_set_recvecn(int fd, sa_family_t family);
+static int uv__udp_set_pmtud_opt(int fd, sa_family_t family, int mode);
+static int uv__udp_set_recvpktinfo(int fd, sa_family_t family);
+
 int uv__udp_bind(uv_udp_t* handle,
                  const struct sockaddr* addr,
                  unsigned int addrlen,
@@ -361,8 +407,10 @@ int uv__udp_bind(uv_udp_t* handle,
   int fd;
 
   /* Check for bad flags. */
-  if (flags & ~(UV_UDP_IPV6ONLY | UV_UDP_REUSEADDR |
-                UV_UDP_REUSEPORT | UV_UDP_LINUX_RECVERR))
+  if (flags & ~(UV_UDP_IPV6ONLY | UV_UDP_REUSEADDR | UV_UDP_REUSEPORT |
+                UV_UDP_LINUX_RECVERR | UV_UDP_RECVMMSG | UV_UDP_RECVECN |
+                UV_UDP_PMTUD | UV_UDP_RECVPKTINFO |
+                UV_UDP_GRO | UV_UDP_GRO_RAW | UV_UDP_TXTIME))
     return UV_EINVAL;
 
   /* Cannot set IPv6-only mode on non-IPv6 socket. */
@@ -406,6 +454,47 @@ int uv__udp_bind(uv_udp_t* handle,
 #else
     err = UV_ENOTSUP;
     return err;
+#endif
+  }
+
+  if (flags & UV_UDP_RECVMMSG)
+    handle->flags |= UV_HANDLE_UDP_RECVMMSG;
+
+  if (flags & UV_UDP_RECVECN) {
+    uv__udp_set_recvecn(fd, addr->sa_family);
+    handle->flags |= UV_HANDLE_UDP_RECVECN;
+  }
+
+  if (flags & UV_UDP_PMTUD) {
+    /* Default to PROBE mode. */
+    uv__udp_set_pmtud_opt(fd, addr->sa_family, 2);
+  }
+
+  if (flags & UV_UDP_RECVPKTINFO) {
+    uv__udp_set_recvpktinfo(fd, addr->sa_family);
+    handle->flags |= UV_HANDLE_UDP_RECVPKTINFO;
+  }
+
+  if ((flags & UV_UDP_GRO) && (flags & UV_UDP_GRO_RAW))
+    return UV_EINVAL;
+
+  if (flags & (UV_UDP_GRO | UV_UDP_GRO_RAW)) {
+#if defined(__linux__) && defined(UDP_GRO)
+    int gro_yes = 1;
+    setsockopt(fd, SOL_UDP, UDP_GRO, &gro_yes, sizeof(gro_yes));
+#endif
+    if (flags & UV_UDP_GRO)
+      handle->flags |= UV_HANDLE_UDP_GRO;
+    else
+      handle->flags |= UV_HANDLE_UDP_GRO_RAW;
+  }
+
+  if (flags & UV_UDP_TXTIME) {
+#if defined(__linux__)
+    struct uv__sock_txtime txtime_cfg;
+    txtime_cfg.clockid = CLOCK_TAI;
+    txtime_cfg.flags = 0;
+    setsockopt(fd, SOL_SOCKET, SO_TXTIME, &txtime_cfg, sizeof(txtime_cfg));
 #endif
   }
 
@@ -1205,6 +1294,36 @@ int uv__udp_recv_start(uv_udp_t* handle,
 
   handle->alloc_cb = alloc_cb;
   handle->recv_cb = recv_cb;
+  handle->flags &= ~UV_HANDLE_UDP_RECV2;
+
+  uv__io_start(handle->loop, &handle->io_watcher, POLLIN);
+  uv__handle_start(handle);
+
+  return 0;
+}
+
+
+int uv__udp_recv_start2(uv_udp_t* handle,
+                        uv_alloc_cb alloc_cb,
+                        uv_udp_recv2_cb recv_cb) {
+  int err;
+
+  if (alloc_cb == NULL || recv_cb == NULL)
+    return UV_EINVAL;
+
+  if (uv__io_active(&handle->io_watcher, POLLIN))
+    return UV_EALREADY;
+
+  err = uv__udp_maybe_deferred_bind(handle, AF_INET, 0);
+  if (err)
+    return err;
+
+  handle->alloc_cb = alloc_cb;
+  /* Store recv2 callback in the recv_cb field. Both are function pointers
+   * of the same size; UV_HANDLE_UDP_RECV2 tracks which type is stored.
+   * Use memcpy to avoid -Wcast-function-type-mismatch. */
+  memcpy(&handle->recv_cb, &recv_cb, sizeof(handle->recv_cb));
+  handle->flags |= UV_HANDLE_UDP_RECV2;
 
   uv__io_start(handle->loop, &handle->io_watcher, POLLIN);
   uv__handle_start(handle);
@@ -1221,6 +1340,7 @@ int uv__udp_recv_stop(uv_udp_t* handle) {
 
   handle->alloc_cb = NULL;
   handle->recv_cb = NULL;
+  handle->flags &= ~UV_HANDLE_UDP_RECV2;
 
   return 0;
 }
@@ -1411,4 +1531,781 @@ int uv__udp_try_send2(uv_udp_t* handle,
     return UV_EINVAL;
 
   return uv__udp_sendmsgv(fd, count, bufs, nbufs, addrs);
+}
+
+
+/*
+ * Enhanced UDP receive and additional UDP features.
+ */
+
+/* Enable ECN reception (IP_RECVTOS / IPV6_RECVTCLASS). */
+static int uv__udp_set_recvecn(int fd, sa_family_t family) {
+  int yes = 1;
+#if defined(IP_RECVTOS)
+  if (family == AF_INET)
+    setsockopt(fd, IPPROTO_IP, IP_RECVTOS, &yes, sizeof(yes));
+#endif
+#if defined(IPV6_RECVTCLASS)
+  if (family == AF_INET6)
+    setsockopt(fd, IPPROTO_IPV6, IPV6_RECVTCLASS, &yes, sizeof(yes));
+#endif
+  return 0;
+}
+
+
+/* Enable Path MTU Discovery. mode: 0=off, 1=do, 2=probe. */
+static int uv__udp_set_pmtud_opt(int fd, sa_family_t family, int mode) {
+  int val;
+
+#if defined(IP_MTU_DISCOVER)
+  if (family == AF_INET) {
+    if (mode == 0)
+      val = IP_PMTUDISC_DONT;
+    else if (mode == 1)
+      val = IP_PMTUDISC_DO;
+    else
+      val = IP_PMTUDISC_PROBE;
+    setsockopt(fd, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val));
+  }
+#if defined(IPV6_MTU_DISCOVER)
+  if (family == AF_INET6) {
+    if (mode == 0)
+      val = IPV6_PMTUDISC_DONT;
+    else if (mode == 1)
+      val = IPV6_PMTUDISC_DO;
+    else
+      val = IPV6_PMTUDISC_PROBE;
+    setsockopt(fd, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &val, sizeof(val));
+  }
+#endif
+#elif defined(IP_DONTFRAG)
+  if (family == AF_INET) {
+    val = (mode != 0);
+    setsockopt(fd, IPPROTO_IP, IP_DONTFRAG, &val, sizeof(val));
+  }
+#endif
+#if defined(IPV6_DONTFRAG) && !defined(IP_MTU_DISCOVER)
+  if (family == AF_INET6) {
+    val = (mode != 0);
+    setsockopt(fd, IPPROTO_IPV6, IPV6_DONTFRAG, &val, sizeof(val));
+  }
+#endif
+  return 0;
+}
+
+
+/* Enable pktinfo (local address + interface index reporting). */
+static int uv__udp_set_recvpktinfo(int fd, sa_family_t family) {
+  int yes = 1;
+  if (family == AF_INET) {
+#if defined(IP_PKTINFO)
+    setsockopt(fd, IPPROTO_IP, IP_PKTINFO, &yes, sizeof(yes));
+#elif defined(IP_RECVDSTADDR)
+    setsockopt(fd, IPPROTO_IP, IP_RECVDSTADDR, &yes, sizeof(yes));
+#if defined(IP_RECVIF)
+    setsockopt(fd, IPPROTO_IP, IP_RECVIF, &yes, sizeof(yes));
+#endif
+#endif
+  }
+#if defined(IPV6_RECVPKTINFO)
+  if (family == AF_INET6)
+    setsockopt(fd, IPPROTO_IPV6, IPV6_RECVPKTINFO, &yes, sizeof(yes));
+#endif
+  return 0;
+}
+
+
+/* Parse the ECN codepoint from received ancillary data.
+ * On macOS the cmsg_type for IPv4 TOS is IP_RECVTOS, not IP_TOS. */
+static int uv__udp_parse_ecn(const struct msghdr* h, sa_family_t family) {
+  struct cmsghdr* cm;
+
+  for (cm = CMSG_FIRSTHDR(h);
+       cm != NULL;
+       cm = CMSG_NXTHDR((struct msghdr*) h, cm)) {
+    if (family == AF_INET && cm->cmsg_level == IPPROTO_IP) {
+#if defined(__APPLE__)
+      if (cm->cmsg_type == IP_RECVTOS)
+#elif defined(IP_TOS)
+      if (cm->cmsg_type == IP_TOS)
+#else
+      if (0)
+#endif
+        return *(uint8_t*) CMSG_DATA(cm) & 0x03;
+    }
+#if defined(IPV6_TCLASS)
+    if (family == AF_INET6 &&
+        cm->cmsg_level == IPPROTO_IPV6 &&
+        cm->cmsg_type == IPV6_TCLASS &&
+        cm->cmsg_len >= CMSG_LEN(sizeof(int))) {
+      unsigned int tc;
+      memcpy(&tc, CMSG_DATA(cm), sizeof(int));
+      return tc & 0x03;
+    }
+#endif
+  }
+  return 0;
+}
+
+
+/* Parse pktinfo (local destination address + interface index).
+ * Handles IP_PKTINFO (Linux) vs IP_RECVDSTADDR+IP_RECVIF (BSD/macOS). */
+static void uv__udp_parse_pktinfo(const struct msghdr* h,
+                                  uv_udp_recv_t* recv) {
+  struct cmsghdr* cm;
+
+  memset(&recv->local, 0, sizeof(recv->local));
+  recv->ifindex = 0;
+
+  for (cm = CMSG_FIRSTHDR(h);
+       cm != NULL;
+       cm = CMSG_NXTHDR((struct msghdr*) h, cm)) {
+#if defined(IP_PKTINFO)
+    if (cm->cmsg_level == IPPROTO_IP && cm->cmsg_type == IP_PKTINFO) {
+      struct in_pktinfo pki;
+      struct sockaddr_in* a;
+      memcpy(&pki, CMSG_DATA(cm), sizeof(pki));
+      a = (struct sockaddr_in*) &recv->local;
+      a->sin_family = AF_INET;
+      a->sin_addr = pki.ipi_addr;
+      recv->ifindex = pki.ipi_ifindex;
+    }
+#elif defined(IP_RECVDSTADDR)
+    if (cm->cmsg_level == IPPROTO_IP && cm->cmsg_type == IP_RECVDSTADDR) {
+      struct sockaddr_in* a = (struct sockaddr_in*) &recv->local;
+      a->sin_family = AF_INET;
+      memcpy(&a->sin_addr, CMSG_DATA(cm), sizeof(struct in_addr));
+    }
+#if defined(IP_RECVIF)
+    if (cm->cmsg_level == IPPROTO_IP && cm->cmsg_type == IP_RECVIF) {
+      struct sockaddr_dl* sdl = (struct sockaddr_dl*) CMSG_DATA(cm);
+      recv->ifindex = sdl->sdl_index;
+    }
+#endif
+#endif
+#if defined(IPV6_PKTINFO)
+    if (cm->cmsg_level == IPPROTO_IPV6 && cm->cmsg_type == IPV6_PKTINFO) {
+      struct in6_pktinfo pki;
+      struct sockaddr_in6* a;
+      memcpy(&pki, CMSG_DATA(cm), sizeof(pki));
+      a = (struct sockaddr_in6*) &recv->local;
+      a->sin6_family = AF_INET6;
+      a->sin6_addr = pki.ipi6_addr;
+      recv->ifindex = pki.ipi6_ifindex;
+    }
+#endif
+  }
+}
+
+
+static unsigned int uv__udp_parse_gro(const struct msghdr* h) {
+#if defined(__linux__) && defined(UDP_GRO)
+  struct cmsghdr* cm;
+  for (cm = CMSG_FIRSTHDR(h); cm != NULL;
+       cm = CMSG_NXTHDR((struct msghdr*) h, cm)) {
+    if (cm->cmsg_level == SOL_UDP && cm->cmsg_type == UDP_SEGMENT) {
+      uint16_t gso_size;
+      memcpy(&gso_size, CMSG_DATA(cm), sizeof(gso_size));
+      return (unsigned int) gso_size;
+    }
+  }
+#endif
+  return 0;
+}
+
+
+static int uv__udp_recvmmsg2(uv_udp_t* handle, uv_buf_t* buf) {
+#if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__)
+  uv_udp_recv2_cb recv2_cb;
+  struct sockaddr_in6 peers[20];
+  struct iovec iov[ARRAY_SIZE(peers)];
+  struct mmsghdr msgs[ARRAY_SIZE(peers)];
+  ssize_t nread;
+  uv_buf_t chunk_buf;
+  size_t chunks;
+  size_t k;
+  int want_cmsg;
+  char control[ARRAY_SIZE(peers)][256];
+
+  memcpy(&recv2_cb, &handle->recv_cb, sizeof(recv2_cb));
+
+  /* Determine whether we need control message buffers. */
+  want_cmsg = (handle->flags & (UV_HANDLE_UDP_RECVECN |
+                                UV_HANDLE_UDP_RECVPKTINFO |
+                                UV_HANDLE_UDP_GRO |
+                                UV_HANDLE_UDP_GRO_RAW)) != 0;
+
+  /* Prepare structures for recvmmsg. */
+  chunks = buf->len / UV__UDP_DGRAM_MAXSIZE;
+  if (chunks == 0)
+    return UV_EINVAL;
+  if (chunks > ARRAY_SIZE(iov))
+    chunks = ARRAY_SIZE(iov);
+
+  for (k = 0; k < chunks; ++k) {
+    iov[k].iov_base = buf->base + k * UV__UDP_DGRAM_MAXSIZE;
+    iov[k].iov_len = UV__UDP_DGRAM_MAXSIZE;
+    memset(&msgs[k].msg_hdr, 0, sizeof(msgs[k].msg_hdr));
+    msgs[k].msg_hdr.msg_iov = iov + k;
+    msgs[k].msg_hdr.msg_iovlen = 1;
+    msgs[k].msg_hdr.msg_name = peers + k;
+    msgs[k].msg_hdr.msg_namelen = sizeof(peers[0]);
+    msgs[k].msg_hdr.msg_flags = 0;
+    msgs[k].msg_len = 0;
+    if (want_cmsg) {
+      msgs[k].msg_hdr.msg_control = control[k];
+      msgs[k].msg_hdr.msg_controllen = sizeof(control[k]);
+    } else {
+      msgs[k].msg_hdr.msg_control = NULL;
+      msgs[k].msg_hdr.msg_controllen = 0;
+    }
+  }
+
+#if defined(__APPLE__)
+  do
+    nread = recvmsg_x(handle->io_watcher.fd, msgs, chunks, MSG_DONTWAIT);
+  while (nread == -1 && errno == EINTR);
+#else
+  do
+    nread = recvmmsg(handle->io_watcher.fd, msgs, chunks, 0, NULL);
+  while (nread == -1 && errno == EINTR);
+#endif
+
+  if (nread < 1) {
+    uv_udp_recv_t recv;
+    memset(&recv, 0, sizeof(recv));
+    recv.buf = buf;
+    if (nread == 0 || errno == EAGAIN || errno == EWOULDBLOCK)
+      recv.nread = 0;
+    else
+      recv.nread = UV__ERR(errno);
+    recv2_cb(handle, &recv);
+  } else {
+    sa_family_t family;
+    family = (handle->flags & UV_HANDLE_IPV6) ? AF_INET6 : AF_INET;
+
+    /* Pass each chunk to the application. */
+    for (k = 0; k < (size_t) nread && handle->recv_cb != NULL; k++) {
+      uv_udp_recv_t recv;
+      int delivered = 0;
+
+      memset(&recv, 0, sizeof(recv));
+      recv.flags = UV_UDP_MMSG_CHUNK;
+      if (msgs[k].msg_hdr.msg_flags & MSG_TRUNC)
+        recv.flags |= UV_UDP_PARTIAL;
+
+      chunk_buf = uv_buf_init(iov[k].iov_base, iov[k].iov_len);
+
+      recv.nread = msgs[k].msg_len;
+      recv.buf = &chunk_buf;
+      recv.addr = (const struct sockaddr*) &peers[k];
+
+      if (want_cmsg) {
+        if (handle->flags & UV_HANDLE_UDP_RECVECN)
+          recv.ecn = uv__udp_parse_ecn(&msgs[k].msg_hdr, family);
+        if (handle->flags & UV_HANDLE_UDP_RECVPKTINFO)
+          uv__udp_parse_pktinfo(&msgs[k].msg_hdr, &recv);
+      }
+
+      /* Check for GRO super-packet. */
+      if (recv.nread > 0 && (handle->flags & (UV_HANDLE_UDP_GRO |
+                                              UV_HANDLE_UDP_GRO_RAW))) {
+        unsigned int seg = uv__udp_parse_gro(&msgs[k].msg_hdr);
+        if (seg > 0 && (unsigned int) recv.nread > seg) {
+          if (handle->flags & UV_HANDLE_UDP_GRO_RAW) {
+            recv.segment_size = seg;
+            recv2_cb(handle, &recv);
+          } else {
+            size_t off;
+            uv_buf_t seg_buf;
+            for (off = 0; off < (size_t) recv.nread; off += seg) {
+              uv_udp_recv_t seg_recv;
+              size_t len;
+              memset(&seg_recv, 0, sizeof(seg_recv));
+              len = (size_t) recv.nread - off;
+              if (len > seg)
+                len = seg;
+              seg_buf = uv_buf_init(chunk_buf.base + off, len);
+              seg_recv.nread = len;
+              seg_recv.buf = &seg_buf;
+              seg_recv.addr = recv.addr;
+              seg_recv.ecn = recv.ecn;
+              seg_recv.local = recv.local;
+              seg_recv.ifindex = recv.ifindex;
+              seg_recv.segment_size = seg;
+              seg_recv.flags = UV_UDP_MMSG_CHUNK;
+              recv2_cb(handle, &seg_recv);
+              if (handle->recv_cb == NULL)
+                break;
+            }
+          }
+          delivered = 1;
+        } else {
+          recv.segment_size = 0;
+        }
+      }
+
+      if (!delivered)
+        recv2_cb(handle, &recv);
+    }
+
+    /* One last callback so the original buffer is freed. */
+    if (handle->recv_cb != NULL) {
+      uv_udp_recv_t recv;
+      memset(&recv, 0, sizeof(recv));
+      recv.nread = 0;
+      recv.buf = buf;
+      recv.flags = UV_UDP_MMSG_FREE;
+      recv2_cb(handle, &recv);
+    }
+  }
+  return nread;
+#else  /* !(__linux__ || __FreeBSD__ || __APPLE__) */
+  return UV_ENOSYS;
+#endif
+}
+
+
+static void uv__udp_recvmsg2(uv_udp_t* handle) {
+  uv_udp_recv2_cb recv2_cb;
+  struct sockaddr_storage peer;
+  struct msghdr h;
+  ssize_t nread;
+  uv_buf_t buf;
+  int count;
+  int want_cmsg;
+  sa_family_t family;
+  char control[256];
+
+  assert(handle->recv_cb != NULL);
+  assert(handle->alloc_cb != NULL);
+
+  memcpy(&recv2_cb, &handle->recv_cb, sizeof(recv2_cb));
+  family = (handle->flags & UV_HANDLE_IPV6) ? AF_INET6 : AF_INET;
+  want_cmsg = (handle->flags & (UV_HANDLE_UDP_RECVECN |
+                                UV_HANDLE_UDP_RECVPKTINFO |
+                                UV_HANDLE_UDP_GRO |
+                                UV_HANDLE_UDP_GRO_RAW)) != 0;
+
+  /* Prevent loop starvation when data comes in as fast as we can read it. */
+  count = 32;
+
+  do {
+    buf = uv_buf_init(NULL, 0);
+    handle->alloc_cb((uv_handle_t*) handle, UV__UDP_DGRAM_MAXSIZE, &buf);
+    if (buf.base == NULL || buf.len == 0) {
+      uv_udp_recv_t recv;
+      memset(&recv, 0, sizeof(recv));
+      recv.nread = UV_ENOBUFS;
+      recv.buf = &buf;
+      recv2_cb(handle, &recv);
+      return;
+    }
+    assert(buf.base != NULL);
+
+    if (uv_udp_using_recvmmsg(handle)) {
+      nread = uv__udp_recvmmsg2(handle, &buf);
+      if (nread <= 0) {
+        uv_udp_recv_t recv;
+        memset(&recv, 0, sizeof(recv));
+        recv.nread = nread;
+        recv.buf = &buf;
+        recv2_cb(handle, &recv);
+        return;
+      }
+      count -= nread;
+      continue;
+    }
+
+    memset(&h, 0, sizeof(h));
+    memset(&peer, 0, sizeof(peer));
+    h.msg_name = &peer;
+    h.msg_namelen = sizeof(peer);
+    h.msg_iov = (void*) &buf;
+    h.msg_iovlen = 1;
+
+    if (want_cmsg) {
+      h.msg_control = control;
+      h.msg_controllen = sizeof(control);
+    }
+
+    do
+      nread = recvmsg(handle->io_watcher.fd, &h, 0);
+    while (nread == -1 && errno == EINTR);
+
+    {
+      uv_udp_recv_t recv;
+      int delivered = 0;
+      memset(&recv, 0, sizeof(recv));
+      recv.buf = &buf;
+      recv.addr = (const struct sockaddr*) &peer;
+
+      if (nread != -1) {
+        recv.nread = nread;
+        if (h.msg_flags & MSG_TRUNC)
+          recv.flags |= UV_UDP_PARTIAL;
+        if (want_cmsg) {
+          if (handle->flags & UV_HANDLE_UDP_RECVECN)
+            recv.ecn = uv__udp_parse_ecn(&h, family);
+          if (handle->flags & UV_HANDLE_UDP_RECVPKTINFO)
+            uv__udp_parse_pktinfo(&h, &recv);
+        }
+
+        /* Check for GRO super-packet. */
+        if (nread > 0 && (handle->flags & (UV_HANDLE_UDP_GRO |
+                                           UV_HANDLE_UDP_GRO_RAW))) {
+          unsigned int seg = uv__udp_parse_gro(&h);
+          if (seg > 0 && (unsigned int) nread > seg) {
+            if (handle->flags & UV_HANDLE_UDP_GRO_RAW) {
+              /* Deliver the entire super-packet as-is. */
+              recv.segment_size = seg;
+              recv2_cb(handle, &recv);
+            } else {
+              /* Split into per-segment callbacks. */
+              size_t off;
+              uv_buf_t seg_buf;
+              for (off = 0; off < (size_t) nread; off += seg) {
+                uv_udp_recv_t seg_recv;
+                size_t len;
+                memset(&seg_recv, 0, sizeof(seg_recv));
+                len = (size_t) nread - off;
+                if (len > seg)
+                  len = seg;
+                seg_buf = uv_buf_init(buf.base + off, len);
+                seg_recv.nread = len;
+                seg_recv.buf = &seg_buf;
+                seg_recv.addr = recv.addr;
+                seg_recv.ecn = recv.ecn;
+                seg_recv.local = recv.local;
+                seg_recv.ifindex = recv.ifindex;
+                seg_recv.segment_size = seg;
+                seg_recv.flags = UV_UDP_MMSG_CHUNK;
+                recv2_cb(handle, &seg_recv);
+                if (handle->recv_cb == NULL)
+                  break;
+              }
+              /* Final callback to release the buffer. */
+              if (handle->recv_cb != NULL) {
+                uv_udp_recv_t free_recv;
+                memset(&free_recv, 0, sizeof(free_recv));
+                free_recv.buf = &buf;
+                free_recv.flags = UV_UDP_MMSG_FREE;
+                recv2_cb(handle, &free_recv);
+              }
+            }
+            delivered = 1;
+          } else {
+            recv.segment_size = 0;
+          }
+        }
+      } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        recv.nread = 0;
+        recv.addr = NULL;
+      } else {
+        recv.nread = UV__ERR(errno);
+        recv.addr = NULL;
+      }
+      if (!delivered)
+        recv2_cb(handle, &recv);
+    }
+    count--;
+  }
+  /* recv_cb callback may decide to pause or close the handle. */
+  while (nread != -1
+      && count > 0
+      && handle->io_watcher.fd != -1
+      && handle->recv_cb != NULL);
+}
+
+
+int uv_udp_set_ecn(uv_udp_t* handle, int ecn) {
+  int fd;
+  int r;
+
+  if (ecn < 0 || ecn > 3)
+    return UV_EINVAL;
+
+  fd = handle->io_watcher.fd;
+  if (fd == -1)
+    return UV_EBADF;
+
+  if (handle->flags & UV_HANDLE_IPV6) {
+#if defined(IPV6_TCLASS)
+    r = setsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &ecn, sizeof(ecn));
+#else
+    return UV_ENOTSUP;
+#endif
+  } else {
+    /* Preserve DSCP bits, set only the low 2 (ECN) bits. */
+    int tos = 0;
+    socklen_t len = sizeof(tos);
+    getsockopt(fd, IPPROTO_IP, IP_TOS, &tos, &len);
+    tos = (tos & ~0x03) | (ecn & 0x03);
+    r = setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos));
+  }
+
+  if (r)
+    return UV__ERR(errno);
+
+  return 0;
+}
+
+
+int uv_udp_set_pmtud(uv_udp_t* handle, enum uv_udp_pmtud mode) {
+  int fd;
+  sa_family_t family;
+
+  fd = handle->io_watcher.fd;
+  if (fd == -1)
+    return UV_EBADF;
+
+  family = (handle->flags & UV_HANDLE_IPV6) ? AF_INET6 : AF_INET;
+  return uv__udp_set_pmtud_opt(fd, family, (int) mode);
+}
+
+
+int uv_udp_getmtu(const uv_udp_t* handle, size_t* mtu) {
+#if defined(IP_MTU)
+  int fd;
+  int val;
+  socklen_t len;
+
+  fd = handle->io_watcher.fd;
+  if (fd == -1)
+    return UV_EBADF;
+
+  len = sizeof(val);
+  if (handle->flags & UV_HANDLE_IPV6) {
+#if defined(IPV6_MTU)
+    if (getsockopt(fd, IPPROTO_IPV6, IPV6_MTU, &val, &len))
+      return UV__ERR(errno);
+#else
+    return UV_ENOTSUP;
+#endif
+  } else {
+    if (getsockopt(fd, IPPROTO_IP, IP_MTU, &val, &len))
+      return UV__ERR(errno);
+  }
+
+  *mtu = (size_t) val;
+  return 0;
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
+
+int uv_udp_configure(uv_udp_t* handle, unsigned int flags) {
+  int fd;
+  sa_family_t family;
+
+  /* Only accept the configuration flags. */
+  if (flags & ~(UV_UDP_RECVECN | UV_UDP_PMTUD |
+                UV_UDP_RECVPKTINFO | UV_UDP_LINUX_RECVERR |
+                UV_UDP_GRO | UV_UDP_GRO_RAW | UV_UDP_TXTIME))
+    return UV_EINVAL;
+
+  fd = handle->io_watcher.fd;
+  if (fd == -1)
+    return UV_EBADF;
+
+  family = (handle->flags & UV_HANDLE_IPV6) ? AF_INET6 : AF_INET;
+
+  if (flags & UV_UDP_LINUX_RECVERR) {
+    int err = uv__set_recverr(fd, family);
+    if (err)
+      return err;
+  }
+
+  if (flags & UV_UDP_RECVECN) {
+    uv__udp_set_recvecn(fd, family);
+    handle->flags |= UV_HANDLE_UDP_RECVECN;
+  }
+
+  if (flags & UV_UDP_PMTUD)
+    uv__udp_set_pmtud_opt(fd, family, 2);
+
+  if (flags & UV_UDP_RECVPKTINFO) {
+    uv__udp_set_recvpktinfo(fd, family);
+    handle->flags |= UV_HANDLE_UDP_RECVPKTINFO;
+  }
+
+  if ((flags & UV_UDP_GRO) && (flags & UV_UDP_GRO_RAW))
+    return UV_EINVAL;
+
+  if (flags & (UV_UDP_GRO | UV_UDP_GRO_RAW)) {
+#if defined(__linux__) && defined(UDP_GRO)
+    int yes = 1;
+    setsockopt(fd, SOL_UDP, UDP_GRO, &yes, sizeof(yes));
+#endif
+    if (flags & UV_UDP_GRO)
+      handle->flags |= UV_HANDLE_UDP_GRO;
+    else
+      handle->flags |= UV_HANDLE_UDP_GRO_RAW;
+  }
+
+  if (flags & UV_UDP_TXTIME) {
+#if defined(__linux__)
+    struct uv__sock_txtime txtime_cfg;
+    txtime_cfg.clockid = CLOCK_TAI;
+    txtime_cfg.flags = 0;
+    setsockopt(fd, SOL_SOCKET, SO_TXTIME, &txtime_cfg, sizeof(txtime_cfg));
+#endif
+  }
+
+  return 0;
+}
+
+
+int uv_udp_try_send_batch(uv_udp_t* handle,
+                           uv_udp_mmsg_t* msgs,
+                           unsigned int count) {
+  int fd;
+  unsigned int i;
+  int has_gso;
+  int has_txtime;
+  int nsent;
+  int r;
+
+  fd = handle->io_watcher.fd;
+  if (fd == -1)
+    return UV_EINVAL;
+
+  if (count == 0)
+    return 0;
+
+  has_gso = 0;
+  for (i = 0; i < count; i++) {
+    if (msgs[i].gso_size > 0) {
+      has_gso = 1;
+      break;
+    }
+  }
+
+  has_txtime = 0;
+  for (i = 0; i < count; i++) {
+    if (msgs[i].txtime > 0) {
+      has_txtime = 1;
+      break;
+    }
+  }
+
+#if defined(__linux__) && defined(UDP_SEGMENT)
+  if (has_gso || has_txtime) {
+    nsent = 0;
+    for (i = 0; i < count; i++) {
+      struct msghdr h;
+      char ctrl[CMSG_SPACE(sizeof(uint16_t)) + CMSG_SPACE(sizeof(uint64_t))];
+
+      r = uv__udp_prep_pkt(&h, msgs[i].bufs, msgs[i].nbufs, msgs[i].addr);
+      if (r)
+        return nsent > 0 ? nsent : r;
+
+      memset(ctrl, 0, sizeof(ctrl));
+      h.msg_control = NULL;
+      h.msg_controllen = 0;
+
+      if (msgs[i].gso_size > 0 || msgs[i].txtime > 0) {
+        struct cmsghdr* cm;
+        size_t ctrllen = 0;
+
+        if (msgs[i].gso_size > 0)
+          ctrllen += CMSG_SPACE(sizeof(uint16_t));
+        if (msgs[i].txtime > 0)
+          ctrllen += CMSG_SPACE(sizeof(uint64_t));
+
+        h.msg_control = ctrl;
+        h.msg_controllen = ctrllen;
+
+        cm = CMSG_FIRSTHDR(&h);
+        if (msgs[i].gso_size > 0) {
+          uint16_t gso = (uint16_t) msgs[i].gso_size;
+          cm->cmsg_level = SOL_UDP;
+          cm->cmsg_type = UDP_SEGMENT;
+          cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
+          memcpy(CMSG_DATA(cm), &gso, sizeof(gso));
+          cm = CMSG_NXTHDR(&h, cm);
+        }
+        if (msgs[i].txtime > 0 && cm != NULL) {
+          cm->cmsg_level = SOL_SOCKET;
+          cm->cmsg_type = SCM_TXTIME;
+          cm->cmsg_len = CMSG_LEN(sizeof(uint64_t));
+          memcpy(CMSG_DATA(cm), &msgs[i].txtime, sizeof(uint64_t));
+        }
+      }
+
+      do
+        r = sendmsg(fd, &h, 0);
+      while (r == -1 && errno == EINTR);
+
+      if (r < 0) {
+        if (nsent > 0)
+          return nsent;
+        if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
+          return UV_EAGAIN;
+        return UV__ERR(errno);
+      }
+      nsent++;
+    }
+    return nsent;
+  }
+#else
+  (void) has_gso;
+  (void) has_txtime;
+#endif
+
+  /* No GSO needed or not available; use standard sendmsgv. */
+  {
+    uv_buf_t* bufs_arr[20];
+    unsigned int nbufs_arr[20];
+    struct sockaddr* addrs_arr[20];
+
+    nsent = 0;
+    for (i = 0; i < count; /*empty*/) {
+      unsigned int n;
+      for (n = 0; i < count && n < ARRAY_SIZE(bufs_arr); i++, n++) {
+        bufs_arr[n] = msgs[i].bufs;
+        nbufs_arr[n] = msgs[i].nbufs;
+        addrs_arr[n] = (struct sockaddr*) msgs[i].addr;
+      }
+      r = uv__udp_sendmsgv(fd, n, bufs_arr, nbufs_arr, addrs_arr);
+      if (r < 0)
+        return nsent > 0 ? nsent : r;
+      nsent += r;
+      if ((unsigned int) r < n)
+        break;
+    }
+    return nsent;
+  }
+}
+
+
+unsigned int uv_udp_gso_max_segments(const uv_udp_t* handle) {
+#if defined(__linux__) && defined(UDP_SEGMENT)
+  (void) handle;
+  return 64;
+#else
+  (void) handle;
+  return 0;
+#endif
+}
+
+
+int uv_udp_set_cpu_affinity(uv_udp_t* handle, int cpu) {
+#if defined(__linux__) && defined(SO_INCOMING_CPU)
+  int fd;
+
+  fd = handle->io_watcher.fd;
+  if (fd == -1)
+    return UV_EBADF;
+
+  if (setsockopt(fd, SOL_SOCKET, SO_INCOMING_CPU, &cpu, sizeof(cpu)))
+    return UV__ERR(errno);
+
+  return 0;
+#else
+  (void) handle;
+  (void) cpu;
+  return UV_ENOTSUP;
+#endif
 }
