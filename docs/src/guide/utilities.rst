@@ -435,7 +435,7 @@ As you can see this is very useful to produce nicely formatted output, or even
 console based arcade games if that tickles your fancy. For fancier control you
 can try `ncurses`_.
 
-.. _ncurses: https://www.gnu.org/software/ncurses/ncurses.html
+.. _ncurses: https://invisible-island.net/ncurses/announce.html
 
 .. versionchanged:: 1.23.1: the `readable` parameter is now unused and ignored.
                     The appropriate value will now be auto-detected from the kernel.
@@ -443,8 +443,7 @@ can try `ncurses`_.
 ----
 
 .. [#] I was first introduced to the term baton in this context, in Konstantin
-       Käfer's excellent slides on writing node.js bindings --
-       https://kkaefer.com/node-cpp-modules/#baton
+       Käfer's excellent slides on writing node.js bindings.
 .. [#] mfp is My Fancy Plugin
 
 .. _libev man page: http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#COMMON_OR_USEFUL_IDIOMS_OR_BOTH
