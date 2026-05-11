@@ -260,7 +260,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
     cpu_info->model = uv__malloc(ZOSCPU_MODEL_LENGTH + 1);
     if (cpu_info->model == NULL) {
       uv_free_cpu_info(*cpu_infos, idx);
-      return UV_ENOMEM; 
+      return UV_ENOMEM;
     }
     __get_cpu_model(cpu_info->model, ZOSCPU_MODEL_LENGTH + 1);
     cpu_info->cpu_times.user = cpu_usage_avg;
@@ -277,9 +277,9 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 }
 
 
-static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
+static int uv__interface_addresses_v6(uv_interface_address2_t** addresses,
                                       int* count) {
-  uv_interface_address_t* address;
+  uv_interface_address2_t* address;
   int sockfd;
   int maxsize;
   __net_ifconf6header_t ifc;
@@ -309,7 +309,8 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   if (ioctl(sockfd, SIOCGIFCONF6, &ifc) == -1) {
     /* This will error on a system that does not support IPv6. However, we want
      * to treat this as there being 0 interfaces so we can continue to get IPv4
-     * interfaces in uv_interface_addresses(). So return 0 instead of the error.
+     * interfaces in uv_interface_addresses2(). So return 0 instead of the
+     * error.
      */
     uv__free(ifc.__nif6h_buffer);
     uv__close(sockfd);
@@ -338,7 +339,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
   }
 
   /* Alloc the return interface structs */
-  *addresses = uv__calloc(1, *count * sizeof(uv_interface_address_t));
+  *addresses = uv__calloc(1, *count * sizeof(uv_interface_address2_t));
   if (!(*addresses)) {
     uv__free(ifc.__nif6h_buffer);
     uv__close(sockfd);
@@ -368,7 +369,7 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
       ++i;
     address->name = uv__malloc(i + 1);
     if (address->name == NULL) {
-      uv_free_interface_addresses(*addresses, count_names);
+      uv_free_interface_addresses2(*addresses, count_names);
       uv__free(ifc.__nif6h_buffer);
       uv__close(sockfd);
       return UV_ENOMEM;
@@ -400,15 +401,15 @@ static int uv__interface_addresses_v6(uv_interface_address_t** addresses,
 }
 
 
-int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-  uv_interface_address_t* address;
+int uv_interface_addresses2(uv_interface_address2_t** addresses, int* count) {
+  uv_interface_address2_t* address;
   int sockfd;
   int maxsize;
   struct ifconf ifc;
   struct ifreq flg;
   struct ifreq* ifr;
   struct ifreq* p;
-  uv_interface_address_t* addresses_v6;
+  uv_interface_address2_t* addresses_v6;
   int count_v6;
   unsigned int i;
   int rc;
@@ -429,7 +430,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
   if (0 > sockfd) {
     if (count_v6)
-      uv_free_interface_addresses(addresses_v6, count_v6);
+      uv_free_interface_addresses2(addresses_v6, count_v6);
     return UV__ERR(errno);
   }
 
@@ -437,7 +438,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   if (ifc.ifc_req == NULL) {
     if (count_v6)
-      uv_free_interface_addresses(addresses_v6, count_v6);
+      uv_free_interface_addresses2(addresses_v6, count_v6);
     uv__close(sockfd);
     return UV_ENOMEM;
   }
@@ -446,7 +447,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   if (ioctl(sockfd, SIOCGIFCONF, &ifc) == -1) {
     if (count_v6)
-      uv_free_interface_addresses(addresses_v6, count_v6);
+      uv_free_interface_addresses2(addresses_v6, count_v6);
     uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return UV__ERR(errno);
@@ -469,7 +470,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
       if (count_v6)
-        uv_free_interface_addresses(addresses_v6, count_v6);
+        uv_free_interface_addresses2(addresses_v6, count_v6);
       uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV__ERR(errno);
@@ -489,11 +490,11 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   /* Alloc the return interface structs */
   *addresses = uv__calloc(1, (*count + count_v6) *
-                          sizeof(uv_interface_address_t));
+                          sizeof(uv_interface_address2_t));
 
   if (!(*addresses)) {
     if (count_v6)
-      uv_free_interface_addresses(addresses_v6, count_v6);
+      uv_free_interface_addresses2(addresses_v6, count_v6);
     uv__free(ifc.ifc_req);
     uv__close(sockfd);
     return UV_ENOMEM;
@@ -502,7 +503,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   /* copy over the ipv6 addresses if any are found */
   if (count_v6) {
-    memcpy(address, addresses_v6, count_v6 * sizeof(uv_interface_address_t));
+    memcpy(address, addresses_v6, count_v6 * sizeof(uv_interface_address2_t));
     address += count_v6;
     *count += count_v6;
     /* free ipv6 addresses, but keep address names */
@@ -522,7 +523,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
     memcpy(flg.ifr_name, p->ifr_name, sizeof(flg.ifr_name));
     if (ioctl(sockfd, SIOCGIFFLAGS, &flg) == -1) {
-      uv_free_interface_addresses(*addresses, count_names);
+      uv_free_interface_addresses2(*addresses, count_names);
       uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV_ENOSYS;
@@ -541,7 +542,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
       ++i;
     address->name = uv__malloc(i + 1);
     if (address->name == NULL) {
-      uv_free_interface_addresses(*addresses, count_names);
+      uv_free_interface_addresses2(*addresses, count_names);
       uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV_ENOMEM;
@@ -554,7 +555,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     address->address.address4 = *((struct sockaddr_in*) &p->ifr_addr);
 
     if (ioctl(sockfd, SIOCGIFNETMASK, p) == -1) {
-      uv_free_interface_addresses(*addresses, count_names);
+      uv_free_interface_addresses2(*addresses, count_names);
       uv__free(ifc.ifc_req);
       uv__close(sockfd);
       return UV__ERR(errno);
@@ -575,8 +576,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-                                 int count) {
+void uv_free_interface_addresses2(uv_interface_address2_t* addresses,
+                                  int count) {
   int i;
   for (i = 0; i < count; ++i)
     uv__free(addresses[i].name);

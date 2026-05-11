@@ -1113,8 +1113,8 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 }
 
 
-int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-  uv_interface_address_t* address;
+int uv_interface_addresses2(uv_interface_address2_t** addresses, int* count) {
+  uv_interface_address2_t* address;
   int sockfd, sock6fd, inet6, i, r, size = 1;
   struct ifconf ifc;
   struct ifreq *ifr, *p, flg;
@@ -1259,7 +1259,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     for (i = 0; i < *count; i++) {
       if (strcmp(address->name, p->ifr_name) == 0) {
         sa_addr = (struct sockaddr_dl*) &p->ifr_addr;
-        memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
+        if (sa_addr->sdl_alen <= sizeof(address->phys_addr)) {
+          memcpy(address->phys_addr, LLADDR(sa_addr), sa_addr->sdl_alen);
+          if (sa_addr->sdl_alen == 6)
+            address->phys_addr_family = UV_PHYS_ADDR_MAC48;
+          else if (sa_addr->sdl_alen == 8)
+            address->phys_addr_family = UV_PHYS_ADDR_EUI64;
+        }
       }
       address++;
     }
@@ -1269,7 +1275,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   goto cleanup;
 
 syserror:
-  uv_free_interface_addresses(*addresses, *count);
+  uv_free_interface_addresses2(*addresses, *count);
   *addresses = NULL;
   *count = 0;
   r = UV_ENOSYS;
@@ -1284,8 +1290,8 @@ cleanup:
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-  int count) {
+void uv_free_interface_addresses2(uv_interface_address2_t* addresses,
+                                  int count) {
   int i;
 
   for (i = 0; i < count; ++i) {

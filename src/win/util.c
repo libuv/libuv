@@ -652,16 +652,16 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos_ptr, int* cpu_count_ptr) {
 }
 
 
-int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
+int uv_interface_addresses2(uv_interface_address2_t** addresses_ptr,
     int* count_ptr) {
   IP_ADAPTER_ADDRESSES* win_address_buf;
   ULONG win_address_buf_size;
   IP_ADAPTER_ADDRESSES* adapter;
 
-  uv_interface_address_t* uv_address_buf;
+  uv_interface_address2_t* uv_address_buf;
   char* name_buf;
   size_t uv_address_buf_size;
-  uv_interface_address_t* uv_address;
+  uv_interface_address2_t* uv_address;
 
   int count;
   ULONG flags;
@@ -767,7 +767,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
          unicast_address != NULL;
          unicast_address = unicast_address->Next) {
       count++;
-      uv_address_buf_size += sizeof(uv_interface_address_t);
+      uv_address_buf_size += sizeof(uv_interface_address2_t);
     }
   }
 
@@ -778,7 +778,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     return UV_ENOMEM;
   }
 
-  /* Compute the start of the uv_interface_address_t array, and the place in
+  /* Compute the start of the uv_interface_address2_t array, and the place in
    * the buffer where the interface names will be stored. */
   uv_address = uv_address_buf;
   name_buf = (char*) (uv_address_buf + count);
@@ -808,7 +808,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
     }
     name_size += 1; /* Add NUL byte. */
 
-    /* Add an uv_interface_address_t element for every unicast address. */
+    /* Add an uv_interface_address2_t element for every unicast address. */
     for (unicast_address = (IP_ADAPTER_UNICAST_ADDRESS*)
                            adapter->FirstUnicastAddress;
          unicast_address != NULL;
@@ -825,10 +825,14 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
       uv_address->name = name_buf;
 
-      if (adapter->PhysicalAddressLength == sizeof(uv_address->phys_addr)) {
+      if (adapter->PhysicalAddressLength <= sizeof(uv_address->phys_addr)) {
         memcpy(uv_address->phys_addr,
                adapter->PhysicalAddress,
-               sizeof(uv_address->phys_addr));
+               adapter->PhysicalAddressLength);
+        if (adapter->PhysicalAddressLength == 6)
+          uv_address->phys_addr_family = UV_PHYS_ADDR_MAC48;
+        else if (adapter->PhysicalAddressLength == 8)
+          uv_address->phys_addr_family = UV_PHYS_ADDR_EUI64;
       }
 
       uv_address->is_internal =
@@ -877,7 +881,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
+void uv_free_interface_addresses2(uv_interface_address2_t* addresses,
     int count) {
   uv__free(addresses);
 }

@@ -34,6 +34,7 @@ TEST_IMPL(platform_output) {
   uv_rusage_t rusage;
   uv_cpu_info_t* cpus;
   uv_interface_address_t* interfaces;
+  uv_interface_address2_t* interfaces2;
   uv_passwd_t pwd;
   uv_group_t grp;
   uv_utsname_t uname;
@@ -193,6 +194,61 @@ TEST_IMPL(platform_output) {
     }
   }
   uv_free_interface_addresses(interfaces, count);
+
+  err = uv_interface_addresses2(&interfaces2, &count);
+  ASSERT_OK(err);
+
+  printf("uv_interface_addresses2:\n");
+  for (i = 0; i < count; i++) {
+    printf("  name: %s\n", interfaces2[i].name);
+    printf("  internal: %d\n", interfaces2[i].is_internal);
+    printf("  phys_addr_family: %d\n", interfaces2[i].phys_addr_family);
+    printf("  physical address: ");
+    if (interfaces2[i].phys_addr_family == UV_PHYS_ADDR_EUI64)
+      printf("%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n",
+             (unsigned char)interfaces2[i].phys_addr[0],
+             (unsigned char)interfaces2[i].phys_addr[1],
+             (unsigned char)interfaces2[i].phys_addr[2],
+             (unsigned char)interfaces2[i].phys_addr[3],
+             (unsigned char)interfaces2[i].phys_addr[4],
+             (unsigned char)interfaces2[i].phys_addr[5],
+             (unsigned char)interfaces2[i].phys_addr[6],
+             (unsigned char)interfaces2[i].phys_addr[7]);
+    else
+      printf("%02x:%02x:%02x:%02x:%02x:%02x\n",
+             (unsigned char)interfaces2[i].phys_addr[0],
+             (unsigned char)interfaces2[i].phys_addr[1],
+             (unsigned char)interfaces2[i].phys_addr[2],
+             (unsigned char)interfaces2[i].phys_addr[3],
+             (unsigned char)interfaces2[i].phys_addr[4],
+             (unsigned char)interfaces2[i].phys_addr[5]);
+
+    if (interfaces2[i].address.address4.sin_family == AF_INET) {
+      uv_ip4_name(&interfaces2[i].address.address4, buffer, sizeof(buffer));
+    } else if (interfaces2[i].address.address4.sin_family == AF_INET6) {
+      uv_ip6_name(&interfaces2[i].address.address6, buffer, sizeof(buffer));
+    }
+
+    printf("  address: %s\n", buffer);
+
+    if (interfaces2[i].netmask.netmask4.sin_family == AF_INET) {
+      uv_ip4_name(&interfaces2[i].netmask.netmask4, buffer, sizeof(buffer));
+      printf("  netmask: %s\n", buffer);
+    } else if (interfaces2[i].netmask.netmask4.sin_family == AF_INET6) {
+      uv_ip6_name(&interfaces2[i].netmask.netmask6, buffer, sizeof(buffer));
+      printf("  netmask: %s\n", buffer);
+    } else {
+      printf("  netmask: none\n");
+    }
+
+    if (interfaces2[i].broadcast.broadcast4.sin_family == AF_INET) {
+      uv_ip4_name(&interfaces2[i].broadcast.broadcast4, buffer, sizeof(buffer));
+      printf("  broadcast: %s\n", buffer);
+    } else {
+      printf("  broadcast: none\n");
+    }
+  }
+  uv_free_interface_addresses2(interfaces2, count);
 
   err = uv_os_get_passwd(&pwd);
   ASSERT_OK(err);
