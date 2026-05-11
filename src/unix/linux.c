@@ -1954,9 +1954,9 @@ static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   return !exclude_type;
 }
 
-int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
+int uv_interface_addresses2(uv_interface_address2_t** addresses, int* count) {
   struct ifaddrs *addrs, *ent;
-  uv_interface_address_t* address;
+  uv_interface_address2_t* address;
   int i;
   struct sockaddr_ll *sll;
 
@@ -2029,7 +2029,13 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
       if (strncmp(address->name, ent->ifa_name, namelen) == 0 &&
           (address->name[namelen] == 0 || address->name[namelen] == ':')) {
         sll = (struct sockaddr_ll*)ent->ifa_addr;
-        memcpy(address->phys_addr, sll->sll_addr, sizeof(address->phys_addr));
+        if (sll->sll_halen <= sizeof(address->phys_addr)) {
+          memcpy(address->phys_addr, sll->sll_addr, sll->sll_halen);
+          if (sll->sll_halen == 6)
+            address->phys_addr_family = UV_PHYS_ADDR_MAC48;
+          else if (sll->sll_halen == 8)
+            address->phys_addr_family = UV_PHYS_ADDR_EUI64;
+        }
       }
       address++;
     }
@@ -2041,8 +2047,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-  int count) {
+void uv_free_interface_addresses2(uv_interface_address2_t* addresses,
+                                  int count) {
   int i;
 
   for (i = 0; i < count; i++) {

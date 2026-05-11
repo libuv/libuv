@@ -298,6 +298,9 @@ TEST_DECLARE   (process_title_big_argv)
 TEST_DECLARE   (process_title_threadsafe)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
+TEST_DECLARE   (interface_addresses)
+TEST_DECLARE   (interface_addresses2)
+TEST_DECLARE   (interface_addresses2_consistency)
 TEST_DECLARE   (get_passwd)
 TEST_DECLARE   (get_passwd2)
 TEST_DECLARE   (get_group)
@@ -959,6 +962,10 @@ TASK_LIST_START
   TEST_ENTRY  (cwd_and_chdir)
 
   TEST_ENTRY  (get_memory)
+
+  TEST_ENTRY  (interface_addresses)
+  TEST_ENTRY  (interface_addresses2)
+  TEST_ENTRY  (interface_addresses2_consistency)
 
   TEST_ENTRY  (get_passwd)
   TEST_ENTRY  (get_passwd2)

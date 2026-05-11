@@ -251,6 +251,7 @@ typedef struct uv_random_s uv_random_t;
 typedef struct uv_env_item_s uv_env_item_t;
 typedef struct uv_cpu_info_s uv_cpu_info_t;
 typedef struct uv_interface_address_s uv_interface_address_t;
+typedef struct uv_interface_address2_s uv_interface_address2_t;
 typedef struct uv_dirent_s uv_dirent_t;
 typedef struct uv_passwd_s uv_passwd_t;
 typedef struct uv_group_s uv_group_t;
@@ -1290,6 +1291,30 @@ struct uv_interface_address_s {
   } broadcast;
 };
 
+typedef enum {
+  UV_PHYS_ADDR_UNKNOWN,
+  UV_PHYS_ADDR_MAC48,
+  UV_PHYS_ADDR_EUI64
+} uv_phys_addr_family;
+
+struct uv_interface_address2_s {
+  char* name;
+  char phys_addr[8];
+  uv_phys_addr_family phys_addr_family;
+  int is_internal;
+  union {
+    struct sockaddr_in address4;
+    struct sockaddr_in6 address6;
+  } address;
+  union {
+    struct sockaddr_in netmask4;
+    struct sockaddr_in6 netmask6;
+  } netmask;
+  union {
+    struct sockaddr_in broadcast4;
+  } broadcast;
+};
+
 struct uv_passwd_s {
   char* username;
   unsigned long uid;
@@ -1420,6 +1445,11 @@ UV_EXTERN int uv_interface_addresses(uv_interface_address_t** addresses,
                                      int* count);
 UV_EXTERN void uv_free_interface_addresses(uv_interface_address_t* addresses,
                                            int count);
+
+UV_EXTERN int uv_interface_addresses2(uv_interface_address2_t** addresses,
+                                      int* count);
+UV_EXTERN void uv_free_interface_addresses2(uv_interface_address2_t* addresses,
+                                            int count);
 
 struct uv_env_item_s {
   char* name;

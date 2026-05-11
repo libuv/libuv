@@ -315,7 +315,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 }
 
 
-static int get_ibmi_physical_address(const char* line, char (*phys_addr)[6]) {
+static int get_ibmi_physical_address(const char* line, char (*phys_addr)[8]) {
   LIND0500 rcvr;
   /* rcvrlen is input parameter 2 to QDCRLIND */
   unsigned int rcvrlen = sizeof(rcvr);
@@ -391,8 +391,8 @@ static int get_ibmi_physical_address(const char* line, char (*phys_addr)[6]) {
 }
 
 
-int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-  uv_interface_address_t* address;
+int uv_interface_addresses2(uv_interface_address2_t** addresses, int* count) {
+  uv_interface_address2_t* address;
   struct ifaddrs_pase *ifap = NULL, *cur;
   int inet6, r = 0;
 
@@ -487,6 +487,9 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
         }
         uv__free(temp_name);
       }
+
+      if (rc == 0)
+        address->phys_addr_family = UV_PHYS_ADDR_MAC48;
     }
 
     address++;
@@ -497,7 +500,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses, int count) {
+void uv_free_interface_addresses2(uv_interface_address2_t* addresses,
+                                  int count) {
   int i;
 
   for (i = 0; i < count; ++i) {
