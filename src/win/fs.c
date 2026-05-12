@@ -163,9 +163,12 @@ static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
   }
 }
 
-#define TIME_T_TO_FILETIME(time, filetime_ptr)                              \
+/* Truncates sub-100ns precision; FILETIME resolution is 100ns. */
+#define TIMESPEC_TO_FILETIME(ts, filetime_ptr)                              \
   do {                                                                      \
-    int64_t bigtime = ((time) * TICKS_PER_SEC + WIN_TO_UNIX_TICK_OFFSET);   \
+    int64_t bigtime = (int64_t)(ts).tv_sec * TICKS_PER_SEC                  \
+                    + (ts).tv_nsec / NSEC_PER_TICK                          \
+                    + WIN_TO_UNIX_TICK_OFFSET;                              \
     (filetime_ptr)->dwLowDateTime = (uint64_t) bigtime & 0xFFFFFFFF;        \
     (filetime_ptr)->dwHighDateTime = (uint64_t) bigtime >> 32;              \
   } while(0)
@@ -2552,27 +2555,41 @@ fchmod_cleanup:
 
 
 INLINE static int fs__utime_handle(HANDLE handle,
-                                   double btime,
-                                   double atime,
-                                   double mtime) {
+                                   uv_timespec_t btime,
+                                   uv_timespec_t atime,
+                                   uv_timespec_t mtime) {
   FILETIME filetime_b;
   FILETIME filetime_a;
   FILETIME filetime_m;
+  FILETIME* p_filetime_b;
+  FILETIME* p_filetime_a;
+  FILETIME* p_filetime_m;
 
-  if (isnan(btime)) {
-    filetime_b.dwHighDateTime = 0;
-    filetime_b.dwLowDateTime = 0;
+  if (btime.tv_nsec == UV_TIMESPEC_OMIT) {
+    p_filetime_b = NULL;
   } else {
-    TIME_T_TO_FILETIME(btime, &filetime_b);
+    TIMESPEC_TO_FILETIME(btime, &filetime_b);
+    p_filetime_b = &filetime_b;
   }
 
-  TIME_T_TO_FILETIME(atime, &filetime_a);
-  TIME_T_TO_FILETIME(mtime, &filetime_m);
+  if (atime.tv_nsec == UV_TIMESPEC_OMIT) {
+    p_filetime_a = NULL;
+  } else {
+    TIMESPEC_TO_FILETIME(atime, &filetime_a);
+    p_filetime_a = &filetime_a;
+  }
+
+  if (mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+    p_filetime_m = NULL;
+  } else {
+    TIMESPEC_TO_FILETIME(mtime, &filetime_m);
+    p_filetime_m = &filetime_m;
+  }
 
   if (!SetFileTime(handle,
-                   &filetime_b,
-                   &filetime_a,
-                   &filetime_m)) {
+                   p_filetime_b,
+                   p_filetime_a,
+                   p_filetime_m)) {
     return -1;
   }
 
@@ -2580,9 +2597,9 @@ INLINE static int fs__utime_handle(HANDLE handle,
 }
 
 INLINE static DWORD fs__utime_impl_from_path(WCHAR* path,
-                                             double btime,
-                                             double atime,
-                                             double mtime,
+                                             uv_timespec_t btime,
+                                             uv_timespec_t atime,
+                                             uv_timespec_t mtime,
                                              int do_lutime) {
   HANDLE handle;
   DWORD flags;
@@ -3696,15 +3713,19 @@ int uv_fs_utime_ex(uv_loop_t* loop, uv_fs_t* req, const char* path,
   int err;
 
   INIT(UV_FS_UTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime)) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
     return req->result;
   }
 
-  req->fs.time.btime = btime;
-  req->fs.time.atime = atime;
-  req->fs.time.mtime = mtime;
+  req->fs.time.btime = uv__double_to_timespec(btime);
+  req->fs.time.atime = uv__double_to_timespec(atime);
+  req->fs.time.mtime = uv__double_to_timespec(mtime);
   POST;
 }
 
@@ -3718,10 +3739,14 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle, double atime,
 int uv_fs_futime_ex(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle,
                     double btime, double atime, double mtime, uv_fs_cb cb) {
   INIT(UV_FS_FUTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime)) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   req->file.hFile = handle;
-  req->fs.time.btime = btime;
-  req->fs.time.atime = atime;
-  req->fs.time.mtime = mtime;
+  req->fs.time.btime = uv__double_to_timespec(btime);
+  req->fs.time.atime = uv__double_to_timespec(atime);
+  req->fs.time.mtime = uv__double_to_timespec(mtime);
   POST;
 }
 
@@ -3730,12 +3755,101 @@ int uv_fs_lutime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
   int err;
 
   INIT(UV_FS_LUTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime)) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
     return req->result;
   }
 
+  req->fs.time.btime.tv_nsec = UV_TIMESPEC_OMIT;
+  req->fs.time.atime = uv__double_to_timespec(atime);
+  req->fs.time.mtime = uv__double_to_timespec(mtime);
+  POST;
+}
+
+
+int uv_fs_utime2(uv_loop_t* loop, uv_fs_t* req, const char* path,
+                  uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb) {
+  uv_timespec_t omit = {0, UV_TIMESPEC_OMIT};
+  return uv_fs_utime2_ex(loop, req, path, omit, atime, mtime, cb);
+}
+
+int uv_fs_utime2_ex(uv_loop_t* loop, uv_fs_t* req, const char* path,
+                     uv_timespec_t btime, uv_timespec_t atime,
+                     uv_timespec_t mtime, uv_fs_cb cb) {
+  int err;
+
+  INIT(UV_FS_UTIME);
+  if ((btime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (btime.tv_nsec < 0 || btime.tv_nsec > UV__NSEC_MAX)) ||
+      (atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
+  err = fs__capture_path(req, path, NULL, cb != NULL);
+  if (err) {
+    SET_REQ_WIN32_ERROR(req, err);
+    return req->result;
+  }
+
+  req->fs.time.btime = btime;
+  req->fs.time.atime = atime;
+  req->fs.time.mtime = mtime;
+  POST;
+}
+
+int uv_fs_futime2(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle,
+                   uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb) {
+  uv_timespec_t omit = {0, UV_TIMESPEC_OMIT};
+  return uv_fs_futime2_ex(loop, req, handle, omit, atime, mtime, cb);
+}
+
+int uv_fs_futime2_ex(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle,
+                      uv_timespec_t btime, uv_timespec_t atime,
+                      uv_timespec_t mtime, uv_fs_cb cb) {
+  INIT(UV_FS_FUTIME);
+  if ((btime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (btime.tv_nsec < 0 || btime.tv_nsec > UV__NSEC_MAX)) ||
+      (atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
+  req->file.hFile = handle;
+  req->fs.time.btime = btime;
+  req->fs.time.atime = atime;
+  req->fs.time.mtime = mtime;
+  POST;
+}
+
+int uv_fs_lutime2(uv_loop_t* loop, uv_fs_t* req, const char* path,
+                   uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb) {
+  int err;
+
+  INIT(UV_FS_LUTIME);
+  if ((atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
+  err = fs__capture_path(req, path, NULL, cb != NULL);
+  if (err) {
+    SET_REQ_WIN32_ERROR(req, err);
+    return req->result;
+  }
+
+  req->fs.time.btime.tv_nsec = UV_TIMESPEC_OMIT;
   req->fs.time.atime = atime;
   req->fs.time.mtime = mtime;
   POST;

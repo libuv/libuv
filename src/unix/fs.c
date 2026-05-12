@@ -57,32 +57,25 @@
 #endif
 
 
-UV_UNUSED(static struct timespec uv__fs_to_timespec(double time)) {
+UV_UNUSED(static struct timespec uv__to_timespec(uv_timespec_t t)) {
   struct timespec ts;
-  ts.tv_sec  = time;
-  ts.tv_nsec = (time - ts.tv_sec) * 1e9;
-
- /* TODO(bnoordhuis) Remove this. utimesat() has nanosecond resolution but we
-  * stick to microsecond resolution for the sake of consistency with other
-  * platforms. I'm the original author of this compatibility hack but I'm
-  * less convinced it's useful nowadays.
-  */
-  ts.tv_nsec -= ts.tv_nsec % 1000;
-
-  if (ts.tv_nsec < 0) {
-    ts.tv_nsec += 1e9;
-    ts.tv_sec -= 1;
-  }
+  ts.tv_sec = t.tv_sec;
+#if defined(UTIME_OMIT)
+  if (t.tv_nsec == UV_TIMESPEC_OMIT)
+    ts.tv_nsec = UTIME_OMIT;
+  else
+#endif
+    ts.tv_nsec = t.tv_nsec;
   return ts;
 }
 
 
-UV_UNUSED(static struct timeval uv__fs_to_timeval(double time)) {
+UV_UNUSED(static struct timeval uv__timespec_to_timeval(uv_timespec_t t)) {
   struct timeval tv;
-  tv.tv_sec  = time;
-  tv.tv_usec = (time - tv.tv_sec) * 1e6;
+  tv.tv_sec  = t.tv_sec;
+  tv.tv_usec = t.tv_nsec / 1000;
   if (tv.tv_usec < 0) {
-    tv.tv_usec += 1e6;
+    tv.tv_usec += 1000000;
     tv.tv_sec -= 1;
   }
   return tv;
@@ -103,21 +96,21 @@ static void uv__prepare_setattrlist_args(uv_fs_t* req,
 
   *size = 0;
 
-  if (!isnan(req->btime)) {
+  if (req->btime.tv_nsec != UV_TIMESPEC_OMIT) {
     attr_list->commonattr |= ATTR_CMN_CRTIME;
-    (*times)[*size] = uv__fs_to_timespec(req->btime);
+    (*times)[*size] = uv__to_timespec(req->btime);
     ++*size;
   }
 
-  if (!isnan(req->mtime)) {
+  if (req->mtime.tv_nsec != UV_TIMESPEC_OMIT) {
     attr_list->commonattr |= ATTR_CMN_MODTIME;
-    (*times)[*size] = uv__fs_to_timespec(req->mtime);
+    (*times)[*size] = uv__to_timespec(req->mtime);
     ++*size;
   }
 
-  if (!isnan(req->atime)) {
+  if (req->atime.tv_nsec != UV_TIMESPEC_OMIT) {
     attr_list->commonattr |= ATTR_CMN_ACCTIME;
-    (*times)[*size] = uv__fs_to_timespec(req->atime);
+    (*times)[*size] = uv__to_timespec(req->atime);
     ++*size;
   }
 }
@@ -292,8 +285,8 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
     || defined(__HAIKU__)                                                     \
     || defined(__GNU__)
   struct timespec ts[2];
-  ts[0] = uv__fs_to_timespec(req->atime);
-  ts[1] = uv__fs_to_timespec(req->mtime);
+  ts[0] = uv__to_timespec(req->atime);
+  ts[1] = uv__to_timespec(req->mtime);
   return futimens(req->file, ts);
 #elif defined(__APPLE__)
   struct attrlist attr_list;
@@ -309,8 +302,27 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
     || defined(__OpenBSD__)                                                   \
     || defined(__sun)
   struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
+  if (req->atime.tv_nsec == UV_TIMESPEC_OMIT ||
+      req->mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+    struct stat sb;
+    if (fstat(req->file, &sb))
+      return -1;
+    if (req->atime.tv_nsec == UV_TIMESPEC_OMIT) {
+      tv[0].tv_sec = sb.st_atim.tv_sec;
+      tv[0].tv_usec = sb.st_atim.tv_nsec / 1000;
+    } else {
+      tv[0] = uv__timespec_to_timeval(req->atime);
+    }
+    if (req->mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+      tv[1].tv_sec = sb.st_mtim.tv_sec;
+      tv[1].tv_usec = sb.st_mtim.tv_nsec / 1000;
+    } else {
+      tv[1] = uv__timespec_to_timeval(req->mtime);
+    }
+  } else {
+    tv[0] = uv__timespec_to_timeval(req->atime);
+    tv[1] = uv__timespec_to_timeval(req->mtime);
+  }
 # if defined(__sun)
   return futimesat(req->file, NULL, tv);
 # else
@@ -319,10 +331,14 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
 #elif defined(__MVS__)
   attrib_t atr;
   memset(&atr, 0, sizeof(atr));
-  atr.att_mtimechg = 1;
-  atr.att_atimechg = 1;
-  atr.att_mtime = req->mtime;
-  atr.att_atime = req->atime;
+  if (req->mtime.tv_nsec != UV_TIMESPEC_OMIT) {
+    atr.att_mtimechg = 1;
+    atr.att_mtime = req->mtime.tv_sec;
+  }
+  if (req->atime.tv_nsec != UV_TIMESPEC_OMIT) {
+    atr.att_atimechg = 1;
+    atr.att_atime = req->atime.tv_sec;
+  }
   return __fchattr(req->file, &atr, sizeof(atr));
 #else
   errno = ENOSYS;
@@ -1210,8 +1226,8 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
     || defined(__sun)                                                          \
     || defined(__HAIKU__)
   struct timespec ts[2];
-  ts[0] = uv__fs_to_timespec(req->atime);
-  ts[1] = uv__fs_to_timespec(req->mtime);
+  ts[0] = uv__to_timespec(req->atime);
+  ts[1] = uv__to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, 0);
 #elif defined(__APPLE__)
   struct attrlist attr_list;
@@ -1226,22 +1242,58 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
     || defined(__NetBSD__)                                                    \
     || defined(__OpenBSD__)
   struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
+  if (req->atime.tv_nsec == UV_TIMESPEC_OMIT ||
+      req->mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+    struct stat sb;
+    if (stat(req->path, &sb))
+      return -1;
+    if (req->atime.tv_nsec == UV_TIMESPEC_OMIT) {
+      tv[0].tv_sec = sb.st_atim.tv_sec;
+      tv[0].tv_usec = sb.st_atim.tv_nsec / 1000;
+    } else {
+      tv[0] = uv__timespec_to_timeval(req->atime);
+    }
+    if (req->mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+      tv[1].tv_sec = sb.st_mtim.tv_sec;
+      tv[1].tv_usec = sb.st_mtim.tv_nsec / 1000;
+    } else {
+      tv[1] = uv__timespec_to_timeval(req->mtime);
+    }
+  } else {
+    tv[0] = uv__timespec_to_timeval(req->atime);
+    tv[1] = uv__timespec_to_timeval(req->mtime);
+  }
   return utimes(req->path, tv);
 #elif defined(_AIX)                                                           \
     && !defined(_AIX71)
   struct utimbuf buf;
-  buf.actime = req->atime;
-  buf.modtime = req->mtime;
+  /* Seconds-only resolution; nsec is silently dropped. */
+  if (req->atime.tv_nsec == UV_TIMESPEC_OMIT ||
+      req->mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+    struct stat sb;
+    if (stat(req->path, &sb))
+      return -1;
+    buf.actime = req->atime.tv_nsec == UV_TIMESPEC_OMIT ?
+                 sb.st_atime : req->atime.tv_sec;
+    buf.modtime = req->mtime.tv_nsec == UV_TIMESPEC_OMIT ?
+                  sb.st_mtime : req->mtime.tv_sec;
+  } else {
+    buf.actime = req->atime.tv_sec;
+    buf.modtime = req->mtime.tv_sec;
+  }
   return utime(req->path, &buf);
 #elif defined(__MVS__)
   attrib_t atr;
   memset(&atr, 0, sizeof(atr));
-  atr.att_mtimechg = 1;
-  atr.att_atimechg = 1;
-  atr.att_mtime = req->mtime;
-  atr.att_atime = req->atime;
+  /* Seconds-only resolution; nsec is silently dropped. */
+  if (req->mtime.tv_nsec != UV_TIMESPEC_OMIT) {
+    atr.att_mtimechg = 1;
+    atr.att_mtime = req->mtime.tv_sec;
+  }
+  if (req->atime.tv_nsec != UV_TIMESPEC_OMIT) {
+    atr.att_atimechg = 1;
+    atr.att_atime = req->atime.tv_sec;
+  }
   return __lchattr((char*) req->path, &atr, sizeof(atr));
 #else
   errno = ENOSYS;
@@ -1258,16 +1310,45 @@ static ssize_t uv__fs_lutime(uv_fs_t* req) {
     defined(__GNU__)              ||                                           \
     defined(__OpenBSD__)
   struct timespec ts[2];
-  ts[0] = uv__fs_to_timespec(req->atime);
-  ts[1] = uv__fs_to_timespec(req->mtime);
+  ts[0] = uv__to_timespec(req->atime);
+  ts[1] = uv__to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
 #elif defined(__APPLE__)          ||                                          \
       defined(__DragonFly__)      ||                                          \
       defined(__FreeBSD__)        ||                                          \
       defined(__NetBSD__)
   struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
+  if (req->atime.tv_nsec == UV_TIMESPEC_OMIT ||
+      req->mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+    struct stat sb;
+    if (lstat(req->path, &sb))
+      return -1;
+    if (req->atime.tv_nsec == UV_TIMESPEC_OMIT) {
+#if defined(__APPLE__)
+      tv[0].tv_sec = sb.st_atimespec.tv_sec;
+      tv[0].tv_usec = sb.st_atimespec.tv_nsec / 1000;
+#else
+      tv[0].tv_sec = sb.st_atim.tv_sec;
+      tv[0].tv_usec = sb.st_atim.tv_nsec / 1000;
+#endif
+    } else {
+      tv[0] = uv__timespec_to_timeval(req->atime);
+    }
+    if (req->mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+#if defined(__APPLE__)
+      tv[1].tv_sec = sb.st_mtimespec.tv_sec;
+      tv[1].tv_usec = sb.st_mtimespec.tv_nsec / 1000;
+#else
+      tv[1].tv_sec = sb.st_mtim.tv_sec;
+      tv[1].tv_usec = sb.st_mtim.tv_nsec / 1000;
+#endif
+    } else {
+      tv[1] = uv__timespec_to_timeval(req->mtime);
+    }
+  } else {
+    tv[0] = uv__timespec_to_timeval(req->atime);
+    tv[1] = uv__timespec_to_timeval(req->mtime);
+  }
   return lutimes(req->path, tv);
 #else
   errno = ENOSYS;
@@ -2009,10 +2090,12 @@ int uv_fs_futime_ex(uv_loop_t* loop,
                     double mtime,
                     uv_fs_cb cb) {
   INIT(FUTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime))
+    return UV_EINVAL;
   req->file = file;
-  req->btime = btime;
-  req->atime = atime;
-  req->mtime = mtime;
+  req->btime = uv__double_to_timespec(btime);
+  req->atime = uv__double_to_timespec(atime);
+  req->mtime = uv__double_to_timespec(mtime);
   POST;
 }
 
@@ -2023,7 +2106,101 @@ int uv_fs_lutime(uv_loop_t* loop,
                  double mtime,
                  uv_fs_cb cb) {
   INIT(LUTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime))
+    return UV_EINVAL;
   PATH;
+  req->btime.tv_nsec = UV_TIMESPEC_OMIT;
+  req->atime = uv__double_to_timespec(atime);
+  req->mtime = uv__double_to_timespec(mtime);
+  POST;
+}
+
+
+int uv_fs_utime2(uv_loop_t* loop,
+                  uv_fs_t* req,
+                  const char* path,
+                  uv_timespec_t atime,
+                  uv_timespec_t mtime,
+                  uv_fs_cb cb) {
+  uv_timespec_t omit = {0, UV_TIMESPEC_OMIT};
+  return uv_fs_utime2_ex(loop, req, path, omit, atime, mtime, cb);
+}
+
+
+int uv_fs_utime2_ex(uv_loop_t* loop,
+                     uv_fs_t* req,
+                     const char* path,
+                     uv_timespec_t btime,
+                     uv_timespec_t atime,
+                     uv_timespec_t mtime,
+                     uv_fs_cb cb) {
+  INIT(UTIME);
+  if ((btime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (btime.tv_nsec < 0 || btime.tv_nsec > UV__NSEC_MAX)) ||
+      (atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    return UV_EINVAL;
+  }
+  PATH;
+  req->btime = btime;
+  req->atime = atime;
+  req->mtime = mtime;
+  POST;
+}
+
+
+int uv_fs_futime2(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   uv_os_fd_t file,
+                   uv_timespec_t atime,
+                   uv_timespec_t mtime,
+                   uv_fs_cb cb) {
+  uv_timespec_t omit = {0, UV_TIMESPEC_OMIT};
+  return uv_fs_futime2_ex(loop, req, file, omit, atime, mtime, cb);
+}
+
+
+int uv_fs_futime2_ex(uv_loop_t* loop,
+                      uv_fs_t* req,
+                      uv_os_fd_t file,
+                      uv_timespec_t btime,
+                      uv_timespec_t atime,
+                      uv_timespec_t mtime,
+                      uv_fs_cb cb) {
+  INIT(FUTIME);
+  if ((btime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (btime.tv_nsec < 0 || btime.tv_nsec > UV__NSEC_MAX)) ||
+      (atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    return UV_EINVAL;
+  }
+  req->file = file;
+  req->btime = btime;
+  req->atime = atime;
+  req->mtime = mtime;
+  POST;
+}
+
+
+int uv_fs_lutime2(uv_loop_t* loop,
+                   uv_fs_t* req,
+                   const char* path,
+                   uv_timespec_t atime,
+                   uv_timespec_t mtime,
+                   uv_fs_cb cb) {
+  INIT(LUTIME);
+  if ((atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    return UV_EINVAL;
+  }
+  PATH;
+  req->btime.tv_nsec = UV_TIMESPEC_OMIT;
   req->atime = atime;
   req->mtime = mtime;
   POST;
@@ -2303,10 +2480,12 @@ int uv_fs_utime_ex(uv_loop_t* loop,
                    double mtime,
                    uv_fs_cb cb) {
   INIT(UTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime))
+    return UV_EINVAL;
   PATH;
-  req->btime = btime;
-  req->atime = atime;
-  req->mtime = mtime;
+  req->btime = uv__double_to_timespec(btime);
+  req->atime = uv__double_to_timespec(atime);
+  req->mtime = uv__double_to_timespec(mtime);
   POST;
 }
 

@@ -463,6 +463,46 @@ API
 
     .. versionadded:: 2.0.0
 
+.. c:function:: int uv_fs_utime2(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb)
+.. c:function:: int uv_fs_futime2(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb)
+.. c:function:: int uv_fs_lutime2(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb)
+
+    Equivalent to :c:func:`uv_fs_utime`, :c:func:`uv_fs_futime`, and
+    :c:func:`uv_fs_lutime` respectively, but accept :c:type:`uv_timespec_t`
+    timestamps instead of ``double``, preserving nanosecond precision where
+    supported by the underlying platform.
+
+    Any timestamp whose ``tv_nsec`` is set to :c:macro:`UV_TIMESPEC_OMIT` is
+    left unchanged on the file.
+
+    ``tv_nsec`` must be :c:macro:`UV_TIMESPEC_OMIT` or in the range
+    ``[0, 999999999]``; other values cause ``UV_EINVAL``.
+
+    On platforms with lower resolution, timestamps are silently truncated to
+    the platform's native precision (microseconds on BSD, 100 nanoseconds on
+    Windows, seconds on old AIX/z/OS).
+
+    .. versionadded:: 2.0.0
+
+.. c:function:: int uv_fs_utime2_ex(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_timespec_t btime, uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb)
+.. c:function:: int uv_fs_futime2_ex(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t file, uv_timespec_t btime, uv_timespec_t atime, uv_timespec_t mtime, uv_fs_cb cb)
+
+    Equivalent to :c:func:`uv_fs_utime2` and :c:func:`uv_fs_futime2` except on
+    macOS and Windows, in which case these variants also allow the
+    birth/creation time to be set. Set ``tv_nsec`` to
+    :c:macro:`UV_TIMESPEC_OMIT` on any timestamp to leave it unchanged.
+
+    .. versionadded:: 2.0.0
+
+.. c:macro:: UV_TIMESPEC_OMIT
+
+    Sentinel value for ``uv_timespec_t.tv_nsec``. When set, the corresponding
+    timestamp is not modified. The value is outside the valid
+    ``[0, 999999999]`` range for nanoseconds and is translated to the
+    platform's native ``UTIME_OMIT`` when calling :man:`utimensat(2)`.
+
+    .. versionadded:: 2.0.0
+
 .. c:function:: int uv_fs_link(uv_loop_t* loop, uv_fs_t* req, const char* path, const char* new_path, uv_fs_cb cb)
 
     Equivalent to :man:`link(2)`.
