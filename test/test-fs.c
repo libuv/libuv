@@ -3205,6 +3205,426 @@ TEST_IMPL(fs_lutime) {
 }
 
 
+static void check_utime2(const char* path,
+                         uv_timespec_t atime,
+                         uv_timespec_t mtime,
+                         int test_lutime) {
+  uv_stat_t* s;
+  uv_fs_t req;
+  int r;
+
+  if (test_lutime)
+    r = uv_fs_lstat(loop, &req, path, NULL);
+  else
+    r = uv_fs_stat(loop, &req, path, NULL);
+
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+
+  s = &req.statbuf;
+
+  if (s->st_atim.tv_nsec == 0 && s->st_mtim.tv_nsec == 0) {
+    /* Filesystem does not support sub-second timestamps. Check seconds only. */
+    if (!test_lutime)
+      ASSERT_EQ(s->st_atim.tv_sec, atime.tv_sec);
+    ASSERT_EQ(s->st_mtim.tv_sec, mtime.tv_sec);
+  } else {
+#if !defined(__APPLE__) && !defined(__SUNPRO_C)
+    ASSERT_GE(s->st_atim.tv_nsec, 0);
+    ASSERT_GE(s->st_mtim.tv_nsec, 0);
+#endif
+    /*
+     * Linux does not allow reading reliably the atime of a symlink
+     * since readlink() can update it.
+     */
+    if (!test_lutime) {
+      ASSERT_EQ(s->st_atim.tv_sec, atime.tv_sec);
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) \
+    || defined(__OpenBSD__)
+      /* BSD uses timeval (µs resolution) for utimes/lutimes. */
+      ASSERT_EQ(s->st_atim.tv_nsec / 1000, atime.tv_nsec / 1000);
+#elif defined(_WIN32)
+      /* Windows FILETIME has 100ns resolution. */
+      ASSERT_EQ(s->st_atim.tv_nsec / 100, atime.tv_nsec / 100);
+#else
+      ASSERT_EQ(s->st_atim.tv_nsec, atime.tv_nsec);
+#endif
+    }
+    ASSERT_EQ(s->st_mtim.tv_sec, mtime.tv_sec);
+#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__NetBSD__) \
+    || defined(__OpenBSD__)
+    ASSERT_EQ(s->st_mtim.tv_nsec / 1000, mtime.tv_nsec / 1000);
+#elif defined(_WIN32)
+    ASSERT_EQ(s->st_mtim.tv_nsec / 100, mtime.tv_nsec / 100);
+#else
+    ASSERT_EQ(s->st_mtim.tv_nsec, mtime.tv_nsec);
+#endif
+  }
+
+  uv_fs_req_cleanup(&req);
+}
+
+
+static void utime2_cb(uv_fs_t* req) {
+  ASSERT_OK(req->result);
+  ASSERT_EQ(req->fs_type, UV_FS_UTIME);
+  uv_fs_req_cleanup(req);
+  utime_cb_count++;
+}
+
+
+static void futime2_cb(uv_fs_t* req) {
+  ASSERT_OK(req->result);
+  ASSERT_EQ(req->fs_type, UV_FS_FUTIME);
+  uv_fs_req_cleanup(req);
+  futime_cb_count++;
+}
+
+
+static void lutime2_cb(uv_fs_t* req) {
+  ASSERT_OK(req->result);
+  ASSERT_EQ(req->fs_type, UV_FS_LUTIME);
+  uv_fs_req_cleanup(req);
+  lutime_cb_count++;
+}
+
+
+TEST_IMPL(fs_utime2) {
+  const char path[] = "test_file";
+  uv_timespec_t atime;
+  uv_timespec_t mtime;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  utime_cb_count = 0;
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Sync: set timestamps with nanosecond precision. */
+  atime.tv_sec = 400497753;
+  atime.tv_nsec = 123456789;
+  mtime.tv_sec = 400497753;
+  mtime.tv_nsec = 987654321;
+
+  r = uv_fs_utime2(NULL, &req, path, atime, mtime, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  check_utime2(path, atime, mtime, /* test_lutime */ 0);
+
+  /* Async. */
+  atime.tv_sec = 1291404900;
+  atime.tv_nsec = 250000100;
+  mtime.tv_sec = 1291404900;
+  mtime.tv_nsec = 750000200;
+
+  r = uv_fs_utime2(loop, &utime_req, path, atime, mtime, utime2_cb);
+  ASSERT_OK(r);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(1, utime_cb_count);
+
+  check_utime2(path, atime, mtime, /* test_lutime */ 0);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+TEST_IMPL(fs_utime2_round_trip) {
+  const char path[] = "test_file";
+  uv_timespec_t orig_atime;
+  uv_timespec_t orig_mtime;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  uv_stat_t* s;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Stat the file to get original timestamps. */
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT_OK(r);
+  s = &req.statbuf;
+  orig_atime = s->st_atim;
+  orig_mtime = s->st_mtim;
+  uv_fs_req_cleanup(&req);
+
+  /* Set timestamps back to what stat returned - should round-trip exactly. */
+  r = uv_fs_utime2(NULL, &req, path, orig_atime, orig_mtime, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  /* Stat again and compare. */
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT_OK(r);
+  s = &req.statbuf;
+
+  ASSERT_EQ(s->st_atim.tv_sec, orig_atime.tv_sec);
+  ASSERT_EQ(s->st_atim.tv_nsec, orig_atime.tv_nsec);
+  ASSERT_EQ(s->st_mtim.tv_sec, orig_mtime.tv_sec);
+  ASSERT_EQ(s->st_mtim.tv_nsec, orig_mtime.tv_nsec);
+
+  uv_fs_req_cleanup(&req);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+TEST_IMPL(fs_futime2) {
+  const char path[] = "test_file";
+  uv_timespec_t atime;
+  uv_timespec_t mtime;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  futime_cb_count = 0;
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+
+  /* Sync: set timestamps on open file descriptor. */
+  atime.tv_sec = 1291404900;
+  atime.tv_nsec = 250000100;
+  mtime.tv_sec = 1291404900;
+  mtime.tv_nsec = 750000200;
+
+  r = uv_fs_futime2(NULL, &req, file, atime, mtime, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  check_utime2(path, atime, mtime, /* test_lutime */ 0);
+
+  /* Async. */
+  atime.tv_sec = 400497753;
+  atime.tv_nsec = 123456789;
+  mtime.tv_sec = 400497753;
+  mtime.tv_nsec = 987654321;
+
+  r = uv_fs_futime2(loop, &futime_req, file, atime, mtime, futime2_cb);
+  ASSERT_OK(r);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(1, futime_cb_count);
+
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  check_utime2(path, atime, mtime, /* test_lutime */ 0);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+TEST_IMPL(fs_lutime2) {
+  const char* path = "test_file";
+  const char* symlink_path = "test_file_symlink2";
+  uv_timespec_t atime;
+  uv_timespec_t mtime;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  int r, s;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  lutime_cb_count = 0;
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+  uv_fs_close(loop, &req, file, NULL);
+
+  unlink(symlink_path);
+  s = uv_fs_symlink(NULL, &req, path, symlink_path, 0, NULL);
+#ifdef _WIN32
+  if (s == UV_EPERM) {
+    RETURN_SKIP(
+        "Symlink creation requires elevated console (with admin rights)");
+  }
+#endif
+  ASSERT_OK(s);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  /* Sync. */
+  atime.tv_sec = 400497753;
+  atime.tv_nsec = 250000000;
+  mtime.tv_sec = 400497753;
+  mtime.tv_nsec = 750000000;
+
+  r = uv_fs_lutime2(NULL, &req, symlink_path, atime, mtime, NULL);
+#if (defined(_AIX) && !defined(_AIX71)) ||                                    \
+     defined(__MVS__)
+  ASSERT_EQ(r, UV_ENOSYS);
+  RETURN_SKIP("lutime is not implemented for z/OS and AIX versions below 7.1");
+#endif
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  check_utime2(symlink_path, atime, mtime, /* test_lutime */ 1);
+
+  /* Async. */
+  atime.tv_sec = 1291404900;
+  atime.tv_nsec = 500000000;
+  mtime.tv_sec = 1291404900;
+  mtime.tv_nsec = 250000000;
+
+  r = uv_fs_lutime2(loop, &req, symlink_path, atime, mtime, lutime2_cb);
+  ASSERT_OK(r);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(1, lutime_cb_count);
+
+  check_utime2(symlink_path, atime, mtime, /* test_lutime */ 1);
+
+  /* Cleanup. */
+  unlink(path);
+  unlink(symlink_path);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+#if defined(__APPLE__) || defined(_WIN32)
+TEST_IMPL(fs_utime2_ex_btime) {
+  const char path[] = "test_file";
+  uv_timespec_t btime;
+  uv_timespec_t atime;
+  uv_timespec_t mtime;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  uv_stat_t* s;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* uv_fs_utime2_ex: set all three timestamps including birth time. */
+  btime.tv_sec = 1000000000;
+  btime.tv_nsec = 500000000;
+  atime.tv_sec = 1100000000;
+  atime.tv_nsec = 250000000;
+  mtime.tv_sec = 1200000000;
+  mtime.tv_nsec = 750000000;
+
+  r = uv_fs_utime2_ex(NULL, &req, path, btime, atime, mtime, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT_OK(r);
+  s = &req.statbuf;
+  ASSERT_EQ(s->st_birthtim.tv_sec, btime.tv_sec);
+#ifdef _WIN32
+  ASSERT_EQ(s->st_birthtim.tv_nsec / 100, btime.tv_nsec / 100);
+#else
+  ASSERT_EQ(s->st_birthtim.tv_nsec, btime.tv_nsec);
+#endif
+  uv_fs_req_cleanup(&req);
+
+  check_utime2(path, atime, mtime, /* test_lutime */ 0);
+
+  /* uv_fs_futime2_ex: set btime via open file descriptor. */
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR, 0, NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+
+  btime.tv_sec = 900000000;
+  btime.tv_nsec = 100000000;
+
+  r = uv_fs_futime2_ex(NULL, &req, file, btime, atime, mtime, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT_OK(r);
+  s = &req.statbuf;
+  ASSERT_EQ(s->st_birthtim.tv_sec, btime.tv_sec);
+#ifdef _WIN32
+  ASSERT_EQ(s->st_birthtim.tv_nsec / 100, btime.tv_nsec / 100);
+#else
+  ASSERT_EQ(s->st_birthtim.tv_nsec, btime.tv_nsec);
+#endif
+  uv_fs_req_cleanup(&req);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+#endif
+
+
 TEST_IMPL(fs_stat_missing_path) {
   uv_fs_t req;
   int r;
