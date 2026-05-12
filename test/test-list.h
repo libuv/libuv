@@ -406,6 +406,8 @@ TEST_DECLARE   (fs_lutime2)
 #if defined(__APPLE__) || defined(_WIN32)
 TEST_DECLARE   (fs_utime2_ex_btime)
 #endif
+TEST_DECLARE   (fs_utime2_omit)
+TEST_DECLARE   (fs_utime2_ex_all_platforms)
 TEST_DECLARE   (fs_file_open_append)
 TEST_DECLARE   (fs_statfs)
 TEST_DECLARE   (fs_stat_batch_multiple)
@@ -1131,6 +1133,8 @@ TASK_LIST_START
 #if defined(__APPLE__) || defined(_WIN32)
   TEST_ENTRY  (fs_utime2_ex_btime)
 #endif
+  TEST_ENTRY  (fs_utime2_omit)
+  TEST_ENTRY  (fs_utime2_ex_all_platforms)
   TEST_ENTRY  (fs_readlink)
   TEST_ENTRY  (fs_realpath)
   TEST_ENTRY  (fs_symlink)

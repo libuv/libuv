@@ -163,6 +163,7 @@ static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
   }
 }
 
+/* Truncates sub-100ns precision; FILETIME resolution is 100ns. */
 #define TIMESPEC_TO_FILETIME(ts, filetime_ptr)                              \
   do {                                                                      \
     int64_t bigtime = (int64_t)(ts).tv_sec * TICKS_PER_SEC                  \
@@ -171,26 +172,6 @@ static void uv__filetime_to_timespec(uv_timespec_t *ts, int64_t filetime) {
     (filetime_ptr)->dwLowDateTime = (uint64_t) bigtime & 0xFFFFFFFF;        \
     (filetime_ptr)->dwHighDateTime = (uint64_t) bigtime >> 32;              \
   } while(0)
-
-static uv_timespec_t uv__double_to_timespec(double time) {
-  uv_timespec_t ts;
-
-  if (isnan(time) || isinf(time)) {
-    ts.tv_sec = 0;
-    ts.tv_nsec = UV_TIMESPEC_OMIT;
-    return ts;
-  }
-
-  ts.tv_sec = (int64_t) time;
-  ts.tv_nsec = (int32_t) ((time - ts.tv_sec) * 1000000000);
-
-  if (ts.tv_nsec < 0) {
-    ts.tv_nsec += 1000000000;
-    ts.tv_sec -= 1;
-  }
-
-  return ts;
-}
 
 #define IS_SLASH(c) ((c) == L'\\' || (c) == L'/')
 #define IS_LETTER(c) (((c) >= L'a' && (c) <= L'z') || \
@@ -2581,6 +2562,8 @@ INLINE static int fs__utime_handle(HANDLE handle,
   FILETIME filetime_a;
   FILETIME filetime_m;
   FILETIME* p_filetime_b;
+  FILETIME* p_filetime_a;
+  FILETIME* p_filetime_m;
 
   if (btime.tv_nsec == UV_TIMESPEC_OMIT) {
     p_filetime_b = NULL;
@@ -2589,13 +2572,24 @@ INLINE static int fs__utime_handle(HANDLE handle,
     p_filetime_b = &filetime_b;
   }
 
-  TIMESPEC_TO_FILETIME(atime, &filetime_a);
-  TIMESPEC_TO_FILETIME(mtime, &filetime_m);
+  if (atime.tv_nsec == UV_TIMESPEC_OMIT) {
+    p_filetime_a = NULL;
+  } else {
+    TIMESPEC_TO_FILETIME(atime, &filetime_a);
+    p_filetime_a = &filetime_a;
+  }
+
+  if (mtime.tv_nsec == UV_TIMESPEC_OMIT) {
+    p_filetime_m = NULL;
+  } else {
+    TIMESPEC_TO_FILETIME(mtime, &filetime_m);
+    p_filetime_m = &filetime_m;
+  }
 
   if (!SetFileTime(handle,
                    p_filetime_b,
-                   &filetime_a,
-                   &filetime_m)) {
+                   p_filetime_a,
+                   p_filetime_m)) {
     return -1;
   }
 
@@ -3719,6 +3713,10 @@ int uv_fs_utime_ex(uv_loop_t* loop, uv_fs_t* req, const char* path,
   int err;
 
   INIT(UV_FS_UTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime)) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
@@ -3741,6 +3739,10 @@ int uv_fs_futime(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle, double atime,
 int uv_fs_futime_ex(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle,
                     double btime, double atime, double mtime, uv_fs_cb cb) {
   INIT(UV_FS_FUTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime)) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   req->file.hFile = handle;
   req->fs.time.btime = uv__double_to_timespec(btime);
   req->fs.time.atime = uv__double_to_timespec(atime);
@@ -3753,6 +3755,10 @@ int uv_fs_lutime(uv_loop_t* loop, uv_fs_t* req, const char* path, double atime,
   int err;
 
   INIT(UV_FS_LUTIME);
+  if (isnan(atime) || isinf(atime) || isnan(mtime) || isinf(mtime)) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
@@ -3778,6 +3784,15 @@ int uv_fs_utime2_ex(uv_loop_t* loop, uv_fs_t* req, const char* path,
   int err;
 
   INIT(UV_FS_UTIME);
+  if ((btime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (btime.tv_nsec < 0 || btime.tv_nsec > UV__NSEC_MAX)) ||
+      (atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);
@@ -3800,6 +3815,15 @@ int uv_fs_futime2_ex(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t handle,
                       uv_timespec_t btime, uv_timespec_t atime,
                       uv_timespec_t mtime, uv_fs_cb cb) {
   INIT(UV_FS_FUTIME);
+  if ((btime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (btime.tv_nsec < 0 || btime.tv_nsec > UV__NSEC_MAX)) ||
+      (atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   req->file.hFile = handle;
   req->fs.time.btime = btime;
   req->fs.time.atime = atime;
@@ -3812,6 +3836,13 @@ int uv_fs_lutime2(uv_loop_t* loop, uv_fs_t* req, const char* path,
   int err;
 
   INIT(UV_FS_LUTIME);
+  if ((atime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (atime.tv_nsec < 0 || atime.tv_nsec > UV__NSEC_MAX)) ||
+      (mtime.tv_nsec != UV_TIMESPEC_OMIT &&
+       (mtime.tv_nsec < 0 || mtime.tv_nsec > UV__NSEC_MAX))) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
   err = fs__capture_path(req, path, NULL, cb != NULL);
   if (err) {
     SET_REQ_WIN32_ERROR(req, err);

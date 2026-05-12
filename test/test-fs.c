@@ -3325,6 +3325,19 @@ TEST_IMPL(fs_utime2) {
 
   check_utime2(path, atime, mtime, /* test_lutime */ 0);
 
+  /* Sub-100ns values: exercises truncation on Windows (100ns resolution). */
+  atime.tv_sec = 400497753;
+  atime.tv_nsec = 250000050;
+  mtime.tv_sec = 400497753;
+  mtime.tv_nsec = 750000099;
+
+  r = uv_fs_utime2(NULL, &req, path, atime, mtime, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  check_utime2(path, atime, mtime, /* test_lutime */ 0);
+
   /* Async. */
   atime.tv_sec = 1291404900;
   atime.tv_nsec = 250000100;
@@ -3623,6 +3636,150 @@ TEST_IMPL(fs_utime2_ex_btime) {
   return 0;
 }
 #endif
+
+
+TEST_IMPL(fs_utime2_omit) {
+  const char path[] = "test_file";
+  uv_timespec_t btime;
+  uv_timespec_t atime;
+  uv_timespec_t mtime;
+  uv_timespec_t omit;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  uv_stat_t* s;
+  uv_stat_t orig;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Set known timestamps. */
+  atime.tv_sec = 1291404900;
+  atime.tv_nsec = 250000000;
+  mtime.tv_sec = 1291404900;
+  mtime.tv_nsec = 750000000;
+
+  r = uv_fs_utime2(NULL, &req, path, atime, mtime, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Record the full stat so we can compare after OMIT. */
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT_OK(r);
+  orig = req.statbuf;
+  uv_fs_req_cleanup(&req);
+
+  /* OMIT both atime and mtime -- timestamps must not change. */
+  omit.tv_sec = 0;
+  omit.tv_nsec = UV_TIMESPEC_OMIT;
+
+  r = uv_fs_utime2_ex(NULL, &req, path, omit, omit, omit, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT_OK(r);
+  s = &req.statbuf;
+  ASSERT_EQ(s->st_atim.tv_sec, orig.st_atim.tv_sec);
+  ASSERT_EQ(s->st_atim.tv_nsec, orig.st_atim.tv_nsec);
+  ASSERT_EQ(s->st_mtim.tv_sec, orig.st_mtim.tv_sec);
+  ASSERT_EQ(s->st_mtim.tv_nsec, orig.st_mtim.tv_nsec);
+  uv_fs_req_cleanup(&req);
+
+  /* OMIT mtime only, change atime. */
+  atime.tv_sec = 400497753;
+  atime.tv_nsec = 123000000;
+
+  r = uv_fs_utime2_ex(NULL, &req, path, omit, atime, omit, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, path, NULL);
+  ASSERT_OK(r);
+  s = &req.statbuf;
+  ASSERT_EQ(s->st_mtim.tv_sec, orig.st_mtim.tv_sec);
+  ASSERT_EQ(s->st_mtim.tv_nsec, orig.st_mtim.tv_nsec);
+  uv_fs_req_cleanup(&req);
+
+  /* Validation: invalid tv_nsec should return UV_EINVAL. */
+  btime.tv_sec = 0;
+  btime.tv_nsec = -2;
+  r = uv_fs_utime2_ex(NULL, &req, path, btime, atime, mtime, NULL);
+  ASSERT_EQ(r, UV_EINVAL);
+
+  btime.tv_nsec = 1000000000;
+  r = uv_fs_utime2_ex(NULL, &req, path, btime, atime, mtime, NULL);
+  ASSERT_EQ(r, UV_EINVAL);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+TEST_IMPL(fs_utime2_ex_all_platforms) {
+  const char path[] = "test_file";
+  uv_timespec_t btime;
+  uv_timespec_t atime;
+  uv_timespec_t mtime;
+  uv_fs_t req;
+  uv_os_fd_t file;
+  int r;
+
+  /* Setup. */
+  loop = uv_default_loop();
+  unlink(path);
+  r = uv_fs_open(NULL, &req, path, UV_FS_O_RDWR | UV_FS_O_CREAT,
+                 S_IWUSR | S_IRUSR,
+                 NULL);
+  ASSERT_OK(r);
+  ASSERT_GE(req.result, 0);
+  file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /*
+   * Pass a non-OMIT btime on all platforms.  On platforms that don't
+   * support birth time, the call should succeed (btime silently ignored).
+   */
+  btime.tv_sec = 1000000000;
+  btime.tv_nsec = 500000000;
+  atime.tv_sec = 1100000000;
+  atime.tv_nsec = 250000000;
+  mtime.tv_sec = 1200000000;
+  mtime.tv_nsec = 750000000;
+
+  r = uv_fs_utime2_ex(NULL, &req, path, btime, atime, mtime, NULL);
+  ASSERT_OK(r);
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+
+  /* atime and mtime must always round-trip. */
+  check_utime2(path, atime, mtime, /* test_lutime */ 0);
+
+  /* Cleanup. */
+  unlink(path);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
 
 
 TEST_IMPL(fs_stat_missing_path) {

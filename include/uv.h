@@ -365,6 +365,8 @@ typedef struct {
   int32_t tv_nsec;
 } uv_timespec_t;
 
+/* Sentinel for uv_timespec_t.tv_nsec: skip this timestamp.
+ * Translated to the platform's UTIME_OMIT when calling utimensat(2). */
 #define UV_TIMESPEC_OMIT ((int32_t) 0x3FFFFFFE)
 
 typedef struct {
