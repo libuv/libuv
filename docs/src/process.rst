@@ -92,7 +92,13 @@ Data types
              * search for the exact file name before trying variants with
              * extensions like '.exe' or '.cmd'.
              */
-            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7)
+            UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME = (1 << 7),
+            /*
+             * Consider '.cmd' and '.bat' files when resolving an executable
+             * without an explicit extension. This option is only meaningful
+             * on Windows systems. On Unix it is silently ignored.
+             */
+            UV_PROCESS_WINDOWS_RESOLVE_BATCH = (1 << 8)
         };
 
 .. c:type:: uv_stdio_container_t
