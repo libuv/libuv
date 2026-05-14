@@ -68,8 +68,6 @@ void uv__async_close(uv_loop_t* loop, uv_async_t* handle) {
 }
 
 
-/* Platform hook called by uv_async_send (in uv-common.c) after the CAS
- * succeeds. Posts an IOCP completion so the event loop wakes up. */
 void uv__async_notify(uv_async_t* handle) {
   uv_loop_t* loop = handle->loop;
   POST_COMPLETION_FOR_REQ(loop, &handle->async_req);
@@ -80,9 +78,7 @@ void uv__async_stop(uv_loop_t* loop) {
   struct uv__queue* q;
   uv_handle_t* h;
 
-  /* Spin all UV_ASYNC handles to drain any thread that has passed the CAS in
-   * uv_async_send but has not yet called PostQueuedCompletionStatus.  Without
-   * this, such a thread could post to loop->iocp after it is closed. */
+  /* Spin all UV_ASYNC handles that are still open. */
   uv__queue_foreach(q, &loop->handle_queue) {
     h = uv__queue_data(q, uv_handle_t, handle_queue);
     if (h->type == UV_ASYNC)
@@ -102,8 +98,7 @@ void uv__process_async_wakeup_req(uv_loop_t* loop, uv_async_t* handle,
   assert(handle->type == UV_ASYNC);
   assert(req->type == UV_WAKEUP);
 
-  /* Atomically clear the pending flag (bit 0) while preserving the busy
-   * counter (bits 1+), allowing new senders to post again if needed. */
+  /* Clear pending flag, retain busy counter. */
   InterlockedAnd((LONG volatile*) &handle->pending, ~1);
 
   if (handle->flags & UV_HANDLE_CLOSING) {

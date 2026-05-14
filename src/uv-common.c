@@ -989,7 +989,7 @@ int uv__async_spin(uv_async_t* handle) {
   int i;
 
   /* Atomically set the pending flag (bit 0) so no new notifications will be
-   * sent after this function returns.  Save whether the flag was already set
+   * sent after this function returns. Save whether the flag was already set
    * so callers can determine whether a notification is in flight. */
   old = uv__pending_fetch_or(&handle->pending, 1);
 
