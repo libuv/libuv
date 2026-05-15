@@ -612,6 +612,7 @@ void uv__fs_event_close(uv_fs_event_t* handle) {
 
 int uv_resident_set_memory(size_t* rss) {
   psinfo_t psinfo;
+  ssize_t nread;
   int err;
   int fd;
 
@@ -619,11 +620,16 @@ int uv_resident_set_memory(size_t* rss) {
   if (fd == -1)
     return UV__ERR(errno);
 
-  /* FIXME(bnoordhuis) Handle EINTR. */
+  do
+    nread = read(fd, &psinfo, sizeof(psinfo));
+  while (nread == -1 && errno == EINTR);
+
   err = UV_EINVAL;
-  if (read(fd, &psinfo, sizeof(psinfo)) == sizeof(psinfo)) {
+  if (nread == (ssize_t) sizeof(psinfo)) {
     *rss = (size_t)psinfo.pr_rssize * 1024;
     err = 0;
+  } else if (nread < 0) {
+    err = UV__ERR(errno);
   }
   uv__close(fd);
 
