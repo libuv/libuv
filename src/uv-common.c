@@ -263,10 +263,10 @@ int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
 
 
 int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
-  /* INET6_ADDRSTRLEN (46) is required to hold a full IPv4-mapped IPv6 address
-   * (e.g. "ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255" = 45 chars + NUL).
-   * The old hard-coded 40 would silently truncate such addresses via the
-   * address_part_size clamp below. */
+  /* INET6_ADDRSTRLEN is needed for a full IPv4-mapped IPv6 address
+   * for the given platform plus a NUL byte. In posix this is defined to be 46.
+   * On Windows this buffer needs 65 bytes for additional optional
+   * formatting marks that may be present. */
   char address_part[INET6_ADDRSTRLEN];
   size_t address_part_size;
   const char* zone_index;
