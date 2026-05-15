@@ -167,8 +167,8 @@ Threads
     If the function fails, the return value is less than zero.
     Sets the scheduling priority of the thread specified by tid. It requires elevated
     privilege to set specific priorities on some platforms.
-    The priority can be set to the following constants. UV_THREAD_PRIORITY_HIGHEST, 
-    UV_THREAD_PRIORITY_ABOVE_NORMAL, UV_THREAD_PRIORITY_NORMAL, 
+    The priority can be set to the following constants. UV_THREAD_PRIORITY_HIGHEST,
+    UV_THREAD_PRIORITY_ABOVE_NORMAL, UV_THREAD_PRIORITY_NORMAL,
     UV_THREAD_PRIORITY_BELOW_NORMAL, UV_THREAD_PRIORITY_LOWEST.
 
 .. c:function:: int uv_thread_getpriority(uv_thread_t tid, int* priority)
@@ -282,3 +282,81 @@ return type is void, of course).
 .. c:function:: int uv_barrier_init(uv_barrier_t* barrier, unsigned int count)
 .. c:function:: void uv_barrier_destroy(uv_barrier_t* barrier)
 .. c:function:: int uv_barrier_wait(uv_barrier_t* barrier)
+
+Thread Safety Analysis Helpers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+These functions provide support for Clang's thread safety analysis when enabled.
+They are no-op inline functions that exist solely to communicate lock state
+information to the static analyzer. They have no runtime functionality and are
+compiled away in release builds. For the purposes of this analysis, `uv_mutex_t`
+is assumed not to be used with `uv_mutex_init_recursive`.
+
+.. note::
+    These functions are only useful when compiling with Clang and thread safety
+    analysis enabled (``-Wthread-safety``). They have no effect with other
+    compilers or when thread safety analysis warnings are disabled.
+
+**Mutex Helpers:**
+
+.. c:function:: void uv_mutex_assume_locked(uv_mutex_t* handle)
+
+    Tells the thread safety analyzer to assume that the mutex is currently held
+    by the calling thread. Use this when a mutex is acquired when the lock state
+    is established through external means that the analyzer cannot track, such
+    as conditional logic.
+
+.. c:function:: void uv_mutex_assume_unlocked(uv_mutex_t* handle)
+
+    Tells the thread safety analyzer to assume that the mutex it thought was
+    held is no longer held by the calling thread, releases capability tracking
+    for it. Use this when a mutex is released through external means that the
+    analyzer could not currently analyze adequately (such as a callback).
+
+.. c:function:: void uv_mutex_assert_unlocked(uv_mutex_t* handle)
+
+    Asserts to the thread safety analyzer that the mutex must not be held when
+    this function is called. Use this to document and verify that certain code
+    paths require a mutex to be unlocked. This is a path-aware version of
+    annotating the whole function with UV_EXCLUDES.
+
+**Read-Write Lock Helpers:**
+
+.. c:function:: void uv_rwlock_assume_rdlocked(uv_rwlock_t* handle)
+
+    Tells the thread safety analyzer to assume that the read-write lock is
+    currently held for reading by the calling thread.
+
+.. c:function:: void uv_rwlock_assume_wrlocked(uv_rwlock_t* handle)
+
+    Tells the thread safety analyzer to assume that the read-write lock is
+    currently held for writing by the calling thread.
+
+.. c:function:: void uv_rwlock_assume_rdunlocked(uv_rwlock_t* handle)
+
+    Tells the thread safety analyzer to assume that the read-write lock is
+    released for reading by the calling thread.
+
+.. c:function:: void uv_rwlock_assume_wrunlocked(uv_rwlock_t* handle)
+
+    Tells the thread safety analyzer to assume that the read-write lock is
+    released for writing by the calling thread.
+
+.. c:function:: void uv_rwlock_assert_unlocked(uv_rwlock_t* handle)
+
+    Asserts to the thread safety analyzer that the read-write lock must not be
+    held (for reading or writing) when this function is called.
+
+**Once Helpers:**
+
+.. c:function:: void uv_once_assume_ran(uv_once_t* handle)
+
+    Tell the thread safety analyzer to assume that :c:func:`uv_once` has already
+    been called for the given ``handle`` and the initialization callback has completed.
+
+    This function is used in scenarios where the analyzer cannot determine that
+    the once-initialization has already occurred through other means (such as when
+    the initialization happens in a different compilation unit or through
+    external guarantees). It also can be called to entirely bypass running the
+    `once` function while still satisfying the analyzer, for example, if known
+    to be guaranteed to be single-threaded at the time of initialization.

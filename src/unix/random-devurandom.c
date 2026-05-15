@@ -83,7 +83,7 @@ static void uv__random_devurandom_init(void) {
 }
 
 
-int uv__random_devurandom(void* buf, size_t buflen) {
+int uv__random_devurandom(void* buf, size_t buflen) UV_EXCLUDES(&once) {
   uv_once(&once, uv__random_devurandom_init);
 
   if (status != 0)

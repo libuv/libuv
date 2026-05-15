@@ -90,7 +90,7 @@ static void uv__loops_init(void) {
 }
 
 
-static int uv__loops_add(uv_loop_t* loop) {
+static int uv__loops_add(uv_loop_t* loop) UV_EXCLUDES(&uv__loops_lock) {
   uv_loop_t** new_loops;
   int new_capacity, i;
 
@@ -118,7 +118,7 @@ failed_loops_realloc:
 }
 
 
-static void uv__loops_remove(uv_loop_t* loop) {
+static void uv__loops_remove(uv_loop_t* loop) UV_EXCLUDES(&uv__loops_lock) {
   int loop_index;
   int smaller_capacity;
   uv_loop_t** new_loops;
@@ -162,7 +162,7 @@ loop_removed:
   uv_mutex_unlock(&uv__loops_lock);
 }
 
-void uv__wake_all_loops(void) {
+void uv__wake_all_loops(void) UV_EXCLUDES(&uv__loops_lock) {
   int i;
   uv_loop_t* loop;
 
@@ -224,7 +224,7 @@ static void uv__init(void) {
 }
 
 
-int uv_loop_init(uv_loop_t* loop) {
+int uv_loop_init(uv_loop_t* loop) UV_EXCLUDES(&uv__loops_lock) {
   uv__loop_internal_fields_t* lfields;
   struct heap* timer_heap;
   int err;
@@ -329,12 +329,12 @@ void uv_update_time(uv_loop_t* loop) {
 }
 
 
-void uv__once_init(void) {
+void uv__once_init(void) UV_EXCLUDES(&uv_init_guard_) {
   uv_once(&uv_init_guard_, uv__init);
 }
 
 
-void uv__loop_close(uv_loop_t* loop) {
+void uv__loop_close(uv_loop_t* loop) UV_EXCLUDES(&uv__loops_lock) {
   uv__loop_internal_fields_t* lfields;
   size_t i;
 

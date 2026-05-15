@@ -57,7 +57,7 @@ static void uv__hrtime_init_once(void) {
 }
 
 
-uint64_t uv__hrtime(uv_clocktype_t type) {
+uint64_t uv__hrtime(uv_clocktype_t type) UV_EXCLUDES(&once) {
   uv_once(&once, uv__hrtime_init_once);
   return mach_continuous_time() * timebase.numer / timebase.denom;
 }

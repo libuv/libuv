@@ -261,7 +261,11 @@ static void uv__async_send(uv_loop_t* loop) {
 }
 
 
-static int uv__async_start(uv_loop_t* loop) {
+static int uv__async_start(uv_loop_t* loop)
+#if UV__KQUEUE_EVFILT_USER
+    UV_EXCLUDES(&kqueue_runtime_detection_guard)
+#endif
+{
   int pipefd[2];
   int err;
 #if UV__KQUEUE_EVFILT_USER
@@ -369,7 +373,11 @@ void uv__async_stop(uv_loop_t* loop) {
 }
 
 
-int uv__async_fork(uv_loop_t* loop) {
+int uv__async_fork(uv_loop_t* loop)
+#if UV__KQUEUE_EVFILT_USER
+    UV_EXCLUDES(&kqueue_runtime_detection_guard)
+#endif
+{
   struct uv__queue queue;
   struct uv__queue* q;
   uv_async_t* h;
