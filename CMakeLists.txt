@@ -631,6 +631,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-signal-multiple-loops.c
        test/test-signal-pending-on-close.c
        test/test-signal.c
+       test/test-sizeof.c
        test/test-socket-buffer-size.c
        test/test-spawn.c
        test/test-stdio-over-pipes.c
