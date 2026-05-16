@@ -197,7 +197,8 @@ if(WIN32)
        ws2_32
        dbghelp
        ole32
-       shell32)
+       shell32
+       synchronization)
   list(APPEND uv_sources
        src/win/async.c
        src/win/core.c
@@ -664,6 +665,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-unexpected-read.c
        test/test-tcp-write-after-connect.c
        test/test-tcp-write-fail.c
+       test/test-write-cancel.c
        test/test-tcp-write-queue-order.c
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c

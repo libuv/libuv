@@ -102,7 +102,7 @@ enum {
   UV_HANDLE_ZERO_READ                   = 0x00040000,
   UV_HANDLE_EMULATE_IOCP                = 0x00080000,
   UV_HANDLE_BLOCKING_WRITES             = 0x00100000,
-  UV_HANDLE_CANCELLATION_PENDING        = 0x00200000,
+  UV_HANDLE_READ_CANCELLATION_PENDING   = 0x00200000,
 
   /* Used by uv_tcp_t and uv_udp_t handles */
   UV_HANDLE_IPV6                        = 0x00400000,
@@ -148,6 +148,8 @@ static inline int uv__is_raw_tty_mode(uv_tty_mode_t m) {
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
 void uv__loop_close(uv_loop_t* loop);
+
+int uv__write_cancel(uv_write_t* req);
 
 int uv__read_start(uv_stream_t* stream,
                    uv_alloc_cb alloc_cb,
