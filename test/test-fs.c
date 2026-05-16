@@ -2790,7 +2790,7 @@ TEST_FS_IMPL(fs_readlink_lx_symlink) {
   return 0;
 }
 
-TEST_FS_IMPL(fs_lstat_windows_store_apps) {
+TEST_FS_IMPL(fs_stat_windows_store_apps) {
   uv_loop_t* loop;
   char localappdata[MAX_PATH];
   char windowsapps_path[MAX_PATH];
@@ -2798,6 +2798,7 @@ TEST_FS_IMPL(fs_lstat_windows_store_apps) {
   size_t len;
   int r;
   uv_fs_t req;
+  uv_fs_t lstat_req;
   uv_fs_t stat_req;
   uv_dirent_t dirent;
 
@@ -2835,7 +2836,16 @@ TEST_FS_IMPL(fs_lstat_windows_store_apps) {
                  dirent.name) < 0) {
       continue;
     }
-    ASSERT_OK(uv_fs_lstat(loop, &stat_req, file_path, NULL));
+    ASSERT_OK(uv_fs_lstat(loop, &lstat_req, file_path, NULL));
+    ASSERT_OK(uv_fs_stat(loop, &stat_req, file_path, NULL));
+
+    /* Appexeclinks should be treated as regular files,
+     * so stat should return the same info as lstat
+     * see https://github.com/libuv/libuv/pull/4936#issuecomment-3703811492
+     * */
+    ASSERT_OK(strcmp(stat_req.path, lstat_req.path));
+    ASSERT_OK(memcmp(&stat_req.statbuf, &lstat_req.statbuf,
+                sizeof(stat_req.statbuf)));
   }
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
