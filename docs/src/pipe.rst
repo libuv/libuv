@@ -180,3 +180,33 @@ API
     Equivalent to :man:`pipe(2)` with the `O_CLOEXEC` flag set.
 
     .. versionadded:: 1.41.0
+
+.. c:function:: int uv_pipe_export(uv_pipe_t* handle, uv_file* file)
+
+    Duplicate the underlying file descriptor of a pipe handle into a new,
+    independently owned descriptor.  The resulting descriptor can be
+    transferred to another thread or process and imported into a fresh
+    :c:type:`uv_pipe_t` handle via :c:func:`uv_pipe_import`.
+
+    The original handle continues to function normally after the call; both
+    the original and the duplicated descriptor are independently valid and
+    must each be closed by their respective owner.
+
+    :param handle: An initialised, non-closing pipe handle whose underlying
+        descriptor is open (i.e. the pipe has been opened or accepted).
+    :param file: Output parameter.  Receives the duplicated file descriptor.
+
+.. c:function:: int uv_pipe_import(uv_loop_t* loop, uv_file file, uv_pipe_t* out, int ipc)
+
+    Import a duplicated pipe descriptor (obtained via :c:func:`uv_pipe_export`)
+    into a new :c:type:`uv_pipe_t` handle associated with `loop`.
+
+    The imported handle takes ownership of `file`; the caller must not close
+    it separately after a successful call. If opening fails the handle is closed and the caller should not use `out`.
+
+    :param loop: Event loop that will own the new handle.
+    :param file: A file descriptor previously returned by
+        :c:func:`uv_pipe_export`.
+    :param out: Uninitialized :c:type:`uv_pipe_t` to fill in.
+    :param ipc: Must match the ``ipc`` value of the original handle (non-zero
+        if the pipe is used for handle passing, zero otherwise).

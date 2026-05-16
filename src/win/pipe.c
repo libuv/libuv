@@ -2745,3 +2745,70 @@ clean_sid:
 done:
   return uv_translate_sys_error(error);
 }
+
+
+int uv_pipe_export(uv_pipe_t* handle, uv_file* file) {
+  HANDLE dup_handle;
+  int crt_fd;
+
+  if (handle->type != UV_NAMED_PIPE)
+    return UV_EINVAL;
+
+  /* A handle being closed (or already closed) has no usable pipe handle.
+   * UV_HANDLE_CLOSING is set by uv_close() before the close callback fires;
+   * UV_HANDLE_CLOSED means teardown is complete.  Either way duplicating
+   * the pipe handle would give the caller something that may vanish. */
+  if (uv__is_closing((uv_handle_t*) handle))
+    return UV_EINVAL;
+
+  /* An initialised-but-not-yet-opened pipe handle has handle == INVALID_HANDLE_VALUE. */
+  if (handle->handle == INVALID_HANDLE_VALUE)
+    return UV_EBADF;
+
+  /* Duplicate the underlying pipe HANDLE within the current process.
+   * DUPLICATE_SAME_ACCESS preserves the access rights (read/write/both)
+   * of the original so the recipient inherits the same capabilities.
+   * bInheritHandle=FALSE mirrors F_DUPFD_CLOEXEC on Unix: the duplicate
+   * must not leak into child processes. */
+  if (!DuplicateHandle(GetCurrentProcess(),
+                       handle->handle,
+                       GetCurrentProcess(),
+                       &dup_handle,
+                       0,
+                       FALSE,
+                       DUPLICATE_SAME_ACCESS)) {
+    return uv_translate_sys_error(GetLastError());
+  }
+
+  /* Wrap the HANDLE in a CRT file descriptor so uv_pipe_open (which takes a
+   * uv_file / int) can accept it on the import side.  _open_osfhandle
+   * transfers ownership: closing the CRT file via _close or uv_pipe_open's
+   * internal machinery will close the underlying HANDLE. */
+  crt_fd = _open_osfhandle((intptr_t) dup_handle, 0);
+  if (crt_fd == -1) {
+    CloseHandle(dup_handle);
+    return UV_UNKNOWN;
+  }
+
+  *file = crt_fd;
+  return 0;
+}
+
+
+int uv_pipe_import(uv_loop_t* loop, uv_file file, uv_pipe_t* out, int ipc) {
+  int err;
+
+  err = uv_pipe_init(loop, out, ipc);
+  if (err)
+    return err;
+
+  /* uv_pipe_open converts the CRT file back to a HANDLE via _get_osfhandle
+   * and registers it with the loop's IOCP. */
+  err = uv_pipe_open(out, file);
+  if (err) {
+    uv_close((uv_handle_t*) out, NULL);
+    return err;
+  }
+
+  return 0;
+}
