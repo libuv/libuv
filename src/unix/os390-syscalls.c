@@ -249,7 +249,7 @@ int epoll_ctl(uv__os390_epoll* lst,
   } else if (op == EPOLL_CTL_ADD) {
 
     /* Resizing to 'fd + 1' would expand the list to contain at least
-     * 'fd'. But we need to guarantee that the last index on the list 
+     * 'fd'. But we need to guarantee that the last index on the list
      * is reserved for the message queue. So specify 'fd + 2' instead.
      */
     maybe_resize(lst, fd + 2);
