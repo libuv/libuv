@@ -366,19 +366,18 @@ int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
                                                 memory_order_relaxed,
                                                 memory_order_relaxed)) {
       thread = w->thread;
-      i = 0;
-      do {
-        if (i >= 10)
-          return UV_EBUSY;
-        if (i > 0)
-          uv_sleep(1 << i++);
+      for (i = 0; i < 10; ++i) {
         if (pthread_kill(thread, loop->cancel_signum) != 0)
           abort();
-      } while (atomic_load_explicit(&w->state, memory_order_relaxed) ==
-             UV__WORK_CANCEL_PENDING);
+        if (atomic_load_explicit(&w->state, memory_order_relaxed) !=
+            UV__WORK_CANCEL_PENDING)
+          return 0;
+        if (i < 9)
+          uv_sleep(1 << i);
+      }
     }
 
-    return 0;
+    return UV_EBUSY;
   }
 #endif
 
