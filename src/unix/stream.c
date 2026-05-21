@@ -896,6 +896,7 @@ static void uv__write_done(struct uv__work* w, int status) {
   }
 
   if (req->result >= 0) {
+    req->send_handle = NULL;
     if (uv__write_req_update(stream, req, req->result))
       uv__write_req_finish(req);
   } else if (req->result != UV_EAGAIN)
