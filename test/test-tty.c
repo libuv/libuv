@@ -28,7 +28,7 @@
 #else /*  Unix */
 # include <fcntl.h>
 # include <unistd.h>
-# if defined(__linux__) && !defined(__ANDROID__)
+# if defined(__linux__) && !defined(__ANDROID__) || defined(__GNU__)
 #  include <pty.h>
 # elif defined(__OpenBSD__) || defined(__NetBSD__) || defined(__APPLE__)
 #  include <util.h>
