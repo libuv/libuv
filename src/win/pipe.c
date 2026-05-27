@@ -2445,6 +2445,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
   IO_STATUS_BLOCK io_status;
   FILE_ACCESS_INFORMATION access;
   DWORD duplex_flags = 0;
+  int was_stdio;
   int err;
 
   if (os_handle == INVALID_HANDLE_VALUE)
@@ -2456,13 +2457,14 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
 
   uv__pipe_connection_init(pipe);
   uv__once_init();
+  was_stdio = (file >= 0 && file <= 2);
   /* In order to avoid closing a stdio file descriptor 0-2, duplicate the
    * underlying OS handle and forget about the original fd.
    * We could also opt to use the original OS handle and just never close it,
    * but then there would be no reliable way to cancel pending read operations
    * upon close.
    */
-  if (file <= 2) {
+  if (was_stdio) {
     if (!DuplicateHandle(INVALID_HANDLE_VALUE,
                          os_handle,
                          INVALID_HANDLE_VALUE,
@@ -2517,6 +2519,33 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
       GetNamedPipeServerProcessId(os_handle, &pipe->pipe.conn.ipc_remote_pid);
     }
     assert(pipe->pipe.conn.ipc_remote_pid != (DWORD)(uv_pid_t) -1);
+  }
+
+  /* Workaround for a Windows Server 2025 (NT build 26100+) regression:
+   * once a stdio pipe handle is associated with the loop's IOCP, libuv
+   * leaves it implicitly keeping the event loop alive even after its
+   * write queue has drained. This is not observed on Windows 10/2019
+   * (build < 22000) with the same code path. The symptom is that a
+   * piped Node.js process never exits after `console.log()` work
+   * completes when its parent (e.g., a CI agent, gulp, npm, sh) keeps
+   * the read end of the pipe open.
+   *
+   * As a minimally-invasive workaround, unref stdio pipes on Win2025+.
+   * Callers that need the original "stdio keeps loop alive" semantics
+   * can call uv_ref() on the handle explicitly. This matches what
+   * consumers (most notably Node.js) end up doing manually today via
+   * `process.stdout.unref()` + `process.stderr.unref()`.
+   *
+   * See https://github.com/libuv/libuv/issues/5147 for full reproducer and analysis.
+   */
+  if (was_stdio && !pipe->ipc) {
+    OSVERSIONINFOW os_info;
+    os_info.dwOSVersionInfoSize = sizeof(os_info);
+    if (pRtlGetVersion != NULL &&
+        pRtlGetVersion(&os_info) == 0 /* STATUS_SUCCESS */ &&
+        os_info.dwBuildNumber >= 26100) {
+      uv_unref((uv_handle_t*) pipe);
+    }
   }
   return 0;
 }
