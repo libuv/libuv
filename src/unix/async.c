@@ -139,7 +139,11 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     uv__queue_remove(q);
     uv__queue_insert_tail(&loop->async_handles, q);
 
-    /* Atomically clear the pending flag (bit 0) and check if it was set. */
+    /* Atomically clear the pending flag (bit 0) and check if it was set.
+     * The seq_cst (default order) synchronizes with the seq_cst CAS in
+     * uv_async_send, making all accesses before that call visible here and
+     * ensuring no access here can get reordered before this as visible to
+     * another thread. */
     pending = (_Atomic int*) &h->pending;
     if (!(atomic_fetch_and(pending, ~1) & 1))
       continue;

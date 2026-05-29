@@ -98,7 +98,10 @@ void uv__process_async_wakeup_req(uv_loop_t* loop, uv_async_t* handle,
   assert(handle->type == UV_ASYNC);
   assert(req->type == UV_WAKEUP);
 
-  /* Clear pending flag, retain busy counter. */
+  /* Clear pending flag, retain busy counter. The InterlockedAnd is seq_cst (a
+   * full barrier), and synchronizing with the seq_cst
+   * InterlockedCompareExchange in uv_async_send. This makes all accesses
+   * before that call visible here (and vice versa). */
   InterlockedAnd((LONG volatile*) &handle->pending, ~1);
 
   if (handle->flags & UV_HANDLE_CLOSING) {
