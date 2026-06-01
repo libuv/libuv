@@ -57,17 +57,26 @@
 #endif
 
 
-UV_UNUSED(static struct timespec uv__fs_to_timespec(double time)) {
+#if defined(__APPLE__)                                                        \
+    || defined(_AIX71)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__HAIKU__)                                                     \
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)                                                         \
+    || defined(__QNX__)
+static struct timespec uv__fs_to_timespec(double time) {
   struct timespec ts;
+
+  if (uv__isinf(time))
+    return (struct timespec){UTIME_NOW, UTIME_NOW};
+  if (uv__isnan(time))
+    return (struct timespec){UTIME_OMIT, UTIME_OMIT};
+
   ts.tv_sec  = time;
   ts.tv_nsec = (time - ts.tv_sec) * 1e9;
-
- /* TODO(bnoordhuis) Remove this. utimesat() has nanosecond resolution but we
-  * stick to microsecond resolution for the sake of consistency with other
-  * platforms. I'm the original author of this compatibility hack but I'm
-  * less convinced it's useful nowadays.
-  */
-  ts.tv_nsec -= ts.tv_nsec % 1000;
 
   if (ts.tv_nsec < 0) {
     ts.tv_nsec += 1e9;
@@ -75,27 +84,25 @@ UV_UNUSED(static struct timespec uv__fs_to_timespec(double time)) {
   }
   return ts;
 }
-
-
-UV_UNUSED(static struct timeval uv__fs_to_timeval(double time)) {
-  struct timeval tv;
-  tv.tv_sec  = time;
-  tv.tv_usec = (time - tv.tv_sec) * 1e6;
-  if (tv.tv_usec < 0) {
-    tv.tv_usec += 1e6;
-    tv.tv_sec -= 1;
-  }
-  return tv;
-}
+#endif
 
 
 #if defined(__APPLE__)
 # include <sys/attr.h>
 
-static void uv__prepare_setattrlist_args(uv_fs_t* req,
-                                         struct attrlist* attr_list,
-                                         struct timespec (*times)[3],
-                                         unsigned int* size) {
+static int uv__prepare_setattrlist_args(uv_fs_t* req,
+                                        struct attrlist* attr_list,
+                                        struct timespec (*times)[3],
+                                        unsigned int* size) {
+  struct timespec now;
+
+  if (uv__isinf(req->btime) ||
+      uv__isinf(req->atime) ||
+      uv__isinf(req->mtime)) {
+    if (clock_gettime(CLOCK_REALTIME, &now) != 0)
+      return -1;
+  }
+
   memset(attr_list, 0, sizeof(*attr_list));
   memset(times, 0, sizeof(*times));
 
@@ -105,21 +112,32 @@ static void uv__prepare_setattrlist_args(uv_fs_t* req,
 
   if (!isnan(req->btime)) {
     attr_list->commonattr |= ATTR_CMN_CRTIME;
-    (*times)[*size] = uv__fs_to_timespec(req->btime);
-    ++*size;
-  }
-
-  if (!isnan(req->mtime)) {
-    attr_list->commonattr |= ATTR_CMN_MODTIME;
-    (*times)[*size] = uv__fs_to_timespec(req->mtime);
+    if (uv__isinf(req->btime))
+      (*times)[*size] = now;
+    else
+      (*times)[*size] = uv__fs_to_timespec(req->btime);
     ++*size;
   }
 
   if (!isnan(req->atime)) {
     attr_list->commonattr |= ATTR_CMN_ACCTIME;
-    (*times)[*size] = uv__fs_to_timespec(req->atime);
+    if (uv__isinf(req->atime))
+      (*times)[*size] = now;
+    else
+      (*times)[*size] = uv__fs_to_timespec(req->atime);
     ++*size;
   }
+
+  if (!isnan(req->mtime)) {
+    attr_list->commonattr |= ATTR_CMN_MODTIME;
+    if (uv__isinf(req->mtime))
+      (*times)[*size] = now;
+    else
+      (*times)[*size] = uv__fs_to_timespec(req->mtime);
+    ++*size;
+  }
+
+  return 0;
 }
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
@@ -287,10 +305,15 @@ static ssize_t uv__fs_fdatasync(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_futime(uv_fs_t* req) {
-#if defined(__linux__)                                                        \
-    || defined(_AIX71)                                                        \
+#if defined(_AIX71)                                                           \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
     || defined(__HAIKU__)                                                     \
-    || defined(__GNU__)
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)                                                         \
+    || defined(__QNX__)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
@@ -300,22 +323,10 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
   unsigned i;
   struct timespec times[3];
 
-  uv__prepare_setattrlist_args(req, &attr_list, &times, &i);
+  if (uv__prepare_setattrlist_args(req, &attr_list, &times, &i) != 0)
+    return -1;
 
   return fsetattrlist(req->file, &attr_list, &times, i * sizeof(times[0]), 0);
-#elif defined(__DragonFly__)                                                  \
-    || defined(__FreeBSD__)                                                   \
-    || defined(__NetBSD__)                                                    \
-    || defined(__OpenBSD__)                                                   \
-    || defined(__sun)
-  struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
-# if defined(__sun)
-  return futimesat(req->file, NULL, tv);
-# else
-  return futimes(req->file, tv);
-# endif
 #elif defined(__MVS__)
   attrib_t atr;
   memset(&atr, 0, sizeof(atr));
@@ -521,12 +532,7 @@ static ssize_t uv__pwritev_emul(int fd,
 
 /* The function pointer cache is an uintptr_t because _Atomic void*
  * doesn't work on macos/ios/etc...
- * Disable optimization on armv7 to work around the bug described in
- * https://github.com/libuv/libuv/issues/4532
  */
-#if defined(__arm__) && (__ARM_ARCH == 7)
-__attribute__((optimize("O0")))
-#endif
 static ssize_t uv__preadv_or_pwritev(int fd,
                                      const struct iovec* bufs,
                                      size_t nbufs,
@@ -539,7 +545,12 @@ static ssize_t uv__preadv_or_pwritev(int fd,
   p = (void*) atomic_load_explicit(cache, memory_order_relaxed);
   if (p == NULL) {
 #ifdef RTLD_DEFAULT
-    p = dlsym(RTLD_DEFAULT, is_pread ? "preadv" : "pwritev");
+    /* Try _LARGEFILE_SOURCE version of preadv/pwritev first,
+     * then fall back to the plain version, for libcs like musl.
+     */
+    p = dlsym(RTLD_DEFAULT, is_pread ? "preadv64" : "pwritev64");
+    if (p == NULL)
+      p = dlsym(RTLD_DEFAULT, is_pread ? "preadv" : "pwritev");
     dlerror();  /* Clear errors. */
 #endif  /* RTLD_DEFAULT */
     if (p == NULL)
@@ -547,10 +558,7 @@ static ssize_t uv__preadv_or_pwritev(int fd,
     atomic_store_explicit(cache, (uintptr_t) p, memory_order_relaxed);
   }
 
-  /* Use memcpy instead of `f = p` to work around a compiler bug,
-   * see https://github.com/libuv/libuv/issues/4532
-   */
-  memcpy(&f, &p, sizeof(p));
+  f = p;
   return f(fd, bufs, nbufs, off);
 }
 
@@ -782,6 +790,11 @@ static int uv__fs_statfs(uv_fs_t* req) {
   stat_fs->f_bavail = buf.f_bavail;
   stat_fs->f_files = buf.f_files;
   stat_fs->f_ffree = buf.f_ffree;
+#if defined(__linux__)
+  stat_fs->f_frsize = buf.f_frsize;
+#else
+  stat_fs->f_frsize = buf.f_bsize;
+#endif
   req->ptr = stat_fs;
   return 0;
 }
@@ -1205,10 +1218,15 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_utime(uv_fs_t* req) {
-#if defined(__linux__)                                                         \
-    || defined(_AIX71)                                                         \
-    || defined(__sun)                                                          \
-    || defined(__HAIKU__)
+#if defined(_AIX71)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__HAIKU__)                                                     \
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)                                                         \
+    || defined(__QNX__)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
@@ -1218,19 +1236,11 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
   unsigned i;
   struct timespec times[3];
 
-  uv__prepare_setattrlist_args(req, &attr_list, &times, &i);
+  if (uv__prepare_setattrlist_args(req, &attr_list, &times, &i) != 0)
+    return -1;
 
   return setattrlist(req->path, &attr_list, &times, i * sizeof(times[0]), 0);
-#elif defined(__DragonFly__)                                                 \
-    || defined(__FreeBSD__)                                                   \
-    || defined(__NetBSD__)                                                    \
-    || defined(__OpenBSD__)
-  struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
-  return utimes(req->path, tv);
-#elif defined(_AIX)                                                           \
-    && !defined(_AIX71)
+#elif defined(_AIX) && !defined(_AIX71)
   struct utimbuf buf;
   buf.actime = req->atime;
   buf.modtime = req->mtime;
@@ -1251,24 +1261,20 @@ static ssize_t uv__fs_utime(uv_fs_t* req) {
 
 
 static ssize_t uv__fs_lutime(uv_fs_t* req) {
-#if defined(__linux__)            ||                                           \
-    defined(_AIX71)               ||                                           \
-    defined(__sun)                ||                                           \
-    defined(__HAIKU__)            ||                                           \
-    defined(__GNU__)              ||                                           \
-    defined(__OpenBSD__)
+#if defined(__APPLE__)                                                        \
+    || defined(_AIX71)                                                        \
+    || defined(__DragonFly__)                                                 \
+    || defined(__FreeBSD__)                                                   \
+    || defined(__HAIKU__)                                                     \
+    || defined(__NetBSD__)                                                    \
+    || defined(__OpenBSD__)                                                   \
+    || defined(__linux__)                                                     \
+    || defined(__sun)                                                         \
+    || defined(__QNX__)
   struct timespec ts[2];
   ts[0] = uv__fs_to_timespec(req->atime);
   ts[1] = uv__fs_to_timespec(req->mtime);
   return utimensat(AT_FDCWD, req->path, ts, AT_SYMLINK_NOFOLLOW);
-#elif defined(__APPLE__)          ||                                          \
-      defined(__DragonFly__)      ||                                          \
-      defined(__FreeBSD__)        ||                                          \
-      defined(__NetBSD__)
-  struct timeval tv[2];
-  tv[0] = uv__fs_to_timeval(req->atime);
-  tv[1] = uv__fs_to_timeval(req->mtime);
-  return lutimes(req->path, tv);
 #else
   errno = ENOSYS;
   return -1;

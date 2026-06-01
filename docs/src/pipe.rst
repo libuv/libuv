@@ -96,7 +96,7 @@ API
 
     .. versionchanged:: 2.0.0 long filenames will lead to an error rather than being truncated
 
-.. c:function:: void uv_pipe_connect2(uv_connect_t* req, uv_pipe_t* handle, const char* name, size_t namelen, unsigned int flags, uv_connect_cb cb)
+.. c:function:: int uv_pipe_connect2(uv_connect_t* req, uv_pipe_t* handle, const char* name, size_t namelen, unsigned int flags, uv_connect_cb cb)
 
     Connect to the Unix domain socket or the Windows named pipe.
 

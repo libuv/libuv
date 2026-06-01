@@ -195,9 +195,10 @@ typedef enum {
   FS__STAT_PATH_TRY_SLOW
 } fs__stat_path_return_t;
 
-INLINE static void fs__stat_assign_statbuf_null(uv_stat_t* statbuf);
-INLINE static void fs__stat_assign_statbuf(uv_stat_t* statbuf,
-    FILE_STAT_BASIC_INFORMATION stat_info, int do_lstat);
+static void fs__stat_assign_statbuf_null(uv_stat_t* statbuf);
+static void fs__stat_assign_statbuf(uv_stat_t* statbuf,
+                                    FILE_STAT_BASIC_INFORMATION stat_info,
+                                    int do_lstat);
 
 
 void uv__fs_init(void) {
@@ -210,9 +211,9 @@ void uv__fs_init(void) {
 }
 
 
-INLINE static int fs__readlink_handle(HANDLE handle,
-                                      char** target_ptr,
-                                      size_t* target_len_ptr) {
+static int fs__readlink_handle(HANDLE handle,
+                               char** target_ptr,
+                               size_t* target_len_ptr) {
   char buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
   REPARSE_DATA_BUFFER* reparse_data = (REPARSE_DATA_BUFFER*) buffer;
   WCHAR* w_target;
@@ -273,6 +274,32 @@ INLINE static int fs__readlink_handle(HANDLE handle,
         w_target_len -= 6;
       }
     }
+
+  } else if (reparse_data->ReparseTag == IO_REPARSE_TAG_LX_SYMLINK) {
+    /* Real (Linux) symlink */
+    char* buffer;
+    char* target;
+    size_t target_len;
+
+    target_len = (reparse_data->ReparseDataLength -
+                  sizeof(ULONG)); /* Version field */
+    buffer = (char*) reparse_data->LinuxSymbolicLinkReparseBuffer.PathBuffer;
+
+    if (target_len_ptr != NULL) {
+      *target_len_ptr = target_len;
+    }
+
+    if (target_ptr != NULL) {
+      assert(*target_ptr == NULL);
+      target = uv__malloc(target_len + 1);
+      if (target == NULL) {
+        return UV_ENOMEM;
+      }
+      memcpy(target, buffer, target_len);
+      target[target_len] = '\0';
+      *target_ptr = target;
+    }
+    return 0;
 
   } else if (reparse_data->ReparseTag == IO_REPARSE_TAG_MOUNT_POINT) {
     /* Junction. */
@@ -347,8 +374,10 @@ INLINE static int fs__readlink_handle(HANDLE handle,
 }
 
 
-INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
-    const char* new_path, const int copy_path) {
+static int fs__capture_path(uv_fs_t* req,
+                            const char* path,
+                            const char* new_path,
+                            const int copy_path) {
   WCHAR* buf;
   WCHAR* pos;
   size_t buf_sz = 0;
@@ -422,8 +451,10 @@ INLINE static int fs__capture_path(uv_fs_t* req, const char* path,
 }
 
 
-INLINE static void uv__fs_req_init(uv_loop_t* loop, uv_fs_t* req,
-    uv_fs_type fs_type, const uv_fs_cb cb) {
+static void uv__fs_req_init(uv_loop_t* loop,
+                            uv_fs_t* req,
+                            uv_fs_type fs_type,
+                            const uv_fs_cb cb) {
   uv__once_init();
   UV_REQ_INIT(loop, req, UV_FS);
   req->flags = 0;
@@ -1093,7 +1124,7 @@ void fs__write(uv_fs_t* req) {
 static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   const WCHAR* pathw = req->file.pathw;
   HANDLE handle;
-  BY_HANDLE_FILE_INFORMATION info;
+  FILE_BASIC_INFO info;
   FILE_DISPOSITION_INFORMATION disposition;
   FILE_DISPOSITION_INFORMATION_EX disposition_ex;
   IO_STATUS_BLOCK iosb;
@@ -1101,7 +1132,7 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   DWORD error;
 
   handle = CreateFileW(pathw,
-                       FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES | DELETE,
+                       FILE_READ_ATTRIBUTES | DELETE,
                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                        NULL,
                        OPEN_EXISTING,
@@ -1113,13 +1144,13 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
     return;
   }
 
-  if (!GetFileInformationByHandle(handle, &info)) {
+  if (!GetFileInformationByHandleEx(handle, FileBasicInfo, &info, sizeof info)) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
     CloseHandle(handle);
     return;
   }
 
-  if (isrmdir && !(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+  if (isrmdir && !(info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
     /* Error if we're in rmdir mode but it is not a dir.
      * TODO: change it to UV_NOTDIR in v2. */
     SET_REQ_UV_ERROR(req, UV_ENOENT, ERROR_DIRECTORY);
@@ -1127,13 +1158,13 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
     return;
   }
 
-  if (!isrmdir && (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+  if (!isrmdir && (info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
     /* If not explicitly allowed, do not allow deletion of directories, unless
      * it is a symlink. When the path refers to a non-symlink directory, report
      * EPERM as mandated by POSIX.1. */
 
     /* Check if it is a reparse point. If it's not, it's a normal directory. */
-    if (!(info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+    if (!(info.FileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
       SET_REQ_WIN32_ERROR(req, ERROR_ACCESS_DENIED);
       CloseHandle(handle);
       return;
@@ -1172,18 +1203,37 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
         error == ERROR_INVALID_PARAMETER /* pre Windows 10 error */ ||
         error == ERROR_INVALID_FUNCTION /* pre Windows 10 1607 error */) {
       /* posix delete not supported so try fallback */
-      if (info.dwFileAttributes & FILE_ATTRIBUTE_READONLY) {
+      if (info.FileAttributes & FILE_ATTRIBUTE_READONLY) {
         /* Remove read-only attribute */
         FILE_BASIC_INFORMATION basic = { 0 };
 
-        basic.FileAttributes = (info.dwFileAttributes & ~FILE_ATTRIBUTE_READONLY) |
+        /* We opened the handle above without FILE_WRITE_ATTRIBUTES access, which
+         * is not required in the happy path. On windows, it would probably
+         * be ok to ask for them anyway, but Wine has a bug that causes such calls
+         * to fail (https://bugs.winehq.org/show_bug.cgi?id=50771). To work around
+         * this bug, we re-open the handle here */
+        HANDLE write_attributes_handle;
+
+        basic.FileAttributes = (info.FileAttributes & ~FILE_ATTRIBUTE_READONLY) |
                               FILE_ATTRIBUTE_ARCHIVE;
 
-        status = pNtSetInformationFile(handle,
+        write_attributes_handle = ReOpenFile(handle, FILE_WRITE_ATTRIBUTES,
+                                             FILE_SHARE_READ | FILE_SHARE_WRITE |
+                                             FILE_SHARE_DELETE,
+                                             FILE_FLAG_OPEN_REPARSE_POINT |
+                                             FILE_FLAG_BACKUP_SEMANTICS);
+        if (write_attributes_handle == INVALID_HANDLE_VALUE) {
+          SET_REQ_WIN32_ERROR(req, GetLastError());
+          CloseHandle(handle);
+          return;
+        }
+
+        status = pNtSetInformationFile(write_attributes_handle,
                                       &iosb,
                                       &basic,
                                       sizeof basic,
                                       FileBasicInformation);
+        CloseHandle(write_attributes_handle);
         if (!NT_SUCCESS(status)) {
           SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(status));
           CloseHandle(handle);
@@ -1258,7 +1308,7 @@ void fs__mktemp(uv_fs_t* req, uv__fs_mktemp_func func) {
 
   tries = TMP_MAX;
   do {
-    if (uv__random_rtlgenrandom((void *)&v, sizeof(v)) < 0) {
+    if (uv__random_winrandom(&v, sizeof(v)) < 0) {
       SET_REQ_UV_ERROR(req, UV_EIO, ERROR_IO_DEVICE);
       goto clobber;
     }
@@ -1615,6 +1665,21 @@ void fs__readdir(uv_fs_t* req) {
   dir = req->ptr;
   dirents = dir->dirents;
   memset(dirents, 0, dir->nentries * sizeof(*dir->dirents));
+
+  /* Initial FindFirstFile can fail with ERROR_FILE_NOT_FOUND, meaning
+   * no matches, which leaves dir_handle set to INVALID_HANDLE_VALUE,
+   * see fs__opendir(). Not an actual error, just means no results.
+   *
+   * sshfs-win apparently works that way but reading an empty directory
+   * on a regular drive doesn't trigger that particular code path.
+   *
+   * See https://github.com/libuv/libuv/issues/4952
+   */
+  if (dir->dir_handle == INVALID_HANDLE_VALUE) {
+    SET_REQ_RESULT(req, 0);
+    return;
+  }
+
   find_data = &dir->find_data;
   dirent_idx = 0;
 
@@ -1675,8 +1740,9 @@ void fs__closedir(uv_fs_t* req) {
   SET_REQ_RESULT(req, 0);
 }
 
-INLINE static fs__stat_path_return_t fs__stat_path(WCHAR* path,
-    uv_stat_t* statbuf, int do_lstat) {
+static fs__stat_path_return_t fs__stat_path(WCHAR* path,
+                                            uv_stat_t* statbuf,
+                                            int do_lstat) {
   FILE_STAT_BASIC_INFORMATION stat_info;
 
   /* Check if the new fast API is available. */
@@ -1712,8 +1778,7 @@ INLINE static fs__stat_path_return_t fs__stat_path(WCHAR* path,
   return FS__STAT_PATH_SUCCESS;
 }
 
-INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
-    int do_lstat) {
+static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf, int do_lstat) {
   size_t target_length = 0;
   FILE_FS_DEVICE_INFORMATION device_info;
   FILE_ALL_INFORMATION file_info;
@@ -1765,7 +1830,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
     SetLastError(pRtlNtStatusToDosError(nt_status));
     return -1;
   } else {
-    stat_info.VolumeSerialNumber.QuadPart = volume_info.VolumeSerialNumber;
+    stat_info.VolumeSerialNumber.LowPart = volume_info.VolumeSerialNumber;
   }
 
   stat_info.DeviceType = device_info.DeviceType;
@@ -1804,7 +1869,7 @@ INLINE static int fs__stat_handle(HANDLE handle, uv_stat_t* statbuf,
   return 0;
 }
 
-INLINE static void fs__stat_assign_statbuf_null(uv_stat_t* statbuf) {
+static void fs__stat_assign_statbuf_null(uv_stat_t* statbuf) {
   memset(statbuf, 0, sizeof(uv_stat_t));
   statbuf->st_mode = _S_IFCHR;
   statbuf->st_mode |= (_S_IREAD | _S_IWRITE) | ((_S_IREAD | _S_IWRITE) >> 3) |
@@ -1814,9 +1879,10 @@ INLINE static void fs__stat_assign_statbuf_null(uv_stat_t* statbuf) {
   statbuf->st_rdev = FILE_DEVICE_NULL << 16;
 }
 
-INLINE static void fs__stat_assign_statbuf(uv_stat_t* statbuf,
-    FILE_STAT_BASIC_INFORMATION stat_info, int do_lstat) {
-  statbuf->st_dev = stat_info.VolumeSerialNumber.QuadPart;
+static void fs__stat_assign_statbuf(uv_stat_t* statbuf,
+                                    FILE_STAT_BASIC_INFORMATION stat_info,
+                                    int do_lstat) {
+  statbuf->st_dev = stat_info.VolumeSerialNumber.LowPart;
 
   /* Todo: st_mode should probably always be 0666 for everyone. We might also
    * want to report 0777 if the file is a .exe or a directory.
@@ -1920,18 +1986,19 @@ INLINE static void fs__stat_assign_statbuf(uv_stat_t* statbuf,
 }
 
 
-INLINE static void fs__stat_prepare_path(WCHAR* pathw) {
+static void fs__stat_prepare_path(WCHAR* pathw) {
   size_t len = wcslen(pathw);
 
-  /* TODO: ignore namespaced paths. */
   if (len > 1 && pathw[len - 2] != L':' &&
       (pathw[len - 1] == L'\\' || pathw[len - 1] == L'/')) {
     pathw[len - 1] = '\0';
   }
 }
 
-INLINE static DWORD fs__stat_directory(WCHAR* path, uv_stat_t* statbuf,
-    int do_lstat, DWORD ret_error) {
+static DWORD fs__stat_directory(WCHAR* path,
+                                uv_stat_t* statbuf,
+                                int do_lstat,
+                                DWORD ret_error) {
   HANDLE handle = INVALID_HANDLE_VALUE;
   FILE_STAT_BASIC_INFORMATION stat_info;
   FILE_ID_FULL_DIR_INFORMATION dir_info;
@@ -2104,9 +2171,9 @@ cleanup:
   return ret_error;
 }
 
-INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
-                                            int do_lstat,
-                                            uv_stat_t* statbuf) {
+static DWORD fs__stat_impl_from_path(WCHAR* path,
+                                     int do_lstat,
+                                     uv_stat_t* statbuf) {
   HANDLE handle;
   DWORD flags;
   DWORD ret;
@@ -2151,7 +2218,7 @@ INLINE static DWORD fs__stat_impl_from_path(WCHAR* path,
 }
 
 
-INLINE static void fs__stat_impl(uv_fs_t* req, int do_lstat) {
+static void fs__stat_impl(uv_fs_t* req, int do_lstat) {
   DWORD error;
 
   error = fs__stat_impl_from_path(req->file.pathw, do_lstat, &req->statbuf);
@@ -2174,7 +2241,7 @@ INLINE static void fs__stat_impl(uv_fs_t* req, int do_lstat) {
 }
 
 
-INLINE static int fs__fstat_handle(HANDLE handle, uv_stat_t* statbuf) {
+static int fs__fstat_handle(HANDLE handle, uv_stat_t* statbuf) {
   DWORD file_type;
 
   /* Each file type is processed differently. */
@@ -2242,7 +2309,7 @@ static void fs__rename(uv_fs_t* req) {
 }
 
 
-INLINE static void fs__sync_impl(uv_fs_t* req) {
+static void fs__sync_impl(uv_fs_t* req) {
   HANDLE handle = req->file.hFile;
   int result;
 
@@ -2551,39 +2618,57 @@ fchmod_cleanup:
 }
 
 
-INLINE static int fs__utime_handle(HANDLE handle,
-                                   double btime,
-                                   double atime,
-                                   double mtime) {
-  FILETIME filetime_b;
-  FILETIME filetime_a;
-  FILETIME filetime_m;
+static int fs__utime_handle(HANDLE handle,
+                            double btime,
+                            double atime,
+                            double mtime) {
+  FILETIME filetime_bs, *filetime_b = &filetime_bs;
+  FILETIME filetime_as, *filetime_a = &filetime_as;
+  FILETIME filetime_ms, *filetime_m = &filetime_ms;
+  FILETIME now;
 
-  if (isnan(btime)) {
-    filetime_b.dwHighDateTime = 0;
-    filetime_b.dwLowDateTime = 0;
-  } else {
-    TIME_T_TO_FILETIME(btime, &filetime_b);
+  if (uv__isinf(btime) || uv__isinf(atime) || uv__isinf(mtime)) {
+    /* If any of the times is infinite, use the current time for all of them. */
+    GetSystemTimeAsFileTime(&now);
   }
 
-  TIME_T_TO_FILETIME(atime, &filetime_a);
-  TIME_T_TO_FILETIME(mtime, &filetime_m);
+
+  if (uv__isinf(btime))
+    filetime_b = &now;
+  else if (uv__isnan(btime))
+    filetime_b = NULL;
+  else
+    TIME_T_TO_FILETIME(btime, filetime_b);
+
+  if (uv__isinf(atime))
+    filetime_a = &now;
+  else if (uv__isnan(atime))
+    filetime_a = NULL;
+  else
+    TIME_T_TO_FILETIME(atime, filetime_a);
+
+  if (uv__isinf(mtime))
+    filetime_m = &now;
+  else if (uv__isnan(mtime))
+    filetime_m = NULL;
+  else
+    TIME_T_TO_FILETIME(mtime, filetime_m);
 
   if (!SetFileTime(handle,
-                   &filetime_b,
-                   &filetime_a,
-                   &filetime_m)) {
+                   filetime_b,
+                   filetime_a,
+                   filetime_m)) {
     return -1;
   }
 
   return 0;
 }
 
-INLINE static DWORD fs__utime_impl_from_path(WCHAR* path,
-                                             double btime,
-                                             double atime,
-                                             double mtime,
-                                             int do_lutime) {
+static DWORD fs__utime_impl_from_path(WCHAR* path,
+                                      double btime,
+                                      double atime,
+                                      double mtime,
+                                      int do_lutime) {
   HANDLE handle;
   DWORD flags;
   DWORD ret;
@@ -2613,7 +2698,7 @@ INLINE static DWORD fs__utime_impl_from_path(WCHAR* path,
   return ret;
 }
 
-INLINE static void fs__utime_impl(uv_fs_t* req, int do_lutime) {
+static void fs__utime_impl(uv_fs_t* req, int do_lutime) {
   DWORD error;
 
   error = fs__utime_impl_from_path(req->file.pathw,
@@ -3013,67 +3098,35 @@ static void fs__lchown(uv_fs_t* req) {
 
 
 static void fs__statfs(uv_fs_t* req) {
+  FILE_FS_FULL_SIZE_INFORMATION info;
+  IO_STATUS_BLOCK io_status;
   uv_statfs_t* stat_fs;
-  DWORD sectors_per_cluster;
-  DWORD bytes_per_sector;
-  DWORD free_clusters;
-  DWORD total_clusters;
-  WCHAR* pathw;
+  NTSTATUS nt_status;
+  HANDLE handle;
 
-  pathw = req->file.pathw;
-retry_get_disk_free_space:
-  if (0 == GetDiskFreeSpaceW(pathw,
-                             &sectors_per_cluster,
-                             &bytes_per_sector,
-                             &free_clusters,
-                             &total_clusters)) {
-    DWORD err;
-    WCHAR* fpart;
-    size_t len;
-    DWORD ret;
-    BOOL is_second;
+  handle = CreateFileW(req->file.pathw,
+                       FILE_READ_ATTRIBUTES,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_FLAG_BACKUP_SEMANTICS,
+                       NULL);
 
-    err = GetLastError();
-    is_second = pathw != req->file.pathw;
-    if (err != ERROR_DIRECTORY || is_second) {
-      if (is_second)
-        uv__free(pathw);
-
-      SET_REQ_WIN32_ERROR(req, err);
-      return;
-    }
-
-    len = MAX_PATH + 1;
-    pathw = uv__malloc(len * sizeof(*pathw));
-    if (pathw == NULL) {
-      SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
-      return;
-    }
-retry_get_full_path_name:
-    ret = GetFullPathNameW(req->file.pathw,
-                           len,
-                           pathw,
-                           &fpart);
-    if (ret == 0) {
-      uv__free(pathw);
-      SET_REQ_WIN32_ERROR(req, err);
-      return;
-    } else if (ret > len) {
-      len = ret;
-      pathw = uv__reallocf(pathw, len * sizeof(*pathw));
-      if (pathw == NULL) {
-        SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
-        return;
-      }
-      goto retry_get_full_path_name;
-    }
-    if (fpart != 0)
-      *fpart = L'\0';
-
-    goto retry_get_disk_free_space;
+  if (handle == INVALID_HANDLE_VALUE) {
+    SET_REQ_WIN32_ERROR(req, GetLastError());
+    return;
   }
-  if (pathw != req->file.pathw) {
-    uv__free(pathw);
+
+  nt_status = pNtQueryVolumeInformationFile(handle,
+                                            &io_status,
+                                            &info,
+                                            sizeof info,
+                                            FileFsFullSizeInformation);
+  CloseHandle(handle);
+
+  if (NT_ERROR(nt_status)) {
+    SET_REQ_WIN32_ERROR(req, pRtlNtStatusToDosError(nt_status));
+    return;
   }
 
   stat_fs = uv__malloc(sizeof(*stat_fs));
@@ -3083,10 +3136,12 @@ retry_get_full_path_name:
   }
 
   stat_fs->f_type = 0;
-  stat_fs->f_bsize = bytes_per_sector * sectors_per_cluster;
-  stat_fs->f_blocks = total_clusters;
-  stat_fs->f_bfree = free_clusters;
-  stat_fs->f_bavail = free_clusters;
+  stat_fs->f_bsize = (uint64_t)info.SectorsPerAllocationUnit *
+                               info.BytesPerSector;
+  stat_fs->f_frsize = stat_fs->f_bsize;
+  stat_fs->f_blocks = info.TotalAllocationUnits.QuadPart;
+  stat_fs->f_bfree = info.ActualAvailableAllocationUnits.QuadPart;
+  stat_fs->f_bavail = info.CallerAvailableAllocationUnits.QuadPart;
   stat_fs->f_files = 0;
   stat_fs->f_ffree = 0;
   req->ptr = stat_fs;

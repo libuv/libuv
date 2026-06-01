@@ -18,22 +18,21 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    uv_lib_t *lib = (uv_lib_t*) malloc(sizeof(uv_lib_t));
+    uv_lib_t lib;
     while (--argc) {
         fprintf(stderr, "Loading %s\n", argv[argc]);
-        if (uv_dlopen(argv[argc], lib)) {
-            fprintf(stderr, "Error: %s\n", uv_dlerror(lib));
+        if (uv_dlopen(argv[argc], &lib)) {
+            fprintf(stderr, "Error: %s\n", uv_dlerror(&lib));
             continue;
         }
 
         init_plugin_function init_plugin;
-        if (uv_dlsym(lib, "initialize", (void **) &init_plugin)) {
-            fprintf(stderr, "dlsym error: %s\n", uv_dlerror(lib));
+        if (uv_dlsym(&lib, "initialize", (void **) &init_plugin)) {
+            fprintf(stderr, "dlsym error: %s\n", uv_dlerror(&lib));
             continue;
         }
 
         init_plugin();
     }
-
     return 0;
 }

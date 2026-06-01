@@ -1643,7 +1643,7 @@ TEST_IMPL(spawn_setgids_fails) {
   if (uid == 0) {
     struct passwd* pw;
     pw = getpwnam("nobody");
-    ASSERT_NOT_NULL(NULL);
+    ASSERT_NOT_NULL(pw);
     ASSERT_OK(setgid(pw->pw_gid));
     ASSERT_OK(setuid(pw->pw_uid));
   }
@@ -1878,7 +1878,10 @@ TEST_IMPL(spawn_fs_open) {
 #ifdef _WIN32
   const char dev_null[] = "NUL";
   HMODULE kernelbase_module;
-  sCompareObjectHandles pCompareObjectHandles; /* function introduced in Windows 10 */
+  union {
+    FARPROC proc;
+    sCompareObjectHandles pCompareObjectHandles; /* Windows >= 10 */
+  } u;
 #else
   const char dev_null[] = "/dev/null";
 #endif
@@ -1900,12 +1903,10 @@ TEST_IMPL(spawn_fs_open) {
 #ifdef _WIN32
   ASSERT_NE(0, DuplicateHandle(GetCurrentProcess(), fd, GetCurrentProcess(), &dup_fd,
                                0, /* inherit */ TRUE, DUPLICATE_SAME_ACCESS));
-  kernelbase_module = GetModuleHandleA("kernelbase.dll");
-  pCompareObjectHandles = (sCompareObjectHandles)
-      GetProcAddress(kernelbase_module, "CompareObjectHandles");
-  ASSERT_NE(pCompareObjectHandles == NULL ||
-            pCompareObjectHandles(fd, dup_fd),
-            0);
+  kernelbase_module = GetModuleHandleW(L"kernelbase.dll");
+  u.proc = GetProcAddress(kernelbase_module, "CompareObjectHandles");
+  if (u.pCompareObjectHandles != NULL)
+    ASSERT_EQ(TRUE, u.pCompareObjectHandles(fd, dup_fd));
 #else
   dup_fd = dup(fd);
 #endif

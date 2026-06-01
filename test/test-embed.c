@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#if !defined(_WIN32) && !defined(_AIX)
+#if !defined(_WIN32) && !defined(_AIX) && !defined(__QNX__)
 #include <poll.h>
 #endif
 
@@ -76,7 +76,7 @@ TEST_IMPL(embed) {
                                  key,
                                  overlapped);
     ASSERT_LE(0, uv_run(loop, UV_RUN_NOWAIT));
-#elif defined(_AIX)
+#elif defined(_WIN32) || defined(_AIX) || defined(__QNX__)
     ASSERT_LE(0, uv_run(loop, UV_RUN_ONCE));
 #else
     int rc;

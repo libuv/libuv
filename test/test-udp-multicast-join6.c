@@ -34,7 +34,8 @@
     defined(_AIX)               || \
     defined(__FreeBSD__)        || \
     defined(__NetBSD__)         || \
-    defined(__OpenBSD__)
+    defined(__OpenBSD__)        || \
+    defined(__QNX__)
   #define MULTICAST_ADDR "ff02::1%lo0"
   #define INTERFACE_ADDR "::1%lo0"
 #elif defined(__MVS__)
@@ -169,6 +170,9 @@ static int can_ipv6_external(void) {
 
 
 TEST_IMPL(udp_multicast_join6) {
+#if defined(QNX_IOPKT)
+  RETURN_SKIP("Test does not currently work in QNX");
+#endif
   int r;
   struct sockaddr_in6 addr;
 
