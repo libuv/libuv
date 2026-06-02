@@ -36,6 +36,35 @@
 #include "heap-inl.h"
 #include "req-inl.h"
 
+/* TEMPORARY: revert before merge — https://github.com/libuv/libuv/issues/5147
+ * Dumps the internal loop bookkeeping that uv__loop_alive() consults, so a
+ * Win2025 CI run can show which counter holds the residual ref that keeps the
+ * loop alive after a stdio pipe is opened. Not declared in any public header;
+ * tests extern-declare it. */
+static void uv__loop_debug_walk_cb(uv_handle_t* handle, void* arg) {
+  (void) arg;
+  fprintf(stderr,
+          "  handle=%p type=%s has_ref=%d is_active=%d is_closing=%d\n",
+          (void*) handle,
+          uv_handle_type_name(handle->type),
+          uv_has_ref(handle),
+          uv_is_active(handle),
+          uv_is_closing(handle));
+}
+
+void uv__loop_debug_dump(uv_loop_t* loop, const char* tag) {
+  fprintf(stderr,
+          "[uv__loop_debug_dump] %s: active_handles=%u active_reqs=%u "
+          "pending_reqs_tail=%s endgame_handles=%s\n",
+          tag,
+          loop->active_handles,
+          loop->active_reqs.count,
+          loop->pending_reqs_tail != NULL ? "non-NULL" : "NULL",
+          loop->endgame_handles != NULL ? "non-NULL" : "NULL");
+  uv_walk(loop, uv__loop_debug_walk_cb, NULL);
+  fflush(stderr);
+}
+
 /* uv_once initialization guards */
 static uv_once_t uv_init_guard_ = UV_ONCE_INIT;
 
