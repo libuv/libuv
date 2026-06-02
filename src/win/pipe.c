@@ -2538,6 +2538,11 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
    *
    * See https://github.com/libuv/libuv/issues/5147 for full reproducer and analysis.
    */
+  /* TEMPORARY: workaround disabled for root-cause diagnostics — #5147.
+   * With this off, the Win2025 CI run reproduces the hang and the
+   * reproducer tests emit uv__loop_debug_dump output. Re-enable (or
+   * replace with a targeted fix) once the residual ref is localized. */
+#if 0
   if (was_stdio && !pipe->ipc) {
     OSVERSIONINFOW os_info;
     os_info.dwOSVersionInfoSize = sizeof(os_info);
@@ -2547,6 +2552,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
       uv_unref((uv_handle_t*) pipe);
     }
   }
+#endif
   return 0;
 }
 
