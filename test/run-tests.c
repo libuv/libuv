@@ -54,6 +54,9 @@ int ipc_send_recv_helper(void);
 int ipc_helper_bind_twice(void);
 int ipc_helper_send_zero(void);
 int stdio_over_pipes_helper(void);
+#ifdef _WIN32
+int pipe_stdio_loop_alive_helper_win(void);
+#endif
 void spawn_stdin_stdout(void);
 void process_title_big_argv(void);
 int spawn_tcp_server_helper(void);
@@ -126,6 +129,13 @@ static int maybe_run_test(int argc, char **argv) {
   if (strcmp(argv[1], "stdio_over_pipes_helper") == 0) {
     return stdio_over_pipes_helper();
   }
+
+#ifdef _WIN32
+  if (strcmp(argv[1], "pipe_stdio_loop_alive_helper_win") == 0) {
+    notify_parent_process();
+    return pipe_stdio_loop_alive_helper_win();
+  }
+#endif
 
   if (strcmp(argv[1], "spawn_helper1") == 0) {
     notify_parent_process();

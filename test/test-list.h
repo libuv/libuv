@@ -287,6 +287,7 @@ TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
 #ifdef _WIN32
 TEST_DECLARE   (pipe_stdio_no_keep_alive_win)
+TEST_DECLARE   (pipe_stdio_loop_alive_spawn_win)
 #endif
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (process_priority)
@@ -652,7 +653,8 @@ TASK_LIST_START
   TEST_ENTRY_CUSTOM (pipe_set_non_blocking, 0, 0, 20000)
   TEST_ENTRY  (pipe_set_chmod)
 #ifdef _WIN32
-  TEST_ENTRY  (pipe_stdio_no_keep_alive_win)
+  TEST_ENTRY_CUSTOM (pipe_stdio_no_keep_alive_win, 0, 0, 20000)
+  TEST_ENTRY_CUSTOM (pipe_stdio_loop_alive_spawn_win, 0, 0, 20000)
 #endif
   TEST_ENTRY  (tty)
 #ifdef _WIN32

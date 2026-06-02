@@ -233,6 +233,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-set-non-blocking.c \
                          test/test-pipe-set-fchmod.c \
                          test/test-pipe-stdio-no-keep-alive-win.c \
+                         test/test-pipe-stdio-loop-alive-spawn-win.c \
                          test/test-platform-output.c \
                          test/test-poll.c \
                          test/test-poll-close.c \
