@@ -55,7 +55,7 @@ static void uv__loop_debug_walk_cb(uv_handle_t* handle, void* arg) {
           (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) ? 1 : 0);
 }
 
-void uv__loop_debug_dump(uv_loop_t* loop, const char* tag) {
+UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop, const char* tag) {
   fprintf(stderr,
           "[uv__loop_debug_dump] %s: active_handles=%u active_reqs=%u "
           "pending_reqs_tail=%s endgame_handles=%s\n",

@@ -45,8 +45,9 @@
  * Skipped on Windows older than build 26100 (bug not present).
  */
 
-/* TEMPORARY: revert before merge — #5147. Defined in src/win/core.c. */
-void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
+/* TEMPORARY: revert before merge — #5147. Defined in src/win/core.c and
+ * UV_EXTERN-exported there so this shared-lib-linked test can resolve it. */
+UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
 
 static int watchdog_fired;
 

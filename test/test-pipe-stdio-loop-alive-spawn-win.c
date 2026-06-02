@@ -53,8 +53,9 @@
  * Skipped on Windows older than 26100.
  */
 
-/* TEMPORARY: revert before merge -- #5147. Defined in src/win/core.c. */
-void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
+/* TEMPORARY: revert before merge -- #5147. Defined in src/win/core.c and
+ * UV_EXTERN-exported there so this shared-lib-linked test can resolve it. */
+UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
 
 #define CHILD_HELPER_NAME "pipe_stdio_loop_alive_helper_win"
 #define CHILD_DRAIN_TIMEOUT_MS 8000
