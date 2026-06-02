@@ -38,18 +38,21 @@
 
 /* TEMPORARY: revert before merge — https://github.com/libuv/libuv/issues/5147
  * Dumps the internal loop bookkeeping that uv__loop_alive() consults, so a
- * Win2025 CI run can show which counter holds the residual ref that keeps the
- * loop alive after a stdio pipe is opened. Not declared in any public header;
- * tests extern-declare it. */
+ * Win2025 CI run can show which of uv__loop_alive's inputs (active_handles,
+ * active_reqs, pending_reqs_tail, endgame_handles) -- or which handle -- holds
+ * the residual ref that keeps the loop alive after a stdio pipe is opened. Not
+ * declared in any public header; tests extern-declare it. */
 static void uv__loop_debug_walk_cb(uv_handle_t* handle, void* arg) {
   (void) arg;
   fprintf(stderr,
-          "  handle=%p type=%s has_ref=%d is_active=%d is_closing=%d\n",
+          "  handle=%p type=%s has_ref=%d is_active=%d is_closing=%d "
+          "non_overlapped_pipe=%d\n",
           (void*) handle,
           uv_handle_type_name(handle->type),
           uv_has_ref(handle),
           uv_is_active(handle),
-          uv_is_closing(handle));
+          uv_is_closing(handle),
+          (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) ? 1 : 0);
 }
 
 void uv__loop_debug_dump(uv_loop_t* loop, const char* tag) {

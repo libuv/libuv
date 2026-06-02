@@ -132,7 +132,8 @@ static int maybe_run_test(int argc, char **argv) {
 
 #ifdef _WIN32
   if (strcmp(argv[1], "pipe_stdio_loop_alive_helper_win") == 0) {
-    notify_parent_process();
+    /* Spawned via uv_spawn (not the runner helper path), so there is no
+     * UV_TEST_RUNNER_FD ready-signal to send. */
     return pipe_stdio_loop_alive_helper_win();
   }
 #endif

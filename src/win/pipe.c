@@ -2521,14 +2521,18 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
     assert(pipe->pipe.conn.ipc_remote_pid != (DWORD)(uv_pid_t) -1);
   }
 
+  /* TEMPORARY: workaround disabled for root-cause diagnostics — #5147.
+   * With this off, the Win2025 CI run reproduces the hang and the
+   * reproducer tests emit uv__loop_debug_dump output. Re-enable (or
+   * replace with a targeted fix) once the residual ref is localized. */
   /* Workaround for a Windows Server 2025 (NT build 26100+) regression:
    * once a stdio pipe handle is associated with the loop's IOCP, libuv
    * leaves it implicitly keeping the event loop alive even after its
-   * write queue has drained. This is not observed on Windows 10/2019
-   * (build < 22000) with the same code path. The symptom is that a
-   * piped Node.js process never exits after `console.log()` work
-   * completes when its parent (e.g., a CI agent, gulp, npm, sh) keeps
-   * the read end of the pipe open.
+   * write queue has drained. This is not observed on older Windows
+   * (e.g. Windows Server 2019, build 17763) with the same code path.
+   * The symptom is that a piped Node.js process never exits after
+   * `console.log()` work completes when its parent (e.g., a CI agent,
+   * gulp, npm, sh) keeps the read end of the pipe open.
    *
    * As a minimally-invasive workaround, unref stdio pipes on Win2025+.
    * Callers that need the original "stdio keeps loop alive" semantics
@@ -2538,10 +2542,6 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
    *
    * See https://github.com/libuv/libuv/issues/5147 for full reproducer and analysis.
    */
-  /* TEMPORARY: workaround disabled for root-cause diagnostics — #5147.
-   * With this off, the Win2025 CI run reproduces the hang and the
-   * reproducer tests emit uv__loop_debug_dump output. Re-enable (or
-   * replace with a targeted fix) once the residual ref is localized. */
 #if 0
   if (was_stdio && !pipe->ipc) {
     OSVERSIONINFOW os_info;

@@ -27,6 +27,7 @@
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /*
  * Reproducer B (cross-process, faithful) for
@@ -36,19 +37,19 @@
  * overlapped pipe the parent holds the read end of (UV_CREATE_PIPE |
  * UV_WRITABLE_PIPE | UV_NONBLOCK_PIPE -- the nonblock flag makes the child's
  * inherited fd 1 overlapped so uv_pipe_open associates it with the loop's
- * IOCP, the path #5147 is attributed to). The child calls uv_pipe_open(1),
- * writes a few bytes (like console.log), leaves the pipe open, and runs its
- * loop:
+ * IOCP, the path we suspect is involved in #5147 (root cause unconfirmed)).
+ * The child calls uv_pipe_open(1), writes a few bytes (like console.log),
+ * leaves the pipe open, and runs its loop:
  *
  *   - Healthy OS: the idle stdout pipe does not keep the child loop alive, the
  *     child exits 0, its write end closes, the parent reads EOF and drains.
  *   - Win2025 (#5147, workaround disabled): the child loop never drains. The
- *     child's own unref'd watchdog (3s) fires, dumps child-side loop
+ *     child's own unref'd watchdog (8s) fires, dumps child-side loop
  *     diagnostics to inherited stderr (-> CI log), and exits 99. The parent
  *     observes a non-zero exit status -> assertion FAILS (intended canary).
  *
- * A parent-side kill watchdog (10s) is a backstop in case the child wedges so
- * hard it cannot run its own watchdog; it fires before the 20s runner budget.
+ * A parent-side kill watchdog (15s) is a backstop in case the child wedges so
+ * hard it cannot run its own watchdog; it fires before the 30s runner budget.
  * Skipped on Windows older than 26100.
  */
 
@@ -56,8 +57,8 @@
 void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
 
 #define CHILD_HELPER_NAME "pipe_stdio_loop_alive_helper_win"
-#define CHILD_DRAIN_TIMEOUT_MS 3000
-#define PARENT_KILL_TIMEOUT_MS 10000
+#define CHILD_DRAIN_TIMEOUT_MS 8000
+#define PARENT_KILL_TIMEOUT_MS 15000
 #define CHILD_STUCK_EXIT_CODE 99
 
 static int is_win2025_or_newer(void) {
@@ -89,7 +90,11 @@ static void child_watchdog_cb(uv_timer_t* handle) {
 
 static void child_write_cb(uv_write_t* req, int status) {
   (void) req;
-  (void) status;
+  if (status != 0) {
+    fprintf(stderr, "child: uv_write completed with error: %s\n",
+            uv_strerror(status));
+    fflush(stderr);
+  }
   /* Intentionally leave the stdout pipe open, like Node's process.stdout. */
 }
 
@@ -99,23 +104,44 @@ int pipe_stdio_loop_alive_helper_win(void) {
   uv_write_t write_req;
   uv_buf_t buf;
   uv_timer_t watchdog;
+  int err;
 
   loop = uv_default_loop();
 
-  if (uv_pipe_init(loop, &stdout_pipe, 0) != 0)
+  err = uv_pipe_init(loop, &stdout_pipe, 0);
+  if (err != 0) {
+    fprintf(stderr, "child: uv_pipe_init failed: %s\n", uv_strerror(err));
+    fflush(stderr);
     return 2;
-  if (uv_pipe_open(&stdout_pipe, 1) != 0)
+  }
+  err = uv_pipe_open(&stdout_pipe, 1);
+  if (err != 0) {
+    fprintf(stderr, "child: uv_pipe_open(1) failed: %s\n", uv_strerror(err));
+    fflush(stderr);
     return 3;
+  }
 
   buf = uv_buf_init("hi\n", 3);
-  if (uv_write(&write_req, (uv_stream_t*) &stdout_pipe, &buf, 1, child_write_cb) != 0)
+  err = uv_write(&write_req, (uv_stream_t*) &stdout_pipe, &buf, 1, child_write_cb);
+  if (err != 0) {
+    fprintf(stderr, "child: uv_write failed: %s\n", uv_strerror(err));
+    fflush(stderr);
     return 4;
+  }
 
   child_watchdog_fired = 0;
-  if (uv_timer_init(loop, &watchdog) != 0)
+  err = uv_timer_init(loop, &watchdog);
+  if (err != 0) {
+    fprintf(stderr, "child: uv_timer_init failed: %s\n", uv_strerror(err));
+    fflush(stderr);
     return 5;
-  if (uv_timer_start(&watchdog, child_watchdog_cb, CHILD_DRAIN_TIMEOUT_MS, 0) != 0)
+  }
+  err = uv_timer_start(&watchdog, child_watchdog_cb, CHILD_DRAIN_TIMEOUT_MS, 0);
+  if (err != 0) {
+    fprintf(stderr, "child: uv_timer_start failed: %s\n", uv_strerror(err));
+    fflush(stderr);
     return 6;
+  }
   uv_unref((uv_handle_t*) &watchdog);
 
   uv_run(loop, UV_RUN_DEFAULT);
@@ -142,6 +168,11 @@ static char* args[3];
 static void alloc_cb(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
   (void) handle;
   (void) suggested;
+  if (child_output_used >= sizeof(child_output)) {
+    buf->base = NULL;
+    buf->len = 0;
+    return;
+  }
   buf->base = child_output + child_output_used;
   buf->len = (unsigned long) (sizeof(child_output) - child_output_used);
 }
@@ -151,6 +182,11 @@ static void read_cb(uv_stream_t* stream, ssize_t nread, const uv_buf_t* buf) {
   if (nread > 0) {
     child_output_used += (size_t) nread;
   } else if (nread < 0) {
+    if (nread != UV_EOF) {
+      fprintf(stderr, "parent: unexpected read error: %s\n",
+              uv_strerror((int) nread));
+      fflush(stderr);
+    }
     uv_close((uv_handle_t*) stream, NULL);
   }
 }
@@ -163,9 +199,14 @@ static void exit_cb(uv_process_t* proc, int64_t exit_status, int term_signal) {
 }
 
 static void kill_watchdog_cb(uv_timer_t* handle) {
+  int err;
   kill_watchdog_fired = 1;
   uv__loop_debug_dump(handle->loop, "reproducer B parent: child did not exit");
-  uv_process_kill(&process, SIGTERM);
+  err = uv_process_kill(&process, SIGTERM);
+  if (err != 0) {
+    fprintf(stderr, "parent: uv_process_kill failed: %s\n", uv_strerror(err));
+    fflush(stderr);
+  }
 }
 
 TEST_IMPL(pipe_stdio_loop_alive_spawn_win) {
@@ -204,7 +245,12 @@ TEST_IMPL(pipe_stdio_loop_alive_spawn_win) {
   kill_watchdog_fired = 0;
   child_output_used = 0;
 
-  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  if (r != 0) {
+    fprintf(stderr, "reproducer B: uv_spawn failed: %s\n", uv_strerror(r));
+    fflush(stderr);
+  }
+  ASSERT_OK(r);
 
   /* Parent holds and drains the read end, like a shell consuming stdout. */
   ASSERT_OK(uv_read_start((uv_stream_t*) &child_stdout, alloc_cb, read_cb));
@@ -223,6 +269,7 @@ TEST_IMPL(pipe_stdio_loop_alive_spawn_win) {
    * to kill it). Re-tighten / remove when the fix lands. */
   ASSERT_EQ(0, kill_watchdog_fired);
   ASSERT_EQ(0, child_exit_status);
+  ASSERT_EQ(0, child_term_signal);
 
   uv_close((uv_handle_t*) &kill_watchdog, NULL);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);

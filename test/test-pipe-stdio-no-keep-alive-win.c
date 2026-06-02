@@ -85,14 +85,15 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
   }
 
   /* Manufacture an OVERLAPPED pipe (UV_NONBLOCK_PIPE => FILE_FLAG_OVERLAPPED)
-   * so uv_pipe_open's IOCP-attach path -- the code the #5147 hang is
-   * attributed to -- is actually exercised. A plain CreatePipe() produces a
-   * synchronous pipe, which uv__set_pipe_handle routes through the
-   * non-overlapped branch that never associates with the loop's IOCP. */
+   * so uv_pipe_open's IOCP-attach path -- the path we suspect is involved
+   * in #5147 (root cause unconfirmed) -- is actually exercised. A plain
+   * CreatePipe() produces a synchronous pipe, which uv__set_pipe_handle
+   * routes through the non-overlapped branch that never associates with the
+   * loop's IOCP. */
   ASSERT_OK(uv_pipe(fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE));
   /* fds[0] = read end, fds[1] = write end (like stdout). Keep the read end
    * open as the peer holding the pipe; place the write end on fd 1 so
-   * uv_pipe_open(pipe, 1) takes the stdio code path (file <= 2). */
+   * uv_pipe_open(pipe, 1) takes the stdio code path (0 <= file <= 2). */
 
   saved_stdout_fd = _dup(1);
   ASSERT_GE(saved_stdout_fd, 0);
@@ -123,7 +124,9 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   /* Canary: on Win2025 with the workaround disabled this fails because the
-   * loop did not drain. Re-tighten / remove when the fix lands. */
+   * loop did not drain. This assertion is the permanent contract; when the
+   * fix lands, what changes is the #if 0 workaround in src/win/pipe.c and the
+   * Win2025-only skip guard, not this assert. */
   ASSERT_OK(watchdog_fired);
 
   uv_close((uv_handle_t*) &watchdog, NULL);
