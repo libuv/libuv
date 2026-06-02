@@ -26,28 +26,41 @@
 
 #include <windows.h>
 #include <io.h>
+#include <stdio.h>
 
 /*
  * Reproducer A (in-process) for https://github.com/libuv/libuv/issues/5147.
  *
- * On Windows Server 2025 (NT build 26100+), associating a stdio pipe handle
- * with the loop's IOCP via uv_pipe_open(fd in {0,1,2}) leaves the loop alive
- * even though the handle is inactive. This test manufactures a pipe, swaps it
- * onto fd 1, opens it with uv_pipe_open(), then drives uv_run(UV_RUN_DEFAULT)
- * under an UNREF'd watchdog timer:
+ * A minimal "open an overlapped stdio pipe and run the loop" test was found to
+ * drain cleanly on the Win2025 CI runner, so this version moves closer to the
+ * Node.js reproducer that actually hangs: it pipes BOTH stdout (fd 1) and
+ * stderr (fd 2) as overlapped pipes, writes to each (like console.log /
+ * console.error) and leaves them open, and runs an async filesystem request to
+ * completion (mirroring the in-flight I/O — https requests — in the Node
+ * repro, whose threadpool completions post to the same loop IOCP the stdio
+ * pipes are attached to).
  *
- *   - Healthy OS: the inactive pipe does not keep the loop alive, so uv_run
- *     returns before the watchdog fires -> PASS.
- *   - Win2025 with the workaround disabled (#5147): the loop stays alive, the
- *     watchdog fires, dumps loop diagnostics, and stops the loop -> the
- *     watchdog-fired assertion FAILS (intended canary; revert with the fix).
+ * The loop is then driven with uv_run(UV_RUN_DEFAULT) under an uv_unref'd
+ * watchdog timer:
+ *   - Healthy OS: everything completes, the idle pipes do not keep the loop
+ *     alive, uv_run returns before the watchdog fires -> PASS.
+ *   - Win2025 with the workaround disabled (#5147): if the residual ref the
+ *     issue describes is present, the loop stays alive, the watchdog fires,
+ *     dumps loop state to stdout (captured by the TAP runner) and stops the
+ *     loop -> the watchdog-fired assertion FAILS (intended canary).
+ *
+ * uv__loop_debug_dump is routed to stdout here (not stderr) because the libuv
+ * test runner only surfaces a test's stdout; fd 1/2 are restored to the real
+ * console before any dump so the output is not swallowed by the pipes.
  *
  * Skipped on Windows older than build 26100 (bug not present).
  */
 
 /* TEMPORARY: revert before merge — #5147. Defined in src/win/core.c and
  * UV_EXTERN-exported there so this shared-lib-linked test can resolve it. */
-UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
+UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop,
+                                   const char* tag,
+                                   FILE* stream);
 
 static int watchdog_fired;
 
@@ -68,51 +81,95 @@ static int is_win2025_or_newer(void) {
   return os_info.dwBuildNumber >= 26100;
 }
 
+static void noop_write_cb(uv_write_t* req, int status) {
+  (void) req;
+  (void) status;
+  /* Intentionally leave the pipe open, like Node's process.stdout/stderr. */
+}
+
+static void stat_cb(uv_fs_t* req) {
+  /* Just let the async (threadpool -> IOCP) request complete. */
+  uv_fs_req_cleanup(req);
+}
+
 static void watchdog_cb(uv_timer_t* handle) {
   watchdog_fired = 1;
-  uv__loop_debug_dump(handle->loop, "reproducer A: loop still alive at watchdog");
+  uv__loop_debug_dump(handle->loop,
+                      "reproducer A: loop still alive at watchdog",
+                      stdout);
   uv_stop(handle->loop);
 }
 
+/* Open the write end of an overlapped pipe onto stdio fd `target` (1 or 2) and
+ * wrap it in `pipe`. `fds` receives the pipe pair; the read end (fds[0]) is the
+ * peer and must stay open until after the loop run. `saved_fd` receives a dup
+ * of the original stdio fd so the caller can restore it. */
+static void open_stdio_pipe(uv_pipe_t* pipe,
+                            uv_file fds[2],
+                            int target,
+                            int* saved_fd) {
+  ASSERT_OK(uv_pipe(fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE));
+  *saved_fd = _dup(target);
+  ASSERT_GE(*saved_fd, 0);
+  ASSERT_OK(_dup2(fds[1], target));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), pipe, 0));
+  ASSERT_OK(uv_pipe_open(pipe, target));
+}
+
 TEST_IMPL(pipe_stdio_no_keep_alive_win) {
-  uv_file fds[2];
-  int saved_stdout_fd = -1;
-  uv_pipe_t pipe_stdout;
+  uv_file out_fds[2];
+  uv_file err_fds[2];
+  int saved_out = -1;
+  int saved_err = -1;
+  uv_pipe_t pipe_out;
+  uv_pipe_t pipe_err;
+  uv_write_t wr_out;
+  uv_write_t wr_err;
+  uv_buf_t buf_out;
+  uv_buf_t buf_err;
+  uv_fs_t stat_req;
+
   uv_timer_t watchdog;
-  int open_result;
 
   if (!is_win2025_or_newer()) {
     RETURN_SKIP("Test requires Windows Server 2025 (build >= 26100).");
   }
 
-  /* Manufacture an OVERLAPPED pipe (UV_NONBLOCK_PIPE => FILE_FLAG_OVERLAPPED)
-   * so uv_pipe_open's IOCP-attach path -- the path we suspect is involved
-   * in #5147 (root cause unconfirmed) -- is actually exercised. A plain
-   * CreatePipe() produces a synchronous pipe, which uv__set_pipe_handle
-   * routes through the non-overlapped branch that never associates with the
-   * loop's IOCP. */
-  ASSERT_OK(uv_pipe(fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE));
-  /* fds[0] = read end, fds[1] = write end (like stdout). Keep the read end
-   * open as the peer holding the pipe; place the write end on fd 1 so
-   * uv_pipe_open(pipe, 1) takes the stdio code path (0 <= file <= 2). */
+  /* Overlapped stdio pipes on fd 1 and fd 2 (UV_NONBLOCK_PIPE =>
+   * FILE_FLAG_OVERLAPPED) so uv_pipe_open takes the IOCP-attach path we
+   * suspect is involved in #5147 (root cause unconfirmed). fd <= 2 makes
+   * uv_pipe_open use the stdio code path (0 <= file <= 2). */
+  open_stdio_pipe(&pipe_out, out_fds, 1, &saved_out);
+  open_stdio_pipe(&pipe_err, err_fds, 2, &saved_err);
 
-  saved_stdout_fd = _dup(1);
-  ASSERT_GE(saved_stdout_fd, 0);
-  ASSERT_OK(_dup2(fds[1], 1));
+  /* Restore the real console fds immediately so TAP output and the diagnostic
+   * dump below land in the runner's captured stdout, not the manufactured
+   * pipes. uv_pipe_open duplicated the underlying handles, so we can drop our
+   * own write-end fds now; the read ends (fds[0]) stay open as the peers. */
+  _dup2(saved_out, 1);
+  _close(saved_out);
+  _close(out_fds[1]);
+  _dup2(saved_err, 2);
+  _close(saved_err);
+  _close(err_fds[1]);
 
-  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_stdout, 0));
-  open_result = uv_pipe_open(&pipe_stdout, 1);
+  /* Write to both pipes (like console.log / console.error) and leave them
+   * open. The few bytes fit the pipe buffer, so the writes complete without a
+   * reader. */
+  buf_out = uv_buf_init("out\n", 4);
+  ASSERT_OK(uv_write(&wr_out, (uv_stream_t*) &pipe_out, &buf_out, 1,
+                     noop_write_cb));
+  buf_err = uv_buf_init("err\n", 4);
+  ASSERT_OK(uv_write(&wr_err, (uv_stream_t*) &pipe_err, &buf_err, 1,
+                     noop_write_cb));
 
-  /* Restore stdout immediately so subsequent printf / ASSERT messages land
-   * in the runner's output. uv_pipe_open duplicated the underlying handle, so
-   * we can drop our own write-end fd now. */
-  _dup2(saved_stdout_fd, 1);
-  _close(saved_stdout_fd);
-  _close(fds[1]);
+  /* In-flight async work that completes through the threadpool -> loop IOCP,
+   * mirroring the Node repro's https requests. */
+  ASSERT_OK(uv_fs_stat(uv_default_loop(), &stat_req, ".", stat_cb));
 
-  ASSERT_OK(open_result);
-
-  uv__loop_debug_dump(uv_default_loop(), "reproducer A: after uv_pipe_open(fd=1)");
+  uv__loop_debug_dump(uv_default_loop(),
+                      "reproducer A: before run (2 stdio pipes + writes + fs)",
+                      stdout);
 
   /* Unref'd watchdog: fires only if something else keeps the loop alive. */
   watchdog_fired = 0;
@@ -120,9 +177,12 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
   ASSERT_OK(uv_timer_start(&watchdog, watchdog_cb, 5000, 0));
   uv_unref((uv_handle_t*) &watchdog);
 
-  /* Healthy: returns immediately (idle pipe does not keep loop alive).
-   * Win2025 (workaround off): stays alive until the watchdog fires. */
+  /* Healthy: returns once the writes + fs request complete (idle pipes do not
+   * keep the loop alive). Win2025 (workaround off): stays alive until the
+   * watchdog fires. */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  uv__loop_debug_dump(uv_default_loop(), "reproducer A: after run", stdout);
 
   /* Canary: on Win2025 with the workaround disabled this fails because the
    * loop did not drain. This assertion is the permanent contract; when the
@@ -131,10 +191,12 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
   ASSERT_OK(watchdog_fired);
 
   uv_close((uv_handle_t*) &watchdog, NULL);
-  uv_close((uv_handle_t*) &pipe_stdout, NULL);
+  uv_close((uv_handle_t*) &pipe_out, NULL);
+  uv_close((uv_handle_t*) &pipe_err, NULL);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  _close(fds[0]);
+  _close(out_fds[0]);
+  _close(err_fds[0]);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;

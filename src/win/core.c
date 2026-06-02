@@ -43,8 +43,8 @@
  * the residual ref that keeps the loop alive after a stdio pipe is opened. Not
  * declared in any public header; tests extern-declare it. */
 static void uv__loop_debug_walk_cb(uv_handle_t* handle, void* arg) {
-  (void) arg;
-  fprintf(stderr,
+  FILE* stream = (FILE*) arg;
+  fprintf(stream,
           "  handle=%p type=%s has_ref=%d is_active=%d is_closing=%d "
           "non_overlapped_pipe=%d\n",
           (void*) handle,
@@ -55,8 +55,10 @@ static void uv__loop_debug_walk_cb(uv_handle_t* handle, void* arg) {
           (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) ? 1 : 0);
 }
 
-UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop, const char* tag) {
-  fprintf(stderr,
+UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop,
+                                   const char* tag,
+                                   FILE* stream) {
+  fprintf(stream,
           "[uv__loop_debug_dump] %s: active_handles=%u active_reqs=%u "
           "pending_reqs_tail=%s endgame_handles=%s\n",
           tag,
@@ -64,8 +66,8 @@ UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop, const char* tag) {
           loop->active_reqs.count,
           loop->pending_reqs_tail != NULL ? "non-NULL" : "NULL",
           loop->endgame_handles != NULL ? "non-NULL" : "NULL");
-  uv_walk(loop, uv__loop_debug_walk_cb, NULL);
-  fflush(stderr);
+  uv_walk(loop, uv__loop_debug_walk_cb, stream);
+  fflush(stream);
 }
 
 /* uv_once initialization guards */

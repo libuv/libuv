@@ -55,7 +55,9 @@
 
 /* TEMPORARY: revert before merge -- #5147. Defined in src/win/core.c and
  * UV_EXTERN-exported there so this shared-lib-linked test can resolve it. */
-UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
+UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop,
+                                   const char* tag,
+                                   FILE* stream);
 
 #define CHILD_HELPER_NAME "pipe_stdio_loop_alive_helper_win"
 #define CHILD_DRAIN_TIMEOUT_MS 8000
@@ -85,7 +87,11 @@ static int child_watchdog_fired;
 
 static void child_watchdog_cb(uv_timer_t* handle) {
   child_watchdog_fired = 1;
-  uv__loop_debug_dump(handle->loop, "reproducer B child: loop still alive");
+  /* Child stdout is the pipe under test; write diagnostics to inherited
+   * stderr instead. */
+  uv__loop_debug_dump(handle->loop,
+                      "reproducer B child: loop still alive",
+                      stderr);
   uv_stop(handle->loop);
 }
 
@@ -202,7 +208,9 @@ static void exit_cb(uv_process_t* proc, int64_t exit_status, int term_signal) {
 static void kill_watchdog_cb(uv_timer_t* handle) {
   int err;
   kill_watchdog_fired = 1;
-  uv__loop_debug_dump(handle->loop, "reproducer B parent: child did not exit");
+  uv__loop_debug_dump(handle->loop,
+                      "reproducer B parent: child did not exit",
+                      stdout);
   err = uv_process_kill(&process, SIGTERM);
   if (err != 0) {
     fprintf(stderr, "parent: uv_process_kill failed: %s\n", uv_strerror(err));
