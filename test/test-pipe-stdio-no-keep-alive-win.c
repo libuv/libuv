@@ -31,27 +31,25 @@
 /*
  * Reproducer A (in-process) for https://github.com/libuv/libuv/issues/5147.
  *
- * A minimal "open an overlapped stdio pipe and run the loop" test was found to
- * drain cleanly on the Win2025 CI runner, so this version moves closer to the
- * Node.js reproducer that actually hangs: it pipes BOTH stdout (fd 1) and
- * stderr (fd 2) as overlapped pipes, writes to each (like console.log /
- * console.error) and leaves them open, and runs an async filesystem request to
- * completion (mirroring the in-flight I/O — https requests — in the Node
- * repro, whose threadpool completions post to the same loop IOCP the stdio
- * pipes are attached to).
+ * Minimal single/dual overlapped stdio-pipe variants drained cleanly on the
+ * Win2025 CI runner, so this version mirrors the hanging Node.js repro as
+ * closely as is practical in-process:
+ *   - BOTH stdout (fd 1) and stderr (fd 2) are overlapped stdio pipes, written
+ *     to (like console.log / console.error) and left open;
+ *   - a real loopback TCP round-trip (connect -> 1 byte -> echo -> close) runs
+ *     to completion, so genuine socket IOCP completions interleave with the
+ *     stdio-pipe IOCP, standing in for the https requests the Node repro makes.
  *
- * The loop is then driven with uv_run(UV_RUN_DEFAULT) under an uv_unref'd
- * watchdog timer:
- *   - Healthy OS: everything completes, the idle pipes do not keep the loop
- *     alive, uv_run returns before the watchdog fires -> PASS.
+ * The loop is driven with uv_run(UV_RUN_DEFAULT) under an uv_unref'd watchdog:
+ *   - Healthy OS: everything completes, the idle stdio pipes do not keep the
+ *     loop alive, uv_run returns before the watchdog fires -> PASS.
  *   - Win2025 with the workaround disabled (#5147): if the residual ref the
  *     issue describes is present, the loop stays alive, the watchdog fires,
- *     dumps loop state to stdout (captured by the TAP runner) and stops the
- *     loop -> the watchdog-fired assertion FAILS (intended canary).
+ *     dumps loop state and stops the loop -> the assertion FAILS (canary).
  *
- * uv__loop_debug_dump is routed to stdout here (not stderr) because the libuv
- * test runner only surfaces a test's stdout; fd 1/2 are restored to the real
- * console before any dump so the output is not swallowed by the pipes.
+ * uv__loop_debug_dump is routed to stdout (fd 1/2 are restored to the console
+ * before any dump). The test entry is registered with show_output=1 so the
+ * runner echoes this stdout into the CI log on both pass and fail.
  *
  * Skipped on Windows older than build 26100 (bug not present).
  */
@@ -63,6 +61,13 @@ UV_EXTERN void uv__loop_debug_dump(uv_loop_t* loop,
                                    FILE* stream);
 
 static int watchdog_fired;
+
+/* TCP echo state. */
+static uv_tcp_t tcp_server;
+static uv_tcp_t tcp_client;
+static uv_tcp_t tcp_accepted;
+static uv_write_t tcp_write_req;
+static char tcp_slab[64];
 
 static int is_win2025_or_newer(void) {
   typedef LONG (WINAPI *RtlGetVersion_t)(OSVERSIONINFOW*);
@@ -84,12 +89,56 @@ static int is_win2025_or_newer(void) {
 static void noop_write_cb(uv_write_t* req, int status) {
   (void) req;
   (void) status;
-  /* Intentionally leave the pipe open, like Node's process.stdout/stderr. */
+  /* Intentionally leave the stdio pipe open, like Node's process.stdout. */
 }
 
-static void stat_cb(uv_fs_t* req) {
-  /* Just let the async (threadpool -> IOCP) request complete. */
-  uv_fs_req_cleanup(req);
+static void tcp_close_cb(uv_handle_t* handle) {
+  (void) handle;
+}
+
+static void tcp_alloc_cb(uv_handle_t* handle, size_t suggested, uv_buf_t* buf) {
+  (void) handle;
+  (void) suggested;
+  buf->base = tcp_slab;
+  buf->len = (unsigned long) sizeof(tcp_slab);
+}
+
+static void tcp_server_read_cb(uv_stream_t* stream,
+                               ssize_t nread,
+                               const uv_buf_t* buf) {
+  (void) stream;
+  (void) nread;
+  (void) buf;
+  /* read_start delivers the data callback and then UV_EOF; only tear down
+   * once (a second uv_close on a closing handle aborts in debug builds). */
+  if (uv_is_closing((uv_handle_t*) &tcp_accepted))
+    return;
+  uv_close((uv_handle_t*) &tcp_accepted, tcp_close_cb);
+  uv_close((uv_handle_t*) &tcp_server, tcp_close_cb);
+}
+
+static void tcp_connection_cb(uv_stream_t* server, int status) {
+  ASSERT_OK(status);
+  ASSERT_OK(uv_tcp_init(server->loop, &tcp_accepted));
+  ASSERT_OK(uv_accept(server, (uv_stream_t*) &tcp_accepted));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &tcp_accepted,
+                          tcp_alloc_cb,
+                          tcp_server_read_cb));
+}
+
+static void tcp_client_write_cb(uv_write_t* req, int status) {
+  (void) req;
+  ASSERT_OK(status);
+  uv_close((uv_handle_t*) &tcp_client, tcp_close_cb);
+}
+
+static void tcp_connect_cb(uv_connect_t* req, int status) {
+  uv_buf_t b;
+  (void) req;
+  ASSERT_OK(status);
+  b = uv_buf_init("x", 1);
+  ASSERT_OK(uv_write(&tcp_write_req, (uv_stream_t*) &tcp_client, &b, 1,
+                     tcp_client_write_cb));
 }
 
 static void watchdog_cb(uv_timer_t* handle) {
@@ -127,8 +176,10 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
   uv_write_t wr_err;
   uv_buf_t buf_out;
   uv_buf_t buf_err;
-  uv_fs_t stat_req;
-
+  struct sockaddr_in listen_addr;
+  struct sockaddr_in connect_addr;
+  uv_connect_t connect_req;
+  int namelen;
   uv_timer_t watchdog;
 
   if (!is_win2025_or_newer()) {
@@ -163,12 +214,26 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
   ASSERT_OK(uv_write(&wr_err, (uv_stream_t*) &pipe_err, &buf_err, 1,
                      noop_write_cb));
 
-  /* In-flight async work that completes through the threadpool -> loop IOCP,
-   * mirroring the Node repro's https requests. */
-  ASSERT_OK(uv_fs_stat(uv_default_loop(), &stat_req, ".", stat_cb));
+  /* Real loopback TCP round-trip, standing in for the Node repro's https
+   * requests: bind+listen on an ephemeral port, connect, send one byte, the
+   * server reads it, then both sides close. Genuine socket IOCP completions
+   * interleave with the stdio-pipe IOCP. */
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", 0, &listen_addr));
+  ASSERT_OK(uv_tcp_init(uv_default_loop(), &tcp_server));
+  ASSERT_OK(uv_tcp_bind(&tcp_server, (const struct sockaddr*) &listen_addr, 0));
+  namelen = sizeof(connect_addr);
+  ASSERT_OK(uv_tcp_getsockname(&tcp_server,
+                               (struct sockaddr*) &connect_addr,
+                               &namelen));
+  ASSERT_OK(uv_listen((uv_stream_t*) &tcp_server, 1, tcp_connection_cb));
+  ASSERT_OK(uv_tcp_init(uv_default_loop(), &tcp_client));
+  ASSERT_OK(uv_tcp_connect(&connect_req,
+                           &tcp_client,
+                           (const struct sockaddr*) &connect_addr,
+                           tcp_connect_cb));
 
   uv__loop_debug_dump(uv_default_loop(),
-                      "reproducer A: before run (2 stdio pipes + writes + fs)",
+                      "reproducer A: before run (2 stdio pipes + writes + tcp)",
                       stdout);
 
   /* Unref'd watchdog: fires only if something else keeps the loop alive. */
@@ -177,9 +242,9 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
   ASSERT_OK(uv_timer_start(&watchdog, watchdog_cb, 5000, 0));
   uv_unref((uv_handle_t*) &watchdog);
 
-  /* Healthy: returns once the writes + fs request complete (idle pipes do not
-   * keep the loop alive). Win2025 (workaround off): stays alive until the
-   * watchdog fires. */
+  /* Healthy: returns once the writes + TCP round-trip complete (idle stdio
+   * pipes do not keep the loop alive). Win2025 (workaround off): stays alive
+   * until the watchdog fires. */
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   uv__loop_debug_dump(uv_default_loop(), "reproducer A: after run", stdout);
