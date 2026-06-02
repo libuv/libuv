@@ -19,42 +19,36 @@
  * IN THE SOFTWARE.
  */
 
+#ifdef _WIN32
+
 #include "uv.h"
 #include "task.h"
 
-#ifdef _WIN32
-
 #include <windows.h>
 #include <io.h>
-#include <fcntl.h>
-#include <stdint.h>
 
 /*
- * On Windows Server 2025 (NT build 26100+), opening stdio file descriptors
- * with uv_pipe_open() leaves the resulting handle implicitly keeping the
- * event loop alive even after all write work has drained — see
- * https://github.com/libuv/libuv/issues/5147. The expected workaround in
- * src/win/pipe.c is to unref the pipe handle when it wraps a stdio fd.
+ * Reproducer A (in-process) for https://github.com/libuv/libuv/issues/5147.
  *
- * This test verifies that contract on the running OS:
- *   - On Win2025+, after uv_pipe_open(fd) where fd in {0,1,2} and the
- *     underlying OS handle is a pipe, the resulting uv_pipe_t MUST
- *     report uv_has_ref() == 0.
- *   - On older Windows (build < 26100), the handle MAY remain refed
- *     (the original behavior); the test only asserts on Win2025+.
+ * On Windows Server 2025 (NT build 26100+), associating a stdio pipe handle
+ * with the loop's IOCP via uv_pipe_open(fd in {0,1,2}) leaves the loop alive
+ * even though the handle is inactive. This test manufactures a pipe, swaps it
+ * onto fd 1, opens it with uv_pipe_open(), then drives uv_run(UV_RUN_DEFAULT)
+ * under an UNREF'd watchdog timer:
  *
- * Because the test runner inherits whatever stdout the harness was launched
- * with — typically a console, a file, or a redirected handle that is not
- * actually a Win32 named pipe — we cannot just call uv_pipe_open() on the
- * inherited fd 1: uv__set_pipe_handle's SetNamedPipeHandleState would
- * reject a non-pipe with UV_ENOTSOCK. So we manufacture a pipe with
- * CreatePipe(), wrap its read end as a CRT fd with _open_osfhandle(),
- * dup it onto fd 1 (saving the original so we can restore for the
- * runner's TAP output), call uv_pipe_open() on fd 1, restore fd 1, and
- * then make our assertions.
+ *   - Healthy OS: the inactive pipe does not keep the loop alive, so uv_run
+ *     returns before the watchdog fires -> PASS.
+ *   - Win2025 with the workaround disabled (#5147): the loop stays alive, the
+ *     watchdog fires, dumps loop diagnostics, and stops the loop -> the
+ *     watchdog-fired assertion FAILS (intended canary; revert with the fix).
  *
- * Skipped on non-Windows.
+ * Skipped on Windows older than build 26100 (bug not present).
  */
+
+/* TEMPORARY: revert before merge — #5147. Defined in src/win/core.c. */
+void uv__loop_debug_dump(uv_loop_t* loop, const char* tag);
+
+static int watchdog_fired;
 
 static int is_win2025_or_newer(void) {
   typedef LONG (WINAPI *RtlGetVersion_t)(OSVERSIONINFOW*);
@@ -73,77 +67,70 @@ static int is_win2025_or_newer(void) {
   return os_info.dwBuildNumber >= 26100;
 }
 
+static void watchdog_cb(uv_timer_t* handle) {
+  watchdog_fired = 1;
+  uv__loop_debug_dump(handle->loop, "reproducer A: loop still alive at watchdog");
+  uv_stop(handle->loop);
+}
+
 TEST_IMPL(pipe_stdio_no_keep_alive_win) {
-  HANDLE pipe_read = INVALID_HANDLE_VALUE;
-  HANDLE pipe_write = INVALID_HANDLE_VALUE;
-  int crt_fd = -1;
+  uv_file fds[2];
   int saved_stdout_fd = -1;
   uv_pipe_t pipe_stdout;
-  int has_ref;
-  int run_result;
+  uv_timer_t watchdog;
   int open_result;
 
   if (!is_win2025_or_newer()) {
     RETURN_SKIP("Test requires Windows Server 2025 (build >= 26100).");
   }
 
-  /* Manufacture an overlapped pipe so uv_pipe_open's IOCP-attach path
-   * exercises the same code that the real stdio bug surfaces in. */
-  if (!CreatePipe(&pipe_read, &pipe_write, NULL, 0)) {
-    fprintf(stderr, "CreatePipe failed: %lu\n", GetLastError());
-    return TEST_SKIP;
-  }
+  /* Manufacture an OVERLAPPED pipe (UV_NONBLOCK_PIPE => FILE_FLAG_OVERLAPPED)
+   * so uv_pipe_open's IOCP-attach path -- the code the #5147 hang is
+   * attributed to -- is actually exercised. A plain CreatePipe() produces a
+   * synchronous pipe, which uv__set_pipe_handle routes through the
+   * non-overlapped branch that never associates with the loop's IOCP. */
+  ASSERT_OK(uv_pipe(fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE));
+  /* fds[0] = read end, fds[1] = write end (like stdout). Keep the read end
+   * open as the peer holding the pipe; place the write end on fd 1 so
+   * uv_pipe_open(pipe, 1) takes the stdio code path (file <= 2). */
 
-  crt_fd = _open_osfhandle((intptr_t) pipe_read, _O_RDONLY | _O_BINARY);
-  if (crt_fd < 0) {
-    CloseHandle(pipe_read);
-    CloseHandle(pipe_write);
-    return TEST_SKIP;
-  }
-  /* _open_osfhandle takes ownership of pipe_read; it is closed via _close(crt_fd). */
-  pipe_read = INVALID_HANDLE_VALUE;
-
-  /* Save the runner's real stdout so we can restore for TAP output. */
   saved_stdout_fd = _dup(1);
   ASSERT_GE(saved_stdout_fd, 0);
-
-  /* Swap our pipe onto fd 1. uv_pipe_open(pipe, 1) below will see file<=2,
-   * take the stdio code path (DuplicateHandle, was_stdio = 1), and exercise
-   * the Win2025 unref. */
-  if (_dup2(crt_fd, 1) != 0) {
-    _close(saved_stdout_fd);
-    _close(crt_fd);
-    CloseHandle(pipe_write);
-    return TEST_SKIP;
-  }
+  ASSERT_OK(_dup2(fds[1], 1));
 
   ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe_stdout, 0));
   open_result = uv_pipe_open(&pipe_stdout, 1);
 
-  /* Restore stdout immediately so subsequent printf / ASSERT messages
-   * land in the runner's output rather than the manufactured pipe. */
+  /* Restore stdout immediately so subsequent printf / ASSERT messages land
+   * in the runner's output. uv_pipe_open duplicated the underlying handle, so
+   * we can drop our own write-end fd now. */
   _dup2(saved_stdout_fd, 1);
   _close(saved_stdout_fd);
-  _close(crt_fd);
+  _close(fds[1]);
 
   ASSERT_OK(open_result);
 
-  /* On Win2025+, the handle must not keep the loop alive. */
-  has_ref = uv_has_ref((const uv_handle_t*) &pipe_stdout);
-  ASSERT_EQ(has_ref, 0);
+  uv__loop_debug_dump(uv_default_loop(), "reproducer A: after uv_pipe_open(fd=1)");
 
-  /* The loop should immediately report no remaining work. */
-  run_result = uv_run(uv_default_loop(), UV_RUN_NOWAIT);
-  ASSERT_EQ(run_result, 0);
+  /* Unref'd watchdog: fires only if something else keeps the loop alive. */
+  watchdog_fired = 0;
+  ASSERT_OK(uv_timer_init(uv_default_loop(), &watchdog));
+  ASSERT_OK(uv_timer_start(&watchdog, watchdog_cb, 5000, 0));
+  uv_unref((uv_handle_t*) &watchdog);
 
+  /* Healthy: returns immediately (idle pipe does not keep loop alive).
+   * Win2025 (workaround off): stays alive until the watchdog fires. */
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  /* Canary: on Win2025 with the workaround disabled this fails because the
+   * loop did not drain. Re-tighten / remove when the fix lands. */
+  ASSERT_OK(watchdog_fired);
+
+  uv_close((uv_handle_t*) &watchdog, NULL);
   uv_close((uv_handle_t*) &pipe_stdout, NULL);
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
-  /* uv_pipe_open duplicated the underlying handle and owns the duplicate;
-   * the OS handle we passed in via fd 1 / crt_fd was closed when we did
-   * _close(crt_fd) above. The write end of the manufactured pipe still
-   * needs to be cleaned up. */
-  CloseHandle(pipe_write);
+  _close(fds[0]);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -151,8 +138,6 @@ TEST_IMPL(pipe_stdio_no_keep_alive_win) {
 
 #else /* _WIN32 */
 
-TEST_IMPL(pipe_stdio_no_keep_alive_win) {
-  RETURN_SKIP("Test is Windows-only.");
-}
+typedef int file_has_no_tests;  /* ISO C forbids an empty translation unit. */
 
 #endif /* _WIN32 */

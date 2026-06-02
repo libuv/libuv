@@ -285,7 +285,9 @@ TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
+#ifdef _WIN32
 TEST_DECLARE   (pipe_stdio_no_keep_alive_win)
+#endif
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (process_priority)
 TEST_DECLARE   (has_ref)
@@ -649,7 +651,9 @@ TASK_LIST_START
   /* Seems to be either about 0.5s or 5s, depending on the OS. */
   TEST_ENTRY_CUSTOM (pipe_set_non_blocking, 0, 0, 20000)
   TEST_ENTRY  (pipe_set_chmod)
+#ifdef _WIN32
   TEST_ENTRY  (pipe_stdio_no_keep_alive_win)
+#endif
   TEST_ENTRY  (tty)
 #ifdef _WIN32
   TEST_ENTRY  (tty_raw)
