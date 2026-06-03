@@ -2114,4 +2114,5 @@ TEST_IMPL(spawn_empty_command_line) {
   ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
 }
