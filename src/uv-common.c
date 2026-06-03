@@ -921,7 +921,16 @@ static void uv__cpu_relax(void) {
 
 /* Atomic helpers for the async pending field.
  * Bit 0: pending flag (notification sent or handle closing).
- * Bits 1+: busy counter (2 per in-flight uv_async_send call). */
+ * Bits 1+: busy counter (2 per in-flight uv_async_send call).
+ *
+ * uv__pending_cas and uv__pending_fetch_or are seq_cst (InterlockedXxx on
+ * MSVC, default memory_order_seq_cst on stdatomic). Their seq_cst pairing
+ * with the fetch_and/InterlockedAnd on the callback side makes uv_async_send
+ * and the uv_async_cb invocation sequentially consistent — all accesses
+ * (reads and writes) before uv_async_send are visible to the callback.
+ *
+ * uv__pending_load and uv__pending_fetch_add are relaxed; they touch only the
+ * busy counter and need not participate in that ordering. */
 #ifdef _MSC_VER
 
 static int uv__pending_cas(int* p, int* expected, int desired) {
@@ -937,17 +946,11 @@ static int uv__pending_cas(int* p, int* expected, int desired) {
   ((void) InterlockedExchangeAdd((LONG volatile*)(p), (LONG)(v)))
 #define uv__pending_fetch_or(p, v) \
   ((int) InterlockedOr((LONG volatile*)(p), (LONG)(v)))
-#define uv__pending_fetch_and(p, v) \
-  ((int) InterlockedAnd((LONG volatile*)(p), (LONG)(v)))
 
 #else  /* GCC / Clang / MinGW — use C11 stdatomic */
 
 static int uv__pending_cas(int* p, int* expected, int desired) {
-  return atomic_compare_exchange_weak_explicit((_Atomic int*) p,
-                                               expected,
-                                               desired,
-                                               memory_order_relaxed,
-                                               memory_order_relaxed);
+  return atomic_compare_exchange_weak((_Atomic int*) p, expected, desired);
 }
 
 #define uv__pending_load(p) \
@@ -955,24 +958,19 @@ static int uv__pending_cas(int* p, int* expected, int desired) {
 #define uv__pending_fetch_add(p, v) \
   ((void) atomic_fetch_add_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
 #define uv__pending_fetch_or(p, v) \
-  ((int) atomic_fetch_or_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
-#define uv__pending_fetch_and(p, v) \
-  ((int) atomic_fetch_and_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
+  ((int) atomic_fetch_or((_Atomic int*)(p), (v)))
 
 #endif  /* _MSC_VER */
 
 
 int uv_async_send(uv_async_t* handle) {
-  int current;
-
-  /* Do a cheap read first. */
-  current = uv__pending_load(&handle->pending);
-  if (current & 1)
-    return 0;
+  int current = 0;
 
   /* Atomically set the pending flag (bit 0) and increment the busy counter
-   * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once,
-   * so both operations appear atomic to other threads. */
+   * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once.
+   * The seq_cst CAS synchronizes with the seq_cst fetch_and in the callback,
+   * making all accesses before this call visible to the callback (and vice
+   * versa from the callback). */
   while (!uv__pending_cas(&handle->pending, &current, current + 3))
     if (current & 1)
       return 0;
@@ -1115,6 +1113,14 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
   uv__free(cpu_infos);
 #endif  /* __linux__ */
 }
+
+#ifdef _MSC_VER
+#define uv__exchange_int_relaxed(p, v)                                        \
+  InterlockedExchangeNoFence((LONG volatile*)(p), v)
+#else
+#define uv__exchange_int_relaxed(p, v)                                        \
+  atomic_exchange_explicit((_Atomic int*)(p), v, memory_order_relaxed)
+#endif
 
 
 /* Also covers __clang__ and __INTEL_COMPILER. Disabled on Windows because
