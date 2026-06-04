@@ -875,6 +875,7 @@ struct uv_pipe_s {
 
 UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
+UV_EXTERN int uv_pipe_open_ex(uv_pipe_t* handle, uv_os_fd_t os_handle);
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 UV_EXTERN int uv_pipe_bind2(uv_pipe_t* handle,
                             const char* name,

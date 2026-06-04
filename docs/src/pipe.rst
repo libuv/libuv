@@ -51,6 +51,25 @@ API
         The passed file descriptor or HANDLE is not checked for its type, but
         it's required that it represents a valid pipe.
 
+.. c:function:: int uv_pipe_open_ex(uv_pipe_t* handle, uv_os_fd_t os_handle)
+
+    Open an existing OS handle (a ``HANDLE`` on Windows, a file descriptor on
+    Unix) as a pipe.
+
+    Unlike :c:func:`uv_pipe_open`, which interprets its argument as a CRT file
+    descriptor on Windows, this accepts the native OS handle directly. Use it
+    when you hold a raw ``HANDLE`` that has no associated CRT file descriptor,
+    such as an inherited anonymous pipe handle.
+
+    The handle is owned by the pipe after a successful call and is closed when
+    the pipe is closed with :c:func:`uv_close`.
+
+    .. versionadded:: 1.53.0
+
+    .. note::
+        The passed handle is not checked for its type, but it's required that
+        it represents a valid pipe.
+
 .. c:function:: int uv_pipe_bind(uv_pipe_t* handle, const char* name)
 
     Bind the pipe to a file path (Unix) or a name (Windows).

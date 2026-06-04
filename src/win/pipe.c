@@ -2439,12 +2439,14 @@ static void eof_timer_close_cb(uv_handle_t* handle) {
 }
 
 
-int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
-  HANDLE os_handle = uv__get_osfhandle(file);
+static int uv__pipe_open_handle(uv_pipe_t* pipe,
+                                HANDLE os_handle,
+                                uv_file file) {
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_ACCESS_INFORMATION access;
   DWORD duplex_flags = 0;
+  int duplicated = 0;
   int err;
 
   if (os_handle == INVALID_HANDLE_VALUE)
@@ -2461,8 +2463,10 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
    * We could also opt to use the original OS handle and just never close it,
    * but then there would be no reliable way to cancel pending read operations
    * upon close.
+   * A file value of -1 means there is no associated fd (e.g. when the handle
+   * was passed directly via uv_pipe_open_ex), so skip the duplication.
    */
-  if (file <= 2) {
+  if (file >= 0 && file <= 2) {
     if (!DuplicateHandle(INVALID_HANDLE_VALUE,
                          os_handle,
                          INVALID_HANDLE_VALUE,
@@ -2473,6 +2477,7 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
       return uv_translate_sys_error(GetLastError());
     assert(os_handle != INVALID_HANDLE_VALUE);
     file = -1;
+    duplicated = 1;
   }
 
   /* Determine what kind of permissions we have on this handle.
@@ -2505,7 +2510,10 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
                             file,
                             duplex_flags);
   if (err) {
-    if (file == -1)
+    /* Only close the handle if we duplicated it ourselves; a handle passed
+     * in by the caller (uv_pipe_open_ex) remains owned by the caller on
+     * failure. */
+    if (duplicated)
       CloseHandle(os_handle);
     return err;
   }
@@ -2519,6 +2527,18 @@ int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
     assert(pipe->pipe.conn.ipc_remote_pid != (DWORD)(uv_pid_t) -1);
   }
   return 0;
+}
+
+
+int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
+  return uv__pipe_open_handle(pipe, uv__get_osfhandle(file), file);
+}
+
+
+int uv_pipe_open_ex(uv_pipe_t* pipe, uv_os_fd_t os_handle) {
+  /* Pass file == -1: there is no CRT fd backing this handle, so libuv takes
+   * ownership of os_handle and closes it directly on uv_close(). */
+  return uv__pipe_open_handle(pipe, os_handle, -1);
 }
 
 

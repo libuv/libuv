@@ -240,6 +240,14 @@ int uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
 }
 
 
+int uv_pipe_open_ex(uv_pipe_t* handle, uv_os_fd_t os_handle) {
+  /* On Unix uv_os_fd_t is a file descriptor, so this is identical to
+   * uv_pipe_open(). The separate entry point exists for Windows, where the
+   * native handle and the CRT file descriptor are distinct namespaces. */
+  return uv_pipe_open(handle, os_handle);
+}
+
+
 void uv_pipe_connect(uv_connect_t* req,
                     uv_pipe_t* handle,
                     const char* name,

@@ -602,6 +602,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-pipe-connect-multiple.c
        test/test-pipe-connect-prepare.c
        test/test-pipe-getsockname.c
+       test/test-pipe-open-ex.c
        test/test-pipe-pending-instances.c
        test/test-pipe-sendmsg.c
        test/test-pipe-server-close.c
