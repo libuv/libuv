@@ -324,7 +324,17 @@ fail_metrics_mutex_init:
 
 void uv_update_time(uv_loop_t* loop) {
   uint64_t new_time = uv__hrtime(1000);
-  assert(new_time >= loop->time);
+  /* When a thread migrates between processors whose TSCs are not synchronized,
+   * QueryPerformanceCounter() risks non-monotonicity.
+   *
+   * Although the MSFT docs state that QueryPerformanceCounter() is monotonic,
+   * in practice, we have observed bugs violating this guarantee.
+   * The issue has been reported to Microsoft.
+   *
+   * As a workaround, if we detect non-monotonic time, we dismiss the backwards time
+   * and use the last time read instead. */
+  if (new_time < loop->time)
+    new_time = loop->time;
   loop->time = new_time;
 }
 
