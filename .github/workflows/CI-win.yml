@@ -13,6 +13,8 @@ on:
       - v[0-9].*
       - master
 
+permissions: read-all
+
 jobs:
   build-windows:
     runs-on: windows-${{ matrix.config.server }}
@@ -28,7 +30,7 @@ jobs:
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2025}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Build
         run:
           cmake -S . -B build -DBUILD_TESTING=ON
@@ -79,7 +81,7 @@ jobs:
           - {arch: i686,   server: 2022, libgcc: dw2 }
           - {arch: x86_64, server: 2022, libgcc: seh }
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Install mingw32 environment
         run: |
           sudo apt update
@@ -97,7 +99,7 @@ jobs:
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libatomic-1.dll` \
              build/usr/bin
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: mingw-${{ matrix.config.arch }}
           path: build/usr/**/*
@@ -115,7 +117,7 @@ jobs:
           - {arch: x86_64, server: 2022}
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: mingw-${{ matrix.config.arch }}
       - name: Test
