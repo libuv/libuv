@@ -253,7 +253,7 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf, int flag) {
 
   if (nread < 1) {
     /* uv__udp_recvmsg() emits the terminal callback for nread <= 0. */
-    if (nread == 0 || errno == EAGAIN || errno == EWOULDBLOCK)
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
       return 0;
 
     return UV__ERR(errno);
@@ -276,7 +276,9 @@ static int uv__udp_recvmmsg(uv_udp_t* handle, uv_buf_t* buf, int flag) {
     handle->recv_cb(handle,
                     msgs[k].msg_len,
                     &chunk_buf,
-                    msgs[k].msg_hdr.msg_name,
+                    msgs[k].msg_hdr.msg_namelen > 0 ?
+                        msgs[k].msg_hdr.msg_name :
+                        NULL,
                     flags);
   }
 
