@@ -22,6 +22,9 @@
 #include "uv.h"
 #include "task.h"
 
+#ifndef _WIN32
+#include <sys/socket.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,8 +49,10 @@ static int terminal_free_cb_called;
 static int terminal_drain_cb_called;
 static int terminal_timeout_cb_called;
 static int duplicate_terminal_cb;
+#ifndef _WIN32
 static int zero_namelen_chunk_cb_called;
 static int zero_namelen_free_cb_called;
+#endif
 
 
 static void alloc_cb(uv_handle_t* handle,
@@ -201,7 +206,7 @@ static void terminal_recv_cb(uv_udp_t* handle,
   duplicate_terminal_cb = 1;
 }
 
-
+#ifndef _WIN32
 static void zero_namelen_recv_cb(uv_udp_t* handle,
                                  ssize_t nread,
                                  const uv_buf_t* rcvbuf,
@@ -223,6 +228,10 @@ static void zero_namelen_recv_cb(uv_udp_t* handle,
 
   if (!uv_is_closing((uv_handle_t*) &recver))
     uv_close((uv_handle_t*) &recver, close_cb);
+
+  /* Don't free if the buffer could be reused via mmsg */
+  if (rcvbuf && !(flags & UV_UDP_MMSG_CHUNK))
+    free(rcvbuf->base);
 }
 
 
@@ -267,7 +276,7 @@ TEST_IMPL(udp_mmsg_namelen_zero) {
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
-
+#endif
 
 TEST_IMPL(udp_mmsg) {
   struct sockaddr_in addr;
