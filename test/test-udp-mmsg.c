@@ -22,9 +22,6 @@
 #include "uv.h"
 #include "task.h"
 
-#ifndef _WIN32
-#include <sys/socket.h>
-#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
