@@ -46,6 +46,10 @@ static int terminal_free_cb_called;
 static int terminal_drain_cb_called;
 static int terminal_timeout_cb_called;
 static int duplicate_terminal_cb;
+#ifndef _WIN32
+static int zero_namelen_chunk_cb_called;
+static int zero_namelen_free_cb_called;
+#endif
 
 
 static void alloc_cb(uv_handle_t* handle,
@@ -199,6 +203,77 @@ static void terminal_recv_cb(uv_udp_t* handle,
   duplicate_terminal_cb = 1;
 }
 
+#ifndef _WIN32
+static void zero_namelen_recv_cb(uv_udp_t* handle,
+                                 ssize_t nread,
+                                 const uv_buf_t* rcvbuf,
+                                 const struct sockaddr* addr,
+                                 unsigned flags) {
+  CHECK_HANDLE(handle);
+
+  if (flags & UV_UDP_MMSG_FREE) {
+    ASSERT_EQ(0, nread);
+    ASSERT_NULL(addr);
+    zero_namelen_free_cb_called++;
+    free(rcvbuf->base);
+    return;
+  }
+
+  ASSERT_EQ(0, nread);
+  ASSERT_NULL(addr);
+  zero_namelen_chunk_cb_called++;
+
+  if (!uv_is_closing((uv_handle_t*) &recver))
+    uv_close((uv_handle_t*) &recver, close_cb);
+
+  /* Don't free if the buffer could be reused via mmsg */
+  if (rcvbuf && !(flags & UV_UDP_MMSG_CHUNK))
+    free(rcvbuf->base);
+}
+
+
+TEST_IMPL(udp_mmsg_namelen_zero) {
+  uv_loop_t* loop;
+  struct sockaddr_in recv_addr;
+  struct sockaddr_in send_addr;
+  uv_os_fd_t fd;
+
+  loop = uv_default_loop();
+
+  ASSERT_OK(uv_udp_init_ex(loop, &recver, AF_UNSPEC | UV_UDP_RECVMMSG));
+  if (!uv_udp_using_recvmmsg(&recver)) {
+    uv_close((uv_handle_t*) &recver, close_cb);
+    ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+    ASSERT_EQ(1, close_cb_called);
+    MAKE_VALGRIND_HAPPY(loop);
+    return 0;
+  }
+
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &recv_addr));
+  ASSERT_OK(uv_udp_bind(&recver, (const struct sockaddr*) &recv_addr, 0));
+
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT_2, &send_addr));
+  ASSERT_OK(uv_udp_connect(&recver, (const struct sockaddr*) &send_addr));
+
+  ASSERT_OK(uv_fileno((const uv_handle_t*) &recver, &fd));
+  ASSERT_OK(shutdown(fd, SHUT_RD));
+
+  ASSERT_OK(uv_udp_recv_start(&recver, alloc_cb, zero_namelen_recv_cb));
+
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  /* On some platforms as FreeBSD, multiple chunks will be received, one per
+   * buffer */
+  ASSERT_GE(zero_namelen_chunk_cb_called, 1);
+  /* On others such as Linux, the free callback won't be called as recvmmsg is
+   * returning EINVAL */
+  ASSERT_LE(zero_namelen_free_cb_called, 1);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+#endif
 
 TEST_IMPL(udp_mmsg) {
   struct sockaddr_in addr;

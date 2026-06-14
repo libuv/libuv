@@ -182,6 +182,9 @@ TEST_DECLARE   (udp_recvmsg_unreachable_error)
 TEST_DECLARE   (udp_recvmsg_unreachable_error6)
 TEST_DECLARE   (udp_send_pollerr_no_recv)
 TEST_DECLARE   (udp_mmsg)
+#ifndef _WIN32
+TEST_DECLARE   (udp_mmsg_namelen_zero)
+#endif
 TEST_DECLARE   (udp_mmsg_single_drain_cb)
 TEST_DECLARE   (udp_mmsg_small_buf)
 TEST_DECLARE   (udp_multicast_join)
@@ -834,6 +837,9 @@ TASK_LIST_START
   TEST_ENTRY  (udp_options6)
   TEST_ENTRY  (udp_no_autobind)
   TEST_ENTRY  (udp_mmsg)
+#ifndef _WIN32
+  TEST_ENTRY  (udp_mmsg_namelen_zero)
+#endif
   TEST_ENTRY  (udp_mmsg_single_drain_cb)
   TEST_ENTRY  (udp_mmsg_small_buf)
   TEST_ENTRY  (udp_multicast_interface)
