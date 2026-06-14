@@ -515,6 +515,8 @@ int uv_utf16_to_wtf8(const uint16_t* w_source_ptr,
       *target++ = 0x80 | ((code_point >> 6) & 0x3F);
       if (target == target_end)
         break;
+      if (target == target_end)
+        break;
       *target++ = 0x80 | (code_point & 0x3F);
     } else {
       *target++ = 0xF0 | (code_point >> 18);
