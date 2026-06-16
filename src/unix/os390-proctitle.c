@@ -25,13 +25,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-static uv_mutex_t process_title_mutex;
-static uv_once_t process_title_mutex_once = UV_ONCE_INIT;
+uv_mutex_t process_title_mutex;
+uv_once_t process_title_mutex_once = UV_ONCE_INIT;
+char* original_exepath = NULL;
 static char* process_title = NULL;
 static void* args_mem = NULL;
 
 
-static void init_process_title_mutex_once(void) {
+void init_process_title_mutex_once(void) {
   uv_mutex_init(&process_title_mutex);
 }
 
