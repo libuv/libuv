@@ -902,6 +902,11 @@ static void uv__write_done(struct uv__work* w, int status) {
   } else if (req->result != UV_EAGAIN)
     goto error;
 
+  if (stream->flags & UV_HANDLE_CLOSING) {
+    uv__make_close_pending((uv_handle_t *)stream);
+    return;
+  }
+
   if (!uv__queue_empty(&stream->write_queue)) {
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
     uv__stream_osx_interrupt_select(stream);
@@ -911,6 +916,11 @@ static void uv__write_done(struct uv__work* w, int status) {
 
 error:
   uv__write_req_finish(req);
+  if (stream->flags & UV_HANDLE_CLOSING) {
+    uv__make_close_pending((uv_handle_t *)stream);
+    return;
+  }
+
   uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
   uv__stream_osx_interrupt_select(stream);
 }

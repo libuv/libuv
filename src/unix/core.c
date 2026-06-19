@@ -234,6 +234,9 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
     assert(0);
   }
 
+  if (handle->flags & UV_HANDLE_WRITE_PENDING)
+    return;
+
   uv__make_close_pending(handle);
 }
 
@@ -344,11 +347,7 @@ static void uv__finish_close(uv_handle_t* handle) {
     case UV_NAMED_PIPE:
     case UV_TCP:
     case UV_TTY:
-      if (handle->flags & UV_HANDLE_WRITE_PENDING) {
-        handle->flags ^= UV_HANDLE_CLOSED;
-        uv__make_close_pending(handle); /* Back into the queue. */
-        return;
-      }
+      assert(!(handle->flags & UV_HANDLE_WRITE_PENDING));
       uv__stream_destroy((uv_stream_t *)handle);
       break;
 
