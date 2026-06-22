@@ -259,7 +259,7 @@ typedef struct {
   unsigned int write_index;                                                   \
   uv_buf_t* bufs;                                                             \
   unsigned int nbufs;                                                         \
-  ssize_t result;                                                             \
+  int result;                                                                 \
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \

@@ -929,7 +929,7 @@ error:
 static void uv__write(uv_stream_t* stream) {
   struct uv__queue* q;
   uv_write_t* req;
-  ssize_t n;
+  int n;
   int count;
 
   assert(uv__stream_fd(stream) >= 0);
