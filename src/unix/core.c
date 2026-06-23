@@ -46,6 +46,12 @@
 #include <sys/time.h>
 #include <time.h> /* clock_gettime */
 
+#if defined(__wasi__)
+/* Fallback poll period when a child is live but uv__next_timeout() would block
+ * forever. Applied only at the uv__io_poll() call site in uv_run(). */
+#define UV__WASIX_CHILD_POLL_MS 100
+#endif
+
 #ifdef __sun
 # include <sys/filio.h>
 # include <sys/wait.h>
@@ -457,7 +463,20 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
     uv__metrics_inc_loop_count(loop);
 
+#if defined(__wasi__)
+    /* WASIX does not reliably deliver SIGCHLD for posix_spawn children.
+     * Reap after each poll; only override an unbounded poll sleep so timer
+     * deadlines and short poll timeouts stay unchanged. */
+    if (!uv__queue_empty(&loop->process_handles) && timeout < 0)
+      timeout = UV__WASIX_CHILD_POLL_MS;
+#endif
+
     uv__io_poll(loop, timeout);
+
+#if defined(__wasi__)
+    if (!uv__queue_empty(&loop->process_handles))
+      uv__wait_children(loop);
+#endif
 
     /* Process immediate callbacks (e.g. write_cb) a small fixed number of
      * times to avoid loop starvation.*/

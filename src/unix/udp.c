@@ -530,6 +530,10 @@ int uv__udp_connect(uv_udp_t* handle,
  *   if (addr->sa_family == AF_UNSPEC) sodisconnect(so);
  */
 int uv__udp_disconnect(uv_udp_t* handle) {
+#if defined(__wasi__)
+    handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
+    return 0;
+#else
     int r;
 #if defined(__MVS__)
     struct sockaddr_storage addr;
@@ -570,6 +574,7 @@ int uv__udp_disconnect(uv_udp_t* handle) {
 
     handle->flags &= ~UV_HANDLE_UDP_CONNECTED;
     return 0;
+#endif
 }
 
 int uv__udp_send(uv_udp_send_t* req,
@@ -1087,6 +1092,15 @@ int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
 
 
 int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl) {
+  if (ttl < 1 || ttl > 255)
+    return UV_EINVAL;
+  if (handle->io_watcher.fd == -1)
+    return UV_EBADF;
+
+#if defined(__wasi__)
+  return 0;
+#endif
+
 /*
  * On Solaris and derivatives such as SmartOS, the length of socket options
  * is sizeof(int) for IPV6_MULTICAST_HOPS and sizeof(char) for
@@ -1112,6 +1126,13 @@ int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl) {
 
 
 int uv_udp_set_multicast_loop(uv_udp_t* handle, int on) {
+  if (handle->io_watcher.fd == -1)
+    return UV_EBADF;
+
+#if defined(__wasi__)
+  return 0;
+#endif
+
 /*
  * On Solaris and derivatives such as SmartOS, the length of socket options
  * is sizeof(int) for IPV6_MULTICAST_LOOP and sizeof(char) for
@@ -1140,6 +1161,9 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
   struct sockaddr_in* addr4;
   struct sockaddr_in6* addr6;
 
+  if (handle->io_watcher.fd == -1)
+    return UV_EBADF;
+
   addr4 = (struct sockaddr_in*) &addr_st;
   addr6 = (struct sockaddr_in6*) &addr_st;
 
@@ -1159,6 +1183,20 @@ int uv_udp_set_multicast_interface(uv_udp_t* handle, const char* interface_addr)
   } else {
     return UV_EINVAL;
   }
+
+#if defined(__wasi__)
+  if ((handle->flags & UV_HANDLE_IPV6) && addr_st.ss_family == AF_INET)
+    return UV_EINVAL;
+  if (!(handle->flags & UV_HANDLE_IPV6) && addr_st.ss_family == AF_INET6)
+    return UV_EINVAL;
+  if (addr_st.ss_family == AF_INET &&
+      IN_MULTICAST(ntohl(addr4->sin_addr.s_addr))) {
+    return UV_EINVAL;
+  }
+  if (addr_st.ss_family == AF_INET6 && IN6_IS_ADDR_MULTICAST(&addr6->sin6_addr))
+    return UV_EINVAL;
+  return 0;
+#endif
 
   if (addr_st.ss_family == AF_INET) {
     if (setsockopt(handle->io_watcher.fd,

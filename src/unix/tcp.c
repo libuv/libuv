@@ -250,6 +250,9 @@ static int uv__ipv6_link_local_scope_id(void) {
   uv_free_interface_addresses(interfaces, count);
 
 #else
+
+// TODO: missing wasix entrypoint
+#ifndef __wasi__
   struct ifaddrs* ifa;
   struct ifaddrs* p;
 
@@ -268,6 +271,8 @@ static int uv__ipv6_link_local_scope_id(void) {
   }
 
   freeifaddrs(ifa);
+#endif
+
 #endif /* defined(_AIX) */
 
   return rv;

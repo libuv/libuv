@@ -1808,12 +1808,15 @@ UV_EXTERN int uv_random(uv_loop_t* loop,
 # define UV_IF_NAMESIZE (16 + 1)
 #endif
 
+// TODO: missing wasix entrypoint
+#ifndef __wasi__
 UV_EXTERN int uv_if_indextoname(unsigned int ifindex,
                                 char* buffer,
                                 size_t* size);
 UV_EXTERN int uv_if_indextoiid(unsigned int ifindex,
                                char* buffer,
                                size_t* size);
+#endif
 
 UV_EXTERN int uv_exepath(char* buffer, size_t* size);
 

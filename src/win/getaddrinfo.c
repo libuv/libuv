@@ -346,6 +346,8 @@ int uv_getaddrinfo(uv_loop_t* loop,
   }
 }
 
+// TODO: missing wasix entrypoint
+#ifndef __wasi__
 int uv_if_indextoname(unsigned int ifindex, char* buffer, size_t* size) {
   NET_LUID luid;
   wchar_t wname[NDIS_IF_MAX_STRING_SIZE + 1]; /* Add one for the NUL. */
@@ -386,3 +388,4 @@ int uv_if_indextoiid(unsigned int ifindex, char* buffer, size_t* size) {
   *size = r;
   return 0;
 }
+#endif
