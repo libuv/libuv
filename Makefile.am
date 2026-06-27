@@ -537,6 +537,7 @@ if SUNOS
 uvinclude_HEADERS += include/uv/sunos.h
 libuv_la_CFLAGS += -D__EXTENSIONS__ \
                    -D_XOPEN_SOURCE=500 \
+                   -DSUNOS_NO_IFADDRS \
                    -D_REENTRANT
 libuv_la_SOURCES += src/unix/no-proctitle.c \
                     src/unix/sunos.c
