@@ -255,7 +255,7 @@ static int fs__readlink_handle(HANDLE handle,
 
     target_len = (reparse_data->ReparseDataLength -
                   sizeof(ULONG)); /* Version field */
-    buffer = (char*) reparse_data->LinuxSymbolicLinkReparseBuffer.PathBuffer;
+    buffer = (char*) reparse_data->u.LinuxSymbolicLinkReparseBuffer.PathBuffer;
 
     if (target_len_ptr != NULL) {
       *target_len_ptr = target_len;
