@@ -599,8 +599,8 @@ int uv__accept(int sockfd) {
  */
 int uv__close_nocancel(int fd) {
 #if defined(__APPLE__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
+# pragma GCC diagnostic push
+# pragma GCC diagnostic ignored "-Wdollar-in-identifier-extension"
 #if defined(__LP64__) || TARGET_OS_IPHONE
   extern int close$NOCANCEL(int);
   return close$NOCANCEL(fd);
@@ -608,7 +608,7 @@ int uv__close_nocancel(int fd) {
   extern int close$NOCANCEL$UNIX2003(int);
   return close$NOCANCEL$UNIX2003(fd);
 #endif
-#pragma GCC diagnostic pop
+# pragma GCC diagnostic pop
 #elif defined(__linux__) && defined(__SANITIZE_THREAD__) && defined(__clang__)
   long rc;
   __sanitizer_syscall_pre_close(fd);
