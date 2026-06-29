@@ -99,8 +99,10 @@ TEST_IMPL(thread_priority) {
 
   uv_sem_destroy(&sem);
 
-  /* Now that the thread no longer exists, verify that the relevant error is returned */
-#if !defined(__ANDROID__)
+  /* Now that the thread no longer exists, verify that the relevant error is
+   * returned. This is race-y and not guaranteed safe, but okay on most systems
+   * (excluding musl or android) since the runner here is single-threaded. */
+#if defined (__GLIBC__) || !defined(__linux__)
   ASSERT_EQ(UV_ESRCH, uv_thread_getpriority(task_id, &priority));
   ASSERT_EQ(UV_ESRCH, uv_thread_setpriority(task_id, UV_THREAD_PRIORITY_LOWEST));
 #endif
