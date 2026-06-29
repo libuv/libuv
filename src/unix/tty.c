@@ -284,9 +284,9 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   int fd;
   int rc;
 
-  /* There is only a single raw TTY mode on UNIX. */
   switch (mode) {
     case UV_TTY_MODE_RAW_VT:
+      /* There is only a single raw TTY mode on UNIX. */
       mode = UV_TTY_MODE_RAW;
       break;
     case UV_TTY_MODE_NORMAL:
