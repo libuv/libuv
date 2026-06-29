@@ -112,6 +112,7 @@ TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_write_in_a_row)
 TEST_DECLARE   (tcp_try_write_error)
 TEST_DECLARE   (tcp_write_queue_order)
+TEST_DECLARE   (tcp_accept_raw)
 TEST_DECLARE   (tcp_open)
 TEST_DECLARE   (tcp_open_twice)
 TEST_DECLARE   (tcp_open_bound)
@@ -736,6 +737,8 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_try_write_error)
 
   TEST_ENTRY  (tcp_write_queue_order)
+
+  TEST_ENTRY  (tcp_accept_raw)
 
   TEST_ENTRY  (tcp_open)
   TEST_HELPER (tcp_open, tcp4_echo_server)

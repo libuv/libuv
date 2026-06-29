@@ -276,6 +276,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-connect-timeout.c \
                          test/test-tcp-connect6-error.c \
                          test/test-tcp-flags.c \
+                         test/test-tcp-accept-raw.c \
                          test/test-tcp-open.c \
                          test/test-tcp-read-stop.c \
                          test/test-tcp-reuseport.c \

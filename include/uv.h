@@ -639,6 +639,7 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
                              const struct sockaddr* addr,
                              uv_connect_cb cb);
+UV_EXTERN int uv_tcp_accept_raw(uv_tcp_t* server, uv_os_sock_t* sock);
 
 /* uv_connect_t is a subclass of uv_req_t. */
 struct uv_connect_s {

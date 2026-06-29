@@ -652,6 +652,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-create-socket-early.c
        test/test-tcp-flags.c
        test/test-tcp-oob.c
+       test/test-tcp-accept-raw.c
        test/test-tcp-open.c
        test/test-tcp-read-stop.c
        test/test-tcp-reuseport.c
