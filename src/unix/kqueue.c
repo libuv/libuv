@@ -50,12 +50,20 @@
 
 
 int uv__kqueue_init(uv_loop_t* loop) {
-  loop->backend_fd = kqueue();
-  if (loop->backend_fd == -1)
+  int fd;
+  int err;
+
+  fd = kqueue();
+  if (fd == -1)
     return UV__ERR(errno);
 
-  uv__cloexec(loop->backend_fd, 1);
+  err = uv__cloexec(fd, 1);
+  if (err) {
+    uv__close(fd);
+    return err;
+  }
 
+  loop->backend_fd = fd;
   return 0;
 }
 

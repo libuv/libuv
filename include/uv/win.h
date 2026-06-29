@@ -558,8 +558,7 @@ typedef struct {
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   struct uv_req_s async_req;                                                  \
   uv_async_cb async_cb;                                                       \
-  /* char to avoid alignment issues */                                        \
-  char volatile async_sent;
+  int pending;
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   uv_prepare_t* prepare_prev;                                                 \

@@ -37,6 +37,15 @@
 #include <paths.h>
 #include <dlfcn.h>
 
+#if defined(__PASE__)
+#define _PATH_DEFPATH "/QOpenSys/pkgs/bin:/QOpenSys/usr/bin:/usr/bin"
+#elif defined(_AIX)
+#define _PATH_DEFPATH "/opt/freeware/bin:/usr/bin:/bin"
+#endif
+#ifndef NAME_MAX
+#define NAME_MAX 255
+#endif
+
 #if defined(__APPLE__)
 # include <sys/kauth.h>
 # include <sys/sysctl.h>
@@ -455,7 +464,7 @@ static void uv__spawn_init_can_use_setsid(void) {
 
 
 static void uv__spawn_init_posix_spawn(void) {
-#if !defined(__linux__)
+#if !defined(__linux__) && !defined(_AIX) && !defined(__PASE__)
   posix_spawn_works = 1;
 #elif !defined(__ANDROID__)
   pid_t pid;
@@ -721,7 +730,6 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   const char *p;
   const char *z;
   const char *path;
-  size_t l;
   size_t k;
   int err;
   int seen_eacces;
@@ -767,19 +775,16 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   if (k > NAME_MAX)
     return ENAMETOOLONG;
 
-  l = strnlen(path, PATH_MAX - 1) + 1;
-
-  for (p = path;; p = z) {
+  p = path;
+  do {
     /* Compose the new process file from the entry in the PATH
      * environment variable and the actual file name */
-    char b[PATH_MAX + NAME_MAX];
+    char b[PATH_MAX + NAME_MAX + 1];
     z = strchr(p, ':');
     if (!z)
       z = p + strlen(p);
-    if ((size_t)(z - p) >= l) {
-      if (!*z++)
-        break;
-
+    if ((size_t)(z - p) >= PATH_MAX) {
+      p = z + 1;
       continue;
     }
     memcpy(b, p, z - p);
@@ -803,10 +808,8 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
     default:
       return err;
     }
-
-    if (!*z++)
-      break;
-  }
+    p = z + 1;
+  } while (*z == ':');
 
   if (seen_eacces)
     return EACCES;

@@ -1168,6 +1168,21 @@ static void uv__iou_fs_statx_post(uv_fs_t* req) {
 }
 
 
+static void uv__iou_fs_cleanup_fallback(uv_fs_t* req) {
+  switch (req->fs_type) {
+    /* Free statxbuf */
+    case UV_FS_FSTAT:
+    case UV_FS_LSTAT:
+    case UV_FS_STAT:
+      uv__free(req->ptr);
+      req->ptr = NULL;
+      break;
+    default:
+      break;
+  }
+}
+
+
 static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
   struct uv__io_uring_cqe* cqe;
   struct uv__io_uring_cqe* e;
@@ -1198,6 +1213,7 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
 
     /* If the op is not supported by the kernel retry using the thread pool */
     if (e->res == -EOPNOTSUPP) {
+      uv__iou_fs_cleanup_fallback(req);
       uv__fs_post(loop, req);
       continue;
     }
@@ -1421,6 +1437,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     w->events = w->pevents;
     e.events = w->pevents;
+    if (w == &loop->async_io_watcher)
+      /* Enable edge-triggered mode on async_io_watcher(eventfd),
+       * so that we're able to eliminate the overhead of reading
+       * the eventfd via system call on each event loop wakeup.
+       */
+      e.events |= EPOLLET;
     e.data.fd = w->fd;
     fd = w->fd;
 

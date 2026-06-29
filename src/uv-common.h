@@ -66,14 +66,6 @@ extern int snprintf(char*, size_t, const char*, ...);
   void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
 #endif
 
-#ifdef _MSC_VER
-#define uv__exchange_int_relaxed(p, v)                                        \
-  InterlockedExchangeNoFence((LONG volatile*)(p), v)
-#else
-#define uv__exchange_int_relaxed(p, v)                                        \
-  atomic_exchange_explicit((_Atomic int*)(p), v, memory_order_relaxed)
-#endif
-
 #define UV__UDP_DGRAM_MAXSIZE (64 * 1024)
 
 /* Handle flags. Some flags are specific to Windows or UNIX. */
@@ -148,6 +140,13 @@ static inline int uv__is_raw_tty_mode(uv_tty_mode_t m) {
 int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap);
 
 void uv__loop_close(uv_loop_t* loop);
+
+/* Sets the pending flag (bit 0) and waits for the busy counter (bits 1+) to
+ * drain. Returns the previous value of bit 0. */
+int uv__async_spin(uv_async_t* handle);
+
+/* Platform hook: post a wakeup notification for the given async handle. */
+void uv__async_notify(uv_async_t* handle);
 
 int uv__read_start(uv_stream_t* stream,
                    uv_alloc_cb alloc_cb,

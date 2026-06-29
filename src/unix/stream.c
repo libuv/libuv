@@ -547,7 +547,6 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
                             server->accepted_fd,
                             UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
       if (err) {
-        /* TODO handle error */
         uv__close(server->accepted_fd);
         goto done;
       }
@@ -590,8 +589,7 @@ done:
     }
   } else {
     server->accepted_fd = -1;
-    if (err == 0)
-      uv__io_start(server->loop, &server->io_watcher, POLLIN);
+    uv__io_start(server->loop, &server->io_watcher, POLLIN);
   }
   return err;
 }
@@ -929,12 +927,16 @@ static void uv__write_callbacks(uv_stream_t* stream) {
 
 
 static void uv__stream_eof(uv_stream_t* stream, const uv_buf_t* buf) {
+  uv_read_cb read_cb;
+
   stream->flags |= UV_HANDLE_READ_EOF;
-  stream->flags &= ~UV_HANDLE_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
   uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);
-  stream->read_cb(stream, UV_EOF, buf);
+  read_cb = stream->read_cb;
+  stream->read_cb = NULL;
+  stream->alloc_cb = NULL;
+  read_cb(stream, UV_EOF, buf);
 }
 
 
@@ -1037,11 +1039,7 @@ static void uv__read(uv_stream_t* stream) {
 
   is_ipc = stream->type == UV_NAMED_PIPE && ((uv_pipe_t*) stream)->ipc;
 
-  /* XXX: Maybe instead of having UV_HANDLE_READING we just test if
-   * tcp->read_cb is NULL or not?
-   */
   while (stream->read_cb
-      && (stream->flags & UV_HANDLE_READING)
       && (count-- > 0)) {
     assert(stream->alloc_cb != NULL);
 
@@ -1084,7 +1082,7 @@ static void uv__read(uv_stream_t* stream) {
       /* Error */
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         /* Wait for the next one. */
-        if (stream->flags & UV_HANDLE_READING) {
+        if (stream->read_cb != NULL) {
           uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
           uv__stream_osx_interrupt_select(stream);
         }
@@ -1098,8 +1096,9 @@ static void uv__read(uv_stream_t* stream) {
         /* Error. User should call uv_close(). */
         stream->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
         stream->read_cb(stream, UV__ERR(errno), &buf);
-        if (stream->flags & UV_HANDLE_READING) {
-          stream->flags &= ~UV_HANDLE_READING;
+        if (stream->read_cb != NULL) {
+          stream->read_cb = NULL;
+          stream->alloc_cb = NULL;
           uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
           uv__handle_stop(stream);
           uv__stream_osx_interrupt_select(stream);
@@ -1222,7 +1221,7 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    */
   if ((events & (POLLHUP | UV__POLLRDHUP)) &&
       !(events & POLLIN) &&
-      (stream->flags & UV_HANDLE_READING) &&
+      (stream->read_cb != NULL) &&
       !(stream->flags & UV_HANDLE_READ_EOF)) {
     uv_buf_t buf = { NULL, 0 };
     uv__stream_eof(stream, &buf);
@@ -1264,12 +1263,15 @@ static void uv__stream_connect(uv_stream_t* stream) {
   } else {
     /* Normal situation: we need to get the socket error from the kernel. */
     assert(uv__stream_fd(stream) >= 0);
-    getsockopt(uv__stream_fd(stream),
-               SOL_SOCKET,
-               SO_ERROR,
-               &error,
-               &errorsize);
-    error = UV__ERR(error);
+    if (getsockopt(uv__stream_fd(stream),
+                   SOL_SOCKET,
+                   SO_ERROR,
+                   &error,
+                   &errorsize)) {
+      error = UV__ERR(errno);
+    } else {
+      error = UV__ERR(error);
+    }
   }
 
   if (error == UV__ERR(EINPROGRESS))
@@ -1459,9 +1461,6 @@ int uv__read_start(uv_stream_t* stream,
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
       stream->type == UV_TTY);
 
-  /* The UV_HANDLE_READING flag is irrelevant of the state of the stream - it
-   * just expresses the desired state of the user. */
-  stream->flags |= UV_HANDLE_READING;
   stream->flags &= ~UV_HANDLE_READ_EOF;
 
   /* TODO: try to do the read inline? */
@@ -1480,10 +1479,9 @@ int uv__read_start(uv_stream_t* stream,
 
 
 int uv_read_stop(uv_stream_t* stream) {
-  if (!(stream->flags & UV_HANDLE_READING))
+  if (stream->read_cb == NULL)
     return 0;
 
-  stream->flags &= ~UV_HANDLE_READING;
   uv__io_stop(stream->loop, &stream->io_watcher, POLLIN);
   uv__handle_stop(stream);
   uv__stream_osx_interrupt_select(stream);

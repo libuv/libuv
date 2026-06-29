@@ -244,6 +244,9 @@ TEST_IMPL(wtf8) {
   ASSERT_GT(len, 0);
   ASSERT_LT(len, ARRAY_SIZE(buf));
   uv_wtf8_to_utf16(input_max, buf, len);
+
+  /* Invalid start byte for UTF-8/WTF-8 sequence */
+  ASSERT_EQ(UV_EINVAL, uv_wtf8_length_as_utf16("\xFF"));
   return 0;
 }
 
