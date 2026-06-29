@@ -188,16 +188,7 @@ static void worker_async_cb(uv_async_t* handle) {
 }
 
 static void worker_thread(void* arg) {
-  int r;
-
-  ASSERT_OK(uv_loop_init(&worker_loop));
-
-  r = uv_async_init(&worker_loop, &worker_async, worker_async_cb);
-  ASSERT_OK(r);
-
-  r = uv_run(&worker_loop, UV_RUN_DEFAULT);
-  ASSERT_OK(r);
-
+  ASSERT_OK(uv_run(&worker_loop, UV_RUN_DEFAULT));
   uv_loop_close(&worker_loop);
 }
 
@@ -270,6 +261,12 @@ TEST_IMPL(pipe_accept_raw) {
 
   ASSERT_OK(uv_mutex_init(&queue_mutex));
   ASSERT_OK(uv_sem_init(&server_ready, 0));
+
+  /* Init worker loop and async in main thread before spawning any threads.
+   * pthread_create provides the happens-before edge so the server thread
+   * can safely call uv_async_send(&worker_async) without a data race. */
+  ASSERT_OK(uv_loop_init(&worker_loop));
+  ASSERT_OK(uv_async_init(&worker_loop, &worker_async, worker_async_cb));
 
   ASSERT_OK(uv_thread_create(&worker_tid, worker_thread, NULL));
   ASSERT_OK(uv_thread_create(&server_tid, server_thread, NULL));
