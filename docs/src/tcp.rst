@@ -220,19 +220,13 @@ API
 .. c:function:: int uv_tcp_accept_raw(uv_tcp_t* server, uv_os_sock_t* sock)
 
     Accept an incoming TCP connection as a raw OS socket without associating it
-    with the server's event loop.  Must be called from a :c:type:`uv_connection_cb` instead of :c:func:`uv_accept`.
+    with the server's event loop.  Must be called from a :c:type:`uv_connection_cb` 
+    instead of :c:func:`uv_accept`.
 
     On success, ``*sock`` receives the connected socket descriptor.  The caller
     owns the socket and is responsible for either passing it to
     :c:func:`uv_tcp_open` on any loop (including one running in a different
     thread) or closing it directly with ``closesocket``/``close``.
-
-    The server continues accepting new connections normally after this call.
-
-    Unlike :c:func:`uv_accept`, this function does **not** require the client
-    handle to belong to the same loop as the server, making it suitable for
-    zero-copy handoff of accepted connections to a worker event loop without
-    any OS-level socket duplication.
 
     Returns 0 on success, or an error code < 0 on failure.
 

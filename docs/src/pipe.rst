@@ -180,3 +180,18 @@ API
     Equivalent to :man:`pipe(2)` with the `O_CLOEXEC` flag set.
 
     .. versionadded:: 1.41.0
+
+.. c:function:: int uv_pipe_accept_raw(uv_pipe_t* server, uv_file* file)
+
+    Accept an incoming pipe connection as a raw file descriptor (Unix) or
+    CRT file descriptor wrapping a named pipe HANDLE (Windows), without
+    associating it with the server's event loop.  Must be called from a
+    :c:type:`uv_connection_cb` instead of :c:func:`uv_accept`.
+
+    On success, ``*file`` receives the file descriptor.  The caller owns it
+    and must either pass it to :c:func:`uv_pipe_open` on any loop (including
+    one running in a different thread) or close it directly.
+
+    Returns 0 on success, or an error code < 0 on failure.
+
+    .. versionadded:: 1.x.0

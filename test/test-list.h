@@ -99,6 +99,7 @@ TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_vec)
 TEST_DECLARE   (tcp6_ping_pong)
 TEST_DECLARE   (tcp6_ping_pong_vec)
+TEST_DECLARE   (pipe_accept_raw)
 TEST_DECLARE   (pipe_ping_pong)
 TEST_DECLARE   (pipe_ping_pong_vec)
 TEST_DECLARE   (delayed_accept)
@@ -708,6 +709,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (tcp6_ping_pong_vec)
   TEST_HELPER (tcp6_ping_pong_vec, tcp6_echo_server)
+
+  TEST_ENTRY  (pipe_accept_raw)
 
   TEST_ENTRY  (pipe_ping_pong)
   TEST_HELPER (pipe_ping_pong, pipe_echo_server)
