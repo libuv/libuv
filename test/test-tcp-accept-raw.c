@@ -48,6 +48,7 @@ static unsigned int queue_tail;
 
 static uv_async_t worker_async;   /* signals worker loop */
 static uv_async_t server_async;   /* signals server loop to stop */
+static uv_sem_t   server_exited;  /* server posts after loop close; worker waits before loop close */
 
 /* ── server loop (thread 1) ─────────────────────────────────────────────── */
 
@@ -107,6 +108,13 @@ static void server_thread(void* arg) {
   ASSERT_OK(r);
 
   uv_loop_close(&server_loop);
+
+  /* Signal worker that all uv_async_send(&worker_async) calls are done.
+   * This gives TSan a happens-before edge so it can see that our reads of
+   * worker_loop fields (via uv__async_notify) precede the worker's
+   * uv_loop_close writes. On macOS, kqueue-based async doesn't create a
+   * TSan-visible edge, so we need this explicit semaphore. */
+  uv_sem_post(&server_exited);
 }
 
 /* ── worker loop (thread 2) ─────────────────────────────────────────────── */
@@ -188,6 +196,7 @@ static void worker_async_cb(uv_async_t* handle) {
 
 static void worker_thread(void* arg) {
   ASSERT_OK(uv_run(&worker_loop, UV_RUN_DEFAULT));
+  uv_sem_wait(&server_exited);
   uv_loop_close(&worker_loop);
 }
 
@@ -262,6 +271,7 @@ TEST_IMPL(tcp_accept_raw) {
 
   ASSERT_OK(uv_mutex_init(&queue_mutex));
   ASSERT_OK(uv_sem_init(&server_ready, 0));
+  ASSERT_OK(uv_sem_init(&server_exited, 0));
 
   /* Init worker loop and async in main thread before spawning any threads.
    * pthread_create provides the happens-before edge so the server thread
@@ -301,6 +311,7 @@ TEST_IMPL(tcp_accept_raw) {
 
   uv_mutex_destroy(&queue_mutex);
   uv_sem_destroy(&server_ready);
+  uv_sem_destroy(&server_exited);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
