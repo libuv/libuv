@@ -28,7 +28,7 @@ jobs:
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: ASAN}
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2022, config: UBSAN}
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
-          - {toolchain: Visual Studio 17 2022, arch: x64, server: 2025}
+          - {toolchain: Visual Studio 18 2026, arch: x64, server: 2025}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Build
