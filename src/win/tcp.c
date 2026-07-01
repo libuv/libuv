@@ -859,7 +859,7 @@ static int uv__tcp_try_connect(uv_connect_t* req,
    */
   if (uv__windows10_version1709() && uv__is_loopback(&converted)) {
     memset(&retransmit_ioctl, 0, sizeof(retransmit_ioctl));
-    retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+    retransmit_ioctl.Rtt = TCP_INITIAL_RTO_DEFAULT_RTT;
     retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
     WSAIoctl(handle->socket,
              SIO_TCP_INITIAL_RTO,
