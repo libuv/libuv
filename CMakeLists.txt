@@ -753,6 +753,8 @@ if(LIBUV_BUILD_TESTS)
                        COMMAND "${CMAKE_COMMAND}" -E copy
                        "$<TARGET_FILE:uv_run_tests_a>"
                        "$<TARGET_FILE_DIR:uv_run_tests_a>/uv_run_tests_a_no_ext")
+    add_executable(uv_run_appcontainer test/appcontainer.c)
+    target_link_libraries(uv_run_appcontainer userenv advapi32 ntdll)
   endif()
 
   if(QNX)
