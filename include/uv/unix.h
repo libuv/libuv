@@ -249,12 +249,14 @@ typedef struct {
 
 #define UV_REQ_TYPE_PRIVATE /* empty */
 
+struct uv__req_write_extra_s {
+  size_t nwritten;
+};
+
 #define UV_REQ_PRIVATE_FIELDS                                                 \
   union {                                                                     \
     void* reserved2[1];                                                       \
-    struct {                                                                  \
-      size_t nwritten;                                                        \
-    } write_extra;                                                            \
+    struct uv__req_write_extra_s write_extra;                                 \
   };
 
 #define UV_PRIVATE_REQ_TYPES /* empty */
