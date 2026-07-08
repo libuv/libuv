@@ -407,6 +407,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   list(APPEND uv_libraries kstat nsl sendfile socket)
   list(APPEND uv_sources
        src/unix/no-proctitle.c
+       src/unix/random-getrandom.c
        src/unix/sunos.c)
 endif()
 
