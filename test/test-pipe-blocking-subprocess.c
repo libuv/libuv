@@ -186,3 +186,80 @@ TEST_IMPL(pipe_blocking_cancel) {
 
   return 0;
 }
+
+static uv_sem_t clog_sem;
+static uv_work_t clog_req;
+
+static void clog_work_cb(uv_work_t* w) {
+  /* Occupy the worker until the timer releases us. */
+  uv_sem_wait(&clog_sem);
+}
+
+static void clog_after_cb(uv_work_t* w, int status) {
+  ASSERT_OK(status);
+}
+
+static void unclog_timer_cb(uv_timer_t* handle) {
+  uv_sem_post(&clog_sem);
+  uv_close((uv_handle_t*) &timer, NULL);
+}
+
+static void write_cb_busy(uv_write_t* req, int status) {
+  ASSERT_OK(status);
+  ++write_complete;
+  uv_close((uv_handle_t*) &pipe_in, close_cb);
+  uv_close((uv_handle_t*) &pipe_out, close_cb);
+}
+
+/* After the subprocess exits, clog the (single) threadpool worker, then queue
+ * a write.  The write sits in the work queue while the pipe stays writable. */
+static void exit_cb_busy(uv_process_t* process,
+                         int64_t exit_status,
+                         int term_signal) {
+  ASSERT_EQ(1, exit_status);
+  ASSERT_OK(term_signal);
+  uv_close((uv_handle_t*) process, NULL);
+  ASSERT_OK(uv_queue_work(loop, &clog_req, clog_work_cb, clog_after_cb));
+  ASSERT_OK(uv_write(&req, (uv_stream_t*)&pipe_in, &buf, 1, write_cb_busy));
+  ASSERT_OK(uv_timer_start(&timer, unclog_timer_cb, 300, 0));
+}
+
+TEST_IMPL(pipe_blocking_no_busy_poll) {
+#ifdef _WIN32
+  RETURN_SKIP("Unix only test");
+#else
+  uv_metrics_t metrics;
+
+  /* A single worker makes the clog job deterministically delay the write. */
+  putenv("UV_THREADPOOL_SIZE=1");
+
+  init_common();
+  options.exit_cb = exit_cb_busy;
+
+  ASSERT_OK(uv_sem_init(&clog_sem, 0));
+  uv_timer_init(loop, &timer);
+
+  /* Small write; the pipe stays writable while it waits behind the clog. */
+  buf.len = 64;
+  buf.base = malloc(buf.len);
+  memset(buf.base, 'A', buf.len);
+
+  /* The subprocess forces fds[0] into blocking mode and writes 12 bytes. */
+  ASSERT_OK(uv_spawn(loop, &process, &options));
+
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(write_complete, 1);
+  ASSERT_EQ(closed_streams, 2);
+
+  /* The loop must sleep while the write waits in the threadpool queue.  If
+   * POLLOUT is armed on the (writable) pipe instead, the loop busy-polls and
+   * racks up hundreds of thousands of iterations during the clog window. */
+  ASSERT_OK(uv_metrics_info(loop, &metrics));
+  ASSERT_UINT64_LT(metrics.loop_count, 500);
+
+  uv_sem_destroy(&clog_sem);
+  free(buf.base);
+
+  return 0;
+#endif
+}

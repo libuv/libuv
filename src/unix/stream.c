@@ -907,10 +907,16 @@ static void uv__write_done(struct uv__work* w, int status) {
     return;
   }
 
-  if (!uv__queue_empty(&stream->write_queue)) {
+  /* If we don't poll when we see EAGAIN, we'll try submitting this write on
+   * every loop iteration. */
+  if (req->result == UV_EAGAIN) {
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
     uv__stream_osx_interrupt_select(stream);
+    return;
   }
+
+  if (!uv__queue_empty(&stream->write_queue))
+    uv__write(stream);
 
   return;
 
@@ -920,9 +926,6 @@ error:
     uv__make_close_pending((uv_handle_t *)stream);
     return;
   }
-
-  uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
-  uv__stream_osx_interrupt_select(stream);
 }
 
 
@@ -955,15 +958,24 @@ static void uv__write(uv_stream_t* stream) {
                         req->send_handle,
                         NULL);
     } else {
-      n = UV_EAGAIN;
       if (!(stream->flags & UV_HANDLE_WRITE_PENDING)) {
         stream->flags |= UV_HANDLE_WRITE_PENDING;
+        /* It's possible we're watching this stream because of a previous
+         * EAGAIN, in which case we should stop until this write finishes and we
+         * determine we must poll again. */
+        if (uv__io_active(&stream->io_watcher, POLLOUT)) {
+          uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
+          uv__stream_osx_interrupt_select(stream);
+        }
         uv__work_submit(stream->loop,
                         &stream->blocked_write,
                         UV__WORK_FAST_IO_CANCELLABLE,
                         uv__write_work,
                         uv__write_done);
       }
+      /* We don't need to poll POLLOUT when a write is in-flight, since
+       * uv__write_done will call us again. */
+      return;
     }
 
     /* Ensure the handle isn't sent again in case this is a partial write. */
@@ -1504,7 +1516,7 @@ int uv_write2(uv_write_t* req,
   else if (empty_queue) {
     uv__write(stream);
   }
-  else {
+  else if (!(stream->flags & UV_HANDLE_BLOCKING_WRITES)) {
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
     uv__stream_osx_interrupt_select(stream);
   }
