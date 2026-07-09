@@ -281,16 +281,20 @@ static int compare_watchers(const struct watcher_list* a,
 static void maybe_free_watcher_list(struct watcher_list* w,
                                     uv_loop_t* loop);
 
-static void uv__epoll_ctl_flush(int epollfd,
+static void uv__epoll_ctl_flush(uv_loop_t* loop,
+                                int epollfd,
                                 struct uv__iou* ctl,
                                 struct epoll_event (*events)[256]);
 
-static void uv__epoll_ctl_prep(int epollfd,
+static void uv__epoll_ctl_prep(uv_loop_t* loop,
+                               int epollfd,
                                struct uv__iou* ctl,
                                struct epoll_event (*events)[256],
                                int op,
                                int fd,
                                struct epoll_event* e);
+
+static void uv__epoll_requeue_always_ready(uv_loop_t* loop, int fd);
 
 RB_GENERATE_STATIC(watcher_root, watcher_list, entry, compare_watchers)
 
@@ -1265,7 +1269,8 @@ static void uv__poll_io_uring(uv_loop_t* loop, struct uv__iou* iou) {
  * executed immediately, otherwise the file descriptor may have been closed
  * by the time the kernel starts the operation.
  */
-static void uv__epoll_ctl_prep(int epollfd,
+static void uv__epoll_ctl_prep(uv_loop_t* loop,
+                               int epollfd,
                                struct uv__iou* ctl,
                                struct epoll_event (*events)[256],
                                int op,
@@ -1297,11 +1302,12 @@ static void uv__epoll_ctl_prep(int epollfd,
   sqe->user_data = op | slot << 2 | (int64_t) fd << 32;
 
   if ((*ctl->sqhead & mask) == (*ctl->sqtail & mask))
-    uv__epoll_ctl_flush(epollfd, ctl, events);
+    uv__epoll_ctl_flush(loop, epollfd, ctl, events);
 }
 
 
-static void uv__epoll_ctl_flush(int epollfd,
+static void uv__epoll_ctl_flush(uv_loop_t* loop,
+                                int epollfd,
                                 struct uv__iou* ctl,
                                 struct epoll_event (*events)[256]) {
   struct epoll_event oldevents[256];
@@ -1333,9 +1339,11 @@ static void uv__epoll_ctl_flush(int epollfd,
   memcpy(oldevents, *events, sizeof(*events));
 
   /* Failed submissions are either EPOLL_CTL_DEL commands for file descriptors
-   * that have been closed, or EPOLL_CTL_ADD commands for file descriptors
-   * that we are already watching. Ignore the former and retry the latter
-   * with EPOLL_CTL_MOD.
+   * that have been closed, EPOLL_CTL_ADD commands for file descriptors that
+   * we are already watching, or EPOLL_CTL_ADD commands for descriptors that
+   * epoll refuses because they are always ready (regular files, /dev/null).
+   * Ignore the first, retry the second with EPOLL_CTL_MOD, and fall back to
+   * synthesizing events for the third.
    */
   while (*ctl->cqhead != *ctl->cqtail) {
     slot = (*ctl->cqhead)++ & ctl->cqmask;
@@ -1356,16 +1364,46 @@ static void uv__epoll_ctl_flush(int epollfd,
     if (op != EPOLL_CTL_ADD)
       abort();
 
+    if (cqe->res == -EPERM) {
+      uv__epoll_requeue_always_ready(loop, fd);
+      continue;
+    }
+
     if (cqe->res != -EEXIST)
       abort();
 
-    uv__epoll_ctl_prep(epollfd,
+    uv__epoll_ctl_prep(loop,
+                       epollfd,
                        ctl,
                        events,
                        EPOLL_CTL_MOD,
                        fd,
                        &oldevents[oldslot]);
   }
+}
+
+
+/* The file descriptor cannot be registered with epoll because it is always
+ * ready for I/O (epoll returns EPERM for e.g. regular files and /dev/null).
+ * Put the watcher back on the loop's watcher_queue: uv__io_poll() pre-populates
+ * the events[] array from it every iteration (so its events are synthesized)
+ * and retries the registration on the next tick. Reset w->events so that retry
+ * is an EPOLL_CTL_ADD which keeps failing with EPERM, rather than an
+ * EPOLL_CTL_MOD on a descriptor that was never registered.
+ */
+static void uv__epoll_requeue_always_ready(uv_loop_t* loop, int fd) {
+  uv__io_t* w;
+
+  if (fd < 0 || (unsigned) fd >= loop->nwatchers)
+    return;
+
+  w = loop->watchers[fd];
+  if (w == NULL)
+    return;
+
+  w->events = 0;
+  if (uv__queue_empty(&w->watcher_queue))
+    uv__queue_insert_tail(&loop->watcher_queue, &w->watcher_queue);
 }
 
 
@@ -1380,6 +1418,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   struct uv__iou* iou;
   int real_timeout;
   struct uv__queue* q;
+  struct uv__queue wq;
   uv__io_t* w;
   sigset_t* sigmask;
   sigset_t sigset;
@@ -1390,6 +1429,9 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int epollfd;
   int count;
   int nfds;
+  int nready;
+  int synthesized;
+  int r;
   int fd;
   int op;
   int i;
@@ -1425,8 +1467,13 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
   memset(&e, 0, sizeof(e));
 
-  while (!uv__queue_empty(&loop->watcher_queue)) {
-    q = uv__queue_head(&loop->watcher_queue);
+  /* Drain a private copy: always-ready descriptors (see
+   * uv__epoll_requeue_always_ready) get put back on loop->watcher_queue and
+   * must not be reprocessed until the next tick.
+   */
+  uv__queue_move(&loop->watcher_queue, &wq);
+  while (!uv__queue_empty(&wq)) {
+    q = uv__queue_head(&wq);
     w = uv__queue_data(q, uv__io_t, watcher_queue);
     uv__queue_remove(q);
     uv__queue_init(q);
@@ -1447,12 +1494,21 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     fd = w->fd;
 
     if (ctl->ringfd != -1) {
-      uv__epoll_ctl_prep(epollfd, ctl, &prep, op, fd, &e);
+      uv__epoll_ctl_prep(loop, epollfd, ctl, &prep, op, fd, &e);
       continue;
     }
 
     if (!epoll_ctl(epollfd, op, fd, &e))
       continue;
+
+    /* Always-ready descriptors (regular files, /dev/null, ...) cannot be
+     * registered with epoll; requeue them for retry-and-synthesize instead
+     * of aborting.
+     */
+    if (errno == EPERM) {
+      uv__epoll_requeue_always_ready(loop, fd);
+      continue;
+    }
 
     assert(op == EPOLL_CTL_ADD);
     assert(errno == EEXIST);
@@ -1466,6 +1522,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   inv.prep = &prep;
   inv.nfds = -1;
 
+  synthesized = 0;
+
   for (;;) {
     if (loop->nfds == 0)
       if (iou->in_flight == 0)
@@ -1476,23 +1534,70 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     if (ctl->ringfd != -1)
       while (*ctl->sqhead != *ctl->sqtail)
-        uv__epoll_ctl_flush(epollfd, ctl, &prep);
+        uv__epoll_ctl_flush(loop, epollfd, ctl, &prep);
+
+    /* Descriptors epoll refused as always-ready (regular files, /dev/null)
+     * were parked on loop->watcher_queue. Pre-populate the events[] array with
+     * synthesized events for them and shrink the range handed to epoll_pwait()
+     * accordingly, so the normal dispatch loop delivers them. Do this once,
+     * while the queue still holds only them: later passes of this loop may see
+     * watchers started by an I/O callback, which must not be synthesized. They
+     * stay on the queue so the next tick retries their (failing) registration.
+     */
+    nready = 0;
+    if (!synthesized) {
+      synthesized = 1;
+      /* Take a batch off the head of the queue, but reserve half of events[]
+       * for epoll_pwait() -- so it always gets a healthy number of slots (and
+       * never maxevents == 0) and real descriptors aren't starved. Rotate the
+       * batch to the tail so that, when more descriptors are always-ready than
+       * fit here, later ticks service the ones skipped now (epoll is
+       * level-triggered and round-robins its own overflow the same way).
+       */
+      while ((unsigned) nready < ARRAY_SIZE(events) / 2 &&
+             !uv__queue_empty(&loop->watcher_queue)) {
+        q = uv__queue_head(&loop->watcher_queue);
+        uv__queue_remove(q);
+        w = uv__queue_data(q, uv__io_t, watcher_queue);
+        events[nready].events = w->pevents;
+        events[nready].data.fd = w->fd;
+        nready++;
+        uv__queue_insert_tail(&wq, q);
+      }
+      while (!uv__queue_empty(&wq)) {
+        q = uv__queue_head(&wq);
+        uv__queue_remove(q);
+        uv__queue_insert_tail(&loop->watcher_queue, q);
+      }
+      if (nready > 0)
+        timeout = 0;  /* Always-ready work pending; don't block. */
+    }
 
     uv__io_poll_prepare(loop, NULL, timeout);
-    nfds = epoll_pwait(epollfd, events, ARRAY_SIZE(events), timeout, sigmask);
+    r = epoll_pwait(epollfd,
+                    events + nready,
+                    ARRAY_SIZE(events) - nready,
+                    timeout,
+                    sigmask);
     uv__io_poll_check(loop, NULL);
 
-    if (nfds == -1)
+    if (r == -1)
       assert(errno == EINTR);
-    else if (nfds == 0)
+    else if (r == 0 && nready == 0)
       /* Unlimited timeout should only return with events or signal. */
       assert(timeout != -1);
 
-    if (nfds == 0 || nfds == -1) {
+    /* Fold the synthesized events in front of what epoll_pwait() returned. */
+    nfds = (r < 0 ? 0 : r) + nready;
+
+    if (nfds == 0) {
+      /* Nothing to dispatch: a genuine empty poll (r == 0) returns, EINTR
+       * (r == -1) re-polls.
+       */
       if (reset_timeout != 0) {
         timeout = user_timeout;
         reset_timeout = 0;
-      } else if (nfds == 0) {
+      } else if (r == 0) {
         return;
       }
 
@@ -1609,7 +1714,7 @@ update_timeout:
 
   if (ctl->ringfd != -1)
     while (*ctl->sqhead != *ctl->sqtail)
-      uv__epoll_ctl_flush(epollfd, ctl, &prep);
+      uv__epoll_ctl_flush(loop, epollfd, ctl, &prep);
 }
 
 uint64_t uv__hrtime(uv_clocktype_t type) {
