@@ -476,6 +476,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/no-proctitle.c \
                     src/unix/posix-hrtime.c \
                     src/unix/posix-poll.c
+test_run_tests_LDFLAGS += -lbsd
 endif
 
 if HURD

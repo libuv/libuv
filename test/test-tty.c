@@ -34,6 +34,8 @@
 #  include <util.h>
 # elif defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <libutil.h>
+# elif defined(__HAIKU__)
+#  include <pty.h>
 # endif
 #endif
 
