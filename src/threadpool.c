@@ -29,6 +29,10 @@
 
 #define MAX_THREADPOOL_SIZE 1024
 
+#ifndef _WIN32
+_Atomic int uv__cancel_signum = -1;
+#endif
+
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
@@ -61,14 +65,24 @@ static void worker(void* arg) {
 #ifndef _WIN32
   pthread_t self;
   char expected;
+  int cancel_signum;
+  sigset_t sigmask;
 #endif
 
   uv_thread_setname("libuv-worker");
-  uv_sem_post((uv_sem_t*) arg);
-  arg = NULL;
 #ifndef _WIN32
   self = pthread_self();
+  cancel_signum =
+      atomic_load_explicit(&uv__cancel_signum, memory_order_relaxed);
+  if (cancel_signum != -1) {
+    sigemptyset(&sigmask);
+    sigaddset(&sigmask, cancel_signum);
+    if (pthread_sigmask(SIG_UNBLOCK, &sigmask, NULL))
+      abort();
+  }
 #endif
+  uv_sem_post((uv_sem_t*) arg);
+  arg = NULL;
 
   uv_mutex_lock(&mutex);
   for (;;) {
@@ -297,13 +311,6 @@ static void init_once(void) {
 }
 
 
-#ifndef _WIN32
-void uv__cancel_signal_handler(int signo) {
-    /* We just want to trigger EINTR. */
-}
-#endif
-
-
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
                      enum uv__work_kind kind,
@@ -326,6 +333,18 @@ void uv__work_submit(uv_loop_t* loop,
 }
 
 
+int uv_threadpool_set_cancel_signal(int signum) {
+#ifdef _WIN32
+  return UV_ENOSYS;
+#else
+  if (signum <= 0)
+    signum = -1;
+  atomic_store_explicit(&uv__cancel_signum, signum, memory_order_relaxed);
+  return 0;
+#endif
+}
+
+
 /* TODO(bnoordhuis) teach libuv how to cancel file operations
  * that go through io_uring instead of the thread pool.
  */
@@ -334,6 +353,7 @@ int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
 #ifndef _WIN32
   char expected;
   pthread_t thread;
+  int cancel_signum;
   int i;
 #endif
 
@@ -356,7 +376,9 @@ int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
     if (atomic_load_explicit(&w->state, memory_order_relaxed) == UV__WORK_BUSY)
       return UV_EBUSY;
 
-    if (loop->cancel_signum == -1)
+    cancel_signum = atomic_load_explicit(&uv__cancel_signum,
+                                         memory_order_relaxed);
+    if (cancel_signum == -1)
       return UV_EBUSY;
 
     expected = UV__WORK_CANCELLABLE;
@@ -367,7 +389,7 @@ int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
                                                 memory_order_relaxed)) {
       thread = w->thread;
       for (i = 0; i < 10; ++i) {
-        if (pthread_kill(thread, loop->cancel_signum) != 0)
+        if (pthread_kill(thread, cancel_signum) != 0)
           abort();
         if (atomic_load_explicit(&w->state, memory_order_relaxed) !=
             UV__WORK_CANCEL_PENDING)

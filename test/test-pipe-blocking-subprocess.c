@@ -70,10 +70,23 @@ static void alloc_cb(uv_handle_t* handle, size_t size, uv_buf_t* buf) {
   buf->len = size;
 }
 
+#ifndef _WIN32
+static void cancel_signal_handler(int signo) {
+    /* We just want to trigger EINTR. */
+}
+#endif
+
 static void init_common(void) {
+#ifndef _WIN32
+  struct sigaction sa;
+#endif
+
   loop = uv_default_loop();
 #ifndef _WIN32
-  uv_loop_configure(loop, UV_LOOP_CANCEL_SIGNAL, SIGUSR1);
+  memset(&sa, 0, sizeof sa);
+  sa.sa_handler = &cancel_signal_handler;
+  ASSERT_OK(sigaction(SIGUSR1, &sa, NULL));
+  ASSERT_OK(uv_threadpool_set_cancel_signal(SIGUSR1));
 #endif
 
   ASSERT_OK(uv_pipe_init(loop, &pipe_in, 0));

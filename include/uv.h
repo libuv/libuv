@@ -261,9 +261,8 @@ typedef struct uv_metrics_s uv_metrics_t;
 typedef enum {
   UV_LOOP_BLOCK_SIGNAL = 0,
   UV_METRICS_IDLE_TIME,
-  UV_LOOP_USE_IO_URING_SQPOLL,
+  UV_LOOP_USE_IO_URING_SQPOLL
 #define UV_LOOP_USE_IO_URING_SQPOLL UV_LOOP_USE_IO_URING_SQPOLL
-  UV_LOOP_CANCEL_SIGNAL
 } uv_loop_option;
 
 typedef enum {
@@ -1200,6 +1199,8 @@ UV_EXTERN int uv_queue_work(uv_loop_t* loop,
                             uv_after_work_cb after_work_cb);
 
 UV_EXTERN int uv_cancel(uv_req_t* req);
+
+UV_EXTERN int uv_threadpool_set_cancel_signal(int signum);
 
 
 struct uv_cpu_times_s {

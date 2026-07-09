@@ -219,7 +219,9 @@ enum uv__work_kind {
   UV__WORK_SLOW_IO
 };
 
-void uv__cancel_signal_handler(int signo);
+#ifndef _WIN32
+extern _Atomic int uv__cancel_signum;
+#endif
 
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work *w,
