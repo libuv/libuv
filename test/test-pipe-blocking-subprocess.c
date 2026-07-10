@@ -150,10 +150,19 @@ TEST_IMPL(pipe_blocking_subprocess) {
 }
 
 static void timer_cb(uv_timer_t *handle) {
+  uv_write_t after_close_req;
+
   /* The write has begun by now.  We'll close the write side of the pipe first,
    * since closing the read side will trigger SIGPIPE. */
   uv_close((uv_handle_t*) &pipe_in, close_cb);
   uv_close((uv_handle_t*) &timer, NULL);
+
+  /* Writes to a closing stream must fail even though the fd stays open until
+   * the pending blocked write is reaped. */
+  ASSERT_EQ(UV_EBADF,
+            uv_write(&after_close_req, (uv_stream_t*)&pipe_in, &buf, 1, NULL));
+  /* uv_try_write reports the queued blocked write before the close. */
+  ASSERT_EQ(UV_EAGAIN, uv_try_write((uv_stream_t*)&pipe_in, &buf, 1));
 }
 
 static void write_cb_cancel(uv_write_t* req, int status) {

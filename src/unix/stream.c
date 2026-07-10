@@ -1433,7 +1433,10 @@ static int uv__check_before_write(uv_stream_t* stream,
   if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
     return UV_EINVAL;
 
-  if (uv__stream_fd(stream) < 0)
+  /* The fd won't be set to -1 until any pending writes are cancelled and
+   * uv__stream_destroy can run, so we need to check if the stream is
+   * closing. */
+  if (uv__stream_fd(stream) < 0 || uv__is_closing(stream))
     return UV_EBADF;
 
   if (!(stream->flags & UV_HANDLE_WRITABLE))
