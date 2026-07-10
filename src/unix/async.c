@@ -163,6 +163,9 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 static void uv__async_send(uv_loop_t* loop) {
   int fd;
   int r;
+#if !(defined(__linux__) || UV__KQUEUE_EVFILT_USER)
+  static char buf = '\0';
+#endif
 
 #if defined(__linux__)
   uint64_t val;
@@ -203,7 +206,6 @@ static void uv__async_send(uv_loop_t* loop) {
 #else
   fd = loop->async_wfd;
   do
-    static char buf = '\0';
     r = write(fd, &buf, 1);
   while (r == -1 && errno == EINTR);
 
