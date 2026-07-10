@@ -152,14 +152,11 @@ static void worker(void* arg) {
                         executing. */
 #ifndef _WIN32
     expected = UV__WORK_CANCELLABLE;
-    if (!atomic_compare_exchange_strong_explicit(&w->state,
-                                                 &expected,
-                                                 UV__WORK_DONE,
-                                                 memory_order_relaxed,
-                                                 memory_order_relaxed)) {
+    if (!atomic_compare_exchange_strong_explicit(
+            (_Atomic char *)&w->state, &expected, UV__WORK_DONE,
+            memory_order_relaxed, memory_order_relaxed)) {
       if (expected == UV__WORK_CANCEL_PENDING)
-        atomic_store_explicit(&w->state,
-                              UV__WORK_CANCELLED,
+        atomic_store_explicit((_Atomic char *)&w->state, UV__WORK_CANCELLED,
                               memory_order_relaxed);
     }
 #endif
@@ -325,9 +322,11 @@ void uv__work_submit(uv_loop_t* loop,
   w->work = work;
   w->done = done;
 #ifndef _WIN32
+  STATIC_ASSERT(sizeof(_Atomic char) == sizeof(char));
+  STATIC_ASSERT(_Alignof(_Atomic char) == _Alignof(char));
   state = kind == UV__WORK_FAST_IO_CANCELLABLE ? UV__WORK_CANCELLABLE
                                                : UV__WORK_BUSY;
-  atomic_store_explicit(&w->state, state, memory_order_relaxed);
+  atomic_store_explicit((_Atomic char *)&w->state, state, memory_order_relaxed);
 #endif
   post(&w->wq, kind);
 }
@@ -373,7 +372,8 @@ int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
     return UV_EBUSY;
 #else
   if (!cancelled) {
-    if (atomic_load_explicit(&w->state, memory_order_relaxed) == UV__WORK_BUSY)
+    if (atomic_load_explicit((_Atomic char *)&w->state, memory_order_relaxed) ==
+        UV__WORK_BUSY)
       return UV_EBUSY;
 
     cancel_signum = atomic_load_explicit(&uv__cancel_signum,
@@ -382,16 +382,15 @@ int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
       return UV_EBUSY;
 
     expected = UV__WORK_CANCELLABLE;
-    if (atomic_compare_exchange_strong_explicit(&w->state,
-                                                &expected,
-                                                UV__WORK_CANCEL_PENDING,
-                                                memory_order_relaxed,
-                                                memory_order_relaxed)) {
+    if (atomic_compare_exchange_strong_explicit(
+            (_Atomic char *)&w->state, &expected, UV__WORK_CANCEL_PENDING,
+            memory_order_relaxed, memory_order_relaxed)) {
       thread = w->thread;
       for (i = 0; i < 10; ++i) {
         if (pthread_kill(thread, cancel_signum) != 0)
           abort();
-        if (atomic_load_explicit(&w->state, memory_order_relaxed) !=
+        if (atomic_load_explicit((_Atomic char*) &w->state,
+                                 memory_order_relaxed) !=
             UV__WORK_CANCEL_PENDING)
           return 0;
         if (i < 9)
@@ -435,7 +434,8 @@ void uv__work_done(uv_async_t* handle) {
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
 #ifndef _WIN32
-    if (atomic_load_explicit(&w->state, memory_order_relaxed) == UV__WORK_CANCELLED)
+    if (atomic_load_explicit((_Atomic char *)&w->state, memory_order_relaxed) ==
+        UV__WORK_CANCELLED)
       err = UV_ECANCELED;
 #endif
     w->done(w, err);

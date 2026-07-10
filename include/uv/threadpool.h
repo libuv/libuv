@@ -42,7 +42,7 @@ struct uv__work {
   struct uv__queue wq;
 #ifndef _WIN32
   pthread_t thread;
-  _Atomic char state;
+  char state;
 #endif
 };
 
