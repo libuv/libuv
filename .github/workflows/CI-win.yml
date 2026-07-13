@@ -70,9 +70,17 @@ jobs:
         shell: cmd
         run:
           build\\RelWithDebInfo\\uv_run_tests_a.exe
+      - name: Test AppContainer
+        if: ${{ matrix.config.arch != 'arm64' }}
+        shell: cmd
+        run:
+          build\\RelWithDebInfo\\uv_run_appcontainer.exe build\\RelWithDebInfo\\${{ matrix.config.config == 'ASAN' && 'uv_run_tests_a.exe' || 'uv_run_tests.exe' }}
 
   build-mingw:
-    runs-on: ubuntu-latest
+    # Note: Using ubuntu-26.04 early (before it becomes ubuntu-latest)
+    # for access to a newer mingw for #5181.
+    # Can change back to ubuntu-latest once it means 26.04 or later.
+    runs-on: ubuntu-26.04
     name: build-mingw-${{ matrix.config.arch }}
     strategy:
       fail-fast: false
@@ -93,7 +101,8 @@ jobs:
           cmake --install build --prefix "`pwd`/build/usr"
           mkdir -p build/usr/test build/usr/bin
           cp -av test/fixtures build/usr/test
-          cp -av build/uv_run_tests_a.exe build/uv_run_tests.exe build/uv_run_tests_a_no_ext build/uv_run_tests_no_ext \
+          cp -av build/uv_run_tests_a.exe build/uv_run_tests.exe build/uv_run_appcontainer.exe \
+             build/uv_run_tests_a_no_ext build/uv_run_tests_no_ext \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libgcc_s_${{ matrix.config.libgcc }}-1.dll` \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libwinpthread-1.dll` \
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libatomic-1.dll` \
@@ -128,3 +137,7 @@ jobs:
         shell: cmd
         run: |
           bin\uv_run_tests.exe
+      - name: Test AppContainer
+        shell: cmd
+        run: |
+          bin\uv_run_appcontainer.exe bin\uv_run_tests.exe
