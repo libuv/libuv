@@ -58,6 +58,17 @@ static int includes_invalid_nul(const char *s, size_t n) {
 
 
 int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
+  return uv_pipe_init_ex(loop, handle, ipc ? UV_PIPE_INIT_IPC : 0);
+}
+
+
+int uv_pipe_init_ex(uv_loop_t* loop, uv_pipe_t* handle, unsigned int flags) {
+  int ipc = (flags & UV_PIPE_INIT_IPC) != 0;
+  if (flags & ~(UV_PIPE_INIT_IPC | UV_PIPE_INIT_WIN_UDS))
+    return UV_EINVAL;
+  if (flags & UV_PIPE_INIT_WIN_UDS)
+    return UV_EINVAL;
+
   uv__stream_init(loop, (uv_stream_t*)handle, UV_NAMED_PIPE);
   handle->shutdown_req = NULL;
   handle->connect_req = NULL;
