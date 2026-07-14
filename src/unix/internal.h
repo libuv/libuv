@@ -594,6 +594,9 @@ int uv__get_constrained_cpu(long long* quota);
 
 extern char* uv_saved_argv0;
 
+void uv__block_cancel(int block);
+
+
 static inline int uv__work_check_cancelled(struct uv__work *w) {
   if (w == NULL)
     return 0;
@@ -605,6 +608,8 @@ static inline int uv__work_check_cancelled(struct uv__work *w) {
   atomic_store_explicit((_Atomic char *)&w->state, UV__WORK_CANCELLED,
                         memory_order_relaxed);
   return 1;
+
 }
+
 
 #endif /* UV_UNIX_INTERNAL_H_ */

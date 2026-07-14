@@ -55,6 +55,23 @@ static void uv__cancelled(struct uv__work* w) {
 }
 
 
+void uv__block_cancel(int block) {
+#ifndef _WIN32
+  int cancel_signum;
+  sigset_t sigmask;
+
+  cancel_signum =
+      atomic_load_explicit(&uv__cancel_signum, memory_order_relaxed);
+  if (cancel_signum != -1) {
+    sigemptyset(&sigmask);
+    sigaddset(&sigmask, cancel_signum);
+    if (pthread_sigmask(block ? SIG_BLOCK : SIG_UNBLOCK, &sigmask, NULL))
+      abort();
+  }
+#endif
+}
+
+
 /* To avoid deadlock with uv_cancel() it's crucial that the worker
  * never holds the global mutex and the loop-local mutex at the same time.
  */
@@ -65,21 +82,12 @@ static void worker(void* arg) {
 #ifndef _WIN32
   pthread_t self;
   char expected;
-  int cancel_signum;
-  sigset_t sigmask;
 #endif
 
   uv_thread_setname("libuv-worker");
 #ifndef _WIN32
   self = pthread_self();
-  cancel_signum =
-      atomic_load_explicit(&uv__cancel_signum, memory_order_relaxed);
-  if (cancel_signum != -1) {
-    sigemptyset(&sigmask);
-    sigaddset(&sigmask, cancel_signum);
-    if (pthread_sigmask(SIG_UNBLOCK, &sigmask, NULL))
-      abort();
-  }
+  uv__block_cancel(1);
 #endif
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;

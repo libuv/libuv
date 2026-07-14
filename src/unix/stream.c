@@ -814,18 +814,24 @@ static int uv__try_write(uv_stream_t* stream,
     cmsg.hdr.cmsg_len = CMSG_LEN(sizeof(fd_to_send));
     memcpy(CMSG_DATA(&cmsg.hdr), &fd_to_send, sizeof(fd_to_send));
 
+    if (w != NULL)
+      uv__block_cancel(0);
     do {
       if (uv__work_check_cancelled(w))
         break;
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
     } while (n == -1 && errno == EINTR);
   } else {
+    if (w != NULL)
+      uv__block_cancel(0);
     do {
       if (uv__work_check_cancelled(w))
         break;
       n = uv__writev(uv__stream_fd(stream), iov, iovcnt);
     } while (n == -1 && errno == EINTR);
   }
+  if (w != NULL)
+    uv__block_cancel(1);
 
   if (n >= 0)
     return n;
