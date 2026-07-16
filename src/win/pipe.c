@@ -83,20 +83,6 @@ typedef struct {
 STATIC_ASSERT(sizeof(uv__ipc_frame_header_t) == 16);
 STATIC_ASSERT(sizeof(uv__ipc_socket_xfer_info_t) == 632);
 
-/* Coalesced write request. */
-typedef struct {
-  uv_write_t req;       /* Internal heap-allocated write request. */
-  uv_write_t* user_req; /* Pointer to user-specified uv_write_t. */
-} uv__coalesced_write_t;
-
-
-static uv_write_t* uv__coalesced_write_user_req(uv_write_t* req) {
-  if (req->coalesced)
-    return container_of(req, uv__coalesced_write_t, req)->user_req;
-  return req;
-}
-
-
 static void eof_timer_init(uv_pipe_t* pipe);
 static void eof_timer_start(uv_pipe_t* pipe);
 static void eof_timer_stop(uv_pipe_t* pipe);
@@ -1159,8 +1145,7 @@ static uv_write_t* uv__remove_non_overlapped_write_req(uv_pipe_t* handle) {
 
 
 /* Find and remove a specific request from the non-overlapped write queue.
- * For coalesced writes, match against the user-facing req.
- * Returns the actual queued req if found and removed, NULL otherwise. */
+ * Returns the queued req if found and removed, NULL otherwise. */
 static uv_write_t* uv__remove_specific_non_overlapped_write_req(
     uv_pipe_t* handle, uv_write_t* target) {
   uv_write_t* tail;
@@ -1174,7 +1159,7 @@ static uv_write_t* uv__remove_specific_non_overlapped_write_req(
   prev = tail;
   curr = (uv_write_t*) tail->next_req;
   do {
-    if (uv__coalesced_write_user_req(curr) == target)
+    if (curr == target)
       return uv__remove_non_overlapped_write_req_after(handle, prev);
 
     prev = curr;
@@ -1192,9 +1177,7 @@ int uv__pipe_write_cancel_non_overlapped(uv_pipe_t* handle, uv_write_t* req) {
   assert(!(handle->flags & UV_HANDLE_BLOCKING_WRITES));
 
   /* On the thread pool - send the cancellation signal. */
-  if (handle->pipe.conn.non_overlapped_write_active != NULL &&
-      uv__coalesced_write_user_req(
-          handle->pipe.conn.non_overlapped_write_active) == req) {
+  if (handle->pipe.conn.non_overlapped_write_active == req) {
     /* N.B.: It's possible to end up here multiple times if `req` is cancelled
      * again after an initial cancellation, but before the completion is processed.
      * This is harmless - uv__pipe_cancel_synchronous_io will see that the thread
@@ -1736,20 +1719,13 @@ static void uv__queue_non_overlapped_write(uv_pipe_t* handle) {
 }
 
 
-static int uv__build_coalesced_write_req(uv_write_t* user_req,
-                                         const uv_buf_t bufs[],
-                                         size_t nbufs,
-                                         uv_write_t** req_out,
-                                         uv_buf_t* write_buf_out) {
-  /* Pack into a single heap-allocated buffer:
-   *   (a) a uv_write_t structure where libuv stores the actual state.
-   *   (b) a pointer to the original uv_write_t.
-   *   (c) data from all `bufs` entries.
-   */
+static int uv__coalesce_write_bufs(const uv_buf_t bufs[],
+                                   size_t nbufs,
+                                   uv_buf_t* write_buf_out) {
+  /* Merge the data from all `bufs` entries into a single heap-allocated
+   * buffer, freed when the write completion is processed. */
   char* heap_buffer;
-  size_t heap_buffer_length, heap_buffer_offset;
-  uv__coalesced_write_t* coalesced_write_req; /* (a) + (b) */
-  char* data_start;                           /* (c) */
+  size_t heap_buffer_offset;
   size_t data_length;
   unsigned int i;
 
@@ -1763,35 +1739,26 @@ static int uv__build_coalesced_write_req(uv_write_t* user_req,
   if (data_length > UINT32_MAX)
     return WSAENOBUFS; /* Maps to UV_ENOBUFS. */
 
-  /* Compute heap buffer size. */
-  heap_buffer_length = sizeof *coalesced_write_req + /* (a) + (b) */
-                       data_length;                  /* (c) */
+  /* All buffers empty: write nothing. */
+  if (data_length == 0) {
+    *write_buf_out = uv_null_buf_;
+    return 0;
+  }
 
   /* Allocate buffer. */
-  heap_buffer = uv__malloc(heap_buffer_length);
+  heap_buffer = uv__malloc(data_length);
   if (heap_buffer == NULL)
     return ERROR_NOT_ENOUGH_MEMORY; /* Maps to UV_ENOMEM. */
 
-  /* Copy uv_write_t information to the buffer. */
-  coalesced_write_req = (uv__coalesced_write_t*) heap_buffer;
-  coalesced_write_req->req = *user_req; /* copy (a) */
-  coalesced_write_req->req.coalesced = 1;
-  coalesced_write_req->user_req = user_req;         /* copy (b) */
-  heap_buffer_offset = sizeof *coalesced_write_req; /* offset (a) + (b) */
-
   /* Copy data buffers to the heap buffer. */
-  data_start = &heap_buffer[heap_buffer_offset];
+  heap_buffer_offset = 0;
   for (i = 0; i < nbufs; i++) {
-    memcpy(&heap_buffer[heap_buffer_offset],
-           bufs[i].base,
-           bufs[i].len);               /* copy (c) */
-    heap_buffer_offset += bufs[i].len; /* offset (c) */
+    memcpy(&heap_buffer[heap_buffer_offset], bufs[i].base, bufs[i].len);
+    heap_buffer_offset += bufs[i].len;
   }
-  assert(heap_buffer_offset == heap_buffer_length);
+  assert(heap_buffer_offset == data_length);
 
-  /* Set out arguments and return. */
-  *req_out = &coalesced_write_req->req;
-  *write_buf_out = uv_buf_init(data_start, (unsigned int) data_length);
+  *write_buf_out = uv_buf_init(heap_buffer, (unsigned int) data_length);
   return 0;
 }
 
@@ -1837,11 +1804,13 @@ static int uv__pipe_write_data(uv_loop_t* loop,
     /* Write directly from bufs[0]. */
     write_buf = bufs[0];
   } else {
-    /* Coalesce all `bufs` into one big buffer. This also creates a new
-     * write-request structure that replaces the old one. */
-    err = uv__build_coalesced_write_req(req, bufs, nbufs, &req, &write_buf);
+    /* Coalesce all `bufs` into one big heap-allocated buffer, owned by the
+     * request and freed when its completion is processed. */
+    err = uv__coalesce_write_bufs(bufs, nbufs, &write_buf);
     if (err != 0)
       return err;
+    req->coalesced = 1;
+    req->write_buffer = write_buf;
   }
 
   if (write_buf.len > UV__IO_MAX_BYTES)
@@ -2429,13 +2398,11 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   err = GET_REQ_ERROR(req);
 
-  /* For non-overlapped pipes, manage the write queue before unwrapping
-   * coalesced writes, since the coalesced wrapper is what's in the queue.
-   *
-   * If this request was the active write (dispatched to the thread pool),
-   * clear the active slot and dispatch the next queued write.  Queue-cancelled
-   * writes (removed by uv__pipe_write_cancel or flush) were never dispatched,
-   * so they must not trigger another dispatch. */
+  /* For non-overlapped pipes, if this request was the active write
+   * (dispatched to the thread pool), clear the active slot and dispatch the
+   * next queued write.  Queue-cancelled writes (removed by
+   * uv__pipe_write_cancel or flush) were never dispatched, so they must not
+   * trigger another dispatch. */
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     if (req == handle->pipe.conn.non_overlapped_write_active) {
       handle->pipe.conn.non_overlapped_write_active = NULL;
@@ -2443,14 +2410,11 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     }
   }
 
-  /* If this was a coalesced write, extract pointer to the user_provided
-   * uv_write_t structure so we can pass the expected pointer to the callback,
-   * then free the heap-allocated write req. */
+  /* If this was a coalesced write, free the heap-allocated merged data
+   * buffer. */
   if (req->coalesced) {
-    uv__coalesced_write_t* coalesced_write =
-        container_of(req, uv__coalesced_write_t, req);
-    req = coalesced_write->user_req;
-    uv__free(coalesced_write);
+    uv__free(req->write_buffer.base);
+    req->write_buffer = uv_null_buf_;
   }
 
   req->write_extra.nwritten += bytes_written;
