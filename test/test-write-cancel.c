@@ -362,23 +362,26 @@ static uv_tcp_t nwritten_client;
 static uv_tcp_t nwritten_incoming;
 static uv_write_t nwritten_req;
 static int nwritten_cb_called;
+static int nwritten_accepted;
 static size_t nwritten_value;
 static char nwritten_buf_data[1024];
 
-static void nwritten_write_cb(uv_write_t* req, int status) {
-  ASSERT_OK(status);
-  nwritten_cb_called++;
-  nwritten_value = uv_write_nwritten(req);
-
+/* The client's write can complete before the server's connection callback
+ * has run (and thus before nwritten_incoming is initialized), and vice
+ * versa; tear down only once both have happened. */
+static void nwritten_maybe_close(void) {
+  if (nwritten_cb_called == 0 || !nwritten_accepted)
+    return;
   uv_close((uv_handle_t*) &nwritten_client, close_cb);
   uv_close((uv_handle_t*) &nwritten_server, close_cb);
   uv_close((uv_handle_t*) &nwritten_incoming, close_cb);
 }
 
-static void nwritten_connection_cb(uv_stream_t* tcp, int status) {
+static void nwritten_write_cb(uv_write_t* req, int status) {
   ASSERT_OK(status);
-  ASSERT_OK(uv_tcp_init(tcp->loop, &nwritten_incoming));
-  ASSERT_OK(uv_accept(tcp, (uv_stream_t*) &nwritten_incoming));
+  nwritten_cb_called++;
+  nwritten_value = uv_write_nwritten(req);
+  nwritten_maybe_close();
 }
 
 static void nwritten_connection_cb(uv_stream_t* tcp, int status) {
@@ -407,6 +410,7 @@ TEST_IMPL(tcp_write_nwritten) {
 
   close_cb_called = 0;
   nwritten_cb_called = 0;
+  nwritten_accepted = 0;
   nwritten_value = 0;
   memset(nwritten_buf_data, 'B', sizeof(nwritten_buf_data));
 
