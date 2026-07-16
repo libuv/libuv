@@ -85,10 +85,8 @@ API
     ``SA_RESTART`` must not be set.
 
     The setting is global because the thread pool is shared by all loops in the
-    process: the most recently configured value applies to every loop.  Worker
-    threads unblock the signal when they start, in case it is masked in the
-    thread that starts the pool.  Call this function before the thread pool
-    starts.
+    process: the most recently configured value applies to every loop.  Call
+    this function before the thread pool starts.
 
     Returns ``UV_ENOSYS`` on Windows.
 

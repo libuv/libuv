@@ -292,7 +292,6 @@ typedef struct {
   int delayed_error;                                                          \
   int accepted_fd;                                                            \
   void* queued_fds;                                                           \
-  struct uv__work blocked_write;                                              \
   UV_STREAM_PRIVATE_PLATFORM_FIELDS                                           \
 
 #define UV_TCP_PRIVATE_FIELDS /* empty */

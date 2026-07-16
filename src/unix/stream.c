@@ -70,6 +70,47 @@ union uv__cmsg {
 
 STATIC_ASSERT(256 == sizeof(union uv__cmsg));
 
+/* A uv__blocked_write's `state` obeys this state machine:
+ *
+ *   WAITING -> CANCELLABLE -> DONE
+ *      |            |
+ *      |            v
+ *      \-----> CANCEL_PENDING
+ *                   |
+ *                   v
+ *               CANCELLED
+ *
+ * WAITING
+ *   The write is still in the thread pool queue, or we have not yet entered the
+ *   interruptable syscall.  `thread` is not readable.
+ * CANCELLABLE
+ *   The write may be in the interruptable syscall, and `thread` is set.  The
+ *   WAITING->CANCELLABLE transition is made with a release store, so `thread`
+ *   can be read after acquire-loading this state.
+ * DONE
+ *   The write has completed.
+ * CANCEL_PENDING
+ *   uv__write_cancel has begun cancellation, but the worker has not
+ *   acknowledged it.
+ * CANCELLED
+ *   The write worker observed CANCEL_PENDING, and is no longer in the blocking
+ *   syscall.
+ */
+enum uv__write_state {
+  UV__WRITE_WAITING = 0,
+  UV__WRITE_CANCELLABLE,
+  UV__WRITE_CANCEL_PENDING,
+  UV__WRITE_CANCELLED,
+  UV__WRITE_DONE
+};
+
+struct uv__blocked_write {
+  struct uv__work work;
+  uv_stream_t* stream;
+  pthread_t thread;
+  _Atomic char state;
+};
+
 static void uv__stream_connect(uv_stream_t*);
 static void uv__write(uv_stream_t* stream);
 static void uv__read(uv_stream_t* stream);
@@ -472,6 +513,9 @@ void uv__stream_destroy(uv_stream_t* stream) {
   uv__write_callbacks(stream);
   uv__drain(stream);
 
+  if (stream->u.blocked_write != NULL)
+    uv__free(stream->u.blocked_write);
+
   assert(stream->write_queue_size == 0);
 }
 
@@ -758,11 +802,41 @@ static int uv__handle_fd(uv_handle_t* handle) {
 }
 
 
+static int uv__write_check_cancelled(struct uv__blocked_write *w) {
+  if (w == NULL)
+    return 0;
+
+  if (atomic_load_explicit(&w->state, memory_order_relaxed) !=
+      UV__WRITE_CANCEL_PENDING)
+    return 0;
+
+  atomic_store_explicit(&w->state, UV__WRITE_CANCELLED, memory_order_relaxed);
+  return 1;
+}
+
+
+static int uv__write_try_step(struct uv__blocked_write *w,
+                              enum uv__write_state old_state,
+                              enum uv__write_state new_state,
+                              memory_order ord) {
+  char expected;
+
+  expected = old_state;
+  if (!atomic_compare_exchange_strong_explicit(&w->state, &expected, new_state,
+                                               ord, memory_order_relaxed)) {
+    atomic_store_explicit(&w->state, UV__WRITE_CANCELLED, memory_order_relaxed);
+    return 1;
+  }
+
+  return 0;
+}
+
+
 static int uv__try_write(uv_stream_t* stream,
                          const uv_buf_t bufs[],
                          unsigned int nbufs,
                          uv_stream_t* send_handle,
-                         struct uv__work* w) {
+                         struct uv__blocked_write* w) {
   struct iovec* iov;
   int iovmax;
   int iovcnt;
@@ -817,7 +891,7 @@ static int uv__try_write(uv_stream_t* stream,
     if (w != NULL)
       uv__block_cancel(0);
     do {
-      if (uv__work_check_cancelled(w))
+      if (uv__write_check_cancelled(w))
         break;
       n = sendmsg(uv__stream_fd(stream), &msg, 0);
     } while (n == -1 && errno == EINTR);
@@ -825,7 +899,7 @@ static int uv__try_write(uv_stream_t* stream,
     if (w != NULL)
       uv__block_cancel(0);
     do {
-      if (uv__work_check_cancelled(w))
+      if (uv__write_check_cancelled(w))
         break;
       n = uv__writev(uv__stream_fd(stream), iov, iovcnt);
     } while (n == -1 && errno == EINTR);
@@ -863,41 +937,55 @@ static int uv__try_write(uv_stream_t* stream,
  * uv_write_t; we'll never read it from the loop thread while a blocked write is
  * pending.
  */
-static void uv__write_work(struct uv__work* w) {
+static void uv__write_work(struct uv__work* work) {
   uv_stream_t* stream;
   struct uv__queue* q;
-  uv_write_t *req;
+  uv_write_t* req;
+  struct uv__blocked_write* w;
 
-  stream = container_of(w, uv_stream_t, blocked_write);
+  w = container_of(work, struct uv__blocked_write, work);
+  stream = w->stream;
 
   assert(!uv__queue_empty(&stream->write_queue));
   q = uv__queue_head(&stream->write_queue);
   req = uv__queue_data(q, uv_write_t, queue);
   assert(req->handle == stream);
 
-  req->result = uv__try_write(stream,
-                              &(req->bufs[req->write_index]),
-                              req->nbufs - req->write_index,
-                              req->send_handle,
-                              w);
+  w->thread = pthread_self();
+  if (uv__write_try_step(w, UV__WRITE_WAITING, UV__WRITE_CANCELLABLE,
+                         memory_order_release))
+    return;
+
+  req->result =
+      uv__try_write(stream, &(req->bufs[req->write_index]),
+                    req->nbufs - req->write_index, req->send_handle, w);
+
+  uv__write_try_step(w, UV__WRITE_CANCELLABLE, UV__WRITE_DONE,
+                     memory_order_relaxed);
 }
 
 
 static void uv__write_done(struct uv__work* w, int status) {
+  struct uv__blocked_write* blocked_write;
   uv_stream_t* stream;
   struct uv__queue* q;
-  uv_write_t *req;
+  uv_write_t* req;
+  char state;
 
-  stream = container_of(w, uv_stream_t, blocked_write);
+  blocked_write = container_of(w, struct uv__blocked_write, work);
+  stream = blocked_write->stream;
   stream->flags &= ~UV_HANDLE_WRITE_PENDING;
 
   assert(!uv__queue_empty(&stream->write_queue));
   q = uv__queue_head(&stream->write_queue);
   req = uv__queue_data(q, uv_write_t, queue);
+  state = atomic_load_explicit(&blocked_write->state, memory_order_relaxed);
+  assert(status != 0 || state == UV__WRITE_CANCELLED ||
+         state == UV__WRITE_DONE);
 
   /* This happens when we're cancelled in the thread pool work queue. */
-  if (status != 0) {
-    req->result = status;
+  if (status != 0 || state == UV__WRITE_CANCELLED) {
+    req->result = UV_ECANCELED;
     goto error;
   }
 
@@ -935,6 +1023,45 @@ error:
 }
 
 
+static int uv__write_cancel(uv_loop_t* loop, struct uv__blocked_write* w) {
+  char expected;
+  pthread_t thread;
+  int i;
+
+  /* uv__work_cancel succeeds if the cancelled the write before it made it out
+   * of the thread pool work queue. */
+  if (uv__work_cancel(loop, &w->work) != UV_EBUSY)
+    return 0;
+
+  /* If we are still in the WAITING state, we haven't entered the interruptable
+   * syscall yet, and can cancel without sending the signal. */
+  expected = UV__WRITE_WAITING;
+  if (atomic_compare_exchange_strong_explicit(
+          &w->state, &expected, UV__WRITE_CANCEL_PENDING, memory_order_relaxed,
+          memory_order_relaxed))
+    return 0;
+
+  /* We need to acquire-load the CANCELLABLE state to read `thread`. */
+  expected = UV__WRITE_CANCELLABLE;
+  if (!atomic_compare_exchange_strong_explicit(
+          &w->state, &expected, UV__WRITE_CANCEL_PENDING, memory_order_acquire,
+          memory_order_relaxed))
+    return 0;
+
+  thread = w->thread;
+  for (i = 0; i < 10; ++i) {
+    uv__send_cancel(thread);
+    if (atomic_load_explicit(&w->state, memory_order_relaxed) !=
+        UV__WRITE_CANCEL_PENDING)
+      return 0;
+    if (i < 9)
+      uv_sleep(1 << i);
+  }
+
+  return UV_EBUSY;
+}
+
+
 static void uv__write(uv_stream_t* stream) {
   struct uv__queue* q;
   uv_write_t* req;
@@ -965,6 +1092,14 @@ static void uv__write(uv_stream_t* stream) {
                         NULL);
     } else {
       if (!(stream->flags & UV_HANDLE_WRITE_PENDING)) {
+        if (stream->u.blocked_write == NULL) {
+          stream->u.blocked_write = uv__malloc(sizeof *stream->u.blocked_write);
+          if (stream->u.blocked_write == NULL) {
+            n = UV_ENOMEM;
+            goto error;
+          }
+          stream->u.blocked_write->stream = stream;
+        }
         stream->flags |= UV_HANDLE_WRITE_PENDING;
         /* It's possible we're watching this stream because of a previous
          * EAGAIN, in which case we should stop until this write finishes and we
@@ -973,11 +1108,11 @@ static void uv__write(uv_stream_t* stream) {
           uv__io_stop(stream->loop, &stream->io_watcher, POLLOUT);
           uv__stream_osx_interrupt_select(stream);
         }
-        uv__work_submit(stream->loop,
-                        &stream->blocked_write,
-                        UV__WORK_FAST_IO_CANCELLABLE,
-                        uv__write_work,
-                        uv__write_done);
+        atomic_store_explicit(&stream->u.blocked_write->state,
+                              UV__WRITE_WAITING, memory_order_relaxed);
+        uv__work_submit(stream->loop, &stream->u.blocked_write->work,
+                        UV__WORK_SLOW_IO,
+                        uv__write_work, uv__write_done);
       }
       /* We don't need to poll POLLOUT when a write is in-flight, since
        * uv__write_done will call us again. */
@@ -1638,6 +1773,7 @@ int uv___stream_fd(const uv_stream_t* handle) {
 void uv__stream_close(uv_stream_t* handle) {
   unsigned int i;
   uv__stream_queued_fds_t* queued_fds;
+  struct uv__blocked_write* w;
 
 #if defined(__APPLE__)
   /* Terminate select loop first */
@@ -1679,8 +1815,12 @@ void uv__stream_close(uv_stream_t* handle) {
     handle->queued_fds = NULL;
   }
 
-  if (handle->flags & UV_HANDLE_WRITE_PENDING)
-    uv__work_cancel(handle->loop, &handle->blocked_write);
+  if (handle->flags & UV_HANDLE_WRITE_PENDING) {
+    w = handle->u.blocked_write;
+    assert(w != NULL);
+    assert(w->stream == handle);
+    uv__write_cancel(handle->loop, w);
+  }
 
   assert(!uv__io_active(&handle->io_watcher, POLLIN | POLLOUT));
 }

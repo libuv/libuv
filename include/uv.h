@@ -459,6 +459,8 @@ struct uv_shutdown_s {
   UV_SHUTDOWN_PRIVATE_FIELDS
 };
 
+struct uv__blocked_write;
+
 
 #define UV_HANDLE_FIELDS                                                      \
   /* public */                                                                \
@@ -470,7 +472,8 @@ struct uv_shutdown_s {
   uv_close_cb close_cb;                                                       \
   struct uv__queue handle_queue;                                              \
   union {                                                                     \
-    int fd;                                                                   \
+    int fd;                          /* Windows-only */                       \
+    struct uv__blocked_write* blocked_write; /* Unix-only */                  \
     void* reserved[4];                                                        \
   } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \

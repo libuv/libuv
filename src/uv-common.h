@@ -215,7 +215,6 @@ int uv__getaddrinfo_translate_error(int sys_err);    /* EAI_* error. */
 enum uv__work_kind {
   UV__WORK_CPU,
   UV__WORK_FAST_IO,
-  UV__WORK_FAST_IO_CANCELLABLE,
   UV__WORK_SLOW_IO
 };
 
@@ -340,7 +339,11 @@ void uv__threadpool_cleanup(void);
 #if defined(_WIN32)
 # define uv__handle_platform_init(h) ((h)->u.fd = -1)
 #else
-# define uv__handle_platform_init(h) ((h)->next_closing = NULL)
+# define uv__handle_platform_init(h)                                          \
+  do {                                                                        \
+    (h)->next_closing = NULL;                                                 \
+    (h)->u.blocked_write = NULL;                                              \
+  } while (0)
 #endif
 
 #define uv__handle_init(loop_, h, type_)                                      \
