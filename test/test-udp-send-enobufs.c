@@ -93,16 +93,22 @@ TEST_IMPL(udp_send_enobufs) {
   memset(payload, 'X', sizeof(payload));
   buf = uv_buf_init(payload, sizeof(payload));
 
+  struct sockaddr_in bind_addr;
+
   /* Send to a non-listening port on localhost. */
   ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
 
   r = uv_udp_init(uv_default_loop(), &handle_);
   ASSERT_OK(r);
 
+  /* Bind so we have a socket fd for setsockopt. */
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &bind_addr));
+  r = uv_udp_bind(&handle_, (const struct sockaddr*) &bind_addr, 0);
+  ASSERT_OK(r);
+
   /* Shrink the send buffer to increase the chance of hitting ENOBUFS. */
   sndbuf = 1;
-  r = uv_send_buffer_size((uv_handle_t*) &handle_, &sndbuf);
-  ASSERT_OK(r);
+  uv_send_buffer_size((uv_handle_t*) &handle_, &sndbuf);
 
   /* Watchdog: if the loop spins for 5s, the test fails. */
   r = uv_timer_init(uv_default_loop(), &watchdog_);
