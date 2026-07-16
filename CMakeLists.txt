@@ -691,6 +691,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-udp-connect6.c
        test/test-udp-create-socket-early.c
        test/test-udp-dgram-too-big.c
+       test/test-udp-send-enobufs.c
        test/test-udp-ipv6.c
        test/test-udp-mmsg.c
        test/test-udp-multicast-interface.c
