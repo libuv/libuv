@@ -1050,7 +1050,8 @@ static int uv__write_cancel(uv_loop_t* loop, struct uv__blocked_write* w) {
 
   thread = w->thread;
   for (i = 0; i < 10; ++i) {
-    uv__send_cancel(thread);
+    if (uv__send_cancel(thread))
+      return UV_EBUSY;
     if (atomic_load_explicit(&w->state, memory_order_relaxed) !=
         UV__WRITE_CANCEL_PENDING)
       return 0;
