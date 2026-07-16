@@ -1463,7 +1463,7 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (events & (POLLIN | POLLERR))
     uv__read(stream);
 
-  if (uv__stream_fd(stream) == -1)
+  if (uv__stream_fd(stream) == -1 || uv__is_closing(stream))
     return;  /* read_cb closed stream. */
 
   /* Short-circuit iff POLLHUP is set, the user is still interested in read
@@ -1480,7 +1480,7 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       !(stream->flags & UV_HANDLE_READ_EOF)) {
     uv_buf_t buf = { NULL, 0 };
     uv__stream_eof(stream, &buf);
-    if (uv__stream_fd(stream) == -1)
+    if (uv__stream_fd(stream) == -1 || uv__is_closing(stream))
       return;  /* read_cb closed stream. */
   }
 
@@ -1542,7 +1542,7 @@ static void uv__stream_connect(uv_stream_t* stream) {
   if (req->cb)
     req->cb(req, error);
 
-  if (uv__stream_fd(stream) == -1)
+  if (uv__stream_fd(stream) == -1 || uv__is_closing(stream))
     return;
 
   if (error < 0) {
