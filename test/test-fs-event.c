@@ -154,7 +154,8 @@ static void fs_event_cb_del_dir(uv_fs_event_t* handle,
   ASSERT_OK(status);
   ASSERT(events == UV_CHANGE || events == UV_RENAME);
   /* The filename may be NULL when it cannot be determined. */
-  ASSERT(filename == NULL || strcmp(filename, "watch_del_dir") == 0);
+  if (filename != NULL)
+    ASSERT_STR_EQ(filename, "watch_del_dir");
   ASSERT_OK(uv_fs_event_stop(handle));
   uv_close((uv_handle_t*)handle, close_cb);
 }
