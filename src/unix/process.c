@@ -42,6 +42,10 @@
 #elif defined(_AIX)
 #define _PATH_DEFPATH "/opt/freeware/bin:/usr/bin:/bin"
 #endif
+/* Some platforms (e.g. Solaris) do not define this in <paths.h>. */
+#ifndef _PATH_DEFPATH
+#define _PATH_DEFPATH "/usr/bin:/bin"
+#endif
 #ifndef NAME_MAX
 #define NAME_MAX 255
 #endif
