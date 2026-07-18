@@ -4,7 +4,7 @@
 
 libuv is a multi-platform support library with a focus on asynchronous I/O. It
 was primarily developed for use by [Node.js][], but it's also
-used by [Luvit](http://luvit.io/), [Julia](http://julialang.org/),
+used by [Luvit](https://luvit.io/), [Julia](https://julialang.org/),
 [uvloop](https://github.com/MagicStack/uvloop), and [others](https://github.com/libuv/libuv/blob/v1.x/LINKS.md).
 
 ## Feature highlights
@@ -35,11 +35,11 @@ used by [Luvit](http://luvit.io/), [Julia](http://julialang.org/),
 
 ## Versioning
 
-Starting with version 1.0.0 libuv follows the [semantic versioning](http://semver.org/)
+Starting with version 1.0.0 libuv follows the [semantic versioning](https://semver.org/)
 scheme. The API change and backwards compatibility rules are those indicated by
 SemVer. libuv will keep a stable ABI across major releases.
 
-The ABI/API changes can be tracked [here](http://abi-laboratory.pro/tracker/timeline/libuv/).
+The ABI/API changes can be tracked [here](https://abi-laboratory.pro/tracker/timeline/libuv/).
 
 ## Licensing
 
@@ -52,13 +52,13 @@ The documentation is licensed under the CC BY 4.0 license. Check the
 ## Community
 
  * [Support](https://github.com/libuv/libuv/discussions)
- * [Mailing list](http://groups.google.com/group/libuv)
+ * [Mailing list](https://groups.google.com/group/libuv)
 
 ## Documentation
 
 ### Official documentation
 
-Located in the docs/ subdirectory. It uses the [Sphinx](http://sphinx-doc.org/)
+Located in the docs/ subdirectory. It uses the [Sphinx](https://sphinx-doc.org/)
 framework, which makes it possible to build the documentation in multiple
 formats.
 
@@ -95,14 +95,14 @@ $ make epub
 
 NOTE: Windows users need to use make.bat instead of plain 'make'.
 
-Documentation can be browsed online [here](http://docs.libuv.org).
+Documentation can be browsed online [here](https://docs.libuv.org).
 
 The [tests and benchmarks](https://github.com/libuv/libuv/tree/master/test)
 also serve as API specification and usage examples.
 
 ### Other resources
 
- * [LXJS 2012 talk](http://www.youtube.com/watch?v=nGn60vDSxQ4)
+ * [LXJS 2012 talk](https://www.youtube.com/watch?v=nGn60vDSxQ4)
    &mdash; High-level introductory talk about libuv.
  * [libuv-dox](https://github.com/thlorenz/libuv-dox)
    &mdash; Documenting types and methods of libuv, mostly by reading uv.h.
@@ -116,7 +116,7 @@ date. Please verify it before opening new issues.
 
 libuv can be downloaded either from the
 [GitHub repository](https://github.com/libuv/libuv)
-or from the [downloads site](http://dist.libuv.org/dist/).
+or from the [downloads site](https://dist.libuv.org/dist/).
 
 Before verifying the git tags or signature files, importing the relevant keys
 is necessary. Key IDs are listed in the
@@ -144,7 +144,7 @@ $ git verify-tag v1.6.1
 ```
 
 Starting with libuv 1.7.0, the tarballs stored in the
-[downloads site](http://dist.libuv.org/dist/) are signed and an accompanying
+[downloads site](https://dist.libuv.org/dist/) are signed and an accompanying
 signature file sit alongside each. Once both the release tarball and the
 signature file are downloaded, the file can be verified as follows:
 
@@ -324,7 +324,7 @@ AIX compilation using IBM XL C/C++ requires version 12.1 or greater.
 AIX support for filesystem events requires the non-default IBM `bos.ahafs`
 package to be installed.  This package provides the AIX Event Infrastructure
 that is detected by `autoconf`.
-[IBM documentation](http://www.ibm.com/developerworks/aix/library/au-aix_event_infrastructure/)
+[IBM documentation](https://www.ibm.com/developerworks/aix/library/au-aix_event_infrastructure/)
 describes the package in more detail.
 
 ### z/OS Notes
@@ -346,10 +346,10 @@ Use the `ipcrm` command to manually clear up System V resources.
 See the [guidelines for contributing][].
 
 [CMake]: https://cmake.org/
-[node.js]: http://nodejs.org/
+[node.js]: https://nodejs.org/
 [guidelines for contributing]: https://github.com/libuv/libuv/blob/master/CONTRIBUTING.md
 [libuv_banner]: https://raw.githubusercontent.com/libuv/libuv/master/img/banner.png
 [Visual C++ Build Tools]: https://visualstudio.microsoft.com/visual-cpp-build-tools/
 [Visual Studio 2015 Update 3]: https://www.visualstudio.com/vs/older-downloads/
 [Visual Studio 2017]: https://www.visualstudio.com/downloads/
-[Git for Windows]: http://git-scm.com/download/win
+[Git for Windows]: https://git-scm.com/download/win
