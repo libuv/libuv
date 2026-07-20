@@ -476,6 +476,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/no-proctitle.c \
                     src/unix/posix-hrtime.c \
                     src/unix/posix-poll.c
+test_run_tests_LDFLAGS += -lbsd
 endif
 
 if HURD
@@ -540,6 +541,7 @@ libuv_la_CFLAGS += -D__EXTENSIONS__ \
                    -DSUNOS_NO_IFADDRS \
                    -D_REENTRANT
 libuv_la_SOURCES += src/unix/no-proctitle.c \
+                    src/unix/random-getrandom.c \
                     src/unix/sunos.c
 endif
 

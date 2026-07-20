@@ -407,12 +407,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   list(APPEND uv_libraries kstat nsl sendfile socket)
   list(APPEND uv_sources
        src/unix/no-proctitle.c
+       src/unix/random-getrandom.c
        src/unix/sunos.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
   list(APPEND uv_defines _BSD_SOURCE)
-  list(APPEND uv_libraries bsd network)
+  list(APPEND uv_libraries network)
   list(APPEND uv_sources
 	  src/unix/haiku.c
 	  src/unix/bsd-ifaddrs.c
@@ -420,6 +421,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
 	  src/unix/no-proctitle.c
 	  src/unix/posix-hrtime.c
 	  src/unix/posix-poll.c)
+  list(APPEND uv_test_libraries bsd)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
@@ -752,6 +754,8 @@ if(LIBUV_BUILD_TESTS)
                        COMMAND "${CMAKE_COMMAND}" -E copy
                        "$<TARGET_FILE:uv_run_tests_a>"
                        "$<TARGET_FILE_DIR:uv_run_tests_a>/uv_run_tests_a_no_ext")
+    add_executable(uv_run_appcontainer test/appcontainer.c)
+    target_link_libraries(uv_run_appcontainer userenv advapi32 ntdll)
   endif()
 
   if(QNX)

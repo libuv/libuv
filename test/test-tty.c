@@ -34,6 +34,8 @@
 #  include <util.h>
 # elif defined(__FreeBSD__) || defined(__DragonFly__)
 #  include <libutil.h>
+# elif defined(__HAIKU__)
+#  include <pty.h>
 # endif
 #endif
 
@@ -118,6 +120,9 @@ TEST_IMPL(tty) {
 
   ASSERT_GT(width, 0);
   ASSERT_GT(height, 0);
+
+  r = uv_tty_set_mode(&tty_in, (uv_tty_mode_t) -1);
+  ASSERT_EQ(r, UV_EINVAL);
 
   /* Turn on raw mode. */
   r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_RAW);
@@ -442,6 +447,10 @@ TEST_IMPL(tty_pty) {
   ASSERT(uv_is_writable((uv_stream_t*) &slave_tty));
   ASSERT(uv_is_readable((uv_stream_t*) &master_tty));
   ASSERT(uv_is_writable((uv_stream_t*) &master_tty));
+
+  r = uv_tty_set_mode(&slave_tty, (uv_tty_mode_t) -1);
+  ASSERT_EQ(r, UV_EINVAL);
+
   /* Check if the file descriptor was reopened. If it is,
    * UV_HANDLE_BLOCKING_WRITES (value 0x100000) isn't set on flags.
    */
