@@ -640,6 +640,26 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              const struct sockaddr* addr,
                              uv_connect_cb cb);
 
+
+/*
+ * Exports a uv_tcp_t handle by duplicating its underlying file descriptor.
+ *
+ * This allows the socket to be safely imported and used by another
+ * libuv event loop or thread using `uv_tcp_import()`.
+ */
+UV_EXTERN int uv_tcp_export(uv_tcp_t* stream, int* fd);
+
+/*
+ * Imports a TCP socket file descriptor into a libuv TCP handle.
+ *
+ * This function initializes a user-provided `uv_tcp_t` structure and binds it
+ * to an existing, valid file descriptor (mostly obtained via `uv_tcp_export`)
+ */
+UV_EXTERN int uv_tcp_import(uv_loop_t* loop,
+                            int fd,
+                            uv_tcp_t* out,
+                            unsigned int flags);
+
 /* uv_connect_t is a subclass of uv_req_t. */
 struct uv_connect_s {
   UV_REQ_FIELDS
