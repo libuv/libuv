@@ -297,6 +297,7 @@ TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
+TEST_DECLARE   (pipe_write_trailing_empty_buf)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (process_priority)
 TEST_DECLARE   (has_ref)
@@ -892,6 +893,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_getsockname_long_path)
   TEST_ENTRY  (pipe_pending_instances)
   TEST_ENTRY  (pipe_sendmsg)
+  TEST_ENTRY  (pipe_write_trailing_empty_buf)
 
   TEST_ENTRY  (connection_fail)
   TEST_ENTRY  (connection_fail_doesnt_auto_close)

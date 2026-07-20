@@ -703,6 +703,9 @@ static int uv__write_req_update(uv_stream_t* stream,
     n -= len;
   } while (n > 0);
 
+  while (buf < req->bufs + req->nbufs && buf->len == 0)
+    buf++;
+
   req->write_index = buf - req->bufs;
 
   return req->write_index == req->nbufs;
