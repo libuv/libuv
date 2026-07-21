@@ -1228,6 +1228,14 @@ int uv_udp_set_tos(uv_udp_t* handle, int tos) {
 }
 
 
+/* Darwin hides IPV6_DONTFRAG behind __APPLE_USE_RFC_3542 but the kernel
+ * always handles it.
+ */
+#if defined(__APPLE__) && !defined(IPV6_DONTFRAG)
+#define IPV6_DONTFRAG 62
+#endif
+
+
 int uv_udp_set_dontfrag(uv_udp_t* handle, int on) {
 #if defined(IP_MTU_DISCOVER) && defined(IPV6_MTU_DISCOVER)
   /* Linux: PROBE sets the don't-fragment flag without the kernel clamping
