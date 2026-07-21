@@ -1193,6 +1193,133 @@ int uv_udp_set_ttl(uv_udp_t* handle, int ttl) {
 }
 
 
+int uv_udp_set_tos(uv_udp_t* handle, int tos) {
+  if (tos < 0 || tos > 255)
+    return UV_EINVAL;
+
+#if !defined(IPV6_TCLASS)
+  /* Haiku: no IPv6 traffic class option. */
+  if (handle->flags & UV_HANDLE_IPV6)
+    return UV_ENOTSUP;
+
+  return uv__setsockopt_maybe_char(handle, IP_TOS, 0, tos);
+/* On Solaris and derivatives such as SmartOS, AIX, OpenBSD, z/OS and QNX
+ * the length of socket options is sizeof(int); elsewhere the char-sized
+ * fallback path handles the remaining platforms. This mirrors
+ * uv_udp_set_ttl above.
+ */
+#elif defined(__sun) || defined(_AIX) || defined(__OpenBSD__) || \
+    defined(__MVS__) || defined(__QNX__)
+
+  return uv__setsockopt(handle,
+                        IP_TOS,
+                        IPV6_TCLASS,
+                        &tos,
+                        sizeof(tos));
+
+#else
+
+  return uv__setsockopt_maybe_char(handle,
+                                   IP_TOS,
+                                   IPV6_TCLASS,
+                                   tos);
+
+#endif
+}
+
+
+int uv_udp_set_dontfrag(uv_udp_t* handle, int on) {
+#if defined(IP_MTU_DISCOVER) && defined(IPV6_MTU_DISCOVER)
+  /* Linux: PROBE sets the don't-fragment flag without the kernel clamping
+   * sends to its cached path MTU estimate, as required for path MTU
+   * discovery implemented by the application.
+   */
+  int val;
+
+  if (handle->flags & UV_HANDLE_IPV6)
+    val = on ? IPV6_PMTUDISC_PROBE : IPV6_PMTUDISC_DONT;
+  else
+    val = on ? IP_PMTUDISC_PROBE : IP_PMTUDISC_DONT;
+
+  return uv__setsockopt(handle,
+                        IP_MTU_DISCOVER,
+                        IPV6_MTU_DISCOVER,
+                        &val,
+                        sizeof(val));
+#elif defined(IP_DONTFRAG) && defined(IPV6_DONTFRAG)
+  int val;
+
+  val = on != 0;
+  return uv__setsockopt(handle,
+                        IP_DONTFRAG,
+                        IPV6_DONTFRAG,
+                        &val,
+                        sizeof(val));
+#elif defined(IP_DONTFRAG)
+  /* Haiku: no IPv6 don't-fragment option. */
+  int val;
+
+  if (handle->flags & UV_HANDLE_IPV6)
+    return UV_ENOTSUP;
+
+  val = on != 0;
+  return uv__setsockopt(handle, IP_DONTFRAG, 0, &val, sizeof(val));
+#elif defined(IPV6_DONTFRAG)
+  int val;
+
+  if (!(handle->flags & UV_HANDLE_IPV6))
+    return UV_ENOTSUP;
+
+  val = on != 0;
+  return uv__setsockopt(handle, 0, IPV6_DONTFRAG, &val, sizeof(val));
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
+
+int uv_udp_set_incoming_cpu(uv_udp_t* handle, int cpu) {
+#if defined(SO_INCOMING_CPU)
+  if (cpu < 0)
+    return UV_EINVAL;
+
+  if (setsockopt(handle->io_watcher.fd,
+                 SOL_SOCKET,
+                 SO_INCOMING_CPU,
+                 &cpu,
+                 sizeof(cpu)))
+    return UV__ERR(errno);
+
+  return 0;
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
+
+int uv_udp_get_mtu(const uv_udp_t* handle, int* mtu) {
+#if defined(IP_MTU) && defined(IPV6_MTU)
+  socklen_t len;
+  int val;
+  int r;
+
+  len = sizeof(val);
+  if (handle->flags & UV_HANDLE_IPV6)
+    r = getsockopt(handle->io_watcher.fd, IPPROTO_IPV6, IPV6_MTU, &val, &len);
+  else
+    r = getsockopt(handle->io_watcher.fd, IPPROTO_IP, IP_MTU, &val, &len);
+
+  if (r)
+    return UV__ERR(errno);
+
+  *mtu = val;
+  return 0;
+#else
+  return UV_ENOTSUP;
+#endif
+}
+
+
 int uv_udp_set_multicast_ttl(uv_udp_t* handle, int ttl) {
 /*
  * On Solaris and derivatives such as SmartOS, the length of socket options

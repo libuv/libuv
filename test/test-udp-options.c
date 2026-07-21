@@ -84,6 +84,42 @@ static int udp_options_test(const struct sockaddr* addr) {
   ASSERT_EQ(r, UV_EINVAL);
   /* don't test ttl=-1, it's a valid value on some platforms */
 
+  /* TOS/traffic class values 0-255 should work */
+  for (i = 0; i <= 255; i++) {
+    r = uv_udp_set_tos(&h, i);
+#if defined(_WIN32)
+    ASSERT_EQ(r, UV_ENOTSUP);
+#else
+    ASSERT_OK(r);
+#endif
+  }
+
+  r = uv_udp_set_tos(&h, 256);
+  ASSERT_EQ(r, UV_EINVAL);
+  r = uv_udp_set_tos(&h, -1);
+  ASSERT_EQ(r, UV_EINVAL);
+
+  r = uv_udp_set_dontfrag(&h, 1);
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__) || \
+    defined(_WIN32)
+  ASSERT_OK(r);
+#else
+  ASSERT(r == 0 || r == UV_ENOTSUP);
+#endif
+  if (r == 0) {
+    r = uv_udp_set_dontfrag(&h, 0);
+    ASSERT_OK(r);
+  }
+
+  r = uv_udp_set_incoming_cpu(&h, 0);
+#if defined(__linux__) && !defined(__QEMU__)
+  ASSERT_OK(r);
+  r = uv_udp_set_incoming_cpu(&h, -1);
+  ASSERT_EQ(r, UV_EINVAL);
+#elif !defined(__linux__)
+  ASSERT_EQ(r, UV_ENOTSUP);
+#endif
+
   r = uv_run(loop, UV_RUN_DEFAULT);
   ASSERT_OK(r);
 
@@ -108,6 +144,41 @@ TEST_IMPL(udp_options6) {
 
   ASSERT_OK(uv_ip6_addr("::", TEST_PORT, &addr));
   return udp_options_test((const struct sockaddr*) &addr);
+}
+
+
+TEST_IMPL(udp_get_mtu) {
+  struct sockaddr_in addr;
+  uv_loop_t* loop;
+  uv_udp_t h;
+  int mtu;
+  int r;
+
+#if defined(__QEMU__)
+  /* qemu-user does not pass through getsockopt(SOL_IP, IP_MTU). */
+  RETURN_SKIP("Test does not currently work in QEMU");
+#endif
+
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  loop = uv_default_loop();
+  ASSERT_OK(uv_udp_init(loop, &h));
+  ASSERT_OK(uv_udp_connect(&h, (const struct sockaddr*) &addr));
+
+  mtu = 0;
+  r = uv_udp_get_mtu(&h, &mtu);
+#if defined(__linux__) || defined(_WIN32)
+  ASSERT_OK(r);
+  ASSERT_GT(mtu, 0);
+#else
+  ASSERT_EQ(r, UV_ENOTSUP);
+#endif
+
+  uv_close((uv_handle_t*) &h, NULL);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
 }
 
 
