@@ -203,6 +203,22 @@ int uv__udp_try_send2(uv_udp_t* handle,
                       unsigned int nbufs[/*count*/],
                       struct sockaddr* addrs[/*count*/]);
 
+int uv__udp_send2(uv_udp_send_t* req,
+                  uv_udp_t* handle,
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  const struct sockaddr* addr,
+                  unsigned int addrlen,
+                  const uv_udp_send_opts_t* opts,
+                  uv_udp_send_cb send_cb);
+
+int uv__udp_try_send3(uv_udp_t* handle,
+                      unsigned int count,
+                      uv_buf_t* bufs[/*count*/],
+                      unsigned int nbufs[/*count*/],
+                      struct sockaddr* addrs[/*count*/],
+                      const uv_udp_send_opts_t* const opts[/*count*/]);
+
 int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloccb,
                        uv_udp_recv_cb recv_cb);
 

@@ -556,6 +556,99 @@ int uv_udp_try_send2(uv_udp_t* handle,
 }
 
 
+static int uv__udp_check_send_opts(const uv_udp_send_opts_t* opts) {
+  if (opts == NULL || opts->flags == 0)
+    return 0;
+
+  if (opts->flags & ~(unsigned int) (UV_UDP_SEND_TOS |
+                                     UV_UDP_SEND_SEGMENT |
+                                     UV_UDP_SEND_PKTINFO))
+    return UV_EINVAL;
+
+  if (opts->flags & UV_UDP_SEND_TOS)
+    if (opts->tos < 0 || opts->tos > 255)
+      return UV_EINVAL;
+
+  if (opts->flags & UV_UDP_SEND_SEGMENT)
+    if (opts->segment_size == 0 || opts->segment_size > 65535)
+      return UV_EINVAL;
+
+  if (opts->flags & UV_UDP_SEND_PKTINFO)
+    if (opts->src.ss_family != AF_INET && opts->src.ss_family != AF_INET6)
+      return UV_EINVAL;
+
+  return 0;
+}
+
+
+int uv_udp_send2(uv_udp_send_t* req,
+                 uv_udp_t* handle,
+                 const uv_buf_t bufs[],
+                 unsigned int nbufs,
+                 const struct sockaddr* addr,
+                 const uv_udp_send_opts_t* opts,
+                 uv_udp_send_cb send_cb) {
+  int addrlen;
+  int err;
+
+  addrlen = uv__udp_check_before_send(handle, bufs, nbufs, addr);
+  if (addrlen < 0)
+    return addrlen;
+
+  err = uv__udp_check_send_opts(opts);
+  if (err)
+    return err;
+
+  if (opts != NULL && opts->flags == 0)
+    opts = NULL;
+
+  return uv__udp_send2(req, handle, bufs, nbufs, addr, addrlen, opts, send_cb);
+}
+
+
+int uv_udp_try_send3(uv_udp_t* handle,
+                     unsigned int count,
+                     uv_buf_t* bufs[/*count*/],
+                     unsigned int nbufs[/*count*/],
+                     struct sockaddr* addrs[/*count*/],
+                     const uv_udp_send_opts_t* const opts[/*count*/],
+                     unsigned int flags) {
+  unsigned int i;
+  int addrlen;
+  int err;
+  int any_opts;
+
+  if (count < 1)
+    return UV_EINVAL;
+
+  if (flags != 0)
+    return UV_EINVAL;
+
+  any_opts = 0;
+  for (i = 0; i < count; i++) {
+    addrlen = uv__udp_check_before_send(handle, bufs[i], nbufs[i], addrs[i]);
+    if (addrlen < 0)
+      return addrlen;
+
+    if (opts != NULL && opts[i] != NULL) {
+      err = uv__udp_check_send_opts(opts[i]);
+      if (err)
+        return err;
+      if (opts[i]->flags != 0)
+        any_opts = 1;
+    }
+  }
+
+  if (handle->send_queue_count > 0)
+    return UV_EAGAIN;
+
+  if (!any_opts)
+    return uv__udp_try_send2(handle, count, bufs, nbufs, addrs);
+
+  return uv__udp_try_send3(handle, count, bufs, nbufs, addrs, opts);
+}
+
+
 int uv_udp_recv_start(uv_udp_t* handle,
                       uv_alloc_cb alloc_cb,
                       uv_udp_recv_cb recv_cb) {

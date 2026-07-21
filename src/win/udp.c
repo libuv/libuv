@@ -1166,6 +1166,36 @@ int uv__udp_try_send(uv_udp_t* handle,
 }
 
 
+int uv__udp_send2(uv_udp_send_t* req,
+                  uv_udp_t* handle,
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  const struct sockaddr* addr,
+                  unsigned int addrlen,
+                  const uv_udp_send_opts_t* opts,
+                  uv_udp_send_cb send_cb) {
+  if (opts == NULL)
+    return uv__udp_send(req, handle, bufs, nbufs, addr, addrlen, send_cb);
+
+  /* Requires a WSASendMsg send path; not yet implemented. */
+  return UV_ENOTSUP;
+}
+
+
+int uv__udp_try_send3(uv_udp_t* handle,
+                      unsigned int count,
+                      uv_buf_t* bufs[/*count*/],
+                      unsigned int nbufs[/*count*/],
+                      struct sockaddr* addrs[/*count*/],
+                      const uv_udp_send_opts_t* const opts[/*count*/]) {
+  if (opts == NULL)
+    return uv__udp_try_send2(handle, count, bufs, nbufs, addrs);
+
+  /* Requires a WSASendMsg send path; not yet implemented. */
+  return UV_ENOTSUP;
+}
+
+
 int uv__udp_try_send2(uv_udp_t* handle,
                       unsigned int count,
                       uv_buf_t* bufs[/*count*/],
