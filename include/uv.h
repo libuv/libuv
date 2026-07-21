@@ -726,6 +726,45 @@ enum uv_udp_flags {
   UV_UDP_RECVMMSG = 256
 };
 
+/*
+ * Per-datagram receive information opt-ins, used with
+ * uv_udp_set_recv_info() and reported in the uv_udp_recv_info_t
+ * valid mask.
+ */
+enum uv_udp_recv_info_flags {
+  /* IP_RECVTOS / IPV6_RECVTCLASS; the received type of service or traffic
+   * class, with the ECN codepoint in the low two bits.
+   */
+  UV_UDP_RECV_TOS = 1,
+  /* IP_RECVTTL / IPV6_RECVHOPLIMIT; the received time to live or hop
+   * limit.
+   */
+  UV_UDP_RECV_TTL = 2,
+  /* IP_PKTINFO / IPV6_RECVPKTINFO; the local destination address the
+   * datagram arrived on and the receiving interface index.
+   */
+  UV_UDP_RECV_PKTINFO = 4,
+  /* UDP_GRO; kernel receive coalescing of consecutive datagrams into a
+   * single buffer, with the segment size reported per receive. Linux
+   * 5.0+ only.
+   */
+  UV_UDP_RECV_GRO = 8
+};
+
+/*
+ * Per-datagram receive information, retrieved with uv_udp_recv_info()
+ * from within a uv_udp_recv_cb. Fields are only meaningful when the
+ * corresponding uv_udp_recv_info_flags bit is set in `valid`.
+ */
+typedef struct uv_udp_recv_info_s {
+  unsigned int valid;
+  int tos;
+  int ttl;
+  struct sockaddr_storage dst;
+  unsigned int ifindex;
+  unsigned int segment_size;
+} uv_udp_recv_info_t;
+
 typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
 typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
                                ssize_t nread,
@@ -808,6 +847,9 @@ UV_EXTERN int uv_udp_try_send2(uv_udp_t* handle,
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,
                                 uv_udp_recv_cb recv_cb);
+UV_EXTERN int uv_udp_set_recv_info(uv_udp_t* handle, unsigned int mask);
+UV_EXTERN int uv_udp_recv_info(const uv_udp_t* handle,
+                               uv_udp_recv_info_t* info);
 UV_EXTERN int uv_udp_using_recvmmsg(const uv_udp_t* handle);
 UV_EXTERN int uv_udp_recv_stop(uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_size(const uv_udp_t* handle);

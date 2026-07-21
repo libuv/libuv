@@ -110,6 +110,11 @@ enum {
   UV_HANDLE_UDP_PROCESSING              = 0x01000000,
   UV_HANDLE_UDP_CONNECTED               = 0x02000000,
   UV_HANDLE_UDP_RECVMMSG                = 0x04000000,
+  /* UV_UDP_RECV_* opt-ins, stored as uv_udp_recv_info_flags << 27. */
+  UV_HANDLE_UDP_RECV_TOS                = 0x08000000,
+  UV_HANDLE_UDP_RECV_TTL                = 0x10000000,
+  UV_HANDLE_UDP_RECV_PKTINFO            = 0x20000000,
+  UV_HANDLE_UDP_RECV_GRO                = 0x40000000,
 
   /* Only used by uv_pipe_t handles. */
   UV_HANDLE_NON_OVERLAPPED_PIPE         = 0x01000000,
@@ -439,6 +444,10 @@ struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
   int current_timeout;
+  /* Current datagram delivery, valid only for the duration of a
+   * uv_udp_recv_cb; consumed by uv_udp_recv_info(). */
+  void* udp_recv_msg;  /* struct msghdr* */
+  const uv_udp_t* udp_recv_handle;
 #ifdef __linux__
   struct uv__iou ctl;
   struct uv__iou iou;
