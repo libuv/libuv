@@ -94,7 +94,7 @@ enum {
   UV_HANDLE_ZERO_READ                   = 0x00040000,
   UV_HANDLE_EMULATE_IOCP                = 0x00080000,
   UV_HANDLE_BLOCKING_WRITES             = 0x00100000,
-  UV_HANDLE_CANCELLATION_PENDING        = 0x00200000,
+  UV_HANDLE_READ_CANCELLATION_PENDING   = 0x00200000,
 
   /* Used by uv_tcp_t and uv_udp_t handles */
   UV_HANDLE_IPV6                        = 0x00400000,
@@ -147,6 +147,8 @@ int uv__async_spin(uv_async_t* handle);
 
 /* Platform hook: post a wakeup notification for the given async handle. */
 void uv__async_notify(uv_async_t* handle);
+
+int uv__write_cancel(uv_write_t* req);
 
 int uv__read_start(uv_stream_t* stream,
                    uv_alloc_cb alloc_cb,
