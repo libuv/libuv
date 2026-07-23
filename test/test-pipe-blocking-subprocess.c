@@ -40,6 +40,8 @@ static uv_write_t req;
 static uv_buf_t buf;
 static uv_timer_t timer;
 static int closed_streams;
+static int partial_cancel_requested;
+static size_t partial_nwritten;
 
 static void close_cb(uv_handle_t *handle) {
   ++closed_streams;
@@ -203,6 +205,83 @@ TEST_IMPL(pipe_blocking_cancel) {
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
   ASSERT_EQ(write_complete, 1);
   ASSERT_EQ(closed_streams, 2);
+
+  free(buf.base);
+
+  return 0;
+}
+
+static void write_cb_cancel_nwritten(uv_write_t* req, int status) {
+  ASSERT_EQ(UV_ECANCELED, status);
+  ++write_complete;
+
+  partial_nwritten = uv_write_nwritten(req);
+  ASSERT_GT(partial_nwritten, 0);
+  ASSERT_GE(partial_nwritten, total_read);
+  ASSERT_LT(partial_nwritten, buf.len);
+
+  uv_close((uv_handle_t*) &pipe_in, close_cb);
+  uv_close((uv_handle_t*) &pipe_out, close_cb);
+}
+
+static void read_cb_cancel_nwritten(uv_stream_t* stream,
+                                    ssize_t nread,
+                                    const uv_buf_t* read_buf) {
+  ASSERT_GT(nread, 0);
+  ASSERT_EQ(0, partial_cancel_requested);
+
+  total_read += nread;
+  free(read_buf->base);
+
+  partial_cancel_requested = 1;
+  ASSERT_OK(uv_read_stop(stream));
+  ASSERT_OK(uv_cancel((uv_req_t*) &req));
+}
+
+static void exit_cb_cancel_nwritten(uv_process_t* process,
+                                    int64_t exit_status,
+                                    int term_signal) {
+  ASSERT_EQ(1, exit_status);
+  ASSERT_OK(term_signal);
+  uv_close((uv_handle_t*) process, NULL);
+
+  ASSERT_OK(uv_write(&req,
+                     (uv_stream_t*) &pipe_in,
+                     &buf,
+                     1,
+                     write_cb_cancel_nwritten));
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe_out,
+                          alloc_cb,
+                          read_cb_cancel_nwritten));
+}
+
+TEST_IMPL(pipe_blocking_cancel_nwritten) {
+#ifdef _WIN32
+  RETURN_SKIP("Unix only test");
+#endif
+
+  init_common();
+  args[1] = "spawn_helper1";
+  options.exit_cb = exit_cb_cancel_nwritten;
+
+  total_read = 0;
+  write_complete = 0;
+  closed_streams = 0;
+  partial_cancel_requested = 0;
+  partial_nwritten = 0;
+
+  buf.len = FILL_PIPE_NUM;
+  buf.base = malloc(buf.len);
+  memset(buf.base, 'A', buf.len);
+
+  /* The child inherits stdout without writing to it. This makes pipe_in a
+   * blocking-write stream while ensuring every byte read belongs to req. */
+  ASSERT_OK(uv_spawn(loop, &process, &options));
+
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(1, partial_cancel_requested);
+  ASSERT_EQ(1, write_complete);
+  ASSERT_EQ(2, closed_streams);
 
   free(buf.base);
 
