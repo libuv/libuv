@@ -284,9 +284,17 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   int fd;
   int rc;
 
-  if (uv__is_raw_tty_mode(mode)) {
-    /* There is only a single raw TTY mode on UNIX. */
-    mode = UV_TTY_MODE_RAW;
+  switch (mode) {
+    case UV_TTY_MODE_RAW_VT:
+      /* There is only a single raw TTY mode on UNIX. */
+      mode = UV_TTY_MODE_RAW;
+      break;
+    case UV_TTY_MODE_NORMAL:
+    case UV_TTY_MODE_RAW:
+    case UV_TTY_MODE_IO:
+      break;
+    default:
+      return UV_EINVAL;
   }
 
   if (tty->mode == (int) mode)

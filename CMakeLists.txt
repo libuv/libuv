@@ -197,7 +197,8 @@ if(WIN32)
        ws2_32
        dbghelp
        ole32
-       shell32)
+       shell32
+       synchronization)
   list(APPEND uv_sources
        src/win/async.c
        src/win/core.c
@@ -407,12 +408,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
   list(APPEND uv_libraries kstat nsl sendfile socket)
   list(APPEND uv_sources
        src/unix/no-proctitle.c
+       src/unix/random-getrandom.c
        src/unix/sunos.c)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
   list(APPEND uv_defines _BSD_SOURCE)
-  list(APPEND uv_libraries bsd network)
+  list(APPEND uv_libraries network)
   list(APPEND uv_sources
 	  src/unix/haiku.c
 	  src/unix/bsd-ifaddrs.c
@@ -420,6 +422,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Haiku")
 	  src/unix/no-proctitle.c
 	  src/unix/posix-hrtime.c
 	  src/unix/posix-poll.c)
+  list(APPEND uv_test_libraries bsd)
 endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
@@ -608,6 +611,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-pipe-server-close.c
        test/test-pipe-set-fchmod.c
        test/test-pipe-set-non-blocking.c
+       test/test-pipe-write.c
        test/test-platform-output.c
        test/test-poll-close-doesnt-corrupt-stack.c
        test/test-poll-close.c
@@ -632,6 +636,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-signal-multiple-loops.c
        test/test-signal-pending-on-close.c
        test/test-signal.c
+       test/test-sizeof.c
        test/test-socket-buffer-size.c
        test/test-spawn.c
        test/test-stdio-over-pipes.c
@@ -665,6 +670,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-unexpected-read.c
        test/test-tcp-write-after-connect.c
        test/test-tcp-write-fail.c
+       test/test-write-cancel.c
        test/test-tcp-write-queue-order.c
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c
@@ -752,6 +758,8 @@ if(LIBUV_BUILD_TESTS)
                        COMMAND "${CMAKE_COMMAND}" -E copy
                        "$<TARGET_FILE:uv_run_tests_a>"
                        "$<TARGET_FILE_DIR:uv_run_tests_a>/uv_run_tests_a_no_ext")
+    add_executable(uv_run_appcontainer test/appcontainer.c)
+    target_link_libraries(uv_run_appcontainer userenv advapi32 ntdll)
   endif()
 
   if(QNX)

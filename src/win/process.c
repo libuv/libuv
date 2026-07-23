@@ -1252,11 +1252,12 @@ static int uv__kill(HANDLE process_handle, int signum) {
    * [0]: https://learn.microsoft.com/en-us/windows/win32/wer/collecting-user-mode-dumps */
   if (signum == SIGQUIT) {
     HKEY registry_key;
-    DWORD pid, ret;
-    WCHAR basename[MAX_PATH];
+    DWORD pid;
+    DWORD ret;
+    WCHAR basename[MAX_PATH] = L"";
 
     /* Get target process name. */
-    GetModuleBaseNameW(process_handle, NULL, &basename[0], sizeof(basename));
+    GetModuleBaseNameW(process_handle, NULL, &basename[0], ARRAY_SIZE(basename));
 
     /* Get PID of target process. */
     pid = GetProcessId(process_handle);
@@ -1270,8 +1271,10 @@ static int uv__kill(HANDLE process_handle, int signum) {
         &registry_key);
     if (ret == ERROR_SUCCESS) {
       HANDLE hDumpFile = NULL;
-      WCHAR dump_folder[MAX_PATH], dump_name[MAX_PATH];
-      DWORD dump_folder_len = sizeof(dump_folder), key_type = 0;
+      WCHAR dump_folder[MAX_PATH] = L"";
+      WCHAR dump_name[MAX_PATH];
+      DWORD dump_folder_len = sizeof(dump_folder);
+      DWORD key_type = 0;
       ret = RegGetValueW(registry_key,
                          NULL,
                          L"DumpFolder",
@@ -1280,6 +1283,8 @@ static int uv__kill(HANDLE process_handle, int signum) {
                          (PVOID) dump_folder,
                          &dump_folder_len);
       if (ret != ERROR_SUCCESS) {
+        /* Discard any partial write from ERROR_MORE_DATA. */
+        dump_folder[0] = L'\0';
         /* Workaround for missing uuid.dll on MinGW. */
         static const GUID FOLDERID_LocalAppData_libuv = {
           0xf1b32785, 0x6fba, 0x4fcf,
@@ -1287,79 +1292,82 @@ static int uv__kill(HANDLE process_handle, int signum) {
         };
 
         /* Default value for `dump_folder` is `%LOCALAPPDATA%\CrashDumps`. */
-        WCHAR* localappdata;
-        SHGetKnownFolderPath(&FOLDERID_LocalAppData_libuv,
-                             0,
-                             NULL,
-                             &localappdata);
-        _snwprintf_s(dump_folder,
-                     ARRAY_SIZE(dump_folder),
-                     _TRUNCATE,
-                     L"%ls\\CrashDumps",
-                     localappdata);
+        WCHAR* localappdata = NULL;
+        if (SUCCEEDED(SHGetKnownFolderPath(&FOLDERID_LocalAppData_libuv,
+                                           0,
+                                           NULL,
+                                           &localappdata))) {
+          _snwprintf_s(dump_folder,
+                       ARRAY_SIZE(dump_folder),
+                       _TRUNCATE,
+                       L"%ls\\CrashDumps",
+                       localappdata);
+        }
         CoTaskMemFree(localappdata);
       }
       RegCloseKey(registry_key);
 
-      /* Create dump folder if it doesn't already exist. */
-      CreateDirectoryW(dump_folder, NULL);
+      if (dump_folder[0] != L'\0') {
+        /* Create dump folder if it doesn't already exist. */
+        CreateDirectoryW(dump_folder, NULL);
 
-      /* Construct dump filename from process name and PID. */
-      _snwprintf_s(dump_name,
-                   ARRAY_SIZE(dump_name),
-                   _TRUNCATE,
-                   L"%ls\\%ls.%d.dmp",
-                   dump_folder,
-                   basename,
-                   pid);
+        /* Construct dump filename from process name and PID. */
+        _snwprintf_s(dump_name,
+                     ARRAY_SIZE(dump_name),
+                     _TRUNCATE,
+                     L"%ls\\%ls.%d.dmp",
+                     dump_folder,
+                     basename,
+                     pid);
 
-      hDumpFile = CreateFileW(dump_name,
-                              GENERIC_WRITE,
-                              0,
-                              NULL,
-                              CREATE_NEW,
-                              FILE_ATTRIBUTE_NORMAL,
-                              NULL);
-      if (hDumpFile != INVALID_HANDLE_VALUE) {
-        DWORD dump_options, sym_options;
-        FILE_DISPOSITION_INFO DeleteOnClose = { TRUE };
+        hDumpFile = CreateFileW(dump_name,
+                                GENERIC_WRITE,
+                                0,
+                                NULL,
+                                CREATE_NEW,
+                                FILE_ATTRIBUTE_NORMAL,
+                                NULL);
+        if (hDumpFile != INVALID_HANDLE_VALUE) {
+          DWORD dump_options, sym_options;
+          FILE_DISPOSITION_INFO DeleteOnClose = { TRUE };
 
-        /* If something goes wrong while writing it out, delete the file. */
-        SetFileInformationByHandle(hDumpFile,
-                                   FileDispositionInfo,
-                                   &DeleteOnClose,
-                                   sizeof(DeleteOnClose));
+          /* If something goes wrong while writing it out, delete the file. */
+          SetFileInformationByHandle(hDumpFile,
+                                     FileDispositionInfo,
+                                     &DeleteOnClose,
+                                     sizeof(DeleteOnClose));
 
-        /* Tell wine to dump ELF modules as well. */
-        sym_options = SymGetOptions();
-        SymSetOptions(sym_options | 0x40000000);
+          /* Tell wine to dump ELF modules as well. */
+          sym_options = SymGetOptions();
+          SymSetOptions(sym_options | 0x40000000);
 
 /* MiniDumpWithAvxXStateContext might be undef in server2012r2 or mingw < 12 */
 #ifndef MiniDumpWithAvxXStateContext
 #define MiniDumpWithAvxXStateContext 0x00200000
 #endif
-        /* We default to a fairly complete dump.  In the future, we may want to
-         * allow clients to customize what kind of dump to create. */
-        dump_options = MiniDumpWithFullMemory |
-                       MiniDumpIgnoreInaccessibleMemory |
-                       MiniDumpWithAvxXStateContext;
+          /* We default to a fairly complete dump.  In the future, we may want to
+           * allow clients to customize what kind of dump to create. */
+          dump_options = MiniDumpWithFullMemory |
+                         MiniDumpIgnoreInaccessibleMemory |
+                         MiniDumpWithAvxXStateContext;
 
-        if (MiniDumpWriteDump(process_handle,
-                              pid,
-                              hDumpFile,
-                              dump_options,
-                              NULL,
-                              NULL,
-                              NULL)) {
-          /* Don't delete the file on close if we successfully wrote it out. */
-          FILE_DISPOSITION_INFO DontDeleteOnClose = { FALSE };
-          SetFileInformationByHandle(hDumpFile,
-                                     FileDispositionInfo,
-                                     &DontDeleteOnClose,
-                                     sizeof(DontDeleteOnClose));
+          if (MiniDumpWriteDump(process_handle,
+                                pid,
+                                hDumpFile,
+                                dump_options,
+                                NULL,
+                                NULL,
+                                NULL)) {
+            /* Don't delete the file on close if we successfully wrote it out. */
+            FILE_DISPOSITION_INFO DontDeleteOnClose = { FALSE };
+            SetFileInformationByHandle(hDumpFile,
+                                       FileDispositionInfo,
+                                       &DontDeleteOnClose,
+                                       sizeof(DontDeleteOnClose));
+          }
+          SymSetOptions(sym_options);
+          CloseHandle(hDumpFile);
         }
-        SymSetOptions(sym_options);
-        CloseHandle(hDumpFile);
       }
     }
   }

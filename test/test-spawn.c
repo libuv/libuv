@@ -1097,6 +1097,7 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
   uv_pipe_t out;
   char name[64];
   HANDLE pipe_handle;
+  HANDLE pipe_handle_local;
   uv_stdio_container_t stdio[2];
 
   init_process_options("spawn_helper2", exit_cb);
@@ -1108,7 +1109,12 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
   options.stdio[1].data.stream = (uv_stream_t*) &out;
   options.stdio_count = 2;
 
-  /* Create a pipe that'll cause a collision. */
+  /* Create pipes that might cause a collision.
+   * Inside an AppContainer, libuv uses \\?\pipe\LOCAL\uv\... and the
+   * non-LOCAL CreateNamedPipe will fail with access denied.
+   * Outside an AppContainer, libuv uses \\?\pipe\uv\... and both
+   * CreateNamedPipe calls succeed but only the non-LOCAL one can collide.
+   * Either way, uv_spawn should handle collisions gracefully. */
   snprintf(name,
            sizeof(name),
            "\\\\.\\pipe\\uv\\%p-%lu",
@@ -1122,7 +1128,24 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
                                 65536,
                                 0,
                                 NULL);
-  ASSERT_PTR_NE(pipe_handle, INVALID_HANDLE_VALUE);
+
+  snprintf(name,
+           sizeof(name),
+           "\\\\.\\pipe\\LOCAL\\uv\\%p-%lu",
+           &out,
+           GetCurrentProcessId());
+  pipe_handle_local = CreateNamedPipeA(name,
+                                PIPE_ACCESS_INBOUND | FILE_FLAG_OVERLAPPED,
+                                PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
+                                10,
+                                65536,
+                                65536,
+                                0,
+                                NULL);
+
+  /* At least one must succeed. */
+  ASSERT(pipe_handle != INVALID_HANDLE_VALUE ||
+         pipe_handle_local != INVALID_HANDLE_VALUE);
 
   r = uv_spawn(uv_default_loop(), &process, &options);
   ASSERT_OK(r);
@@ -1137,6 +1160,11 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
   ASSERT_EQ(2, close_cb_called); /* Once for process once for the pipe. */
   printf("output is: %s", output);
   ASSERT_OK(strcmp("hello world\n", output));
+
+  if (pipe_handle != INVALID_HANDLE_VALUE)
+    CloseHandle(pipe_handle);
+  if (pipe_handle_local != INVALID_HANDLE_VALUE)
+    CloseHandle(pipe_handle_local);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
@@ -1681,6 +1709,8 @@ TEST_IMPL(spawn_fs_open) {
   const char dev_null[] = "/dev/null";
 #endif
 
+  RETURN_SKIP_IN_APPCONTAINER("child process crashes with invalid handle");
+
   r = uv_fs_open(NULL, &fs_req, dev_null, UV_FS_O_RDWR, 0, NULL);
   ASSERT_NE(r, -1);
   fd = uv_get_osfhandle((uv_file) fs_req.result);
@@ -2114,4 +2144,5 @@ TEST_IMPL(spawn_empty_command_line) {
   ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
 }

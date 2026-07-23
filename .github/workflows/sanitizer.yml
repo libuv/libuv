@@ -12,6 +12,8 @@ on:
       - v[0-9].*
       - master
 
+permissions: read-all
+
 jobs:
   sanitizers-linux:
     runs-on: ubuntu-22.04
@@ -27,7 +29,7 @@ jobs:
           - name: UBSAN
             flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Setup
         run: |
           sudo apt-get install ninja-build
@@ -66,7 +68,7 @@ jobs:
           - name: UBSAN
             flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Envinfo
         run: npx envinfo
@@ -81,14 +83,14 @@ jobs:
   sanitizers-windows:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Setup
         run: |
           choco install ninja
 
       # Note: clang shipped with VS2022 has an issue where the UBSAN runtime doesn't link.
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v2
+        uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2
         with:
           version: "17"
 

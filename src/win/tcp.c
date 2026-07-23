@@ -859,7 +859,7 @@ static int uv__tcp_try_connect(uv_connect_t* req,
    */
   if (uv__windows10_version1709() && uv__is_loopback(&converted)) {
     memset(&retransmit_ioctl, 0, sizeof(retransmit_ioctl));
-    retransmit_ioctl.Rtt = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
+    retransmit_ioctl.Rtt = TCP_INITIAL_RTO_DEFAULT_RTT;
     retransmit_ioctl.MaxSynRetransmissions = TCP_INITIAL_RTO_NO_SYN_RETRANSMISSIONS;
     WSAIoctl(handle->socket,
              SIO_TCP_INITIAL_RTO,
@@ -948,6 +948,7 @@ int uv__tcp_write(uv_loop_t* loop,
   UV_REQ_INIT(req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
+  req->write_extra.nwritten = 0;
 
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
@@ -1166,6 +1167,7 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
+  req->write_extra.nwritten += req->u.io.overlapped.InternalHigh;
 
   UNREGISTER_HANDLE_REQ(loop, handle);
 

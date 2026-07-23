@@ -32,7 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sched.h>  /* sched_yield() */
 
 #ifdef __linux__
 #include <sys/eventfd.h>
@@ -68,7 +67,6 @@ static void uv__kqueue_runtime_detection(void) {
 
 static void uv__async_send(uv_loop_t* loop);
 static int uv__async_start(uv_loop_t* loop);
-static void uv__cpu_relax(void);
 
 
 int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
@@ -89,70 +87,8 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 }
 
 
-int uv_async_send(uv_async_t* handle) {
-  _Atomic int* pending;
-  int current;
-
-  pending = (_Atomic int*) &handle->pending;
-
-  /* Do a cheap read first. */
-  current = atomic_load_explicit(pending, memory_order_relaxed);
-  if (current & 1)
-    return 0;
-
-  /* Atomically set the pending flag (bit 0) and increment the busy counter
-   * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once,
-   * so both operations appear atomic to other threads. */
-  while (!atomic_compare_exchange_weak_explicit(pending,
-                                                &current,
-                                                current + 3,
-                                                memory_order_relaxed,
-                                                memory_order_relaxed))
-    if (current & 1)
-      return 0;
-
-  /* Wake up the other thread's event loop. The write establishes a
-   * happens-before relationship with the reader via the kernel. */
+void uv__async_notify(uv_async_t* handle) {
   uv__async_send(handle->loop);
-
-  /* Decrement the busy counter (bits 1+). */
-  atomic_fetch_add_explicit(pending, -2, memory_order_relaxed);
-
-  return 0;
-}
-
-
-/* Wait for the busy counter to clear before closing.
- * Only call this from the event loop thread. */
-static void uv__async_spin(uv_async_t* handle) {
-  _Atomic int* pending;
-  int i;
-
-  pending = (_Atomic int*) &handle->pending;
-
-  /* Set the pending flag (bit 0) so no new events will be added by other
-   * threads after this function returns. */
-  atomic_fetch_or_explicit(pending, 1, memory_order_relaxed);
-
-  for (;;) {
-    /* 997 is not completely chosen at random. It's a prime number, acyclic by
-     * nature, and should therefore hopefully dampen sympathetic resonance.
-     */
-    for (i = 0; i < 997; i++) {
-      /* Wait until the busy counter (bits 1+) is zero. */
-      if ((atomic_load(pending) & ~1) == 0)
-        return;
-
-      /* Other thread is busy with this handle, spin until it's done. */
-      uv__cpu_relax();
-    }
-
-    /* Yield the CPU. We may have preempted the other thread while it's
-     * inside the critical section and if it's running on the same CPU
-     * as us, we'll just burn CPU cycles until the end of our time slice.
-     */
-    sched_yield();
-  }
 }
 
 
@@ -164,8 +100,10 @@ void uv__async_close(uv_async_t* handle) {
 
 
 void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+#ifndef __linux__
   char buf[1024];
   ssize_t r;
+#endif
   struct uv__queue queue;
   struct uv__queue* q;
   uv_async_t* h;
@@ -173,6 +111,7 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(w == &loop->async_io_watcher);
 
+#ifndef __linux__
 #if UV__KQUEUE_EVFILT_USER
   for (;!kqueue_evfilt_user_support;) {
 #else
@@ -194,6 +133,7 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
     abort();
   }
+#endif /* !__linux__ */
 
   uv__queue_move(&loop->async_handles, &queue);
   while (!uv__queue_empty(&queue)) {
@@ -203,7 +143,11 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     uv__queue_remove(q);
     uv__queue_insert_tail(&loop->async_handles, q);
 
-    /* Atomically clear the pending flag (bit 0) and check if it was set. */
+    /* Atomically clear the pending flag (bit 0) and check if it was set.
+     * The seq_cst (default order) synchronizes with the seq_cst CAS in
+     * uv_async_send, making all accesses before that call visible here and
+     * ensuring no access here can get reordered before this as visible to
+     * another thread. */
     pending = (_Atomic int*) &h->pending;
     if (!(atomic_fetch_and(pending, ~1) & 1))
       continue;
@@ -217,22 +161,36 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 static void uv__async_send(uv_loop_t* loop) {
-  const void* buf;
-  ssize_t len;
   int fd;
   int r;
-
-  buf = "";
-  len = 1;
-  fd = loop->async_wfd;
+#if !(defined(__linux__) || UV__KQUEUE_EVFILT_USER)
+  static char buf = '\0';
+#endif
 
 #if defined(__linux__)
-  if (fd == -1) {
-    static const uint64_t val = 1;
-    buf = &val;
-    len = sizeof(val);
-    fd = loop->async_io_watcher.fd;  /* eventfd */
+  uint64_t val;
+
+  fd = loop->async_io_watcher.fd;  /* eventfd */
+  for (val = 1; /* empty */; val = 1) {
+    r = write(fd, &val, sizeof(uint64_t));
+    if (r < 0) {
+      /* When EAGAIN occurs, the eventfd counter hits the maximum value of the unsigned 64-bit.
+       * We need to first drain the eventfd and then write again.
+       *
+       * Check out https://man7.org/linux/man-pages/man2/eventfd.2.html for details.
+       */
+      if (errno == EAGAIN) {
+        /* It's ready to retry. */
+        if (read(fd, &val, sizeof(uint64_t)) > 0 || errno == EAGAIN) {
+          continue;
+        }
+      }
+      /* Unknown error occurs. */
+      break;
+    }
+    return;
   }
+
 #elif UV__KQUEUE_EVFILT_USER
   struct kevent ev;
 
@@ -244,18 +202,20 @@ static void uv__async_send(uv_loop_t* loop) {
       return;
     abort();
   }
-#endif
 
+#else
+  fd = loop->async_wfd;
   do
-    r = write(fd, buf, len);
+    r = write(fd, &buf, 1);
   while (r == -1 && errno == EINTR);
 
-  if (r == len)
+  if (r == 1)
     return;
 
   if (r == -1)
     if (errno == EAGAIN || errno == EWOULDBLOCK)
       return;
+#endif
 
   abort();
 }
@@ -406,19 +366,4 @@ int uv__async_fork(uv_loop_t* loop) {
   loop->async_io_watcher.fd = -1;
 
   return uv__async_start(loop);
-}
-
-
-static void uv__cpu_relax(void) {
-#if defined(__i386__) || defined(__x86_64__)
-  __asm__ __volatile__ ("rep; nop" ::: "memory");  /* a.k.a. PAUSE */
-#elif (defined(__arm__) && __ARM_ARCH >= 7) || defined(__aarch64__)
-  __asm__ __volatile__ ("isb" ::: "memory");
-#elif (defined(__ppc__) || defined(__ppc64__)) && defined(__APPLE__)
-  __asm volatile ("" : : : "memory");
-#elif !defined(__APPLE__) && (defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__))
-  __asm__ __volatile__ ("or 1,1,1; or 2,2,2" ::: "memory");
-#elif defined(__riscv) && __riscv_xlen == 64
-  __asm__ volatile(".insn 0x0100000f" ::: "memory");  /* FENCE */
-#endif
 }

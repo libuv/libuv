@@ -90,7 +90,7 @@ STATIC_ASSERT(256 == sizeof(union uv__cmsg));
  * DONE
  *   The write has completed.
  * CANCEL_PENDING
- *   uv__write_cancel has begun cancellation, but the worker has not
+ *   uv__blocked_write_cancel has begun cancellation, but the worker has not
  *   acknowledged it.
  * CANCELLED
  *   The write worker observed CANCEL_PENDING, and is no longer in the blocking
@@ -741,6 +741,7 @@ static int uv__write_req_update(uv_stream_t* stream,
 
   assert(n <= stream->write_queue_size);
   stream->write_queue_size -= n;
+  req->write_extra.nwritten += n;
 
   buf = req->bufs + req->write_index;
 
@@ -752,6 +753,9 @@ static int uv__write_req_update(uv_stream_t* stream,
     buf += (buf->len == 0);  /* Advance to next buffer if this one is empty. */
     n -= len;
   } while (n > 0);
+
+  while (buf < req->bufs + req->nbufs && buf->len == 0)
+    buf++;
 
   req->write_index = buf - req->bufs;
 
@@ -971,6 +975,7 @@ static void uv__write_done(struct uv__work* w, int status) {
   struct uv__queue* q;
   uv_write_t* req;
   char state;
+  int cancelled;
 
   blocked_write = container_of(w, struct uv__blocked_write, work);
   stream = blocked_write->stream;
@@ -983,17 +988,28 @@ static void uv__write_done(struct uv__work* w, int status) {
   assert(status != 0 || state == UV__WRITE_CANCELLED ||
          state == UV__WRITE_DONE);
 
-  /* This happens when we're cancelled in the thread pool work queue. */
-  if (status != 0 || state == UV__WRITE_CANCELLED) {
-    req->result = UV_ECANCELED;
-    goto error;
-  }
+  /* When we are cancelled while still in the thread pool queue, we see status
+   * == UV_ECANCELED, without state being updated.  In all other cases we
+   * should observe state == UV__WRITE_CANCELLED. */
+  cancelled = status != 0 || state == UV__WRITE_CANCELLED;
 
   if (req->result >= 0) {
     req->send_handle = NULL;
-    if (uv__write_req_update(stream, req, req->result))
+    /* We will call uv__write_req_finish on the error path, if we were cancelled
+     * after doing a partial write. */
+    if (uv__write_req_update(stream, req, req->result) && !cancelled)
       uv__write_req_finish(req);
-  } else if (req->result != UV_EAGAIN)
+    else
+      /* This is a partial write which we may resubmit.  If the resubmitted
+       * write is cancelled before any bytes are written, we must avoid seeing
+       * the old result.  */
+      req->result = 0;
+  }
+
+  if (cancelled)
+    req->result = UV_ECANCELED;
+
+  if (req->result < 0 && req->result != UV_EAGAIN)
     goto error;
 
   if (stream->flags & UV_HANDLE_CLOSING) {
@@ -1023,7 +1039,8 @@ error:
 }
 
 
-static int uv__write_cancel(uv_loop_t* loop, struct uv__blocked_write* w) {
+static int uv__blocked_write_cancel(uv_loop_t *loop,
+                                    struct uv__blocked_write *w) {
   char expected;
   pthread_t thread;
   int i;
@@ -1168,6 +1185,9 @@ static void uv__write_callbacks(uv_stream_t* stream) {
     uv__req_unregister(stream->loop);
 
     if (req->bufs != NULL) {
+      /* bufs are non-NULL on errors (including cancel and stream close).
+       * Success path sets bufs to NULL after adjusting size in uv__write. */
+      assert(req->result != 0);
       stream->write_queue_size -= uv__write_req_size(req);
       if (req->bufs != req->bufsml)
         uv__free(req->bufs);
@@ -1634,6 +1654,7 @@ int uv_write2(uv_write_t* req,
   req->handle = stream;
   req->result = 0;
   req->send_handle = send_handle;
+  req->write_extra.nwritten = 0;
   uv__queue_init(&req->queue);
 
   req->bufs = req->bufsml;
@@ -1664,6 +1685,39 @@ int uv_write2(uv_write_t* req,
   else if (!(stream->flags & UV_HANDLE_BLOCKING_WRITES)) {
     uv__io_start(stream->loop, &stream->io_watcher, POLLOUT);
     uv__stream_osx_interrupt_select(stream);
+  }
+
+  return 0;
+}
+
+
+size_t uv_write_nwritten(const uv_write_t* req) {
+  return req->write_extra.nwritten;
+}
+
+
+int uv__write_cancel(uv_write_t* req) {
+  struct uv__queue* q;
+  uv_stream_t* stream;
+
+  stream = req->handle;
+
+  if (stream->flags & UV_HANDLE_WRITE_PENDING &&
+      &req->queue == uv__queue_head(&stream->write_queue))
+    return uv__blocked_write_cancel(stream->loop, stream->u.blocked_write);
+
+  /* N.B.: If the request already completed, we still return 0, but the callback
+    will not return ECANCELED - nothing to do here. */
+  uv__queue_foreach(q, &stream->write_queue) {
+    if (q == &req->queue) {
+      uv__queue_remove(&req->queue);
+      req->result = UV_ECANCELED;
+
+      /* uv__write_callbacks will handle write_queue_size and freeing bufs. */
+      uv__queue_insert_tail(&stream->write_completed_queue, &req->queue);
+      uv__io_feed(stream->loop, &stream->io_watcher);
+      break;
+    }
   }
 
   return 0;
@@ -1820,7 +1874,7 @@ void uv__stream_close(uv_stream_t* handle) {
     w = handle->u.blocked_write;
     assert(w != NULL);
     assert(w->stream == handle);
-    uv__write_cancel(handle->loop, w);
+    uv__blocked_write_cancel(handle->loop, w);
   }
 
   assert(!uv__io_active(&handle->io_watcher, POLLIN | POLLOUT));

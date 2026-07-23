@@ -233,6 +233,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-pipe-close-stdout-read-stdin.c \
                          test/test-pipe-set-non-blocking.c \
                          test/test-pipe-set-fchmod.c \
+                         test/test-pipe-write.c \
                          test/test-platform-output.c \
                          test/test-poll.c \
                          test/test-poll-close.c \
@@ -257,6 +258,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-signal-multiple-loops.c \
                          test/test-signal-pending-on-close.c \
                          test/test-signal.c \
+                         test/test-sizeof.c \
                          test/test-socket-buffer-size.c \
                          test/test-spawn.c \
                          test/test-stdio-over-pipes.c \
@@ -292,6 +294,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-try-write.c \
                          test/test-tcp-write-in-a-row.c \
                          test/test-tcp-try-write-error.c \
+                         test/test-write-cancel.c \
                          test/test-tcp-write-queue-order.c \
                          test/test-test-macros.c \
                          test/test-thread-equal.c \
@@ -476,6 +479,7 @@ libuv_la_SOURCES += src/unix/bsd-ifaddrs.c \
                     src/unix/no-proctitle.c \
                     src/unix/posix-hrtime.c \
                     src/unix/posix-poll.c
+test_run_tests_LDFLAGS += -lbsd
 endif
 
 if HURD
@@ -539,6 +543,7 @@ libuv_la_CFLAGS += -D__EXTENSIONS__ \
                    -D_XOPEN_SOURCE=500 \
                    -D_REENTRANT
 libuv_la_SOURCES += src/unix/no-proctitle.c \
+                    src/unix/random-getrandom.c \
                     src/unix/sunos.c
 endif
 

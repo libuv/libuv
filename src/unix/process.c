@@ -728,7 +728,6 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   const char *p;
   const char *z;
   const char *path;
-  size_t l;
   size_t k;
   int err;
   int seen_eacces;
@@ -774,19 +773,16 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   if (k > NAME_MAX)
     return ENAMETOOLONG;
 
-  l = strnlen(path, PATH_MAX - 1) + 1;
-
-  for (p = path;; p = z) {
+  p = path;
+  do {
     /* Compose the new process file from the entry in the PATH
      * environment variable and the actual file name */
-    char b[PATH_MAX + NAME_MAX];
+    char b[PATH_MAX + NAME_MAX + 1];
     z = strchr(p, ':');
     if (!z)
       z = p + strlen(p);
-    if ((size_t)(z - p) >= l) {
-      if (!*z++)
-        break;
-
+    if ((size_t)(z - p) >= PATH_MAX) {
+      p = z + 1;
       continue;
     }
     memcpy(b, p, z - p);
@@ -810,10 +806,8 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
     default:
       return err;
     }
-
-    if (!*z++)
-      break;
-  }
+    p = z + 1;
+  } while (*z == ':');
 
   if (seen_eacces)
     return EACCES;

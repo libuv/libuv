@@ -22,6 +22,7 @@
 #include "uv.h"
 
 TEST_DECLARE   (platform_output)
+TEST_DECLARE   (sizeof)
 TEST_DECLARE   (close_order)
 TEST_DECLARE   (run_once)
 TEST_DECLARE   (run_nowait)
@@ -112,6 +113,14 @@ TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_write_in_a_row)
 TEST_DECLARE   (tcp_try_write_error)
 TEST_DECLARE   (tcp_write_queue_order)
+TEST_DECLARE   (tcp_write_cancel)
+TEST_DECLARE   (pipe_write_cancel)
+TEST_DECLARE   (pipe_write_cancel_all)
+TEST_DECLARE   (pipe_write_cancel_overlapped)
+TEST_DECLARE   (pipe_write_cancel_all_overlapped)
+TEST_DECLARE   (pipe_write_cancel_ipc)
+TEST_DECLARE   (tcp_write_nwritten)
+TEST_DECLARE   (pipe_write_nwritten)
 TEST_DECLARE   (tcp_open)
 TEST_DECLARE   (tcp_open_twice)
 TEST_DECLARE   (tcp_open_bound)
@@ -184,6 +193,9 @@ TEST_DECLARE   (udp_recvmsg_unreachable_error)
 TEST_DECLARE   (udp_recvmsg_unreachable_error6)
 TEST_DECLARE   (udp_send_pollerr_no_recv)
 TEST_DECLARE   (udp_mmsg)
+#ifndef _WIN32
+TEST_DECLARE   (udp_mmsg_namelen_zero)
+#endif
 TEST_DECLARE   (udp_mmsg_single_drain_cb)
 TEST_DECLARE   (udp_mmsg_small_buf)
 TEST_DECLARE   (udp_multicast_join)
@@ -288,6 +300,7 @@ TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
+TEST_DECLARE   (pipe_write_trailing_empty_buf)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (process_priority)
 TEST_DECLARE   (has_ref)
@@ -612,6 +625,7 @@ TEST_DECLARE  (metrics_idle_time_zero)
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
 
+  TEST_ENTRY  (sizeof)
   TEST_ENTRY  (test_macros)
   TEST_ENTRY  (close_order)
   TEST_ENTRY  (run_once)
@@ -740,6 +754,14 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_try_write_error)
 
   TEST_ENTRY  (tcp_write_queue_order)
+  TEST_ENTRY  (tcp_write_cancel)
+  TEST_ENTRY  (pipe_write_cancel)
+  TEST_ENTRY  (pipe_write_cancel_all)
+  TEST_ENTRY  (pipe_write_cancel_overlapped)
+  TEST_ENTRY  (pipe_write_cancel_all_overlapped)
+  TEST_ENTRY  (pipe_write_cancel_ipc)
+  TEST_ENTRY  (tcp_write_nwritten)
+  TEST_ENTRY  (pipe_write_nwritten)
 
   TEST_ENTRY  (tcp_open)
   TEST_HELPER (tcp_open, tcp4_echo_server)
@@ -838,6 +860,9 @@ TASK_LIST_START
   TEST_ENTRY  (udp_options6)
   TEST_ENTRY  (udp_no_autobind)
   TEST_ENTRY  (udp_mmsg)
+#ifndef _WIN32
+  TEST_ENTRY  (udp_mmsg_namelen_zero)
+#endif
   TEST_ENTRY  (udp_mmsg_single_drain_cb)
   TEST_ENTRY  (udp_mmsg_small_buf)
   TEST_ENTRY  (udp_multicast_interface)
@@ -874,6 +899,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_getsockname_long_path)
   TEST_ENTRY  (pipe_pending_instances)
   TEST_ENTRY  (pipe_sendmsg)
+  TEST_ENTRY  (pipe_write_trailing_empty_buf)
 
   TEST_ENTRY  (connection_fail)
   TEST_ENTRY  (connection_fail_doesnt_auto_close)
