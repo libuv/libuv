@@ -402,6 +402,8 @@ int uv_cancel(uv_req_t* req) {
 
   switch (req->type) {
   case UV_WRITE:
+    if (uv__is_closing(((uv_write_t*) req)->handle))
+      return 0;
     return uv__write_cancel((uv_write_t*) req);
   case UV_FS:
     loop =  ((uv_fs_t*) req)->loop;

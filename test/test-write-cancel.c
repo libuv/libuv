@@ -167,6 +167,7 @@ static int pipe_cancel_connected;
 static int pipe_cancel_accepted;
 static uv_write_t pipe_cancel_write_reqs[REQ_COUNT];
 static char pipe_cancel_buf_data[64 * 1024];
+static char pipe_cancel_after_close_buf_data[1024 * 1024];
 static int cancel_target;
 static uv_write_cb pipe_cancel_cb;
 
@@ -351,6 +352,50 @@ TEST_IMPL(pipe_write_cancel_all) {
 
 TEST_IMPL(pipe_write_cancel_all_overlapped) {
   return pipe_write_cancel_all_run(UV_NONBLOCK_PIPE, 0);
+}
+
+TEST_IMPL(pipe_write_cancel_after_close) {
+  uv_buf_t buf;
+  uv_file fds[2];
+  uv_loop_t* loop;
+  uv_pipe_t reader;
+  uv_pipe_t writer;
+  uv_write_t req;
+
+  loop = uv_default_loop();
+  close_cb_called = 0;
+  write_cb_called = 0;
+  cancelled_count = 0;
+  memset(pipe_cancel_after_close_buf_data,
+         'D',
+         sizeof(pipe_cancel_after_close_buf_data));
+
+  ASSERT_OK(uv_pipe(fds, 0, 0));
+  ASSERT_OK(uv_pipe_init(loop, &writer, 0));
+  ASSERT_OK(uv_pipe_init(loop, &reader, 0));
+  ASSERT_OK(uv_pipe_open(&writer, fds[1]));
+  ASSERT_OK(uv_pipe_open(&reader, fds[0]));
+
+  buf = uv_buf_init(pipe_cancel_after_close_buf_data,
+                    sizeof(pipe_cancel_after_close_buf_data));
+  ASSERT_OK(uv_write(&req,
+                     (uv_stream_t*) &writer,
+                     &buf,
+                     1,
+                     pipe_cancel_write_cb_all));
+
+  uv_close((uv_handle_t*) &writer, close_cb);
+  ASSERT_OK(uv_cancel((uv_req_t*) &req));
+  uv_close((uv_handle_t*) &reader, close_cb);
+
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  ASSERT_EQ(1, write_cb_called);
+  ASSERT_EQ(1, cancelled_count);
+  ASSERT_EQ(2, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
 }
 
 
