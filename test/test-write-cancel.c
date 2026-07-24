@@ -385,7 +385,7 @@ TEST_IMPL(pipe_write_cancel_after_close) {
                      pipe_cancel_write_cb_all));
 
   uv_close((uv_handle_t*) &writer, close_cb);
-  ASSERT_OK(uv_cancel((uv_req_t*) &req));
+  ASSERT_EQ(UV_EBUSY, uv_cancel((uv_req_t*) &req));
   uv_close((uv_handle_t*) &reader, close_cb);
 
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
