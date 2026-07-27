@@ -30,7 +30,7 @@ jobs:
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2022}
           - {toolchain: Visual Studio 18 2026, arch: x64, server: 2025}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build
         run:
           cmake -S . -B build -DBUILD_TESTING=ON
@@ -89,7 +89,7 @@ jobs:
           - {arch: i686,   server: 2022, libgcc: dw2 }
           - {arch: x86_64, server: 2022, libgcc: seh }
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Install mingw32 environment
         run: |
           sudo apt update
