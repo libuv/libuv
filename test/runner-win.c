@@ -84,6 +84,17 @@ void notify_parent_process(void) {
 }
 
 
+void check_open_fds(void) {
+  /* Not implemented. Handles are not small integers on Windows, so there is no
+   * cheap equivalent of walking [0, MAX_TRACKED_FD).
+   */
+}
+
+
+void disable_open_fds_check(void) {
+}
+
+
 int process_start(char* name, char* part, process_info_t* p, int is_helper) {
   HANDLE file = INVALID_HANDLE_VALUE;
   HANDLE nul = INVALID_HANDLE_VALUE;
