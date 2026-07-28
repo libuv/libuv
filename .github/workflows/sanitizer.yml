@@ -29,7 +29,7 @@ jobs:
           - name: UBSAN
             flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=clang
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup
         run: |
           sudo apt-get install ninja-build
@@ -68,7 +68,7 @@ jobs:
           - name: UBSAN
             flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Envinfo
         run: npx envinfo
@@ -83,7 +83,7 @@ jobs:
   sanitizers-windows:
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Setup
         run: |
           choco install ninja
