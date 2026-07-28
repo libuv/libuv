@@ -426,6 +426,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 #ifndef _WIN32
   int r;
+  int saved_stderr;
   uv_file file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[3];
@@ -435,6 +436,13 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   unlink("stdout_file");
 
   init_process_options("spawn_helper6", exit_cb);
+
+  /* This test replaces fd 2, so stash the real stderr and put it back
+   * afterwards. Without that the process ends up with no stderr at all, which
+   * silently swallows the output of any later assertion failure.
+   */
+  saved_stderr = dup(STDERR_FILENO);
+  ASSERT_NE(saved_stderr, -1);
 
   /* Replace stderr with our file */
   r = uv_fs_open(NULL,
@@ -447,6 +455,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   uv_fs_req_cleanup(&fs_req);
   file = dup2(r, STDERR_FILENO);
   ASSERT_NE(file, -1);
+  /* dup2() put a copy on fd 2, the original descriptor is redundant now. */
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  uv_fs_req_cleanup(&fs_req);
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_IGNORE;
@@ -470,9 +481,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   ASSERT_EQ(27, r);
   uv_fs_req_cleanup(&fs_req);
 
-  r = uv_fs_close(NULL, &fs_req, file, NULL);
-  ASSERT_OK(r);
-  uv_fs_req_cleanup(&fs_req);
+  /* Putting the real stderr back also closes the file sitting on fd 2. */
+  ASSERT_NE(-1, dup2(saved_stderr, STDERR_FILENO));
+  ASSERT_OK(close(saved_stderr));
 
   printf("output is: %s", output);
   ASSERT_OK(strcmp("hello world\nhello errworld\n", output));
@@ -491,6 +502,8 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 #ifndef _WIN32
   int r;
+  int saved_stdout;
+  int saved_stderr;
   uv_file stdout_file;
   uv_file stderr_file;
   uv_fs_t fs_req;
@@ -503,6 +516,15 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 
   init_process_options("spawn_helper6", exit_cb);
 
+  /* This test replaces fds 1 and 2, so stash the real ones and put them back
+   * afterwards. Without that the process ends up with no stdout or stderr at
+   * all, which silently swallows anything printed from here on.
+   */
+  saved_stdout = dup(STDOUT_FILENO);
+  ASSERT_NE(saved_stdout, -1);
+  saved_stderr = dup(STDERR_FILENO);
+  ASSERT_NE(saved_stderr, -1);
+
   /* open 'stdout_file' and replace STDOUT_FILENO with it */
   r = uv_fs_open(NULL,
                  &fs_req,
@@ -514,6 +536,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   uv_fs_req_cleanup(&fs_req);
   stdout_file = dup2(r, STDOUT_FILENO);
   ASSERT_NE(stdout_file, -1);
+  /* dup2() put a copy on fd 1, the original descriptor is redundant now. */
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  uv_fs_req_cleanup(&fs_req);
 
   /* open 'stderr_file' and replace STDERR_FILENO with it */
   r = uv_fs_open(NULL, &fs_req, "stderr_file", O_CREAT | O_RDWR,
@@ -522,6 +547,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   uv_fs_req_cleanup(&fs_req);
   stderr_file = dup2(r, STDERR_FILENO);
   ASSERT_NE(stderr_file, -1);
+  /* dup2() put a copy on fd 2, the original descriptor is redundant now. */
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  uv_fs_req_cleanup(&fs_req);
 
   /* now we're going to swap them: the child process' stdout will be our
    * stderr_file and vice versa */
@@ -549,9 +577,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   ASSERT_GE(r, 15);
   uv_fs_req_cleanup(&fs_req);
 
-  r = uv_fs_close(NULL, &fs_req, stdout_file, NULL);
-  ASSERT_OK(r);
-  uv_fs_req_cleanup(&fs_req);
+  /* Putting the real stdout back also closes the file sitting on fd 1. */
+  ASSERT_NE(-1, dup2(saved_stdout, STDOUT_FILENO));
+  ASSERT_OK(close(saved_stdout));
 
   printf("output is: %s", output);
   ASSERT_OK(strncmp("hello errworld\n", output, 15));
@@ -561,9 +589,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   ASSERT_GE(r, 12);
   uv_fs_req_cleanup(&fs_req);
 
-  r = uv_fs_close(NULL, &fs_req, stderr_file, NULL);
-  ASSERT_OK(r);
-  uv_fs_req_cleanup(&fs_req);
+  /* Putting the real stderr back also closes the file sitting on fd 2. */
+  ASSERT_NE(-1, dup2(saved_stderr, STDERR_FILENO));
+  ASSERT_OK(close(saved_stderr));
 
   printf("output is: %s", output);
   ASSERT_OK(strncmp("hello world\n", output, 12));
@@ -1747,6 +1775,11 @@ TEST_IMPL(spawn_fs_open) {
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+#ifdef _WIN32
+  ASSERT_NE(0, CloseHandle(dup_fd));
+#else
+  ASSERT_OK(close(dup_fd));
+#endif
 
   ASSERT_EQ(1, exit_cb_called);
   ASSERT_EQ(2, close_cb_called);  /* One for `in`, one for process */
