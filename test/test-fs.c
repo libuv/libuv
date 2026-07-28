@@ -4506,7 +4506,7 @@ TEST_FS_IMPL(fs_file_pos_append) {
 }
 #endif
 
-TEST_FS_IMPL(fs_null_req) {
+TEST_IMPL(fs_null_req) {
   /* Verify that all fs functions return UV_EINVAL when the request is NULL. */
   int r;
 
@@ -4956,7 +4956,7 @@ TEST_FS_IMPL(fs_statfs) {
   return 0;
 }
 
-TEST_FS_IMPL(fs_get_system_error) {
+TEST_IMPL(fs_get_system_error) {
   uv_fs_t req;
   int r;
   int system_error;
