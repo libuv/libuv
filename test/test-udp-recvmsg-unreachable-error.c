@@ -84,6 +84,8 @@ TEST_IMPL(udp_recvmsg_unreachable_error) {
                         udp_send_cb));
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_EQ(recv_cb_called, RECV_CB_MAX_CALL);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
@@ -124,5 +126,7 @@ TEST_IMPL(udp_recvmsg_unreachable_error6) {
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
   ASSERT_EQ(recv_cb_called, RECV_CB_MAX_CALL);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
