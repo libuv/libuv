@@ -131,7 +131,18 @@ static int uv__tty_console_width = -1;
 static HANDLE uv__tty_console_resized = INVALID_HANDLE_VALUE;
 static uv_mutex_t uv__tty_console_resize_mutex;
 
-static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param);
+/* Signalled by uv__console_cleanup() to bring the two threads below down. Both
+ * of them touch state that cleanup goes on to destroy, so they are joined
+ * rather than left to the process teardown.
+ */
+static HANDLE uv__tty_console_stop = INVALID_HANDLE_VALUE;
+static uv_thread_t uv__tty_console_message_loop;
+static uv_thread_t uv__tty_console_watcher;
+static int uv__tty_console_message_loop_started;
+static int uv__tty_console_watcher_started;
+static HWINEVENTHOOK uv__tty_console_hook;
+
+static void uv__tty_console_resize_message_loop_thread(void* param);
 static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
                                                   DWORD event,
                                                   HWND hwnd,
@@ -139,7 +150,7 @@ static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
                                                   LONG idChild,
                                                   DWORD dwEventThread,
                                                   DWORD dwmsEventTime);
-static DWORD WINAPI uv__tty_console_resize_watcher_thread(void* param);
+static void uv__tty_console_resize_watcher_thread(void* param);
 static void uv__tty_console_signal_resize(void);
 
 /* We use a semaphore rather than a mutex or critical section because in some
@@ -183,9 +194,13 @@ void uv__console_init(void) {
       uv__tty_console_width = sb_info.dwSize.X;
       uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
     }
-    QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
-                      NULL,
-                      WT_EXECUTELONGFUNCTION);
+    uv__tty_console_stop = CreateEvent(NULL, TRUE, FALSE, NULL);
+    if (uv__tty_console_stop != NULL &&
+        uv_thread_create(&uv__tty_console_message_loop,
+                         uv__tty_console_resize_message_loop_thread,
+                         NULL) == 0) {
+      uv__tty_console_message_loop_started = 1;
+    }
   }
   uv__tty_console_handle_in = CreateFileW(L"CONIN$",
                                           GENERIC_READ | GENERIC_WRITE,
@@ -199,6 +214,68 @@ void uv__console_init(void) {
       uv__tty_console_in_original_mode = dwMode;
     }
   }
+}
+
+
+void uv__console_cleanup(void) {
+  if (uv__tty_console_stop != INVALID_HANDLE_VALUE &&
+      uv__tty_console_stop != NULL)
+    SetEvent(uv__tty_console_stop);
+
+  /* Join the message loop first. It is the thread that starts the watcher and
+   * sets uv__tty_console_watcher_started, so that flag can only be read once it
+   * has exited.
+   */
+  if (uv__tty_console_message_loop_started) {
+    uv_thread_join(&uv__tty_console_message_loop);
+    uv__tty_console_message_loop_started = 0;
+  }
+
+  if (uv__tty_console_watcher_started) {
+    uv_thread_join(&uv__tty_console_watcher);
+    uv__tty_console_watcher_started = 0;
+  }
+
+  /* Nothing else is looking at the console now. */
+  if (uv__tty_console_hook != NULL) {
+    if (pUnhookWinEvent != NULL)
+      pUnhookWinEvent(uv__tty_console_hook);
+    uv__tty_console_hook = NULL;
+  }
+
+  if (uv__tty_console_resized != INVALID_HANDLE_VALUE &&
+      uv__tty_console_resized != NULL) {
+    CloseHandle(uv__tty_console_resized);
+    uv__tty_console_resized = INVALID_HANDLE_VALUE;
+  }
+
+  if (uv__tty_console_stop != INVALID_HANDLE_VALUE &&
+      uv__tty_console_stop != NULL) {
+    CloseHandle(uv__tty_console_stop);
+    uv__tty_console_stop = INVALID_HANDLE_VALUE;
+  }
+
+  if (uv__tty_console_handle_out != INVALID_HANDLE_VALUE) {
+    uv_mutex_destroy(&uv__tty_console_resize_mutex);
+    CloseHandle(uv__tty_console_handle_out);
+    uv__tty_console_handle_out = INVALID_HANDLE_VALUE;
+    uv__tty_console_width = -1;
+    uv__tty_console_height = -1;
+  }
+
+  if (uv__tty_console_handle_in != INVALID_HANDLE_VALUE) {
+    /* Put the mode back if a uv_tty_t changed it and never got closed. */
+    if (uv__tty_console_in_original_mode != (DWORD)-1 &&
+        InterlockedExchange(&uv__tty_console_in_need_mode_reset, 0) != 0) {
+      SetConsoleMode(uv__tty_console_handle_in,
+                     uv__tty_console_in_original_mode);
+    }
+    CloseHandle(uv__tty_console_handle_in);
+    uv__tty_console_handle_in = INVALID_HANDLE_VALUE;
+    uv__tty_console_in_original_mode = (DWORD)-1;
+  }
+
+  uv_sem_destroy(&uv_tty_output_lock);
 }
 
 
@@ -2358,13 +2435,13 @@ static void uv__determine_vterm_state(HANDLE handle) {
   uv__vterm_state = UV_TTY_SUPPORTED;
 }
 
-static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {
+static void uv__tty_console_resize_message_loop_thread(void* param) {
   NTSTATUS status;
   ULONG_PTR conhost_pid;
   MSG msg;
 
   if (pSetWinEventHook == NULL || pNtQueryInformationProcess == NULL)
-    return 0;
+    return;
 
   status = pNtQueryInformationProcess(GetCurrentProcess(),
                                       ProcessConsoleHostProcess,
@@ -2376,7 +2453,7 @@ static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {
     /* We couldn't retrieve our console host process, probably because this
      * is a 32-bit process running on 64-bit Windows. Fall back to receiving
      * console events from the input stream only. */
-    return 0;
+    return;
   }
 
   /* Ensure the PID is a multiple of 4, which is required by SetWinEventHook */
@@ -2384,26 +2461,41 @@ static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {
 
   uv__tty_console_resized = CreateEvent(NULL, TRUE, FALSE, NULL);
   if (uv__tty_console_resized == NULL)
-    return 0;
-  if (QueueUserWorkItem(uv__tty_console_resize_watcher_thread,
-                        NULL,
-                        WT_EXECUTELONGFUNCTION) == 0)
-    return 0;
+    return;
+  if (uv_thread_create(&uv__tty_console_watcher,
+                       uv__tty_console_resize_watcher_thread,
+                       NULL) != 0)
+    return;
+  uv__tty_console_watcher_started = 1;
 
-  if (!pSetWinEventHook(EVENT_CONSOLE_LAYOUT,
-                        EVENT_CONSOLE_LAYOUT,
-                        NULL,
-                        uv__tty_console_resize_event,
-                        (DWORD)conhost_pid,
-                        0,
-                        WINEVENT_OUTOFCONTEXT))
-    return 0;
+  uv__tty_console_hook = pSetWinEventHook(EVENT_CONSOLE_LAYOUT,
+                                          EVENT_CONSOLE_LAYOUT,
+                                          NULL,
+                                          uv__tty_console_resize_event,
+                                          (DWORD)conhost_pid,
+                                          0,
+                                          WINEVENT_OUTOFCONTEXT);
+  if (uv__tty_console_hook == NULL)
+    return;
 
-  while (GetMessage(&msg, NULL, 0, 0)) {
-    TranslateMessage(&msg);
-    DispatchMessage(&msg);
+  /* Wait on the stop event as well as the message queue, so that cleanup does
+   * not have to reach into this thread's queue to end the loop.
+   */
+  for (;;) {
+    if (MsgWaitForMultipleObjects(1,
+                                  &uv__tty_console_stop,
+                                  FALSE,
+                                  INFINITE,
+                                  QS_ALLINPUT) == WAIT_OBJECT_0)
+      break;
+
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+      if (msg.message == WM_QUIT)
+        return;
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
   }
-  return 0;
 }
 
 static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
@@ -2416,15 +2508,22 @@ static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
   SetEvent(uv__tty_console_resized);
 }
 
-static DWORD WINAPI uv__tty_console_resize_watcher_thread(void* param) {
+static void uv__tty_console_resize_watcher_thread(void* param) {
+  HANDLE wait_handles[2];
+
+  wait_handles[0] = uv__tty_console_stop;
+  wait_handles[1] = uv__tty_console_resized;
+
   for (;;) {
     /* Make sure to not overwhelm the system with resize events */
-    Sleep(33);
-    WaitForSingleObject(uv__tty_console_resized, INFINITE);
+    if (WaitForSingleObject(uv__tty_console_stop, 33) == WAIT_OBJECT_0)
+      return;
+    if (WaitForMultipleObjects(2, wait_handles, FALSE, INFINITE) ==
+        WAIT_OBJECT_0)
+      return;
     ResetEvent(uv__tty_console_resized);
     uv__tty_console_signal_resize();
   }
-  return 0;
 }
 
 static void uv__tty_console_signal_resize(void) {

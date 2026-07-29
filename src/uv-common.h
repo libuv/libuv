@@ -246,6 +246,10 @@ void uv__timer_close(uv_timer_t* handle);
 
 void uv__process_title_cleanup(void);
 void uv__signal_cleanup(void);
+#ifdef _WIN32
+/* Undo the process-wide setup that uv__once_init() performs. */
+void uv__once_cleanup(void);
+#endif
 void uv__threadpool_cleanup(void);
 
 #define uv__has_active_reqs(loop)                                             \

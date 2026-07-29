@@ -77,6 +77,11 @@ static uint64_t hrtime_frequency_ = 0;
 /*
  * One-time initialization code for functionality defined in util.c.
  */
+void uv__util_cleanup(void) {
+  DeleteCriticalSection(&process_title_lock);
+}
+
+
 void uv__util_init(void) {
   LARGE_INTEGER perf_frequency;
 
