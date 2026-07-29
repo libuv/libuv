@@ -148,18 +148,28 @@ TEST_IMPL(osx_select_close) {
   uv_tty_t tty;
   uv_loop_t* loop;
 
-  loop = uv_default_loop();
-
   ASSERT_PTR_NE(SIG_ERR, signal(SIGHUP, SIG_IGN));
   ASSERT_OK(openpty(&master_fd, &slave_fd, NULL, NULL, NULL));
-  ASSERT_NE(-1, setsid());
+
+  /* A new session is needed to acquire the pty as controlling terminal, but
+   * setsid() fails when this process is already a process group leader. That
+   * happens when the runner executes the test in-process instead of in a
+   * child process, so skip rather than fail.
+   */
+  if (setsid() == -1) {
+    ASSERT_OK(close(master_fd));
+    ASSERT_OK(close(slave_fd));
+    ASSERT_PTR_NE(SIG_ERR, signal(SIGHUP, SIG_DFL));
+    RETURN_SKIP("Cannot create a new session, already a group leader.");
+  }
+
   ASSERT_OK(ioctl(slave_fd, TIOCSCTTY, 0));
+  loop = uv_default_loop();
   tty_fd = open("/dev/tty", O_RDONLY);
   ASSERT_GE(tty_fd, 0);
   ASSERT_OK(uv_tty_init(loop, &tty, tty_fd, 1));
   ASSERT_OK(uv_fileno((uv_handle_t*) &tty, &handle_fd));
   ASSERT_NE(tty_fd, handle_fd);
-  ASSERT_OK(close(tty_fd));
 
   uv_close((uv_handle_t*) &tty, NULL);
   ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
