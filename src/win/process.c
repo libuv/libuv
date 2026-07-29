@@ -66,23 +66,6 @@ static HANDLE uv_global_job_handle_;
 static uv_once_t uv_global_job_handle_init_guard_ = UV_ONCE_INIT;
 
 
-void uv__process_cleanup(void) {
-  uv_once_t reset = UV_ONCE_INIT;
-
-  /* Closing this kills every process still assigned to the job, which is the
-   * same thing that happens when the process exits. uv_library_shutdown() is
-   * documented as being called with no loops or requests still active, so any
-   * process we are still responsible for is one nobody is waiting on.
-   */
-  if (uv_global_job_handle_ != NULL) {
-    CloseHandle(uv_global_job_handle_);
-    uv_global_job_handle_ = NULL;
-  }
-
-  uv_global_job_handle_init_guard_ = reset;
-}
-
-
 static void uv__init_global_job_handle(void) {
   /* Create a job object and set it up to kill all contained processes when
    * it's closed. Since this handle is made non-inheritable and we're not

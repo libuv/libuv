@@ -252,7 +252,10 @@ void uv__once_cleanup(void) {
   uv__console_cleanup();
 
   uv__poll_cleanup();
-  uv__process_cleanup();
+  /* The global job object is deliberately left open. Closing it terminates
+   * every process still assigned to it, which is what should happen when this
+   * process exits, not when it merely stops using libuv.
+   */
   uv__detect_system_wakeup_cleanup();
   uv__fs_cleanup();
   uv__util_cleanup();

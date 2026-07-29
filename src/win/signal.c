@@ -39,14 +39,26 @@ int uv__signal_start(uv_signal_t* handle,
                      int signum,
                      int oneshot);
 
+/* uv__signal_cleanup() runs whether or not uv__signals_init() ever did, so it
+ * needs to know: uv_library_shutdown() may be called by a process that never
+ * used a loop, and neither the handler nor the lock would exist yet.
+ */
+static int uv__signals_initialized;
+
+
 void uv__signals_init(void) {
   InitializeCriticalSection(&uv__signal_lock);
   if (!SetConsoleCtrlHandler(uv__signal_control_handler, TRUE))
     abort();
+  uv__signals_initialized = 1;
 }
 
 
 void uv__signal_cleanup(void) {
+  if (!uv__signals_initialized)
+    return;
+
+  uv__signals_initialized = 0;
   SetConsoleCtrlHandler(uv__signal_control_handler, FALSE);
   DeleteCriticalSection(&uv__signal_lock);
 }

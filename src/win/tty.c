@@ -237,12 +237,6 @@ void uv__console_cleanup(void) {
   }
 
   /* Nothing else is looking at the console now. */
-  if (uv__tty_console_hook != NULL) {
-    if (pUnhookWinEvent != NULL)
-      pUnhookWinEvent(uv__tty_console_hook);
-    uv__tty_console_hook = NULL;
-  }
-
   if (uv__tty_console_resized != INVALID_HANDLE_VALUE &&
       uv__tty_console_resized != NULL) {
     CloseHandle(uv__tty_console_resized);
@@ -2491,11 +2485,16 @@ static void uv__tty_console_resize_message_loop_thread(void* param) {
 
     while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
       if (msg.message == WM_QUIT)
-        return;
+        goto done;
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
   }
+
+done:
+  if (pUnhookWinEvent != NULL)
+    pUnhookWinEvent(uv__tty_console_hook);
+  uv__tty_console_hook = NULL;
 }
 
 static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
