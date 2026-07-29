@@ -254,7 +254,6 @@ void uv__once_cleanup(void) {
   uv__poll_cleanup();
   uv__process_cleanup();
   uv__detect_system_wakeup_cleanup();
-  uv__signals_cleanup();
   uv__fs_cleanup();
   uv__util_cleanup();
   uv__winsock_cleanup();

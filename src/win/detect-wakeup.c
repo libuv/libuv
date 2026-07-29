@@ -52,6 +52,7 @@ static void uv__register_system_resume_callback(void) {
 
   recipient.Callback = uv__system_resume_callback;
   recipient.Context = NULL;
+  registration_handle = NULL;
   if ((*pPowerRegisterSuspendResumeNotification)(DEVICE_NOTIFY_CALLBACK,
                                                  &recipient,
                                                  &registration_handle) ==

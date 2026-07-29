@@ -46,14 +46,9 @@ void uv__signals_init(void) {
 }
 
 
-void uv__signals_cleanup(void) {
+void uv__signal_cleanup(void) {
   SetConsoleCtrlHandler(uv__signal_control_handler, FALSE);
   DeleteCriticalSection(&uv__signal_lock);
-}
-
-
-void uv__signal_cleanup(void) {
-  /* TODO(bnoordhuis) Undo effects of uv_signal_init()? */
 }
 
 

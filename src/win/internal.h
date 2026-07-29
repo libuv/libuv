@@ -218,7 +218,6 @@ void uv__process_async_wakeup_req(uv_loop_t* loop, uv_async_t* handle,
  * Signal watcher
  */
 void uv__signals_init(void);
-void uv__signals_cleanup(void);
 int uv__signal_dispatch(int signum);
 
 void uv__signal_close(uv_loop_t* loop, uv_signal_t* handle);
