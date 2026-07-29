@@ -251,10 +251,18 @@ void uv__once_cleanup(void) {
    * those threads use. */
   uv__console_cleanup();
 
-  uv__poll_cleanup();
-  /* The global job object is deliberately left open. Closing it terminates
-   * every process still assigned to it, which is what should happen when this
-   * process exits, not when it merely stops using libuv.
+  /* Two things are deliberately left for the process to exit with.
+   *
+   * The global job object: closing it terminates every process still assigned
+   * to it, which is what should happen when this process exits, not when it
+   * merely stops using libuv.
+   *
+   * The dummy overlapped and event in poll.c: uv__poll_close() submits a poll
+   * with them and accepts WSA_IO_PENDING, so that operation is not tracked by
+   * the handle, the loop, or anything else. The kernel can still be holding
+   * both when we get here, and reclaiming them under a live operation is how
+   * poll_closesocket died with STATUS_INVALID_HANDLE inside an AppContainer,
+   * where a stale handle raises instead of failing quietly.
    */
   uv__detect_system_wakeup_cleanup();
   uv__fs_cleanup();

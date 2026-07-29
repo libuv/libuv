@@ -69,20 +69,6 @@ static OVERLAPPED* uv__get_overlapped_dummy(void) {
 }
 
 
-void uv__poll_cleanup(void) {
-  uv_once_t reset = UV_ONCE_INIT;
-  HANDLE event;
-
-  /* The event is stored with its low bit set, see uv__init_overlapped_dummy(). */
-  event = (HANDLE) ((uintptr_t) overlapped_dummy_.hEvent & ~(uintptr_t) 1);
-  if (event != NULL) {
-    CloseHandle(event);
-    memset(&overlapped_dummy_, 0, sizeof(overlapped_dummy_));
-  }
-
-  overlapped_dummy_init_guard_ = reset;
-}
-
 
 static AFD_POLL_INFO* uv__get_afd_poll_info_dummy(void) {
   return &afd_poll_info_dummy_;
