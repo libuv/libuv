@@ -596,6 +596,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-mutexes.c
        test/test-not-readable-nor-writable-on-read-error.c
        test/test-not-writable-after-shutdown.c
+       test/test-osx-resident-set-memory.c
        test/test-osx-select.c
        test/test-pass-always.c
        test/test-ping-pong.c
