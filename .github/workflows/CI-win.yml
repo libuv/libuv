@@ -31,7 +31,7 @@ jobs:
           - {toolchain: Visual Studio 17 2022, arch: x64, server: 2025, config: UBSAN}
           - {toolchain: Visual Studio 17 2022, arch: arm64, server: 2025}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build
         run:
           cmake -S . -B build -DBUILD_TESTING=ON
@@ -82,14 +82,14 @@ jobs:
           - {arch: i686,   server: 2022, libgcc: dw2 }
           - {arch: x86_64, server: 2022, libgcc: seh }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install mingw32 environment
         run: |
           sudo apt update
           sudo apt install mingw-w64 ninja-build -y
       - name: Build
         run: |
-          cmake -S . -B build -G Ninja -DHOST_ARCH=${{ matrix.config.arch }} -DBUILD_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
+          cmake -B build -G Ninja -DHOST_ARCH=${{ matrix.config.arch }} -DBUILD_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=cmake-toolchains/cross-mingw32.cmake
           cmake --build build
           cmake --install build --prefix "`pwd`/build/usr"
           mkdir -p build/usr/test build/usr/bin
@@ -100,7 +100,7 @@ jobs:
              `${{ matrix.config.arch }}-w64-mingw32-gcc -print-file-name=libatomic-1.dll` \
              build/usr/bin
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mingw-${{ matrix.config.arch }}
           path: build/usr/**/*
@@ -118,7 +118,7 @@ jobs:
           - {arch: x86_64, server: 2022}
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: mingw-${{ matrix.config.arch }}
       - name: Test

@@ -1,4 +1,4 @@
-/* Copyright Joyent, Inc. and other Node contributors. All rights reserved.
+/* Copyright libuv contributors. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -21,54 +21,42 @@
 
 #include "uv.h"
 #include "task.h"
-
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+static int limit;
+static int alloc;
 
-TEST_IMPL(tcp_flags) {
-  uv_loop_t* loop;
-  uv_tcp_t handle;
-  int r;
+static void* t_realloc(void* p, size_t n) {
+  alloc += n;
+  if (alloc > limit)
+    return NULL;
+  p = realloc(p, n);
+  ASSERT_NOT_NULL(p);
+  return p;
+}
 
-  loop = uv_default_loop();
+static void* t_calloc(size_t m, size_t n) {
+  return t_realloc(NULL, m * n);
+}
 
-  /* Use _ex to make sure the socket is created. */
-  r = uv_tcp_init_ex(loop, &handle, AF_INET);
-  ASSERT_OK(r);
+static void* t_malloc(size_t n) {
+  return t_realloc(NULL, n);
+}
 
-  r = uv_tcp_nodelay(&handle, 1);
-  ASSERT_OK(r);
+TEST_IMPL(loop_init_oom) {
+  uv_loop_t loop;
+  int err;
 
-  r = uv_tcp_keepalive(&handle, 1, 60);
-  ASSERT_OK(r);
-
-  r = uv_tcp_keepalive(&handle, 0, 0);
-  ASSERT_OK(r);
-
-  r = uv_tcp_keepalive(&handle, 1, 0);
-  ASSERT_EQ(r, UV_EINVAL);
-
-  r = uv_tcp_keepalive_ex(&handle, 1, 60, 60, 60);
-  ASSERT_OK(r);
-
-  r = uv_tcp_keepalive_ex(&handle, 0, 0, 0, 0);
-  ASSERT_OK(r);
-
-  r = uv_tcp_keepalive_ex(&handle, 1, 0, 10, 10);
-  ASSERT_EQ(r, UV_EINVAL);
-
-  r = uv_tcp_keepalive_ex(&handle, 1, 10, 0, 10);
-  ASSERT_EQ(r, UV_EINVAL);
-
-  r = uv_tcp_keepalive_ex(&handle, 1, 10, 10, 0);
-  ASSERT_EQ(r, UV_EINVAL);
-
-  uv_close((uv_handle_t*)&handle, NULL);
-
-  r = uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_OK(r);
-
-  MAKE_VALGRIND_HAPPY(loop);
+  ASSERT_OK(uv_replace_allocator(t_malloc, t_realloc, t_calloc, free));
+  for (;;) {
+    err = uv_loop_init(&loop);
+    if (err == 0)
+      break;
+    ASSERT_EQ(err, UV_ENOMEM);
+    limit += 8;
+    alloc = 0;
+  }
+  ASSERT_OK(uv_loop_close(&loop));
   return 0;
 }
