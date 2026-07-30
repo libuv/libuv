@@ -356,7 +356,7 @@ API
     Gets the resident set size (RSS) for the current process.
 
     On macOS this returns the physical footprint (the number Activity
-    Monitor and :man:`footprint(1)` show). The resident set size on macOS
+    Monitor and ``footprint(1)`` show). The resident set size on macOS
     keeps counting memory the process has already freed until the kernel
     reclaims those pages, so it only ever reports the high-water mark.
 
