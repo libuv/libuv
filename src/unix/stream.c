@@ -1939,6 +1939,15 @@ void uv__stream_close(uv_stream_t* handle) {
     assert(w != NULL);
     assert(w->stream == handle);
     uv__blocked_write_cancel(handle->loop, w);
+  } else if (handle->io_watcher.fd != -1) {
+    /* Some users (including the tcp_close_accept test) expect the stream to be
+     * closed immediately after `uv_close` returns.  We can't guarantee this for
+     * streams with pending writes, but we can for most streams.  If there is a
+     * pending write we'll close it uv__stream_destroy, after the write has been
+     * cancelled. */
+    if (handle->io_watcher.fd > STDERR_FILENO)
+      uv__close(handle->io_watcher.fd);
+    handle->io_watcher.fd = -1;
   }
 
   assert(!uv__io_active(&handle->io_watcher, POLLIN | POLLOUT));
