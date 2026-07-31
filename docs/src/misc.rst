@@ -355,14 +355,6 @@ API
 
     Gets the resident set size (RSS) for the current process.
 
-    On macOS this returns the physical footprint (the number Activity
-    Monitor and ``footprint(1)`` show). The resident set size on macOS
-    keeps counting memory the process has already freed until the kernel
-    reclaims those pages, so it only ever reports the high-water mark.
-
-    .. versionchanged:: 1.53.0 the physical footprint is reported on
-                       macOS.
-
 .. c:function:: int uv_uptime(double* uptime)
 
     Gets the current system uptime. Depending on the system full or fractional seconds are returned.
