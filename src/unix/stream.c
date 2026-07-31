@@ -108,6 +108,7 @@ struct uv__blocked_write {
   struct uv__work work;
   uv_stream_t* stream;
   pthread_t thread;
+  int send_fd;
   _Atomic char state;
 };
 
@@ -513,8 +514,11 @@ void uv__stream_destroy(uv_stream_t* stream) {
   uv__write_callbacks(stream);
   uv__drain(stream);
 
-  if (stream->u.blocked_write != NULL)
+  if (stream->u.blocked_write != NULL) {
+    if (stream->u.blocked_write->send_fd != -1)
+      uv__close(stream->u.blocked_write->send_fd);
     uv__free(stream->u.blocked_write);
+  }
 
   assert(stream->write_queue_size == 0);
 }
@@ -839,7 +843,7 @@ static int uv__write_try_step(struct uv__blocked_write *w,
 static int uv__try_write(uv_stream_t* stream,
                          const uv_buf_t bufs[],
                          unsigned int nbufs,
-                         uv_stream_t* send_handle,
+                         uv_file send_fd,
                          struct uv__blocked_write* w) {
   struct iovec* iov;
   int iovmax;
@@ -864,19 +868,11 @@ static int uv__try_write(uv_stream_t* stream,
    * Now do the actual writev. Note that we've been updating the pointers
    * inside the iov each time we write. So there is no need to offset it.
    */
-  if (send_handle != NULL) {
-    int fd_to_send;
+  if (send_fd >= 0) {
     struct msghdr msg;
     union uv__cmsg cmsg;
 
-    if (uv__is_closing(send_handle))
-      return UV_EBADF;
-
-    fd_to_send = uv__handle_fd((uv_handle_t*) send_handle);
-
     memset(&cmsg, 0, sizeof(cmsg));
-
-    assert(fd_to_send >= 0);
 
     msg.msg_name = NULL;
     msg.msg_namelen = 0;
@@ -885,12 +881,12 @@ static int uv__try_write(uv_stream_t* stream,
     msg.msg_flags = 0;
 
     msg.msg_control = &cmsg.hdr;
-    msg.msg_controllen = CMSG_SPACE(sizeof(fd_to_send));
+    msg.msg_controllen = CMSG_SPACE(sizeof(send_fd));
 
     cmsg.hdr.cmsg_level = SOL_SOCKET;
     cmsg.hdr.cmsg_type = SCM_RIGHTS;
-    cmsg.hdr.cmsg_len = CMSG_LEN(sizeof(fd_to_send));
-    memcpy(CMSG_DATA(&cmsg.hdr), &fd_to_send, sizeof(fd_to_send));
+    cmsg.hdr.cmsg_len = CMSG_LEN(sizeof(send_fd));
+    memcpy(CMSG_DATA(&cmsg.hdr), &send_fd, sizeof(send_fd));
 
     if (w != NULL)
       uv__block_cancel(0);
@@ -935,6 +931,24 @@ static int uv__try_write(uv_stream_t* stream,
 }
 
 
+static int uv__try_write_handle(uv_stream_t* stream,
+                                const uv_buf_t bufs[],
+                                unsigned int nbufs,
+                                uv_stream_t* send_handle,
+                                struct uv__blocked_write* w) {
+  uv_file send_fd;
+
+  send_fd = -1;
+  if (send_handle != NULL) {
+    if (uv__is_closing(send_handle))
+      return UV_EBADF;
+    send_fd = uv__handle_fd((uv_handle_t*)send_handle);
+  }
+
+  return uv__try_write(stream, bufs, nbufs, send_fd, w);
+}
+
+
 /* A note about blocking writes: The UV_HANDLE_WRITE_PENDING flag is toggled
  * only on the loop thread (either by uv__write or uv__write_done).  While we're
  * doing work from the thread pool, we touch only the result field of
@@ -960,11 +974,15 @@ static void uv__write_work(struct uv__work* work) {
                          memory_order_release))
     return;
 
-  req->result =
-      uv__try_write(stream, &(req->bufs[req->write_index]),
-                    req->nbufs - req->write_index, req->send_handle, w);
+  req->result = uv__try_write(stream,
+                              &(req->bufs[req->write_index]),
+                              req->nbufs - req->write_index,
+                              w->send_fd,
+                              w);
 
-  uv__write_try_step(w, UV__WRITE_CANCELLABLE, UV__WRITE_DONE,
+  uv__write_try_step(w,
+                     UV__WRITE_CANCELLABLE,
+                     UV__WRITE_DONE,
                      memory_order_relaxed);
 }
 
@@ -994,7 +1012,12 @@ static void uv__write_done(struct uv__work* w, int status) {
   cancelled = status != 0 || state == UV__WRITE_CANCELLED;
 
   if (req->result >= 0) {
-    req->send_handle = NULL;
+    if (req->send_handle != NULL) {
+      req->send_handle = NULL;
+      uv__close(blocked_write->send_fd);
+      blocked_write->send_fd = -1;
+    }
+
     /* We will call uv__write_req_finish on the error path, if we were cancelled
      * after doing a partial write. */
     if (uv__write_req_update(stream, req, req->result) && !cancelled)
@@ -1031,6 +1054,10 @@ static void uv__write_done(struct uv__work* w, int status) {
   return;
 
 error:
+  if (req->send_handle) {
+    uv__close(blocked_write->send_fd);
+    blocked_write->send_fd = -1;
+  }
   uv__write_req_finish(req);
   if (stream->flags & UV_HANDLE_CLOSING) {
     uv__make_close_pending((uv_handle_t *)stream);
@@ -1085,6 +1112,7 @@ static void uv__write(uv_stream_t* stream) {
   uv_write_t* req;
   int n;
   int count;
+  int fd;
 
   assert(uv__stream_fd(stream) >= 0);
 
@@ -1103,11 +1131,11 @@ static void uv__write(uv_stream_t* stream) {
     assert(req->handle == stream);
 
     if (!(stream->flags & UV_HANDLE_BLOCKING_WRITES)) {
-      n = uv__try_write(stream,
-                        &(req->bufs[req->write_index]),
-                        req->nbufs - req->write_index,
-                        req->send_handle,
-                        NULL);
+      n = uv__try_write_handle(stream,
+                               &(req->bufs[req->write_index]),
+                               req->nbufs - req->write_index,
+                               req->send_handle,
+                               NULL);
     } else {
       if (!(stream->flags & UV_HANDLE_WRITE_PENDING)) {
         if (stream->u.blocked_write == NULL) {
@@ -1117,7 +1145,43 @@ static void uv__write(uv_stream_t* stream) {
             goto error;
           }
           stream->u.blocked_write->stream = stream;
+          stream->u.blocked_write->send_fd = -1;
         }
+
+        /* We can't guarantee the fd for the send_handle will be open when it's
+         * read from the thread pool, so we must duplicate it here.  We'll close
+         * it when the write completes or fails with an error. */
+        if (req->send_handle) {
+          if (stream->u.blocked_write->send_fd == -1) {
+            if (uv__is_closing(req->send_handle)) {
+              n = UV_EBADF;
+              goto error;
+            }
+#ifdef F_DUPFD_CLOEXEC /* POSIX 2008 */
+            fd = fcntl(uv__handle_fd((uv_handle_t*)req->send_handle),
+                       F_DUPFD_CLOEXEC,
+                       STDERR_FILENO + 1);
+#else
+            fd = fcntl(uv__handle_fd((uv_handle_t*)req->send_handle),
+                       F_DUPFD,
+                       STDERR_FILENO + 1);
+            if (fd >= 0) {
+              n = uv__cloexec(fd, 1);
+              if (n != 0) {
+                uv__close(fd);
+                goto error;
+              }
+            }
+#endif
+            if (fd < 0) {
+              n = UV__ERR(errno);
+              goto error;
+            }
+            stream->u.blocked_write->send_fd = fd;
+          }
+        } else
+          stream->u.blocked_write->send_fd = -1;
+
         stream->flags |= UV_HANDLE_WRITE_PENDING;
         /* It's possible we're watching this stream because of a previous
          * EAGAIN, in which case we should stop until this write finishes and we
@@ -1757,7 +1821,7 @@ int uv_try_write2(uv_stream_t* stream,
   if (err < 0)
     return err;
 
-  return uv__try_write(stream, bufs, nbufs, send_handle, NULL);
+  return uv__try_write_handle(stream, bufs, nbufs, send_handle, NULL);
 }
 
 
