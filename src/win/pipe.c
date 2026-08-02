@@ -1043,16 +1043,50 @@ error:
   return 0;
 }
 
-/* Cancel a synchronous I/O operation running in a thread pool thread.
- * thread_ptr is the volatile handle set by the worker thread, and lock
- * is held briefly to synchronize the handshake. */
+/* CancelSynchronousIo publication protocol, used in either direction.
+ *
+ * A thread about to enter a cancellable synchronous operation publishes its
+ * own duplicated thread handle in a slot (a volatile HANDLE guarded by the
+ * pipe's thread_lock) and withdraws it after the operation returns; the
+ * other side claims the slot and issues CancelSynchronousIo against the
+ * published thread, retrying on its own schedule - ERROR_NOT_FOUND means
+ * the target was not inside a cancellable syscall at that instant - until
+ * the slot is withdrawn. A slot holds NULL or INVALID_HANDLE_VALUE when no
+ * thread is published; what the two sentinels mean at rest is up to the
+ * slot's owner. */
+
+/* One CancelSynchronousIo attempt against the thread published in *slot,
+ * made under the lock so that it cannot race the publisher's withdraw.
+ * Returns the slot value that was observed; the caller decides, based on
+ * it, whether to keep retrying. */
+static HANDLE uv__pipe_kick_synchronous_io(volatile HANDLE* slot,
+                                           CRITICAL_SECTION* lock) {
+  HANDLE thread;
+
+  EnterCriticalSection(lock);
+  thread = *slot;
+  if (thread != NULL && thread != INVALID_HANDLE_VALUE) {
+    BOOL r = CancelSynchronousIo(thread);
+    assert(r || GetLastError() == ERROR_NOT_FOUND);
+    (void) r;
+  }
+  LeaveCriticalSection(lock);
+
+  return thread;
+}
+
+
+/* Cancel a synchronous I/O operation running in a thread pool thread and
+ * do not return before it is out of harm's way: thread_ptr is the slot the
+ * worker thread publishes itself in (see uv__pipe_begin_synchronous_io),
+ * NULL meaning "not there yet" and INVALID_HANDLE_VALUE "already done or
+ * cancelled". */
 static void uv__pipe_cancel_synchronous_io(volatile HANDLE* thread_ptr,
                                             CRITICAL_SECTION* lock) {
   HANDLE thread;
   HANDLE expected_invalid = INVALID_HANDLE_VALUE;
 
   EnterCriticalSection(lock);
-
   thread = *thread_ptr;
   if (thread == NULL) {
     /* The thread pool thread has not yet reached the point of blocking, we
@@ -1068,20 +1102,19 @@ static void uv__pipe_cancel_synchronous_io(volatile HANDLE* thread_ptr,
     /* Finally set this back to INVALID_HANDLE_VALUE to retain the
      * invariant that it'll be INVALID_HANDLE_VALUE on exit from this function. */
     *thread_ptr = INVALID_HANDLE_VALUE;
-  } else {
-    /* Spin until the thread has acknowledged (by changing *thread_ptr)
-     * that it is past the point of blocking. */
-    while (thread != INVALID_HANDLE_VALUE) {
-      BOOL r = CancelSynchronousIo(thread);
-      assert(r || GetLastError() == ERROR_NOT_FOUND);
-      LeaveCriticalSection(lock);
-      SwitchToThread();
-      EnterCriticalSection(lock);
-      thread = *thread_ptr;
-    }
+    LeaveCriticalSection(lock);
+    return;
   }
-
   LeaveCriticalSection(lock);
+
+  /* Kick until the thread has acknowledged (by changing *thread_ptr to
+   * INVALID_HANDLE_VALUE) that it is past the point of blocking. */
+  for (;;) {
+    thread = uv__pipe_kick_synchronous_io(thread_ptr, lock);
+    if (thread == INVALID_HANDLE_VALUE)
+      break;
+    SwitchToThread();
+  }
 }
 
 
