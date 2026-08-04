@@ -1092,9 +1092,13 @@ static void uv__read(uv_stream_t* stream) {
       }
       while (nread < 0 && errno == EINTR);
 #else
-      /* WASI does not support msghdr. */
-      nread = -1;
-      errno = ENOSYS;
+      /* WASIX socket pairs can carry IPC bytes, but WASI has no msghdr or
+       * descriptor-passing support. Read the payload normally; attempts to
+       * transfer a handle remain unsupported by the write path. */
+      do {
+        nread = read(uv__stream_fd(stream), buf.base, buf.len);
+      }
+      while (nread < 0 && errno == EINTR);
 #endif  /* !__wasi__ */
     }
 
