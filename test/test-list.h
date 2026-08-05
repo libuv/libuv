@@ -220,6 +220,7 @@ TEST_DECLARE   (udp_send_fail_nbufs)
 TEST_DECLARE   (udp_sendmmsg_error)
 TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
+TEST_DECLARE   (pipe_bind_error_addrinuse_pending_instances)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
 TEST_DECLARE   (pipe_bind_error_inval)
 TEST_DECLARE   (pipe_connect_close_multiple)
@@ -881,6 +882,7 @@ TASK_LIST_START
 #endif
 
   TEST_ENTRY  (pipe_bind_error_addrinuse)
+  TEST_ENTRY  (pipe_bind_error_addrinuse_pending_instances)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)
   TEST_ENTRY  (pipe_bind_error_inval)
   TEST_ENTRY  (pipe_connect_close_multiple)
