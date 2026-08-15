@@ -448,6 +448,7 @@ int uv__statx(int dirfd,
               unsigned int mask,
               struct uv__statx* statxbuf);
 void uv__statx_to_stat(const struct uv__statx* statxbuf, uv_stat_t* buf);
+int uv__iou_cancel(uv_loop_t* loop, uv_fs_t* req);
 ssize_t uv__getrandom(void* buf, size_t buflen, unsigned flags);
 unsigned uv__kernel_version(void);
 #endif
