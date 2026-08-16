@@ -346,6 +346,7 @@ TEST_DECLARE   (spawn_empty_env)
 TEST_DECLARE   (spawn_exit_code)
 TEST_DECLARE   (spawn_stdout)
 TEST_DECLARE   (spawn_stdin)
+TEST_DECLARE   (spawn_stdio_socket_buffer_size)
 TEST_DECLARE   (spawn_stdio_greater_than_3)
 TEST_DECLARE   (spawn_ignored_stdio)
 TEST_DECLARE   (spawn_and_kill)
@@ -1059,6 +1060,9 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_exit_code)
   TEST_ENTRY  (spawn_stdout)
   TEST_ENTRY  (spawn_stdin)
+#ifndef _WIN32
+  TEST_ENTRY  (spawn_stdio_socket_buffer_size)
+#endif
   TEST_ENTRY  (spawn_stdio_greater_than_3)
   TEST_ENTRY  (spawn_ignored_stdio)
   TEST_ENTRY  (spawn_and_kill)

@@ -209,6 +209,23 @@ void uv__wait_children(uv_loop_t* loop) {
  * avoided. Since this isn't called on those targets, the function
  * doesn't even need to be defined for them.
  */
+/* Raise a socket buffer to at least `size` bytes but never shrink it: the
+ * defaults differ wildly between platforms (8 KiB on macOS, ~208 KiB on Linux)
+ * and a smaller buffer means more wake-ups per bulk transfer over stdio.
+ */
+static void uv__process_stdio_bufsize(int fd, int opt, int size) {
+  socklen_t len;
+  int cur;
+
+  len = sizeof(cur);
+  if (getsockopt(fd, SOL_SOCKET, opt, &cur, &len))
+    cur = 0;
+
+  if (cur < size)
+    setsockopt(fd, SOL_SOCKET, opt, &size, sizeof(size));
+}
+
+
 static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   int mask;
   int fd;
@@ -232,8 +249,8 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
 
       if (ret == 0)
         for (i = 0; i < 2; i++) {
-          setsockopt(fds[i], SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
-          setsockopt(fds[i], SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+          uv__process_stdio_bufsize(fds[i], SO_RCVBUF, size);
+          uv__process_stdio_bufsize(fds[i], SO_SNDBUF, size);
         }
     }
 

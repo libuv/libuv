@@ -580,6 +580,73 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 }
 
 
+#ifndef _WIN32
+/* The stdio "pipes" handed to a child are AF_UNIX stream socket pairs whose
+ * buffers are raised to at least 64 KiB, but never shrunk below what the
+ * platform hands out by default.
+ */
+TEST_IMPL(spawn_stdio_socket_buffer_size) {
+  uv_stdio_container_t stdio[2];
+  uv_pipe_t in;
+  uv_pipe_t out;
+  uv_os_fd_t fd;
+  socklen_t len;
+  int defaults[2];
+  int sndbuf;
+  int rcvbuf;
+  int sv[2];
+  int r;
+
+  /* What does a fresh socket pair get on this system? */
+  ASSERT_OK(socketpair(AF_UNIX, SOCK_STREAM, 0, sv));
+  len = sizeof(defaults[0]);
+  ASSERT_OK(getsockopt(sv[0], SOL_SOCKET, SO_SNDBUF, &defaults[0], &len));
+  len = sizeof(defaults[1]);
+  ASSERT_OK(getsockopt(sv[0], SOL_SOCKET, SO_RCVBUF, &defaults[1], &len));
+  close(sv[0]);
+  close(sv[1]);
+
+  init_process_options("spawn_helper1", exit_cb);
+
+  uv_pipe_init(uv_default_loop(), &out, 0);
+  uv_pipe_init(uv_default_loop(), &in, 0);
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE;
+  options.stdio[0].data.stream = (uv_stream_t*) &in;
+  options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  options.stdio[1].data.stream = (uv_stream_t*) &out;
+  options.stdio_count = 2;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT_OK(r);
+
+  ASSERT_OK(uv_fileno((uv_handle_t*) &in, &fd));
+  len = sizeof(sndbuf);
+  ASSERT_OK(getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, &len));
+  len = sizeof(rcvbuf);
+  ASSERT_OK(getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &len));
+
+  ASSERT_GE(sndbuf, 64 * 1024);
+  ASSERT_GE(rcvbuf, 64 * 1024);
+  ASSERT_GE(sndbuf, defaults[0]);
+  ASSERT_GE(rcvbuf, defaults[1]);
+
+  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT_OK(r);
+  uv_close((uv_handle_t*) &in, close_cb);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT_OK(r);
+
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(3, close_cb_called); /* Once for process twice for the pipe. */
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+#endif
+
+
 TEST_IMPL(spawn_stdin) {
   int r;
   uv_pipe_t out;
