@@ -23,6 +23,7 @@
 #include "task.h"
 #include "../src/uv-common.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 struct semaphores {
@@ -130,54 +131,55 @@ TEST_IMPL(thread_name) {
   return 0;
 }
 
-#define MAX_THREADS 4
+#define MAX_THREADS 4  /* the default UV_THREADPOOL_SIZE */
 
-static void* executedThreads[MAX_THREADS] = { NULL };
-static int size;
-static uv_loop_t* loop;
-
-static unsigned short int key_exists(void* key) {
-  size_t i;
-  for (i = 0; i < MAX_THREADS; i++) {
-    if (executedThreads[i] == key) {
-      return 1;
-    }
-  }
-  return 0;
-}
+static uv_barrier_t pool_barrier;
+static int after_work_cb_count;
 
 static void work_cb(uv_work_t* req) {
-  uv_thread_t thread = uv_thread_self();
-  req->data = &thread;
   char tn[UV_PTHREAD_MAX_NAMELEN_NP];
+  uv_thread_t thread;
+
+  thread = uv_thread_self();
   ASSERT_OK(uv_thread_getname(&thread, tn, sizeof(tn)));
   ASSERT_STR_EQ(tn, "libuv-worker");
+
+  /* Hold every worker here until all requests are executing, so that each
+   * request is served by a different thread and every thread of the pool has
+   * had its name checked. Which worker picks up which request is otherwise up
+   * to the pool. */
+  if (uv_barrier_wait(&pool_barrier) > 0)
+    uv_barrier_destroy(&pool_barrier);
 }
 
 static void after_work_cb(uv_work_t* req, int status) {
   ASSERT_OK(status);
-  if (!key_exists(req->data)) {
-    executedThreads[size++] = req->data;
-  }
-
-  if (size == MAX_THREADS) {
-    return;
-  }
-
-  uv_queue_work(loop, req, work_cb, after_work_cb);
+  after_work_cb_count++;
 }
 
 TEST_IMPL(thread_name_threadpool) {
+  uv_work_t reqs[MAX_THREADS];
+  const char* val;
+  int nthreads;
+  int i;
 
 #if defined(_AIX) || defined(__PASE__)
   RETURN_SKIP("API not available on this platform");
 #endif
-  uv_work_t req;
-  loop = uv_default_loop();
-  // Just to make sure all workers will be executed
-  // with the correct thread name
-  ASSERT_OK(uv_queue_work(loop, &req, work_cb, after_work_cb));
-  uv_run(loop, UV_RUN_DEFAULT);
+  nthreads = MAX_THREADS;
+  val = getenv("UV_THREADPOOL_SIZE");
+  if (val != NULL && atoi(val) >= 1 && atoi(val) < MAX_THREADS)
+    nthreads = atoi(val);
+
+  ASSERT_OK(uv_barrier_init(&pool_barrier, nthreads));
+  for (i = 0; i < nthreads; i++) {
+    ASSERT_OK(uv_queue_work(uv_default_loop(),
+                            &reqs[i],
+                            work_cb,
+                            after_work_cb));
+  }
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(after_work_cb_count, nthreads);
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
