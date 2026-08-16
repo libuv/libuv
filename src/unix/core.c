@@ -455,6 +455,15 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
     if ((mode == UV_RUN_ONCE && can_sleep) || mode == UV_RUN_DEFAULT)
       timeout = uv__backend_timeout(loop);
 
+    if (timeout != 0 && uv__work_poll_before_block(loop)) {
+      /* A thread pool request of ours completed while we were polling for
+       * it and its worker therefore skipped the wakeup write: nothing will
+       * show up on the async fd for it, so dispatch the async watcher
+       * ourselves and only collect whatever else is ready. */
+      uv__io_feed(loop, &loop->async_io_watcher);
+      timeout = 0;
+    }
+
     uv__metrics_inc_loop_count(loop);
 
     uv__io_poll(loop, timeout);

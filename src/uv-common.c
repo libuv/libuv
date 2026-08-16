@@ -902,7 +902,7 @@ uv_loop_t* uv_loop_new(void) {
 
 
 /* Pause the CPU briefly to avoid burning power in spin-wait loops. */
-static void uv__cpu_relax(void) {
+void uv__cpu_relax(void) {
 #if defined(_WIN32)
   YieldProcessor();
 #elif defined(__i386__) || defined(__x86_64__)
@@ -921,7 +921,8 @@ static void uv__cpu_relax(void) {
 
 /* Atomic helpers for the async pending field.
  * Bit 0: pending flag (notification sent or handle closing).
- * Bits 1+: busy counter (2 per in-flight uv_async_send call).
+ * Bit 1: "loop is polling this flag" hint, see uv__async_polled_begin().
+ * Bits 2+: busy counter (UV__ASYNC_BUSY per in-flight uv_async_send call).
  *
  * uv__pending_cas and uv__pending_fetch_or are seq_cst (InterlockedXxx on
  * MSVC, default memory_order_seq_cst on stdatomic). Their seq_cst pairing
@@ -946,6 +947,8 @@ static int uv__pending_cas(int* p, int* expected, int desired) {
   ((void) InterlockedExchangeAdd((LONG volatile*)(p), (LONG)(v)))
 #define uv__pending_fetch_or(p, v) \
   ((int) InterlockedOr((LONG volatile*)(p), (LONG)(v)))
+#define uv__pending_fetch_and(p, v) \
+  ((int) InterlockedAnd((LONG volatile*)(p), (LONG)(v)))
 
 #else  /* GCC / Clang / MinGW — use C11 stdatomic */
 
@@ -959,30 +962,67 @@ static int uv__pending_cas(int* p, int* expected, int desired) {
   ((void) atomic_fetch_add_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
 #define uv__pending_fetch_or(p, v) \
   ((int) atomic_fetch_or((_Atomic int*)(p), (v)))
+#define uv__pending_fetch_and(p, v) \
+  ((int) atomic_fetch_and((_Atomic int*)(p), (v)))
 
 #endif  /* _MSC_VER */
 
 
-int uv_async_send(uv_async_t* handle) {
+int uv__async_send_begin(uv_async_t* handle, int* prev) {
   int current = 0;
 
   /* Atomically set the pending flag (bit 0) and increment the busy counter
-   * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once.
-   * The seq_cst CAS synchronizes with the seq_cst fetch_and in the callback,
-   * making all accesses before this call visible to the callback (and vice
-   * versa from the callback). */
-  while (!uv__pending_cas(&handle->pending, &current, current + 3))
-    if (current & 1)
-      return 0;
+   * (bits 2+) at once. The seq_cst CAS synchronizes with the seq_cst
+   * fetch_and in the callback, making all accesses before this call visible
+   * to the callback (and vice versa from the callback). */
+  while (!uv__pending_cas(&handle->pending,
+                          &current,
+                          (current | UV__ASYNC_PENDING) + UV__ASYNC_BUSY))
+    if (current & UV__ASYNC_PENDING)
+      return 0;  /* Already pending: that notification covers this send. */
 
+  *prev = current;
+  return 1;
+}
+
+
+void uv__async_send_end(uv_async_t* handle, int wake) {
   /* Wake up the event loop. The notification write establishes a
-   * happens-before relationship with the reader via the kernel. */
-  uv__async_notify(handle);
+   * happens-before relationship with the reader via the kernel. A caller
+   * that saw UV__ASYNC_POLLED in the value its CAS replaced may skip this:
+   * the poller clears that bit with an RMW on the same word and therefore
+   * observes our pending flag when it does (see uv__async_polled_end()). */
+  if (wake)
+    uv__async_notify(handle);
 
-  /* Decrement the busy counter (bits 1+). */
-  uv__pending_fetch_add(&handle->pending, -2);
+  /* Decrement the busy counter (bits 2+). */
+  uv__pending_fetch_add(&handle->pending, -UV__ASYNC_BUSY);
+}
+
+
+int uv_async_send(uv_async_t* handle) {
+  int prev;
+
+  if (uv__async_send_begin(handle, &prev))
+    uv__async_send_end(handle, 1);
 
   return 0;
+}
+
+
+int uv__async_pending_load(uv_async_t* handle) {
+  return uv__pending_load(&handle->pending);
+}
+
+
+int uv__async_polled_begin(uv_async_t* handle) {
+  return uv__pending_fetch_or(&handle->pending, UV__ASYNC_POLLED);
+}
+
+
+int uv__async_polled_end(uv_async_t* handle) {
+  return uv__pending_fetch_and(&handle->pending, ~UV__ASYNC_POLLED) &
+         UV__ASYNC_PENDING;
 }
 
 
@@ -1001,7 +1041,8 @@ int uv__async_spin(uv_async_t* handle) {
      */
     for (i = 0; i < 997; i++) {
       /* Wait until the busy counter (bits 1+) is zero. */
-      if ((uv__pending_load(&handle->pending) & ~1) == 0)
+      if ((uv__pending_load(&handle->pending) &
+           ~(UV__ASYNC_PENDING | UV__ASYNC_POLLED)) == 0)
         return old & 1;
 
       /* Another thread is busy with this handle; spin until it's done. */

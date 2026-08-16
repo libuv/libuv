@@ -57,6 +57,8 @@ static void uv__cancelled(struct uv__work* w) {
 static void worker(void* arg) {
   struct uv__work* w;
   struct uv__queue* q;
+  uv_loop_t* loop;
+  int prev;
   int is_slow_work;
 
   uv_thread_setname("libuv-worker");
@@ -122,12 +124,20 @@ static void worker(void* arg) {
     w = uv__queue_data(q, struct uv__work, wq);
     w->work(w);
 
-    uv_mutex_lock(&w->loop->wq_mutex);
+    loop = w->loop;
+    uv_mutex_lock(&loop->wq_mutex);
     w->work = NULL;  /* Signal uv_cancel() that the work req is done
                         executing. */
-    uv__queue_insert_tail(&w->loop->wq, &w->wq);
-    uv_async_send(&w->loop->wq_async);
-    uv_mutex_unlock(&w->loop->wq_mutex);
+    uv__queue_insert_tail(&loop->wq, &w->wq);
+    /* uv_async_send(), except that the wakeup write is skipped while the
+     * loop thread is inside its pre-block polling window: the "polled" hint
+     * lives in the same word as the pending flag, our CAS returns it, and the
+     * loop clears it with an RMW that returns the pending flag - so either
+     * that RMW sees this completion or our CAS sees the hint gone and we
+     * write (see uv__work_poll_before_block()). */
+    if (uv__async_send_begin(&loop->wq_async, &prev))
+      uv__async_send_end(&loop->wq_async, !(prev & UV__ASYNC_POLLED));
+    uv_mutex_unlock(&loop->wq_mutex);
 
     /* Lock `mutex` since that is expected at the start of the next
      * iteration. */
@@ -282,7 +292,86 @@ void uv__work_submit(uv_loop_t* loop,
   w->loop = loop;
   w->work = work;
   w->done = done;
+  uv__get_internal_fields(loop)->work_in_flight++;
   post(&w->wq, kind);
+}
+
+
+#define WORK_POLL_NS (10 * 1000)
+#define WORK_POLL_CREDIT_MAX 8
+#define WORK_POLL_PROBE_INTERVAL 64
+
+/* Called by uv_run() right before it would block for events. When requests
+ * this loop handed to the pool are in flight, the completion is very often
+ * microseconds away (a cached stat(), a small read()), and waiting for it in
+ * the kernel costs a sleep/wake cycle here plus a write() to the async fd on
+ * the worker. So poll wq_async's pending word for a moment instead, with a
+ * hint bit raised in that same word that lets the completing worker skip its
+ * write(). Returns 1 iff a completion arrived while the hint was up: its
+ * worker did not write, and the caller must dispatch the async watcher
+ * itself (and need not block). Rationed with a credit scheme - a hit refills
+ * WORK_POLL_CREDIT_MAX credits, a miss costs one, no credit left means one
+ * probe per WORK_POLL_PROBE_INTERVAL opportunities - so that loops whose
+ * requests take longer than the window stop paying for it.
+ */
+int uv__work_poll_before_block(uv_loop_t* loop) {
+  uv__loop_internal_fields_t* lf;
+  uint64_t deadline;
+  int i;
+
+  lf = uv__get_internal_fields(loop);
+  /* Nothing to wait for, or more of our requests queued than the pool has
+   * threads: in the latter case completions will keep streaming in and
+   * blocking lets them batch up in one uv__work_done(), which beats catching
+   * the first one early. */
+  if (lf->work_in_flight == 0 || lf->work_in_flight > nthreads)
+    return 0;
+
+  /* A completion is pending already. The worker that set the flag did not
+   * see our hint, so its wakeup write has been or is being issued: let the
+   * poll phase collect it like any other event. (Dispatching it from here as
+   * well could run the async watcher twice in one iteration.) */
+  if (uv__async_pending_load(&loop->wq_async) & UV__ASYNC_PENDING)
+    return 0;
+
+  if (lf->work_poll_credit == 0) {
+    if (++lf->work_poll_probe < WORK_POLL_PROBE_INTERVAL)
+      return 0;
+    lf->work_poll_probe = 0;
+  }
+
+  /* Raise the hint. From here until uv__async_polled_end() a worker that
+   * completes sets wq_async's pending flag but skips the wakeup write (see
+   * worker()). Both are RMWs on the same word, so exactly one of two things
+   * is true for the first completion after this point: it was ordered before
+   * our fetch-or (flag already set in the value we get back: a write is
+   * coming, treat as above), or after it (the worker saw the hint and will
+   * not write: taking the hint down reports the flag and we must dispatch
+   * the async watcher ourselves). */
+  if (uv__async_polled_begin(&loop->wq_async) & UV__ASYNC_PENDING) {
+    uv__async_polled_end(&loop->wq_async);
+    return 0;
+  }
+
+  deadline = uv_hrtime() + WORK_POLL_NS;
+  do {
+    for (i = 0; i < 64; i++) {
+      if (uv__async_pending_load(&loop->wq_async) &
+          UV__ASYNC_PENDING)
+        goto out;
+      uv__cpu_relax();
+    }
+  } while (uv_hrtime() < deadline);
+
+out:
+  if (uv__async_polled_end(&loop->wq_async)) {
+    lf->work_poll_credit = WORK_POLL_CREDIT_MAX;
+    return 1;
+  }
+
+  if (lf->work_poll_credit > 0)
+    lf->work_poll_credit--;
+  return 0;
 }
 
 
@@ -337,6 +426,7 @@ void uv__work_done(uv_async_t* handle) {
 
     w = container_of(q, struct uv__work, wq);
     err = (w->work == uv__cancelled) ? UV_ECANCELED : 0;
+    uv__get_internal_fields(loop)->work_in_flight--;
     w->done(w, err);
     nevents++;
   }

@@ -144,9 +144,33 @@ void uv__loop_close(uv_loop_t* loop);
 /* Sets the pending flag (bit 0) and waits for the busy counter (bits 1+) to
  * drain. Returns the previous value of bit 0. */
 int uv__async_spin(uv_async_t* handle);
+void uv__cpu_relax(void);
 
 /* Platform hook: post a wakeup notification for the given async handle. */
 void uv__async_notify(uv_async_t* handle);
+
+/* Layout of uv_async_t.pending: bit 0 is the pending flag, bit 1 is the
+ * "loop is polling this flag" hint (only ever set on a loop's wq_async, by
+ * uv__work_poll_before_block()), bits 2+ count in-flight senders in steps of
+ * UV__ASYNC_BUSY. */
+#define UV__ASYNC_PENDING 1
+#define UV__ASYNC_POLLED 2
+#define UV__ASYNC_BUSY 4
+
+/* uv_async_send() in two steps, for the thread pool: _begin() sets the pending
+ * flag and registers the caller as busy (so uv_close()/uv_loop_close() wait);
+ * it returns nonzero if the caller now owns the notification and must call
+ * _end() exactly once, and stores the value it replaced in *prev. _end()
+ * issues the wakeup unless `wake` is zero - the caller passes
+ * !(prev & UV__ASYNC_POLLED) - and deregisters. */
+int uv__async_send_begin(uv_async_t* handle, int* prev);
+void uv__async_send_end(uv_async_t* handle, int wake);
+
+/* Set/clear the "polled" hint; clearing returns nonzero if the pending flag
+ * was set at that instant. Both are single seq_cst RMWs on `pending`. */
+int uv__async_pending_load(uv_async_t* handle);
+int uv__async_polled_begin(uv_async_t* handle);
+int uv__async_polled_end(uv_async_t* handle);
 
 int uv__write_cancel(uv_write_t* req);
 
@@ -225,6 +249,11 @@ void uv__work_submit(uv_loop_t* loop,
                      void (*done)(struct uv__work *w, int status));
 
 void uv__work_done(uv_async_t* handle);
+
+/* Returns nonzero if a thread pool completion for `loop` became pending while
+ * briefly polling for one; the caller should then poll for I/O without
+ * blocking. Only ever spins when work submitted by this loop is in flight. */
+int uv__work_poll_before_block(uv_loop_t* loop);
 
 size_t uv__count_bufs(const uv_buf_t bufs[], unsigned int nbufs);
 
@@ -439,6 +468,11 @@ struct uv__loop_internal_fields_s {
   unsigned int flags;
   uv__loop_metrics_t loop_metrics;
   int current_timeout;
+  /* Thread pool requests submitted by this loop and not yet handed back by
+   * uv__work_done(); loop thread only. See uv__work_poll_before_block(). */
+  unsigned int work_in_flight;
+  unsigned int work_poll_credit;
+  unsigned int work_poll_probe;
 #ifdef __linux__
   struct uv__iou ctl;
   struct uv__iou iou;

@@ -133,6 +133,7 @@ fail_metrics_mutex_init:
 
 
 int uv_loop_fork(uv_loop_t* loop) {
+  uv__loop_internal_fields_t* lfields;
   int err;
   unsigned int i;
   uv__io_t* w;
@@ -148,6 +149,14 @@ int uv_loop_fork(uv_loop_t* loop) {
   err = uv__signal_loop_fork(loop);
   if (err)
     return err;
+
+  /* Thread pool requests submitted by the parent never complete in the
+   * child (the pool is recreated empty on first use); don't keep polling
+   * for them before blocking. */
+  lfields = uv__get_internal_fields(loop);
+  lfields->work_in_flight = 0;
+  lfields->work_poll_credit = 0;
+  lfields->work_poll_probe = 0;
 
   /* Rearm all the watchers that aren't re-queued by the above. */
   for (i = 0; i < loop->nwatchers; i++) {
