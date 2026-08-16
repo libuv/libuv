@@ -670,6 +670,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-write-after-connect.c
        test/test-tcp-write-fail.c
        test/test-write-cancel.c
+       test/test-tcp-write-in-read-cb-backend-timeout.c
        test/test-tcp-write-queue-order.c
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c
