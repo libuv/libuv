@@ -52,7 +52,9 @@ typedef _Atomic unsigned int uv__seq_t;
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
-static unsigned int idle_threads;
+static unsigned int idle_threads;   /* Workers blocked in uv_cond_wait(). */
+static unsigned int nwaking;        /* Signalled workers not yet running. */
+static unsigned int nqueued;        /* Items in `wq`. Both hints, see post(). */
 static unsigned int linger_enabled; /* Never on a single CPU: spinning there
                                        only delays the thread we wait for. */
 static unsigned int lingering;      /* A worker polls `wq`, see worker(). */
@@ -169,9 +171,13 @@ static void worker(void* arg) {
         continue;  /* Re-check the queue. */
       }
       just_completed = 0;
+      if (uv__queue_empty(&wq))
+        nqueued = 0;  /* Resynchronise the hint. */
       idle_threads += 1;
       uv_cond_wait(&cond, &mutex);
       idle_threads -= 1;
+      if (nwaking > 0)
+        nwaking -= 1;
     }
     just_completed = 1;
 
@@ -184,6 +190,8 @@ static void worker(void* arg) {
 
     uv__queue_remove(q);
     uv__queue_init(q);  /* Signal uv_cancel() that the work req is executing. */
+    if (nqueued > 0)
+      nqueued -= 1;
 
     is_slow_work = 0;
     if (q == &run_slow_work_message) {
@@ -191,6 +199,7 @@ static void worker(void* arg) {
          other work in the queue is done. */
       if (slow_io_work_running >= slow_work_thread_threshold()) {
         uv__queue_insert_tail(&wq, q);
+        nqueued += 1;
         continue;
       }
 
@@ -209,6 +218,7 @@ static void worker(void* arg) {
       /* If there is more slow I/O work, schedule it to be run as well. */
       if (!uv__queue_empty(&slow_io_pending_wq)) {
         uv__queue_insert_tail(&wq, &run_slow_work_message);
+        nqueued += 1;
         if (idle_threads > 0)
           uv_cond_signal(&cond);
       }
@@ -239,6 +249,7 @@ static void worker(void* arg) {
 
 static void post(struct uv__queue* q, enum uv__work_kind kind) {
   int was_empty;
+  int wake;
 
   uv_mutex_lock(&mutex);
   was_empty = uv__queue_empty(&wq);
@@ -255,13 +266,34 @@ static void post(struct uv__queue* q, enum uv__work_kind kind) {
   }
 
   uv__queue_insert_tail(&wq, q);
+  nqueued += 1;
   uv__seq_bump(&post_seq);
-  /* A lingering worker always re-checks the queue under `mutex` before it
-   * goes to sleep, so if one is active and this is the only item queued it is
-   * guaranteed to be picked up; waking another thread would be redundant. */
-  if (idle_threads > 0 && !(lingering && was_empty))
-    uv_cond_signal(&cond);
+
+  /* Wake a worker only if there is an idle one we have not signalled yet and
+   * the queue holds more items than are already spoken for - by workers that
+   * were signalled and have not run yet, and by the lingering worker, which
+   * always re-checks the queue under `mutex` before it sleeps and therefore
+   * takes the item that made the queue non-empty. Waking more threads than
+   * that only makes them find an empty queue and go back to sleep, which with
+   * a pool larger than the submitter can keep busy is what most wake-ups used
+   * to be. Both counters are hints that err towards signalling: `nwaking` is
+   * decremented on every return from uv_cond_wait(), spurious ones included,
+   * and `nqueued` can only over-count (uv_cancel()) until a worker finds the
+   * queue empty and resets it. */
+  wake = 0;
+  if (idle_threads > nwaking &&
+      nqueued > nwaking + (lingering && was_empty)) {
+    nwaking += 1;
+    wake = 1;
+  }
   uv_mutex_unlock(&mutex);
+
+  /* Signal after unlocking so the thread we wake does not immediately block
+   * on `mutex`. The predicate is only ever examined with `mutex` held, so no
+   * wake-up is lost: a worker that went idle after the unlock has already
+   * seen the new item. */
+  if (wake)
+    uv_cond_signal(&cond);
 }
 
 
@@ -336,6 +368,9 @@ static void init_threads(void) {
     abort();
 
   /* May be stale in a forked child; the counters above are merely hints. */
+  idle_threads = 0;
+  nwaking = 0;
+  nqueued = 0;
   linger_enabled = uv_available_parallelism() >= 2;
   lingering = 0;
   linger_credit = LINGER_CREDIT_MAX;
