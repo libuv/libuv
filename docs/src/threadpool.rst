@@ -29,6 +29,19 @@ memory footprint. Thread stacks grow lazily on most platforms though.
     Note that even though a global thread pool which is shared across all events
     loops is used, the functions are not thread safe.
 
+Idle workers normally block on a condition variable and are woken up when work
+is submitted. To keep back-to-back submissions cheap (for example a sequence of
+file system requests where each is issued from the completion callback of the
+previous one), the worker that most recently completed a request keeps polling
+the queue for a few tens of microseconds before it blocks, so that the next
+request neither has to wake a thread nor wait for one to be scheduled. At most
+one worker does this at a time, it is skipped on single-CPU systems, and it
+backs off automatically for workloads whose requests arrive further apart than
+that. Applications should not notice anything except lower latency; the pool
+never spins while it has nothing in flight for a sustained period.
+
+.. versionchanged:: 1.53.0 an idle worker may poll briefly before blocking.
+
 
 Data types
 ----------
