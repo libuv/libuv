@@ -902,7 +902,7 @@ uv_loop_t* uv_loop_new(void) {
 
 
 /* Pause the CPU briefly to avoid burning power in spin-wait loops. */
-static void uv__cpu_relax(void) {
+void uv__cpu_relax(void) {
 #if defined(_WIN32)
   YieldProcessor();
 #elif defined(__i386__) || defined(__x86_64__)

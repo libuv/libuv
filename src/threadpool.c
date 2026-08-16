@@ -29,10 +29,36 @@
 
 #define MAX_THREADPOOL_SIZE 1024
 
+/* How long a worker that just completed a request keeps polling for the next
+ * one before it parks itself, and how that is rationed; see worker(). */
+#ifndef UV__THREADPOOL_LINGER_NS
+#define UV__THREADPOOL_LINGER_NS (50 * 1000)
+#endif
+#define LINGER_NS UV__THREADPOOL_LINGER_NS
+#define LINGER_CREDIT_MAX 8
+#define LINGER_PROBE_INTERVAL 64
+
+#ifdef _MSC_VER
+#define uv__seq_load(p) ((unsigned int) InterlockedOr((LONG volatile*) (p), 0))
+#define uv__seq_bump(p) ((void) InterlockedIncrement((LONG volatile*) (p)))
+typedef LONG uv__seq_t;
+#else
+#define uv__seq_load(p) atomic_load_explicit((p), memory_order_relaxed)
+#define uv__seq_bump(p)                                                       \
+  ((void) atomic_fetch_add_explicit((p), 1, memory_order_relaxed))
+typedef _Atomic unsigned int uv__seq_t;
+#endif
+
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
+static unsigned int linger_enabled; /* Never on a single CPU: spinning there
+                                       only delays the thread we wait for. */
+static unsigned int lingering;      /* A worker polls `wq`, see worker(). */
+static unsigned int linger_credit;  /* Protected by `mutex`, like the above. */
+static unsigned int linger_probe;
+static uv__seq_t post_seq;          /* Bumped on every insertion into `wq`. */
 static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
@@ -51,17 +77,72 @@ static void uv__cancelled(struct uv__work* w) {
 }
 
 
+/* Decide whether a worker that found the queue empty right after completing
+ * a request should poll for the next one instead of sleeping. Submitters very
+ * often post their next request within microseconds of the previous one
+ * completing - sequential file system calls are the obvious example - and
+ * catching it this way saves the submitter a wake-up system call and saves
+ * the request the latency of unparking a thread.
+ *
+ * Only one worker lingers at a time. Lingering is rationed with a simple
+ * credit scheme so that workloads where it does not pay off (requests spaced
+ * further apart than LINGER_NS) stop doing it: a linger that catches work
+ * refills the credit, one that times out consumes one, and once the credit is
+ * gone only every LINGER_PROBE_INTERVAL-th opportunity is used to probe
+ * whether the pattern has changed. Worst case that is one wasted LINGER_NS
+ * per LINGER_PROBE_INTERVAL completed requests. Called with `mutex` held.
+ */
+static int uv__worker_may_linger(void) {
+  if (!linger_enabled || lingering != 0 || !uv__queue_empty(&wq))
+    return 0;
+
+  if (linger_credit > 0)
+    return 1;
+
+  if (++linger_probe < LINGER_PROBE_INTERVAL)
+    return 0;
+
+  linger_probe = 0;
+  return 1;
+}
+
+
+/* Poll `post_seq` until it changes or LINGER_NS have passed. Called with
+ * `mutex` unlocked; the caller re-checks the queue under the lock either way.
+ * Returns nonzero if something was posted.
+ */
+static int uv__worker_linger(unsigned int seq) {
+  uint64_t deadline;
+  int i;
+
+  deadline = uv_hrtime() + LINGER_NS;
+  do {
+    for (i = 0; i < 64; i++) {
+      if (uv__seq_load(&post_seq) != seq)
+        return 1;
+      uv__cpu_relax();
+    }
+  } while (uv_hrtime() < deadline);
+
+  return uv__seq_load(&post_seq) != seq;
+}
+
+
 /* To avoid deadlock with uv_cancel() it's crucial that the worker
  * never holds the global mutex and the loop-local mutex at the same time.
  */
 static void worker(void* arg) {
   struct uv__work* w;
   struct uv__queue* q;
+  unsigned int seq;
   int is_slow_work;
+  int just_completed;
+  int caught;
 
   uv_thread_setname("libuv-worker");
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
+  just_completed = 0;
 
   uv_mutex_lock(&mutex);
   for (;;) {
@@ -73,10 +154,26 @@ static void worker(void* arg) {
            (uv__queue_head(&wq) == &run_slow_work_message &&
             uv__queue_next(&run_slow_work_message) == &wq &&
             slow_io_work_running >= slow_work_thread_threshold())) {
+      if (just_completed && uv__worker_may_linger()) {
+        just_completed = 0;
+        lingering = 1;
+        seq = uv__seq_load(&post_seq);
+        uv_mutex_unlock(&mutex);
+        caught = uv__worker_linger(seq);
+        uv_mutex_lock(&mutex);
+        lingering = 0;
+        if (caught)
+          linger_credit = LINGER_CREDIT_MAX;
+        else if (linger_credit > 0)
+          linger_credit--;
+        continue;  /* Re-check the queue. */
+      }
+      just_completed = 0;
       idle_threads += 1;
       uv_cond_wait(&cond, &mutex);
       idle_threads -= 1;
     }
+    just_completed = 1;
 
     q = uv__queue_head(&wq);
     if (q == &exit_message) {
@@ -141,7 +238,10 @@ static void worker(void* arg) {
 
 
 static void post(struct uv__queue* q, enum uv__work_kind kind) {
+  int was_empty;
+
   uv_mutex_lock(&mutex);
+  was_empty = uv__queue_empty(&wq);
   if (kind == UV__WORK_SLOW_IO) {
     /* Insert into a separate queue. */
     uv__queue_insert_tail(&slow_io_pending_wq, q);
@@ -155,7 +255,11 @@ static void post(struct uv__queue* q, enum uv__work_kind kind) {
   }
 
   uv__queue_insert_tail(&wq, q);
-  if (idle_threads > 0)
+  uv__seq_bump(&post_seq);
+  /* A lingering worker always re-checks the queue under `mutex` before it
+   * goes to sleep, so if one is active and this is the only item queued it is
+   * guaranteed to be picked up; waking another thread would be redundant. */
+  if (idle_threads > 0 && !(lingering && was_empty))
     uv_cond_signal(&cond);
   uv_mutex_unlock(&mutex);
 }
@@ -231,6 +335,11 @@ static void init_threads(void) {
   if (uv_mutex_init(&mutex))
     abort();
 
+  /* May be stale in a forked child; the counters above are merely hints. */
+  linger_enabled = uv_available_parallelism() >= 2;
+  lingering = 0;
+  linger_credit = LINGER_CREDIT_MAX;
+  linger_probe = 0;
   uv__queue_init(&wq);
   uv__queue_init(&slow_io_pending_wq);
   uv__queue_init(&run_slow_work_message);

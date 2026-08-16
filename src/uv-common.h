@@ -145,6 +145,9 @@ void uv__loop_close(uv_loop_t* loop);
  * drain. Returns the previous value of bit 0. */
 int uv__async_spin(uv_async_t* handle);
 
+/* Pause hint for spin-wait loops (PAUSE/ISB/YieldProcessor or a no-op). */
+void uv__cpu_relax(void);
+
 /* Platform hook: post a wakeup notification for the given async handle. */
 void uv__async_notify(uv_async_t* handle);
 
