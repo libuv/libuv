@@ -566,6 +566,7 @@ TEST_DECLARE   (signal_pending_on_close)
 TEST_DECLARE   (signal_close_loop_alive)
 #endif
 #ifdef __APPLE__
+TEST_DECLARE   (osx_resident_set_memory)
 TEST_DECLARE   (osx_select)
 TEST_DECLARE   (osx_select_many_fds)
 #endif
@@ -1124,6 +1125,7 @@ TASK_LIST_START
 #endif
 
 #ifdef __APPLE__
+  TEST_ENTRY (osx_resident_set_memory)
   TEST_ENTRY (osx_select)
   TEST_ENTRY (osx_select_many_fds)
 #endif
