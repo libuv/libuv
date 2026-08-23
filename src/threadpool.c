@@ -264,7 +264,7 @@ static void init_threads(void) {
   if (uv_mutex_init(&mutex))
     abort();
 
-  idle_threads = 0;  /* All of these may be stale in a forked child. */
+  idle_threads = 0;
   nwaking = 0;
   nqueued = 0;
   uv__queue_init(&wq);
