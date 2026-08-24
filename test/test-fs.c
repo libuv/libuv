@@ -1089,7 +1089,7 @@ static void fs_file_sync(int add_flags) {
                             FILE_ATTRIBUTE_TEMPORARY |
                                 FILE_FLAG_DELETE_ON_CLOSE,
                             NULL);
-  ASSERT_NE(report_file, INVALID_HANDLE_VALUE);
+  ASSERT_PTR_NE(report_file, INVALID_HANDLE_VALUE);
   old_report_mode = _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
   old_report_file = _CrtSetReportFile(_CRT_ASSERT, (_HFILE) report_file);
 #endif
