@@ -35,6 +35,9 @@
 # include <winioctl.h>
 # include <direct.h>
 # include <io.h>
+# if defined(_DEBUG) && defined(_MSC_VER)
+#  include <crtdbg.h>
+# endif
 # ifndef ERROR_SYMLINK_NOT_SUPPORTED
 #  define ERROR_SYMLINK_NOT_SUPPORTED 1464
 # endif
@@ -1045,6 +1048,12 @@ TEST_FS_IMPL(fs_file_async) {
 
 static void fs_file_sync(int add_flags) {
   int r;
+#if defined(_WIN32) && defined(_DEBUG) && defined(_MSC_VER)
+  HANDLE report_file;
+  LARGE_INTEGER report_size;
+  _HFILE old_report_file;
+  int old_report_mode;
+#endif
 
   /* Setup. */
   unlink("test_file");
@@ -1068,6 +1077,36 @@ static void fs_file_sync(int add_flags) {
   r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
   ASSERT_OK(r);
   ASSERT_OK(close_req.result);
+  uv_fs_req_cleanup(&close_req);
+
+#if defined(_WIN32) && defined(_DEBUG) && defined(_MSC_VER)
+  /* Invalid descriptors must not trigger debug CRT assertions. */
+  report_file = CreateFileA("test_crt_report",
+                            GENERIC_READ | GENERIC_WRITE,
+                            0,
+                            NULL,
+                            CREATE_ALWAYS,
+                            FILE_ATTRIBUTE_TEMPORARY |
+                                FILE_FLAG_DELETE_ON_CLOSE,
+                            NULL);
+  ASSERT_NE(report_file, INVALID_HANDLE_VALUE);
+  old_report_mode = _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+  old_report_file = _CrtSetReportFile(_CRT_ASSERT, (_HFILE) report_file);
+#endif
+
+  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+
+#if defined(_WIN32) && defined(_DEBUG) && defined(_MSC_VER)
+  _CrtSetReportFile(_CRT_ASSERT, old_report_file);
+  _CrtSetReportMode(_CRT_ASSERT, old_report_mode);
+  ASSERT_NE(FlushFileBuffers(report_file), 0);
+  ASSERT_NE(GetFileSizeEx(report_file, &report_size), 0);
+  ASSERT_EQ(0, report_size.QuadPart);
+  ASSERT_NE(CloseHandle(report_file), 0);
+#endif
+
+  ASSERT_EQ(UV_EBADF, r);
+  ASSERT_EQ(UV_EBADF, close_req.result);
   uv_fs_req_cleanup(&close_req);
 
   r = uv_fs_open(NULL, &open_req1, "test_file", UV_FS_O_RDWR | add_flags, 0,

@@ -709,10 +709,13 @@ void fs__close(uv_fs_t* req) {
     }
   }
 
-  if (fd > 2)
+  if (fd > 2) {
+    UV_BEGIN_DISABLE_CRT_ASSERT();
     result = _close(fd);
-  else
+    UV_END_DISABLE_CRT_ASSERT();
+  } else {
     result = 0;
+  }
 
   /* _close doesn't set _doserrno on failure, but it does always set errno
    * to EBADF on failure.
