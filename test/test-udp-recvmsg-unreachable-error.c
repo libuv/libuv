@@ -56,7 +56,17 @@ static void read_cb(uv_udp_t* handle,
    * recvmsg reports the pending socket error too. Only the errqueue delivery
    * carries the flag. */
   if (flags & UV_UDP_RECVERR) {
+#ifdef _WIN32
+    /* uv_translate_sys_error() maps the WSAECONNRESET the OS reports for the
+     * ICMP error, so the exact value is libuv's to get right. */
+    ASSERT_EQ(nread, UV_ECONNRESET);
+#else
+    /* Only the sign. ee_errno is numbered for the running kernel rather than
+     * for the target libuv was built for, and the two disagree under
+     * qemu-user: on MIPS the host sends 111, where the target's ECONNREFUSED
+     * is 146 and 111 is not assigned at all. */
     ASSERT_LT(nread, 0);
+#endif
     recverr_cb_called++;
   }
 }
