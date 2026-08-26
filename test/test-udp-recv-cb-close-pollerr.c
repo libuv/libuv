@@ -49,10 +49,16 @@ static void send_cb(uv_udp_send_t* req, int status) {
   uv_close((uv_handle_t*) req->handle, NULL);
 }
 
-/* Refs: https://github.com/libuv/libuv/issues/5030 */
+/* Both tests connect the socket, which is what lets macOS take part: it
+ * reports ICMP errors on connected UDP sockets natively, as a plain
+ * ECONNREFUSED with no flag set and no UV_UDP_RECVERR involved. Unconnected
+ * sockets there report nothing, which is why the errqueue test next door
+ * stays Linux- and Windows-only.
+ *
+ * Refs: https://github.com/libuv/libuv/issues/5030 */
 TEST_IMPL(udp_recv_cb_close_pollerr) {
-#if !defined(__linux__) && !defined(_WIN32)
-  RETURN_SKIP("ICMP error handling is Linux- and Windows-specific");
+#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__)
+  RETURN_SKIP("ICMP error reporting for UDP is platform-specific");
 #endif
   struct sockaddr_in any_addr;
   struct sockaddr_in addr;
@@ -85,8 +91,8 @@ TEST_IMPL(udp_recv_cb_close_pollerr) {
  * The ICMP POLLERR still fires on the fd; uv__udp_io must not crash when
  * no recv/alloc callback is installed. */
 TEST_IMPL(udp_send_pollerr_no_recv) {
-#if !defined(__linux__) && !defined(_WIN32)
-  RETURN_SKIP("ICMP error handling is Linux- and Windows-specific");
+#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__)
+  RETURN_SKIP("ICMP error reporting for UDP is platform-specific");
 #endif
   struct sockaddr_in any_addr;
   struct sockaddr_in addr;
