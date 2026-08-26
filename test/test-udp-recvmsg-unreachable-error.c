@@ -104,9 +104,13 @@ TEST_IMPL(udp_recvmsg_unreachable_error) {
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
   ASSERT_GE(recverr_cb_called, 1);
 #ifdef __linux__
-  /* Windows makes no such promise: the zero-read drain loop delivers once
-   * and re-queues. */
   ASSERT_EQ(recv_cb_called, RECV_CB_MAX_CALL);
+#else
+  /* Windows makes no such promise. The zero-read completes with
+   * WSAECONNRESET, the drain loop delivers it once and then exits on
+   * err != ERROR_SUCCESS, and the re-queued zero-read finds nothing. */
+  ASSERT_EQ(recv_cb_called, 1);
+  ASSERT_EQ(recverr_cb_called, 1);
 #endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
@@ -151,9 +155,13 @@ TEST_IMPL(udp_recvmsg_unreachable_error6) {
 
   ASSERT_GE(recverr_cb_called, 1);
 #ifdef __linux__
-  /* Windows makes no such promise: the zero-read drain loop delivers once
-   * and re-queues. */
   ASSERT_EQ(recv_cb_called, RECV_CB_MAX_CALL);
+#else
+  /* Windows makes no such promise. The zero-read completes with
+   * WSAECONNRESET, the drain loop delivers it once and then exits on
+   * err != ERROR_SUCCESS, and the re-queued zero-read finds nothing. */
+  ASSERT_EQ(recv_cb_called, 1);
+  ASSERT_EQ(recverr_cb_called, 1);
 #endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
