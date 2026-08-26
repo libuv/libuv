@@ -30,9 +30,12 @@
 #define RECV_CB_MAX_CALL 3 /* ECONNREFUSED, EAGAIN/EWOULDBLOCK, ICMP delivery */
 
 static int recv_cb_called = 0;
+static int recverr_cb_called = 0;
 
 static void udp_send_cb(uv_udp_send_t* req, int status) {
-  ASSERT_EQ(status, 0);
+  /* Windows reports the ICMP error as ECONNRESET, and on the send when it is
+   * the send that runs into it first. */
+  ASSERT(status == 0 || status == UV_ECONNRESET);
 }
 
 static void alloc_cb(uv_handle_t* handle,
@@ -48,8 +51,14 @@ static void read_cb(uv_udp_t* handle,
                     const uv_buf_t* buf,
                     const struct sockaddr* addr,
                     unsigned flags) {
-  ASSERT(flags == 0 || (flags & UV_UDP_LINUX_RECVERR));
   recv_cb_called++;
+  /* Errors also reach us without UV_UDP_RECVERR: with IP_RECVERR set, a plain
+   * recvmsg reports the pending socket error too. Only the errqueue delivery
+   * carries the flag. */
+  if (flags & UV_UDP_RECVERR) {
+    ASSERT_LT(nread, 0);
+    recverr_cb_called++;
+  }
 }
 
 static void timer_cb(uv_timer_t* handle) {
@@ -58,8 +67,8 @@ static void timer_cb(uv_timer_t* handle) {
 }
 
 TEST_IMPL(udp_recvmsg_unreachable_error) {
-#if !defined(__linux__)
-  RETURN_SKIP("This test is Linux-specific");
+#if !defined(__linux__) && !defined(_WIN32)
+  RETURN_SKIP("ICMP error reporting is Linux- and Windows-specific");
 #endif
   struct sockaddr_in server_addr, client_addr;
   uv_udp_t client;
@@ -72,7 +81,7 @@ TEST_IMPL(udp_recvmsg_unreachable_error) {
   ASSERT_OK(uv_timer_init(uv_default_loop(), &timer));
   ASSERT_OK(uv_udp_bind(&client,
                         (const struct sockaddr*) &client_addr,
-                        UV_UDP_LINUX_RECVERR));
+                        UV_UDP_RECVERR));
   ASSERT_OK(uv_udp_recv_start(&client, alloc_cb, read_cb));
   timer.data = &client;
   ASSERT_OK(uv_timer_start(&timer, timer_cb, 3000, 0));
@@ -83,15 +92,20 @@ TEST_IMPL(udp_recvmsg_unreachable_error) {
                         (const struct sockaddr*) &server_addr,
                         udp_send_cb));
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT_GE(recverr_cb_called, 1);
+#ifdef __linux__
+  /* Windows makes no such promise: the zero-read drain loop delivers once
+   * and re-queues. */
   ASSERT_EQ(recv_cb_called, RECV_CB_MAX_CALL);
+#endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
 
 TEST_IMPL(udp_recvmsg_unreachable_error6) {
-#if !defined(__linux__)
-  RETURN_SKIP("This test is Linux-specific");
+#if !defined(__linux__) && !defined(_WIN32)
+  RETURN_SKIP("ICMP error reporting is Linux- and Windows-specific");
 #endif
   if (!can_ipv6())
     RETURN_SKIP("IPv6 not supported");
@@ -110,7 +124,7 @@ TEST_IMPL(udp_recvmsg_unreachable_error6) {
 
   ASSERT_OK(uv_udp_bind(&client,
                         (const struct sockaddr*) &client_addr,
-                        UV_UDP_LINUX_RECVERR));
+                        UV_UDP_RECVERR));
   ASSERT_OK(uv_udp_recv_start(&client, alloc_cb, read_cb));
 
   timer.data = &client;
@@ -125,7 +139,12 @@ TEST_IMPL(udp_recvmsg_unreachable_error6) {
 
   uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 
+  ASSERT_GE(recverr_cb_called, 1);
+#ifdef __linux__
+  /* Windows makes no such promise: the zero-read drain loop delivers once
+   * and re-queues. */
   ASSERT_EQ(recv_cb_called, RECV_CB_MAX_CALL);
+#endif
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
