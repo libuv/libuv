@@ -203,6 +203,9 @@ TEST_IMPL(poll_oob) {
    */
   ASSERT_EQ(1, srv_rd_check);
 
+  /* uv_poll_init() does not take ownership of the socket. */
+  ASSERT_OK(close(client_fd));
+
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }

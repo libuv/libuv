@@ -113,8 +113,18 @@ TEST_DECLARE   (tcp_write_fail)
 TEST_DECLARE   (tcp_try_write)
 TEST_DECLARE   (tcp_write_in_a_row)
 TEST_DECLARE   (tcp_try_write_error)
+TEST_DECLARE   (tcp_write_in_read_cb_backend_timeout)
 TEST_DECLARE   (tcp_write_queue_order)
 TEST_DECLARE   (tcp_accept_raw)
+TEST_DECLARE   (tcp_write_cancel)
+TEST_DECLARE   (pipe_write_cancel)
+TEST_DECLARE   (pipe_write_cancel_all)
+TEST_DECLARE   (pipe_write_cancel_after_close)
+TEST_DECLARE   (pipe_write_cancel_overlapped)
+TEST_DECLARE   (pipe_write_cancel_all_overlapped)
+TEST_DECLARE   (pipe_write_cancel_ipc)
+TEST_DECLARE   (tcp_write_nwritten)
+TEST_DECLARE   (pipe_write_nwritten)
 TEST_DECLARE   (tcp_open)
 TEST_DECLARE   (tcp_open_twice)
 TEST_DECLARE   (tcp_open_bound)
@@ -213,6 +223,7 @@ TEST_DECLARE   (udp_send_fail_nbufs)
 TEST_DECLARE   (udp_sendmmsg_error)
 TEST_DECLARE   (udp_try_send)
 TEST_DECLARE   (pipe_bind_error_addrinuse)
+TEST_DECLARE   (pipe_bind_error_addrinuse_pending_instances)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
 TEST_DECLARE   (pipe_bind_error_inval)
 TEST_DECLARE   (pipe_connect_close_multiple)
@@ -291,6 +302,7 @@ TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
+TEST_DECLARE   (pipe_write_trailing_empty_buf)
 TEST_DECLARE   (process_ref)
 TEST_DECLARE   (process_priority)
 TEST_DECLARE   (has_ref)
@@ -337,6 +349,7 @@ TEST_DECLARE   (spawn_empty_env)
 TEST_DECLARE   (spawn_exit_code)
 TEST_DECLARE   (spawn_stdout)
 TEST_DECLARE   (spawn_stdin)
+TEST_DECLARE   (spawn_stdio_socket_buffer_size)
 TEST_DECLARE   (spawn_stdio_greater_than_3)
 TEST_DECLARE   (spawn_ignored_stdio)
 TEST_DECLARE   (spawn_and_kill)
@@ -463,7 +476,7 @@ TEST_FS_DECLARE   (fs_write_alotof_bufs_with_offset)
 TEST_FS_DECLARE   (fs_partial_read)
 TEST_FS_DECLARE   (fs_partial_write)
 TEST_FS_DECLARE   (fs_file_pos_after_op_with_offset)
-TEST_FS_DECLARE   (fs_null_req)
+TEST_DECLARE      (fs_null_req)
 TEST_FS_DECLARE   (fs_read_dir)
 #ifdef _WIN32
 TEST_FS_DECLARE   (fs_file_pos_write)
@@ -475,7 +488,7 @@ TEST_FS_DECLARE   (fs_fchmod_archive_readonly)
 TEST_FS_DECLARE   (fs_invalid_mkdir_name)
 TEST_FS_DECLARE   (fs_wtf)
 #endif
-TEST_FS_DECLARE   (fs_get_system_error)
+TEST_DECLARE      (fs_get_system_error)
 TEST_DECLARE   (io_64_safe)
 TEST_DECLARE   (strscpy)
 TEST_DECLARE   (strtok)
@@ -557,6 +570,7 @@ TEST_DECLARE   (signal_pending_on_close)
 TEST_DECLARE   (signal_close_loop_alive)
 #endif
 #ifdef __APPLE__
+TEST_DECLARE   (osx_resident_set_memory)
 TEST_DECLARE   (osx_select)
 TEST_DECLARE   (osx_select_many_fds)
 #endif
@@ -745,7 +759,17 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_write_in_a_row)
   TEST_ENTRY  (tcp_try_write_error)
 
+  TEST_ENTRY  (tcp_write_in_read_cb_backend_timeout)
   TEST_ENTRY  (tcp_write_queue_order)
+  TEST_ENTRY  (tcp_write_cancel)
+  TEST_ENTRY  (pipe_write_cancel)
+  TEST_ENTRY  (pipe_write_cancel_all)
+  TEST_ENTRY  (pipe_write_cancel_after_close)
+  TEST_ENTRY  (pipe_write_cancel_overlapped)
+  TEST_ENTRY  (pipe_write_cancel_all_overlapped)
+  TEST_ENTRY  (pipe_write_cancel_ipc)
+  TEST_ENTRY  (tcp_write_nwritten)
+  TEST_ENTRY  (pipe_write_nwritten)
 
   TEST_ENTRY  (tcp_accept_raw)
 
@@ -868,6 +892,7 @@ TASK_LIST_START
 #endif
 
   TEST_ENTRY  (pipe_bind_error_addrinuse)
+  TEST_ENTRY  (pipe_bind_error_addrinuse_pending_instances)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)
   TEST_ENTRY  (pipe_bind_error_inval)
   TEST_ENTRY  (pipe_connect_close_multiple)
@@ -882,6 +907,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_getsockname_long_path)
   TEST_ENTRY  (pipe_pending_instances)
   TEST_ENTRY  (pipe_sendmsg)
+  TEST_ENTRY  (pipe_write_trailing_empty_buf)
 
   TEST_ENTRY  (connection_fail)
   TEST_ENTRY  (connection_fail_doesnt_auto_close)
@@ -1043,6 +1069,9 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_exit_code)
   TEST_ENTRY  (spawn_stdout)
   TEST_ENTRY  (spawn_stdin)
+#ifndef _WIN32
+  TEST_ENTRY  (spawn_stdio_socket_buffer_size)
+#endif
   TEST_ENTRY  (spawn_stdio_greater_than_3)
   TEST_ENTRY  (spawn_ignored_stdio)
   TEST_ENTRY  (spawn_and_kill)
@@ -1108,6 +1137,7 @@ TASK_LIST_START
 #endif
 
 #ifdef __APPLE__
+  TEST_ENTRY (osx_resident_set_memory)
   TEST_ENTRY (osx_select)
   TEST_ENTRY (osx_select_many_fds)
 #endif
@@ -1206,7 +1236,7 @@ TASK_LIST_START
   TEST_FS_ENTRY  (fs_partial_write)
   TEST_FS_ENTRY  (fs_read_write_null_arguments)
   TEST_FS_ENTRY  (fs_file_pos_after_op_with_offset)
-  TEST_FS_ENTRY  (fs_null_req)
+  TEST_ENTRY     (fs_null_req)
   TEST_FS_ENTRY  (fs_read_dir)
 #ifdef _WIN32
   TEST_FS_ENTRY  (fs_file_pos_write)
@@ -1218,7 +1248,7 @@ TASK_LIST_START
   TEST_FS_ENTRY  (fs_invalid_mkdir_name)
   TEST_FS_ENTRY  (fs_wtf)
 #endif
-  TEST_FS_ENTRY  (fs_get_system_error)
+  TEST_ENTRY     (fs_get_system_error)
   TEST_ENTRY  (get_osfhandle_valid_handle)
   TEST_ENTRY  (open_osfhandle_valid_handle)
   TEST_ENTRY  (io_64_safe)

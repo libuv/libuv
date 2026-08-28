@@ -1,0 +1,46 @@
+name: CI-solaris
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-solaris.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  build-solaris:
+    runs-on: ubuntu-24.04
+    name: Build and test on Solaris
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build and test
+        uses: vmactions/solaris-vm@315163f088b66e55bbcc45928bd224d4973b2312 # v1.3.8
+        with:
+          release: '11.4-gcc'
+          usesh: true
+          copyback: false
+          prepare: uname -a
+          run: |
+            set -e -u -x
+            export LANG=C
+            export LC_ALL=C
+
+            ./autogen.sh
+            mkdir build
+            cd build
+            ../configure
+            gmake -j2
+            useradd -m -s /usr/bin/sh libuvci
+            # Keep source and destination ownership consistent for fs_copyfile.
+            ci_group=$(id -gn libuvci)
+            chown -R "libuvci:$ci_group" "$GITHUB_WORKSPACE"
+            su - libuvci -c "cd '$GITHUB_WORKSPACE/build' && gmake check"

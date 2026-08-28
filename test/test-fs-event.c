@@ -153,14 +153,9 @@ static void fs_event_cb_del_dir(uv_fs_event_t* handle,
   ASSERT_PTR_EQ(handle, &fs_event);
   ASSERT_OK(status);
   ASSERT(events == UV_CHANGE || events == UV_RENAME);
-  /* There is a bug in the FreeBSD kernel where the filename is sometimes NULL.
-   * Refs: https://github.com/libuv/libuv/issues/4606
-   */
-  #if defined(__FreeBSD__)
-  ASSERT(filename == NULL || strcmp(filename, "watch_del_dir") == 0);
-  #else
-  ASSERT_OK(strcmp(filename, "watch_del_dir"));
-  #endif
+  /* The filename may be NULL when it cannot be determined. */
+  if (filename != NULL)
+    ASSERT_STR_EQ(filename, "watch_del_dir");
   ASSERT_OK(uv_fs_event_stop(handle));
   uv_close((uv_handle_t*)handle, close_cb);
 }

@@ -1879,8 +1879,13 @@ nocpuinfo:
       continue;
 
     n++;
+    /* Use scaling_max_freq, not scaling_cur_freq: reading the latter takes
+     * ~20ms per core on some AMD CPUs because the ACPI cpufreq driver does
+     * a slow SMM round-trip on every read; scaling_max_freq is a plain
+     * policy value and, unlike cpuinfo_cur_freq, is world-readable.
+     */
     snprintf(buf, sizeof(buf),
-             "/sys/devices/system/cpu/cpu%u/cpufreq/scaling_cur_freq", cpu);
+             "/sys/devices/system/cpu/cpu%u/cpufreq/scaling_max_freq", cpu);
 
     fp = uv__open_file(buf);
     if (fp == NULL)

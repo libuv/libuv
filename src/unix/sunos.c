@@ -162,7 +162,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int count;
   int err;
   int fd;
-  int user_timeout;
+  int user_timeout = 0;
   int reset_timeout;
 
   if (loop->nfds == 0) {
