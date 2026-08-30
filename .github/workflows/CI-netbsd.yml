@@ -1,0 +1,41 @@
+name: CI-netbsd
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-netbsd.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  build-netbsd:
+    runs-on: ubuntu-24.04
+    name: Build on NetBSD
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        uses: vmactions/netbsd-vm@6334c835de4c04a59fe59f0f8f071e02a2f0bab3 # v1.4.7
+        with:
+          copyback: false
+          prepare: |
+            # The image's default PKG_PATH falls back to a 9.0 package set;
+            # point it at the running release instead.
+            PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
+            export PKG_PATH
+            pkg_add autoconf automake libtool gmake
+          run: |
+            set -e -u -x
+            ./autogen.sh
+            mkdir build
+            cd build
+            ../configure
+            gmake -j2
