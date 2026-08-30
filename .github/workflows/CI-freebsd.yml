@@ -33,6 +33,7 @@ jobs:
         with:
           release: ${{ matrix.release }}
           copyback: false
+          cache-after-prepare: true
           prepare: pkg install -y autoconf automake libtool gmake
           run: |
             set -e -u -x

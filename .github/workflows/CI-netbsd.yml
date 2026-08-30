@@ -26,12 +26,19 @@ jobs:
         uses: vmactions/netbsd-vm@6334c835de4c04a59fe59f0f8f071e02a2f0bab3 # v1.4.7
         with:
           copyback: false
+          cache-after-prepare: true
           prepare: |
-            # The image's default PKG_PATH falls back to a 9.0 package set;
-            # point it at the running release instead.
-            PKG_PATH="https://cdn.NetBSD.org/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
-            export PKG_PATH
-            pkg_add autoconf automake libtool gmake
+            # The image's default PKG_PATH falls back to a 9.0 package set,
+            # so point it at the running release.  The NetBSD.org package
+            # hosts have outages (cdn and ftp were down together on
+            # 2026-08-30), so fall back to the official French mirror,
+            # which is http-only.
+            for base in https://cdn.NetBSD.org https://ftp.NetBSD.org http://ftp.fr.NetBSD.org; do
+              PKG_PATH="$base/pub/pkgsrc/packages/NetBSD/$(uname -m)/$(uname -r)/All/"
+              export PKG_PATH
+              if pkg_add autoconf automake libtool gmake; then break; fi
+            done
+            for t in autoconf automake libtool gmake; do command -v "$t"; done
           run: |
             set -e -u -x
             ./autogen.sh
