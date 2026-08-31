@@ -485,6 +485,12 @@ static void uv__spawn_init_can_use_setsid(void) {
 
 
 static void uv__spawn_init_posix_spawn(void) {
+#if defined(__OpenBSD__)
+  /* Always use fork(). Its posix_spawn() works different from other
+   * Unices in that it returns 0 instead of EACCES or ENOENT for paths
+   * that don't exist. See https://github.com/libuv/libuv/issues/5240.
+   */
+#else
 #if !defined(__linux__) && !defined(_AIX) && !defined(__PASE__)
   posix_spawn_works = 1;
 #elif !defined(__ANDROID__)
@@ -521,6 +527,7 @@ static void uv__spawn_init_posix_spawn(void) {
   /* Otherwise, if SETSID is defined, we can use it
    * (added in glibc 2.26 circa 2017). */
   posix_spawn_can_use_setsid = 1;
+#endif
 #endif
 }
 
