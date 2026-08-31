@@ -1212,29 +1212,11 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  if (events & (POLLIN | POLLERR))
+  if (events & (POLLIN | POLLERR | POLLHUP | UV__POLLRDHUP))
     uv__read(stream);
 
   if (uv__stream_fd(stream) == -1)
     return;  /* read_cb closed stream. */
-
-  /* Short-circuit iff POLLHUP is set, the user is still interested in read
-   * events and uv__read() didn't see EOF. If the EOF flag is set, uv__read()
-   * called read_cb with err=UV_EOF and we don't have to do anything.
-   *
-   * POLLIN should not be set because, at least on Linux and possibly other
-   * operating systems, devices like PTYs sometimes produce partial reads even
-   * when more data is available.
-   */
-  if ((events & (POLLHUP | UV__POLLRDHUP)) &&
-      !(events & POLLIN) &&
-      (stream->read_cb != NULL) &&
-      !(stream->flags & UV_HANDLE_READ_EOF)) {
-    uv_buf_t buf = { NULL, 0 };
-    uv__stream_eof(stream, &buf);
-    if (uv__stream_fd(stream) == -1)
-      return;  /* read_cb closed stream. */
-  }
 
   if (events & (POLLOUT | POLLERR | POLLHUP)) {
     uv__write(stream);
