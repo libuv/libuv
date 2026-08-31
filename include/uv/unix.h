@@ -266,7 +266,7 @@ struct uv__req_write_extra_s {
   unsigned int write_index;                                                   \
   uv_buf_t* bufs;                                                             \
   unsigned int nbufs;                                                         \
-  int error;                                                                  \
+  int result;                                                                 \
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \

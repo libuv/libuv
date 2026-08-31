@@ -166,6 +166,13 @@ Data types
             UV_NONBLOCK_PIPE = 0x40
         } uv_stdio_flags;
 
+    .. note::
+        On Unix, ``UV_INHERIT_STREAM`` will put the file associated with the
+        stream into blocking mode before passing it to the child.  Writes to a
+        stream inherited by a process are performed on the thread pool to avoid
+        blocking the thread making the request.  If it's possible that the
+        stream will be closed before the write completes, a cancellation signal
+        should be configured with :c:func:`uv_threadpool_set_cancel_signal`.
 
 Public members
 ^^^^^^^^^^^^^^

@@ -594,4 +594,7 @@ int uv__get_constrained_cpu(long long* quota);
 
 extern char* uv_saved_argv0;
 
+int uv__send_cancel(pthread_t thread);
+void uv__block_cancel(int block);
+
 #endif /* UV_UNIX_INTERNAL_H_ */

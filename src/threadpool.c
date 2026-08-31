@@ -29,6 +29,10 @@
 
 #define MAX_THREADPOOL_SIZE 1024
 
+#ifndef _WIN32
+_Atomic int uv__cancel_signum = -1;
+#endif
+
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
@@ -51,6 +55,33 @@ static void uv__cancelled(struct uv__work* w) {
 }
 
 
+#ifndef _WIN32
+int uv__send_cancel(pthread_t thread) {
+  int signum;
+
+  signum = atomic_load_explicit(&uv__cancel_signum, memory_order_relaxed);
+  if (signum == -1)
+    return UV_EBUSY;
+  pthread_kill(thread, signum);
+  return 0;
+}
+
+void uv__block_cancel(int block) {
+  int cancel_signum;
+  sigset_t sigmask;
+
+  cancel_signum =
+      atomic_load_explicit(&uv__cancel_signum, memory_order_relaxed);
+  if (cancel_signum != -1) {
+    sigemptyset(&sigmask);
+    sigaddset(&sigmask, cancel_signum);
+    if (pthread_sigmask(block ? SIG_BLOCK : SIG_UNBLOCK, &sigmask, NULL))
+      abort();
+  }
+}
+#endif
+
+
 /* To avoid deadlock with uv_cancel() it's crucial that the worker
  * never holds the global mutex and the loop-local mutex at the same time.
  */
@@ -60,6 +91,9 @@ static void worker(void* arg) {
   int is_slow_work;
 
   uv_thread_setname("libuv-worker");
+#ifndef _WIN32
+  uv__block_cancel(1);
+#endif
   uv_sem_post((uv_sem_t*) arg);
   arg = NULL;
 
@@ -286,10 +320,22 @@ void uv__work_submit(uv_loop_t* loop,
 }
 
 
+int uv_threadpool_set_cancel_signal(int signum) {
+#ifdef _WIN32
+  return UV_ENOSYS;
+#else
+  if (signum <= 0)
+    signum = -1;
+  atomic_store_explicit(&uv__cancel_signum, signum, memory_order_relaxed);
+  return 0;
+#endif
+}
+
+
 /* TODO(bnoordhuis) teach libuv how to cancel file operations
  * that go through io_uring instead of the thread pool.
  */
-static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
+int uv__work_cancel(uv_loop_t* loop, struct uv__work* w) {
   int cancelled;
 
   uv_once(&once, init_once);  /* Ensure |mutex| is initialized. */
@@ -429,5 +475,5 @@ int uv_cancel(uv_req_t* req) {
     return UV_EINVAL;
   }
 
-  return uv__work_cancel(loop, req, wreq);
+  return uv__work_cancel(loop, wreq);
 }

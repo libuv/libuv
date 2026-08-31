@@ -92,6 +92,7 @@ enum {
   UV_HANDLE_READ_PENDING                = 0x00010000,
   UV_HANDLE_SYNC_BYPASS_IOCP            = 0x00020000,
   UV_HANDLE_ZERO_READ                   = 0x00040000,
+  UV_HANDLE_WRITE_PENDING               = 0x00080000, /* UNIX only */
   UV_HANDLE_EMULATE_IOCP                = 0x00080000,
   UV_HANDLE_BLOCKING_WRITES             = 0x00100000,
   UV_HANDLE_READ_CANCELLATION_PENDING   = 0x00200000,
@@ -218,11 +219,17 @@ enum uv__work_kind {
   UV__WORK_SLOW_IO
 };
 
+#ifndef _WIN32
+extern _Atomic int uv__cancel_signum;
+#endif
+
 void uv__work_submit(uv_loop_t* loop,
                      struct uv__work *w,
                      enum uv__work_kind kind,
                      void (*work)(struct uv__work *w),
                      void (*done)(struct uv__work *w, int status));
+
+int uv__work_cancel(uv_loop_t* loop, struct uv__work* w);
 
 void uv__work_done(uv_async_t* handle);
 
@@ -333,7 +340,11 @@ void uv__threadpool_cleanup(void);
 #if defined(_WIN32)
 # define uv__handle_platform_init(h) ((h)->u.fd = -1)
 #else
-# define uv__handle_platform_init(h) ((h)->next_closing = NULL)
+# define uv__handle_platform_init(h)                                          \
+  do {                                                                        \
+    (h)->next_closing = NULL;                                                 \
+    (h)->u.blocked_write = NULL;                                              \
+  } while (0)
 #endif
 
 #define uv__handle_init(loop_, h, type_)                                      \

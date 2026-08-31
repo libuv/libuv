@@ -23,6 +23,7 @@
 #include "uv/tree.h"
 #include "internal.h"
 #include "heap-inl.h"
+#include <signal.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -227,13 +228,12 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
   }
 #endif
 
+  if (option == UV_LOOP_BLOCK_SIGNAL) {
+    if (va_arg(ap, int) != SIGPROF)
+      return UV_EINVAL;
+    loop->flags |= UV_LOOP_BLOCK_SIGPROF;
+    return 0;
+  }
 
-  if (option != UV_LOOP_BLOCK_SIGNAL)
-    return UV_ENOSYS;
-
-  if (va_arg(ap, int) != SIGPROF)
-    return UV_EINVAL;
-
-  loop->flags |= UV_LOOP_BLOCK_SIGPROF;
-  return 0;
+  return UV_ENOSYS;
 }

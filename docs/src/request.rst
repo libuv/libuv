@@ -101,6 +101,11 @@ API
       other errors if the kernel finished processing the write before the
       cancellation took effect.
 
+      On Unix, if the write is to a stream that has been made blocking (see the
+      note on :c:enum:`uv_stdio_flags`), this function will return `UV_EBUSY`
+      unless a cancellation signal has been configured with
+      :c:func:`uv_threadpool_set_cancel_signal`.
+
 .. c:function:: size_t uv_req_size(uv_req_type type)
 
     Returns the size of the given request type. Useful for FFI binding writers
