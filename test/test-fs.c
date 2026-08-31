@@ -35,7 +35,7 @@
 # include <winioctl.h>
 # include <direct.h>
 # include <io.h>
-# if defined(_DEBUG) && defined(_MSC_VER)
+# if defined(_MSC_VER)
 #  include <crtdbg.h>
 # endif
 # ifndef ERROR_SYMLINK_NOT_SUPPORTED
@@ -1048,7 +1048,7 @@ TEST_FS_IMPL(fs_file_async) {
 
 static void fs_file_sync(int add_flags) {
   int r;
-#if defined(_WIN32) && defined(_DEBUG) && defined(_MSC_VER)
+#if defined(_WIN32) && defined(_MSC_VER)
   HANDLE report_file;
   LARGE_INTEGER report_size;
   _HFILE old_report_file;
@@ -1079,7 +1079,7 @@ static void fs_file_sync(int add_flags) {
   ASSERT_OK(close_req.result);
   uv_fs_req_cleanup(&close_req);
 
-#if defined(_WIN32) && defined(_DEBUG) && defined(_MSC_VER)
+#if defined(_WIN32) && defined(_MSC_VER)
   /* Invalid descriptors must not trigger debug CRT assertions. */
   report_file = CreateFileA("test_crt_report",
                             GENERIC_READ | GENERIC_WRITE,
@@ -1096,7 +1096,7 @@ static void fs_file_sync(int add_flags) {
 
   r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
 
-#if defined(_WIN32) && defined(_DEBUG) && defined(_MSC_VER)
+#if defined(_WIN32) && defined(_MSC_VER)
   _CrtSetReportFile(_CRT_ASSERT, old_report_file);
   _CrtSetReportMode(_CRT_ASSERT, old_report_mode);
   ASSERT_NE(FlushFileBuffers(report_file), 0);
