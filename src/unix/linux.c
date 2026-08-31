@@ -130,6 +130,10 @@ enum {
 };
 
 enum {
+  UV__IORING_REGISTER_SYNC_CANCEL = 24,
+};
+
+enum {
   UV__IORING_FEAT_SINGLE_MMAP = 1u,
   UV__IORING_FEAT_NODROP = 2u,
   UV__IORING_FEAT_RSRC_TAGS = 1024u,  /* linux v5.13 */
@@ -249,6 +253,19 @@ struct uv__io_uring_params {
 STATIC_ASSERT(40 + 40 + 40 == sizeof(struct uv__io_uring_params));
 STATIC_ASSERT(40 == offsetof(struct uv__io_uring_params, sq_off));
 STATIC_ASSERT(80 == offsetof(struct uv__io_uring_params, cq_off));
+
+struct uv__io_uring_sync_cancel_reg {
+  uint64_t addr;
+  int32_t fd;
+  uint32_t flags;
+  struct {
+    int64_t tv_sec;
+    int64_t tv_nsec;
+  } timeout;
+  uint64_t reserved[4];
+};
+
+STATIC_ASSERT(64 == sizeof(struct uv__io_uring_sync_cancel_reg));
 
 STATIC_ASSERT(EPOLL_CTL_ADD < 4);
 STATIC_ASSERT(EPOLL_CTL_DEL < 4);
@@ -452,6 +469,35 @@ int uv__io_uring_enter(int fd,
 
 int uv__io_uring_register(int fd, unsigned opcode, void* arg, unsigned nargs) {
   return syscall(__NR_io_uring_register, fd, opcode, arg, nargs);
+}
+
+int uv__iou_cancel(uv_loop_t* loop, uv_fs_t* req) {
+  struct uv__io_uring_sync_cancel_reg reg;
+  struct uv__iou* iou;
+  int rc;
+
+  if (uv__kernel_version() < /* 6.0 */0x060000)
+    return UV_EBUSY;
+
+  iou = &uv__get_internal_fields(loop)->iou;
+  if (iou->ringfd < 0)
+    return UV_EBUSY;
+
+  memset(&reg, 0, sizeof(reg));
+  reg.addr = (uintptr_t) req;
+  reg.fd = -1;
+  reg.timeout.tv_sec = -1;
+  reg.timeout.tv_nsec = -1;
+
+  rc = uv__io_uring_register(iou->ringfd,
+                             UV__IORING_REGISTER_SYNC_CANCEL,
+                             &reg,
+                             1);
+
+  if (rc == 0)
+    return 0;
+
+  return UV_EBUSY;
 }
 
 
