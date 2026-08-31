@@ -773,38 +773,17 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       const char* filename,
                       unsigned int flags) {
 #ifdef HAVE_SYS_AHAFS_EVPRODS_H
-  int  fd, rc, str_offset = 0;
-  char cwd[PATH_MAX];
+  int  fd, rc;
   char absolute_path[PATH_MAX];
-  char readlink_cwd[PATH_MAX];
   struct timeval zt;
   fd_set pollfd;
 
-
-  /* Figure out whether filename is absolute or not */
-  if (filename[0] == '\0') {
-    /* Missing a pathname */
+  if (filename[0] == '\0')
     return UV_ENOENT;
-  }
-  else if (filename[0] == '/') {
-    /* We have absolute pathname */
-    /* TODO(bnoordhuis) Check uv__strscpy() return value. */
-    uv__strscpy(absolute_path, filename, sizeof(absolute_path));
-  } else {
-    /* We have a relative pathname, compose the absolute pathname */
-    snprintf(cwd, sizeof(cwd), "/proc/%lu/cwd", (unsigned long) getpid());
-    rc = readlink(cwd, readlink_cwd, sizeof(readlink_cwd) - 1);
-    if (rc < 0)
-      return rc;
-    /* readlink does not null terminate our string */
-    readlink_cwd[rc] = '\0';
 
-    if (filename[0] == '.' && filename[1] == '/')
-      str_offset = 2;
-
-    snprintf(absolute_path, sizeof(absolute_path), "%s%s", readlink_cwd,
-             filename + str_offset);
-  }
+  /* Resolve filename to a canonical, absolute path using realpath() */
+  if (realpath(filename, absolute_path) == NULL)
+    return UV__ERR(errno);
 
   if (uv__is_ahafs_mounted() < 0)  /* /aha checks failed */
     return UV_ENOSYS;
