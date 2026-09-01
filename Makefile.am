@@ -224,6 +224,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-ping-pong.c \
                          test/test-pipe-bind-error.c \
                          test/test-pipe-connect-error.c \
+                         test/test-pipe-accept-raw.c \
                          test/test-pipe-connect-multiple.c \
                          test/test-pipe-connect-prepare.c \
                          test/test-pipe-getsockname.c \
@@ -279,6 +280,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-connect-timeout.c \
                          test/test-tcp-connect6-error.c \
                          test/test-tcp-flags.c \
+                         test/test-tcp-accept-raw.c \
                          test/test-tcp-open.c \
                          test/test-tcp-read-stop.c \
                          test/test-tcp-reuseport.c \

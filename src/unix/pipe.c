@@ -204,6 +204,35 @@ void uv__pipe_close(uv_pipe_t* handle) {
 }
 
 
+int uv_pipe_accept_raw(uv_pipe_t* server, uv_file* file) {
+  uv_stream_t* stream = (uv_stream_t*) server;
+  uv__stream_queued_fds_t* queued_fds;
+
+  if (stream->accepted_fd == -1)
+    return UV_EAGAIN;
+
+  *file = stream->accepted_fd;
+
+  if (stream->queued_fds != NULL) {
+    queued_fds = stream->queued_fds;
+    stream->accepted_fd = queued_fds->fds[0];
+    if (--queued_fds->offset == 0) {
+      uv__free(queued_fds);
+      stream->queued_fds = NULL;
+    } else {
+      memmove(queued_fds->fds,
+              queued_fds->fds + 1,
+              queued_fds->offset * sizeof(*queued_fds->fds));
+    }
+  } else {
+    stream->accepted_fd = -1;
+    uv__io_start(stream->loop, &stream->io_watcher, POLLIN);
+  }
+
+  return 0;
+}
+
+
 int uv_pipe_open(uv_pipe_t* handle, uv_file fd) {
   int flags;
   int mode;

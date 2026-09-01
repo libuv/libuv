@@ -100,6 +100,7 @@ TEST_DECLARE   (tcp_ping_pong)
 TEST_DECLARE   (tcp_ping_pong_vec)
 TEST_DECLARE   (tcp6_ping_pong)
 TEST_DECLARE   (tcp6_ping_pong_vec)
+TEST_DECLARE   (pipe_accept_raw)
 TEST_DECLARE   (pipe_ping_pong)
 TEST_DECLARE   (pipe_ping_pong_vec)
 TEST_DECLARE   (delayed_accept)
@@ -114,6 +115,7 @@ TEST_DECLARE   (tcp_write_in_a_row)
 TEST_DECLARE   (tcp_try_write_error)
 TEST_DECLARE   (tcp_write_in_read_cb_backend_timeout)
 TEST_DECLARE   (tcp_write_queue_order)
+TEST_DECLARE   (tcp_accept_raw)
 TEST_DECLARE   (tcp_write_cancel)
 TEST_DECLARE   (pipe_write_cancel)
 TEST_DECLARE   (pipe_write_cancel_all)
@@ -728,6 +730,8 @@ TASK_LIST_START
   TEST_ENTRY  (tcp6_ping_pong_vec)
   TEST_HELPER (tcp6_ping_pong_vec, tcp6_echo_server)
 
+  TEST_ENTRY  (pipe_accept_raw)
+
   TEST_ENTRY  (pipe_ping_pong)
   TEST_HELPER (pipe_ping_pong, pipe_echo_server)
 
@@ -766,6 +770,8 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_write_cancel_ipc)
   TEST_ENTRY  (tcp_write_nwritten)
   TEST_ENTRY  (pipe_write_nwritten)
+
+  TEST_ENTRY  (tcp_accept_raw)
 
   TEST_ENTRY  (tcp_open)
   TEST_HELPER (tcp_open, tcp4_echo_server)
