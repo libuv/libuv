@@ -365,6 +365,10 @@ typedef struct {
   int32_t tv_nsec;
 } uv_timespec_t;
 
+/* Sentinel for uv_timespec_t.tv_nsec: skip this timestamp.
+ * Translated to the platform's UTIME_OMIT when calling utimensat(2). */
+#define UV_TIMESPEC_OMIT ((int32_t) 0x3FFFFFFE)
+
 typedef struct {
   int64_t tv_sec;
   int32_t tv_usec;
@@ -1689,6 +1693,38 @@ UV_EXTERN int uv_fs_lutime(uv_loop_t* loop,
                            double atime,
                            double mtime,
                            uv_fs_cb cb);
+UV_EXTERN int uv_fs_utime2(uv_loop_t* loop,
+                            uv_fs_t* req,
+                            const char* path,
+                            uv_timespec_t atime,
+                            uv_timespec_t mtime,
+                            uv_fs_cb cb);
+UV_EXTERN int uv_fs_utime2_ex(uv_loop_t* loop,
+                               uv_fs_t* req,
+                               const char* path,
+                               uv_timespec_t btime,
+                               uv_timespec_t atime,
+                               uv_timespec_t mtime,
+                               uv_fs_cb cb);
+UV_EXTERN int uv_fs_futime2(uv_loop_t* loop,
+                             uv_fs_t* req,
+                             uv_os_fd_t file,
+                             uv_timespec_t atime,
+                             uv_timespec_t mtime,
+                             uv_fs_cb cb);
+UV_EXTERN int uv_fs_futime2_ex(uv_loop_t* loop,
+                                uv_fs_t* req,
+                                uv_os_fd_t file,
+                                uv_timespec_t btime,
+                                uv_timespec_t atime,
+                                uv_timespec_t mtime,
+                                uv_fs_cb cb);
+UV_EXTERN int uv_fs_lutime2(uv_loop_t* loop,
+                             uv_fs_t* req,
+                             const char* path,
+                             uv_timespec_t atime,
+                             uv_timespec_t mtime,
+                             uv_fs_cb cb);
 UV_EXTERN int uv_fs_lstat(uv_loop_t* loop,
                           uv_fs_t* req,
                           const char* path,

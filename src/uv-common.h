@@ -372,6 +372,10 @@ void uv__threadpool_cleanup(void);
     uv__get_loop_metrics(loop)->metrics.events_waiting += (e);                \
   } while (0)
 
+/* Timestamp helpers */
+#define UV__NSEC_MAX 999999999
+uv_timespec_t uv__double_to_timespec(double time);
+
 /* Allocator prototypes */
 void *uv__calloc(size_t count, size_t size);
 char *uv__strdup(const char* s);

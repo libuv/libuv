@@ -24,6 +24,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* FILE, printf */
@@ -51,6 +52,27 @@ static uv__allocator_t uv__allocator = {
   calloc,
   free,
 };
+
+uv_timespec_t uv__double_to_timespec(double time) {
+  uv_timespec_t ts;
+
+  if (isnan(time) || isinf(time)) {
+    ts.tv_sec = 0;
+    ts.tv_nsec = UV_TIMESPEC_OMIT;
+    return ts;
+  }
+
+  ts.tv_sec = (int64_t) time;
+  ts.tv_nsec = (int32_t) ((time - ts.tv_sec) * 1000000000);
+
+  if (ts.tv_nsec < 0) {
+    ts.tv_nsec += 1000000000;
+    ts.tv_sec -= 1;
+  }
+
+  return ts;
+}
+
 
 char* uv__strdup(const char* s) {
   size_t len = strlen(s) + 1;

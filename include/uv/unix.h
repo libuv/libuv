@@ -361,9 +361,9 @@ typedef struct {
   off_t off;                                                                  \
   uv_uid_t uid;                                                               \
   uv_gid_t gid;                                                               \
-  double btime;                                                               \
-  double atime;                                                               \
-  double mtime;                                                               \
+  uv_timespec_t btime;                                                        \
+  uv_timespec_t atime;                                                        \
+  uv_timespec_t mtime;                                                        \
   struct uv__work work_req;                                                   \
   uv_buf_t bufsml[4];                                                         \
 
