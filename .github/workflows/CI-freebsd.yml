@@ -1,0 +1,44 @@
+name: CI-freebsd
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-freebsd.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  build-freebsd:
+    runs-on: ubuntu-24.04
+    name: Build on FreeBSD ${{ matrix.release }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # The two supported branches. Only the leading part is given, so
+        # the newest release of each is picked up without an edit here.
+        release: ['14', '15']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        uses: vmactions/freebsd-vm@f0552d3b69211736abd97f02ff3d4674c56b73b1 # v1.5.5
+        with:
+          release: ${{ matrix.release }}
+          copyback: false
+          cache-after-prepare: true
+          prepare: pkg install -y autoconf automake libtool gmake
+          run: |
+            set -e -u -x
+            ./autogen.sh
+            mkdir build
+            cd build
+            ../configure
+            gmake -j2

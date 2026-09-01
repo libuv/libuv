@@ -1,0 +1,42 @@
+name: CI-netbsd
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-netbsd.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  build-netbsd:
+    runs-on: ubuntu-24.04
+    name: Build on NetBSD
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        uses: vmactions/netbsd-vm@07366ff288a2661e3998b69c5d48eda270050635 # v1.4.8
+        with:
+          copyback: false
+          cache-after-prepare: true
+          prepare: |
+            # netbsd-vm v1.4.8 probes the package mirrors at VM start and
+            # points pkg_add at the live ones, so no PKG_PATH juggling is
+            # needed here.
+            pkg_add autoconf automake libtool gmake
+            for t in autoconf automake libtool gmake; do command -v "$t"; done
+          run: |
+            set -e -u -x
+            ./autogen.sh
+            mkdir build
+            cd build
+            ../configure
+            gmake -j2
