@@ -22,6 +22,10 @@
 #include "uv.h"
 #include "task.h"
 
+#ifdef _WIN32
+# include <winioctl.h>
+#endif
+
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(__sun) || \
     defined(_AIX) || defined(__MVS__) || \
@@ -37,6 +41,26 @@ static const char fixture[] = "test/fixtures/load_error.node";
 static const char dst[] = "test_file_dst";
 static int result_check_count;
 
+#ifdef _WIN32
+static int supports_block_refcounting(void) {
+  char cwd[MAX_PATH];
+  char root[MAX_PATH];
+  DWORD flags;
+
+  ASSERT_GT(GetCurrentDirectoryA(sizeof(cwd), cwd), 0);
+  ASSERT(GetVolumePathNameA(cwd, root, sizeof(root)));
+  ASSERT(GetVolumeInformationA(root,
+                               NULL,
+                               0,
+                               NULL,
+                               NULL,
+                               &flags,
+                               NULL,
+                               0));
+
+  return flags & FILE_SUPPORTS_BLOCK_REFCOUNTING;
+}
+#endif
 
 static void fail_cb(uv_fs_t* req) {
   FATAL("fail_cb should not have been called");
@@ -203,12 +227,44 @@ TEST_FS_IMPL(fs_copyfile) {
   ASSERT_OK(r);
   handle_result(&req);
 
+#ifdef _WIN32
+  if (supports_block_refcounting()) {
+    /* Cloning preserves the read-only attribute. */
+    unlink(src);
+    unlink(dst);
+    touch_file(src, 4097);
+    ASSERT_OK(uv_fs_chmod(NULL, &req, src, 0444, NULL));
+    uv_fs_req_cleanup(&req);
+
+    r = uv_fs_copyfile(NULL,
+                       &req,
+                       src,
+                       dst,
+                       UV_FS_COPYFILE_FICLONE_FORCE,
+                       NULL);
+    ASSERT_OK(r);
+    handle_result(&req);
+
+    ASSERT_OK(uv_fs_chmod(NULL, &req, src, 0644, NULL));
+    uv_fs_req_cleanup(&req);
+    ASSERT_OK(uv_fs_chmod(NULL, &req, dst, 0644, NULL));
+    uv_fs_req_cleanup(&req);
+    unlink(src);
+  }
+#endif
+
   /* Copies file using UV_FS_COPYFILE_FICLONE_FORCE. */
   unlink(dst);
   r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE,
                      NULL);
+#ifdef _WIN32
+  if (supports_block_refcounting())
+    ASSERT_OK(r);
+  else
+    ASSERT_LE(r, 0);
+#else
   ASSERT_LE(r, 0);
-
+#endif
   if (r == 0)
     handle_result(&req);
 
