@@ -1230,8 +1230,16 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
       !(events & POLLIN) &&
       (stream->read_cb != NULL) &&
       !(stream->flags & UV_HANDLE_READ_EOF)) {
-    uv_buf_t buf = { NULL, 0 };
-    uv__stream_eof(stream, &buf);
+    /* When a PTY reports POLLHUP without POLLIN, there might be still data
+     * buffered. Do one more read instead of signalling EOF immediately.
+     */
+    if (stream->type == UV_TTY) {
+      uv__read(stream);
+    } else {
+      uv_buf_t buf = { NULL, 0 };
+      uv__stream_eof(stream, &buf);
+    }
+
     if (uv__stream_fd(stream) == -1)
       return;  /* read_cb closed stream. */
   }

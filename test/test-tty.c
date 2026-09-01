@@ -524,7 +524,7 @@ TEST_IMPL(tty_pty_partial) {
   /* This test is not 100% deterministic. If the bug it is testing for is
    * present, then it fails about 1 in 3 times, that's why it runs in a loop.
    */
-  for (i = 0; i < 10; i++) {
+  for (i = 0; i < 1000; i++) {
     if (openpty(&master_fd, &slave_fd, NULL, NULL, NULL))
       RETURN_SKIP("No pty available, skipping.");
 
