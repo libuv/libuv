@@ -1212,7 +1212,7 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   assert(uv__stream_fd(stream) >= 0);
 
-  if (events & (POLLIN | POLLERR))
+  if (events & (POLLIN | POLLERR | POLLHUP | UV__POLLRDHUP))
     uv__read(stream);
 
   if (uv__stream_fd(stream) == -1)
@@ -1224,11 +1224,12 @@ void uv__stream_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
    *
    * POLLIN should not be set because, at least on Linux and possibly other
    * operating systems, devices like PTYs sometimes produce partial reads even
-   * when more data is available.
+   * when more data is available. TTY streams are excluded.
    */
   if ((events & (POLLHUP | UV__POLLRDHUP)) &&
       !(events & POLLIN) &&
       (stream->read_cb != NULL) &&
+      stream->type != UV_TTY &&
       !(stream->flags & UV_HANDLE_READ_EOF)) {
     /* When a PTY reports POLLHUP without POLLIN, there might be still data
      * buffered. Do one more read instead of signalling EOF immediately.
