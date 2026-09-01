@@ -32,7 +32,9 @@
 static uv_once_t once = UV_ONCE_INIT;
 static uv_cond_t cond;
 static uv_mutex_t mutex;
-static unsigned int idle_threads;
+static unsigned int idle_threads;  /* Workers blocked in uv_cond_wait(). */
+static unsigned int nwaking;       /* Signalled workers not yet running. */
+static unsigned int nqueued;       /* Items in `wq`. Both hints, see post(). */
 static unsigned int slow_io_work_running;
 static unsigned int nthreads;
 static uv_thread_t* threads;
@@ -73,9 +75,13 @@ static void worker(void* arg) {
            (uv__queue_head(&wq) == &run_slow_work_message &&
             uv__queue_next(&run_slow_work_message) == &wq &&
             slow_io_work_running >= slow_work_thread_threshold())) {
+      if (uv__queue_empty(&wq))
+        nqueued = 0;  /* Resynchronise the hint, see uv__work_cancel(). */
       idle_threads += 1;
       uv_cond_wait(&cond, &mutex);
       idle_threads -= 1;
+      if (nwaking > 0)
+        nwaking -= 1;
     }
 
     q = uv__queue_head(&wq);
@@ -87,6 +93,8 @@ static void worker(void* arg) {
 
     uv__queue_remove(q);
     uv__queue_init(q);  /* Signal uv_cancel() that the work req is executing. */
+    if (nqueued > 0)
+      nqueued -= 1;
 
     is_slow_work = 0;
     if (q == &run_slow_work_message) {
@@ -94,6 +102,7 @@ static void worker(void* arg) {
          other work in the queue is done. */
       if (slow_io_work_running >= slow_work_thread_threshold()) {
         uv__queue_insert_tail(&wq, q);
+        nqueued += 1;
         continue;
       }
 
@@ -112,6 +121,7 @@ static void worker(void* arg) {
       /* If there is more slow I/O work, schedule it to be run as well. */
       if (!uv__queue_empty(&slow_io_pending_wq)) {
         uv__queue_insert_tail(&wq, &run_slow_work_message);
+        nqueued += 1;
         if (idle_threads > 0)
           uv_cond_signal(&cond);
       }
@@ -141,6 +151,8 @@ static void worker(void* arg) {
 
 
 static void post(struct uv__queue* q, enum uv__work_kind kind) {
+  int wake;
+
   uv_mutex_lock(&mutex);
   if (kind == UV__WORK_SLOW_IO) {
     /* Insert into a separate queue. */
@@ -155,9 +167,30 @@ static void post(struct uv__queue* q, enum uv__work_kind kind) {
   }
 
   uv__queue_insert_tail(&wq, q);
-  if (idle_threads > 0)
-    uv_cond_signal(&cond);
+  nqueued += 1;
+
+  /* Wake a worker only if there is an idle one we have not signalled yet and
+   * the queue holds more items than the workers already on their way will
+   * take. Waking more than that just makes threads find an empty queue and go
+   * back to sleep, which with a large pool and a stream of small requests is
+   * what most wake-ups used to be. Both counters are hints that err towards
+   * signalling: `nwaking` is decremented on every return from uv_cond_wait()
+   * (spurious ones included) and `nqueued` can only over-count (uv_cancel())
+   * until a worker sees the queue empty and resets it.
+   */
+  wake = 0;
+  if (idle_threads > nwaking && nqueued > nwaking) {
+    nwaking += 1;
+    wake = 1;
+  }
   uv_mutex_unlock(&mutex);
+
+  /* Signal after unlocking so the worker we wake does not immediately block
+   * on `mutex`. The predicate is only ever examined with `mutex` held, so no
+   * wake-up is lost: a worker that went idle after the unlock has already
+   * seen the new item. */
+  if (wake)
+    uv_cond_signal(&cond);
 }
 
 
@@ -231,6 +264,9 @@ static void init_threads(void) {
   if (uv_mutex_init(&mutex))
     abort();
 
+  idle_threads = 0;
+  nwaking = 0;
+  nqueued = 0;
   uv__queue_init(&wq);
   uv__queue_init(&slow_io_pending_wq);
   uv__queue_init(&run_slow_work_message);
