@@ -128,7 +128,8 @@ EXTRA_DIST = test/fixtures/empty_file \
              CONTRIBUTING.md \
              LICENSE \
              LICENSE-extra \
-             README.md
+             README.md \
+             uv_win_longpath.manifest
 
 
 
