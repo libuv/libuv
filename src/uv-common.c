@@ -1053,3 +1053,62 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
     idle_time += uv_hrtime() - entry_time;
   return idle_time;
 }
+
+
+int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
+  uv_interface_address2_t* addrs2;
+  int n;
+  int i;
+  int r;
+
+  r = uv_interface_addresses2(&addrs2, count);
+  if (r != 0)
+    return r;
+
+  n = *count;
+
+  if (n == 0) {
+    uv_free_interface_addresses2(addrs2, 0);
+    *addresses = NULL;
+    return 0;
+  }
+
+  *addresses = uv__calloc(n, sizeof(**addresses));
+  if (*addresses == NULL) {
+    uv_free_interface_addresses2(addrs2, n);
+    *count = 0;
+    return UV_ENOMEM;
+  }
+
+  for (i = 0; i < n; i++) {
+    (*addresses)[i].name = uv__strdup(addrs2[i].name);
+    if ((*addresses)[i].name == NULL) {
+      uv_free_interface_addresses(*addresses, i);
+      uv_free_interface_addresses2(addrs2, n);
+      *addresses = NULL;
+      *count = 0;
+      return UV_ENOMEM;
+    }
+    memcpy((*addresses)[i].phys_addr,
+           addrs2[i].phys_addr,
+           sizeof((*addresses)[i].phys_addr));
+    (*addresses)[i].is_internal = addrs2[i].is_internal;
+    (*addresses)[i].address.address6 = addrs2[i].address.address6;
+    (*addresses)[i].netmask.netmask6 = addrs2[i].netmask.netmask6;
+    (*addresses)[i].broadcast.broadcast4 = addrs2[i].broadcast.broadcast4;
+  }
+
+  uv_free_interface_addresses2(addrs2, n);
+  return 0;
+}
+
+
+void uv_free_interface_addresses(uv_interface_address_t* addresses,
+                                 int count) {
+  int i;
+
+  for (i = 0; i < count; i++)
+    uv__free(addresses[i].name);
+
+  uv__free(addresses);
+}

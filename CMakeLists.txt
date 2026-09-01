@@ -570,6 +570,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-hrtime.c
        test/test-idle.c
        test/test-idna.c
+       test/test-interface-addresses.c
        test/test-iouring-pollhup.c
        test/test-ip4-addr.c
        test/test-ip6-addr.c

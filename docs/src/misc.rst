@@ -173,6 +173,46 @@ Data types
             } broadcast;
         } uv_interface_address_t;
 
+.. c:enum:: uv_phys_addr_family
+
+    Physical address family.
+
+    ::
+
+        typedef enum {
+            UV_PHYS_ADDR_UNKNOWN,
+            UV_PHYS_ADDR_MAC48,
+            UV_PHYS_ADDR_EUI64
+        } uv_phys_addr_family;
+
+    .. versionadded:: 2.0.0
+
+.. c:type:: uv_interface_address2_t
+
+    Data type for interface addresses.
+
+    ::
+
+        typedef struct uv_interface_address2_s {
+            char* name;
+            char phys_addr[8];
+            uv_phys_addr_family phys_addr_family;
+            int is_internal;
+            union {
+                struct sockaddr_in address4;
+                struct sockaddr_in6 address6;
+            } address;
+            union {
+                struct sockaddr_in netmask4;
+                struct sockaddr_in6 netmask6;
+            } netmask;
+            union {
+                struct sockaddr_in broadcast4;
+            } broadcast;
+        } uv_interface_address2_t;
+
+    .. versionadded:: 2.0.0
+
 .. c:type:: uv_passwd_t
 
     Data type for password file information.
@@ -423,6 +463,24 @@ API
 
     Free an array of :c:type:`uv_interface_address_t` which was returned by
     :c:func:`uv_interface_addresses`.
+
+.. c:function:: int uv_interface_addresses2(uv_interface_address2_t** addresses, int* count)
+
+    Gets address information about the network interfaces on the system. An
+    array of `count` elements is allocated and returned in `addresses`. It must
+    be freed by the user, calling :c:func:`uv_free_interface_addresses2`.
+
+    Supports both MAC-48 and EUI-64 physical addresses. The
+    `phys_addr_family` field indicates the type of the physical address.
+
+    .. versionadded:: 2.0.0
+
+.. c:function:: void uv_free_interface_addresses2(uv_interface_address2_t* addresses, int count)
+
+    Free an array of :c:type:`uv_interface_address2_t` which was returned by
+    :c:func:`uv_interface_addresses2`.
+
+    .. versionadded:: 2.0.0
 
 .. c:function:: void uv_loadavg(double avg[3])
 

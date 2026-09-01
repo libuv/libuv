@@ -757,75 +757,31 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 
 
 #ifdef SUNOS_NO_IFADDRS
-int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
+int uv_interface_addresses2(uv_interface_address2_t** addresses, int* count) {
   *count = 0;
   *addresses = NULL;
   return UV_ENOSYS;
 }
 #else  /* SUNOS_NO_IFADDRS */
-/*
- * Inspired By:
- * https://blogs.oracle.com/paulie/entry/retrieving_mac_address_in_solaris
- * http://www.pauliesworld.org/project/getmac.c
- */
-static int uv__set_phys_addr(uv_interface_address_t* address,
-                             struct ifaddrs* ent) {
 
-  struct sockaddr_dl* sa_addr;
-  int sockfd;
-  size_t i;
-  struct arpreq arpreq;
-
-  /* This appears to only work as root */
-  sa_addr = (struct sockaddr_dl*)(ent->ifa_addr);
-  memcpy(address->phys_addr, LLADDR(sa_addr), sizeof(address->phys_addr));
-  for (i = 0; i < sizeof(address->phys_addr); i++) {
-    /* Check that all bytes of phys_addr are zero. */
-    if (address->phys_addr[i] != 0)
-      return 0;
-  }
-  memset(&arpreq, 0, sizeof(arpreq));
-  if (address->address.address4.sin_family == AF_INET) {
-    struct sockaddr_in* sin = ((struct sockaddr_in*)&arpreq.arp_pa);
-    sin->sin_addr.s_addr = address->address.address4.sin_addr.s_addr;
-  } else if (address->address.address4.sin_family == AF_INET6) {
-    struct sockaddr_in6* sin = ((struct sockaddr_in6*)&arpreq.arp_pa);
-    memcpy(sin->sin6_addr.s6_addr,
-           address->address.address6.sin6_addr.s6_addr,
-           sizeof(address->address.address6.sin6_addr.s6_addr));
-  } else {
-    return 0;
-  }
-
-  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (sockfd < 0)
-    return UV__ERR(errno);
-
-  if (ioctl(sockfd, SIOCGARP, (char*)&arpreq) == -1) {
-    uv__close(sockfd);
-    return UV__ERR(errno);
-  }
-  memcpy(address->phys_addr, arpreq.arp_ha.sa_data, sizeof(address->phys_addr));
-  uv__close(sockfd);
-  return 0;
-}
-
-
-static int uv__ifaddr_exclude(struct ifaddrs *ent) {
+static int uv__ifaddr_exclude(struct ifaddrs *ent, int exclude_type) {
   if (!((ent->ifa_flags & IFF_UP) && (ent->ifa_flags & IFF_RUNNING)))
     return 1;
   if (ent->ifa_addr == NULL)
     return 1;
+  if (exclude_type == UV__EXCLUDE_IFPHYS)
+    return (ent->ifa_addr->sa_family != AF_LINK);
   if (ent->ifa_addr->sa_family != AF_INET &&
       ent->ifa_addr->sa_family != AF_INET6)
     return 1;
   return 0;
 }
 
-int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
-  uv_interface_address_t* address;
+int uv_interface_addresses2(uv_interface_address2_t** addresses, int* count) {
+  uv_interface_address2_t* address;
   struct ifaddrs* addrs;
   struct ifaddrs* ent;
+  int i;
 
   *count = 0;
   *addresses = NULL;
@@ -835,7 +791,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 
   /* Count the number of interfaces */
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (uv__ifaddr_exclude(ent))
+    if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFADDR))
       continue;
     (*count)++;
   }
@@ -845,7 +801,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     return 0;
   }
 
-  *addresses = uv__malloc(*count * sizeof(**addresses));
+  *addresses = uv__calloc(*count, sizeof(**addresses));
   if (!(*addresses)) {
     freeifaddrs(addrs);
     return UV_ENOMEM;
@@ -854,7 +810,7 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
   address = *addresses;
 
   for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
-    if (uv__ifaddr_exclude(ent))
+    if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFADDR))
       continue;
 
     address->name = uv__strdup(ent->ifa_name);
@@ -879,8 +835,60 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
     address->is_internal = !!((ent->ifa_flags & IFF_PRIVATE) ||
                            (ent->ifa_flags & IFF_LOOPBACK));
 
-    uv__set_phys_addr(address, ent);
     address++;
+  }
+
+  /* Fill in physical addresses for each interface */
+  for (ent = addrs; ent != NULL; ent = ent->ifa_next) {
+    if (uv__ifaddr_exclude(ent, UV__EXCLUDE_IFPHYS))
+      continue;
+
+    address = *addresses;
+
+    for (i = 0; i < *count; i++) {
+      if (strcmp(address->name, ent->ifa_name) == 0) {
+        struct sockaddr_dl* sa_addr;
+        sa_addr = (struct sockaddr_dl*)(ent->ifa_addr);
+        if (sa_addr->sdl_alen <= sizeof(address->phys_addr)) {
+          memcpy(address->phys_addr, LLADDR(sa_addr), sa_addr->sdl_alen);
+          if (sa_addr->sdl_alen == 6)
+            address->phys_addr_family = UV_PHYS_ADDR_MAC48;
+          else if (sa_addr->sdl_alen == 8)
+            address->phys_addr_family = UV_PHYS_ADDR_EUI64;
+        }
+      }
+      address++;
+    }
+  }
+
+  /* AF_LINK may return all-zero addresses when not running as root.
+   * Fall back to SIOCGARP for any IPv4 interface that still has no address.
+   * SIOCGARP only works for IPv4 (ARP); IPv6 uses NDP instead.
+   */
+  {
+    int sockfd;
+
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sockfd >= 0) {
+      address = *addresses;
+      for (i = 0; i < *count; i++) {
+        if (address->phys_addr_family == UV_PHYS_ADDR_UNKNOWN &&
+            address->address.address4.sin_family == AF_INET) {
+          struct arpreq arpreq;
+          struct sockaddr_in* sin;
+
+          memset(&arpreq, 0, sizeof(arpreq));
+          sin = (struct sockaddr_in*) &arpreq.arp_pa;
+          sin->sin_addr.s_addr = address->address.address4.sin_addr.s_addr;
+          if (ioctl(sockfd, SIOCGARP, (char*) &arpreq) == 0) {
+            memcpy(address->phys_addr, arpreq.arp_ha.sa_data, 6);
+            address->phys_addr_family = UV_PHYS_ADDR_MAC48;
+          }
+        }
+        address++;
+      }
+      uv__close(sockfd);
+    }
   }
 
   freeifaddrs(addrs);
@@ -889,8 +897,8 @@ int uv_interface_addresses(uv_interface_address_t** addresses, int* count) {
 }
 #endif  /* SUNOS_NO_IFADDRS */
 
-void uv_free_interface_addresses(uv_interface_address_t* addresses,
-  int count) {
+void uv_free_interface_addresses2(uv_interface_address2_t* addresses,
+                                  int count) {
   int i;
 
   for (i = 0; i < count; i++) {
