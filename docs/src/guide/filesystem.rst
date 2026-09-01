@@ -168,8 +168,8 @@ same patterns as the read/write/open calls, returning the result in the
 Buffers and Streams
 -------------------
 
-The basic I/O handle in libuv is the stream (``uv_stream_t``). TCP sockets, UDP
-sockets, and pipes for file I/O and IPC are all treated as stream subclasses.
+The basic I/O handle in libuv is the stream (``uv_stream_t``). TCP sockets, TTYs,
+and pipes for file I/O and IPC are all treated as stream subclasses.
 
 Streams are initialized using custom functions for each subclass, then operated
 upon using
