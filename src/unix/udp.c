@@ -1394,7 +1394,7 @@ static int uv__udp_sendmsg1(int fd,
 
   if (r < 0) {
     r = UV__ERR(errno);
-    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
       r = UV_EAGAIN;
     return r;
   }
@@ -1461,7 +1461,7 @@ exit:
 
   if (r < 0) {
     r = UV__ERR(errno);
-    if (errno == EAGAIN || errno == EWOULDBLOCK || errno == ENOBUFS)
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
       r = UV_EAGAIN;
   }
 
