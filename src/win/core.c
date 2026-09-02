@@ -90,6 +90,15 @@ static void uv__loops_init(void) {
 }
 
 
+static void uv__loops_cleanup(void) {
+  uv__free(uv__loops);
+  uv__loops = NULL;
+  uv__loops_size = 0;
+  uv__loops_capacity = 0;
+  uv_mutex_destroy(&uv__loops_lock);
+}
+
+
 static int uv__loops_add(uv_loop_t* loop) {
   uv_loop_t** new_loops;
   int new_capacity, i;
@@ -221,6 +230,52 @@ static void uv__init(void) {
 
   /* Initialize system wakeup detection */
   uv__init_detect_system_wakeup();
+}
+
+
+void uv__once_cleanup(void) {
+  uv_once_t reset = UV_ONCE_INIT;
+  BOOL pending;
+
+  /* Nothing to undo if uv__init() never completed: uv_library_shutdown() can be
+   * called by a process that never used a loop, and the cleanups below would
+   * destroy locks that were never initialized.
+   */
+  if (!InitOnceBeginInitialize(&uv_init_guard_.init_once,
+                               INIT_ONCE_CHECK_ONLY,
+                               &pending,
+                               NULL))
+    return;
+
+  /* Bring down anything with a thread behind it before releasing the objects
+   * those threads use. */
+  uv__console_cleanup();
+
+  /* Two things are deliberately left for the process to exit with.
+   *
+   * The global job object: closing it terminates every process still assigned
+   * to it, which is what should happen when this process exits, not when it
+   * merely stops using libuv.
+   *
+   * The dummy overlapped and event in poll.c: uv__poll_close() submits a poll
+   * with them and accepts WSA_IO_PENDING, so that operation is not tracked by
+   * the handle, the loop, or anything else. The kernel can still be holding
+   * both when we get here, and reclaiming them under a live operation is how
+   * poll_closesocket died with STATUS_INVALID_HANDLE inside an AppContainer,
+   * where a stale handle raises instead of failing quietly.
+   */
+  uv__detect_system_wakeup_cleanup();
+  uv__fs_cleanup();
+  uv__util_cleanup();
+  uv__winsock_cleanup();
+  uv__thread_cleanup();
+  uv__loops_cleanup();
+
+  /* Let a later uv_loop_init() build all of this again, rather than leaving it
+   * half torn down, even though calling into libuv after
+   * uv_library_shutdown() is documented as not supported.
+   */
+  uv_init_guard_ = reset;
 }
 
 

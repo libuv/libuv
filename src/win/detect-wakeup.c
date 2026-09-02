@@ -23,6 +23,8 @@
 #include "internal.h"
 #include "winapi.h"
 
+static _HPOWERNOTIFY uv__system_wakeup_registration;
+
 static void uv__register_system_resume_callback(void);
 
 void uv__init_detect_system_wakeup(void) {
@@ -50,7 +52,23 @@ static void uv__register_system_resume_callback(void) {
 
   recipient.Callback = uv__system_resume_callback;
   recipient.Context = NULL;
-  (*pPowerRegisterSuspendResumeNotification)(DEVICE_NOTIFY_CALLBACK,
-                                             &recipient,
-                                             &registration_handle);
+  registration_handle = NULL;
+  if ((*pPowerRegisterSuspendResumeNotification)(DEVICE_NOTIFY_CALLBACK,
+                                                 &recipient,
+                                                 &registration_handle) ==
+      ERROR_SUCCESS) {
+    uv__system_wakeup_registration = registration_handle;
+  }
+}
+
+
+void uv__detect_system_wakeup_cleanup(void) {
+  if (uv__system_wakeup_registration == NULL)
+    return;
+
+  if (pPowerUnregisterSuspendResumeNotification != NULL)
+    (*pPowerUnregisterSuspendResumeNotification)(
+        uv__system_wakeup_registration);
+
+  uv__system_wakeup_registration = NULL;
 }

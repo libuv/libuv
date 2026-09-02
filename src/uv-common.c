@@ -1144,6 +1144,11 @@ void uv_library_shutdown(void) {
 #else
   uv__threadpool_cleanup();
 #endif
+#ifdef _WIN32
+  /* Last: the threadpool above is joined by now, so nothing is left that could
+   * still be using the process-wide state this releases. */
+  uv__once_cleanup();
+#endif
 }
 
 

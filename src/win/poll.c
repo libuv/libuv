@@ -69,6 +69,7 @@ static OVERLAPPED* uv__get_overlapped_dummy(void) {
 }
 
 
+
 static AFD_POLL_INFO* uv__get_afd_poll_info_dummy(void) {
   return &afd_poll_info_dummy_;
 }
