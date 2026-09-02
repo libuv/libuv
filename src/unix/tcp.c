@@ -148,6 +148,15 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
 }
 
 
+static int uv__sockaddr_port(const struct sockaddr* addr) {
+  if (addr->sa_family == AF_INET)
+    return ((const struct sockaddr_in*) addr)->sin_port;
+  if (addr->sa_family == AF_INET6)
+    return ((const struct sockaddr_in6*) addr)->sin6_port;
+  return -1;
+}
+
+
 int uv__tcp_bind(uv_tcp_t* tcp,
                  const struct sockaddr* addr,
                  unsigned int addrlen,
@@ -163,8 +172,16 @@ int uv__tcp_bind(uv_tcp_t* tcp,
   if (err)
     return err;
 
+  /* Only needed to rebind a specific port with lingering TIME_WAIT sockets.
+   * On FreeBSD, OpenBSD and DragonFly it also makes port 0 binds pick ports
+   * still in use, so the subsequent connect() fails with EADDRINUSE.
+   */
   on = 1;
-  if (setsockopt(tcp->io_watcher.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__DragonFly__)
+  if (uv__sockaddr_port(addr) == 0)
+    on = 0;
+#endif
+  if (on && setsockopt(tcp->io_watcher.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)))
     return UV__ERR(errno);
 
   if (flags & UV_TCP_REUSEPORT) {
