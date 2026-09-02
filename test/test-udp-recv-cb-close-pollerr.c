@@ -28,9 +28,10 @@ static int recv_cb_called;
 static int send_cb_called;
 
 static void alloc_cb(uv_handle_t* handle, size_t sz, uv_buf_t* buf) {
+  static char storage[2];
   alloc_cb_called++;
-  buf->base = "uv";
-  buf->len = 2;
+  buf->base = storage;
+  buf->len = sizeof(storage);
 }
 
 static void recv_cb(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf,
@@ -48,10 +49,16 @@ static void send_cb(uv_udp_send_t* req, int status) {
   uv_close((uv_handle_t*) req->handle, NULL);
 }
 
-/* Refs: https://github.com/libuv/libuv/issues/5030 */
+/* Both tests connect the socket, which is what lets macOS take part: it
+ * reports ICMP errors on connected UDP sockets natively, as a plain
+ * ECONNREFUSED with no flag set and no UV_UDP_RECVERR involved. Unconnected
+ * sockets there report nothing, which is why the errqueue test next door
+ * stays Linux- and Windows-only.
+ *
+ * Refs: https://github.com/libuv/libuv/issues/5030 */
 TEST_IMPL(udp_recv_cb_close_pollerr) {
-#ifndef __linux__
-  RETURN_SKIP("ICMP error handling is Linux-specific");
+#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__)
+  RETURN_SKIP("ICMP error reporting for UDP is platform-specific");
 #endif
   struct sockaddr_in any_addr;
   struct sockaddr_in addr;
@@ -61,7 +68,7 @@ TEST_IMPL(udp_recv_cb_close_pollerr) {
 
   ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &any_addr));
   ASSERT_OK(uv_udp_bind(&client, (const struct sockaddr*) &any_addr,
-                        UV_UDP_LINUX_RECVERR));
+                        UV_UDP_RECVERR));
 
   ASSERT_OK(uv_ip4_addr("127.0.0.1", 9999, &addr));
   ASSERT_OK(uv_udp_connect(&client, (const struct sockaddr*) &addr));
@@ -84,8 +91,8 @@ TEST_IMPL(udp_recv_cb_close_pollerr) {
  * The ICMP POLLERR still fires on the fd; uv__udp_io must not crash when
  * no recv/alloc callback is installed. */
 TEST_IMPL(udp_send_pollerr_no_recv) {
-#ifndef __linux__
-  RETURN_SKIP("ICMP error handling is Linux-specific");
+#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__)
+  RETURN_SKIP("ICMP error reporting for UDP is platform-specific");
 #endif
   struct sockaddr_in any_addr;
   struct sockaddr_in addr;
@@ -95,7 +102,7 @@ TEST_IMPL(udp_send_pollerr_no_recv) {
 
   ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &any_addr));
   ASSERT_OK(uv_udp_bind(&client, (const struct sockaddr*) &any_addr,
-                        UV_UDP_LINUX_RECVERR));
+                        UV_UDP_RECVERR));
 
   ASSERT_OK(uv_ip4_addr("127.0.0.1", 9999, &addr));
   ASSERT_OK(uv_udp_connect(&client, (const struct sockaddr*) &addr));

@@ -159,8 +159,11 @@ static int uv__udp_recvmsg_errqueue(uv_udp_t* handle,
       serr = (struct sock_extended_err*) CMSG_DATA(cmsg);
 
       offender = SO_EE_OFFENDER(serr);
+      /* ee_errno is a __u32; negate it as a signed int so that nread reaches
+       * the callback as a negative error code instead of a huge positive
+       * number. */
       handle->recv_cb(handle,
-                      UV__ERR(serr->ee_errno),
+                      UV__ERR((int) serr->ee_errno),
                       buf,
                       offender,
                       flags);
