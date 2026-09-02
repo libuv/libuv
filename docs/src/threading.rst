@@ -82,7 +82,8 @@ Threads
 
     Detaches a thread. Detached threads automatically release their
     resources upon termination, eliminating the need for the application to
-    call `uv_thread_join`.
+    call `uv_thread_join`. It is undefined behavior for the thread referenced by `tid`
+    to call any libuv APIs after being detached.
 
     .. versionadded:: 1.50.0
 
