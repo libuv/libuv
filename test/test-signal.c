@@ -24,6 +24,7 @@
 
 #ifndef _WIN32
 #include <unistd.h>
+#include <signal.h>
 #endif
 
 TEST_IMPL(kill_invalid_signum) {
@@ -317,6 +318,62 @@ TEST_IMPL(we_get_signals_mixed) {
   ASSERT_EQ(1, sc[1].ncalls);
   ASSERT_OK(sc[2].ncalls);
   ASSERT_EQ(sc[3].ncalls, NSIGNALS);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+static void signal_restore_signal_cb(uv_signal_t* handle, int signum) {
+  (void) handle;
+  (void) signum;
+}
+
+static void signal_restore_prev_handler(int signum) {
+  /* Sentinel disposition installed before libuv; never actually invoked. */
+  (void) signum;
+}
+
+/* Starting then stopping a signal watcher must restore the signal disposition
+ * that was in effect beforehand, rather than resetting it to SIG_DFL.
+ */
+TEST_IMPL(signal_restore_disposition) {
+  struct sigaction sa;
+  struct sigaction actual;
+  uv_signal_t signal_handle;
+  uv_loop_t* loop;
+
+  loop = uv_default_loop();
+
+  /* Install a non-default disposition for SIGUSR2 before libuv touches it. */
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = signal_restore_prev_handler;
+  ASSERT_OK(sigemptyset(&sa.sa_mask));
+  ASSERT_OK(sigaction(SIGUSR2, &sa, NULL));
+
+  ASSERT_OK(uv_signal_init(loop, &signal_handle));
+  ASSERT_OK(uv_signal_start(&signal_handle, signal_restore_signal_cb, SIGUSR2));
+
+  /* While the watcher is active, libuv's own handler is installed. */
+  memset(&actual, 0, sizeof(actual));
+  ASSERT_OK(sigaction(SIGUSR2, NULL, &actual));
+  ASSERT(actual.sa_handler != signal_restore_prev_handler);
+  ASSERT(actual.sa_handler != SIG_DFL);
+
+  uv_close((uv_handle_t*) &signal_handle, NULL);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  /* The last watcher is gone: the previous disposition must be restored, not
+   * reset to SIG_DFL.
+   */
+  memset(&actual, 0, sizeof(actual));
+  ASSERT_OK(sigaction(SIGUSR2, NULL, &actual));
+  ASSERT(actual.sa_handler == signal_restore_prev_handler);
+
+  /* Tidy up: reset SIGUSR2 to its default disposition. */
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = SIG_DFL;
+  ASSERT_OK(sigaction(SIGUSR2, &sa, NULL));
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;

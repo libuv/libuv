@@ -567,6 +567,7 @@ TEST_DECLARE   (we_get_signals_mixed)
 TEST_DECLARE   (signal_multiple_loops)
 TEST_DECLARE   (signal_pending_on_close)
 TEST_DECLARE   (signal_close_loop_alive)
+TEST_DECLARE   (signal_restore_disposition)
 #endif
 #ifdef __APPLE__
 TEST_DECLARE   (osx_resident_set_memory)
@@ -1129,6 +1130,7 @@ TASK_LIST_START
   TEST_ENTRY  (signal_multiple_loops)
   TEST_ENTRY  (signal_pending_on_close)
   TEST_ENTRY  (signal_close_loop_alive)
+  TEST_ENTRY  (signal_restore_disposition)
 #endif
 
 #ifdef __APPLE__
