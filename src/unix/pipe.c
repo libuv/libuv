@@ -33,7 +33,10 @@ union uv__sockaddr_un {
   struct sockaddr sa;
   struct uv__sockaddr_un_path {
     char pad[offsetof(struct sockaddr_un, sun_path)];
-#ifdef SOCK_MAXADDRLEN
+    /* FreeBSD advertises SOCK_MAXADDRLEN but nevertheless clamps the
+     * path length to sizeof(sun_path).
+     */
+#if defined(SOCK_MAXADDRLEN) && !defined(__FreeBSD__)
     char path[SOCK_MAXADDRLEN - offsetof(struct sockaddr_un, sun_path)];
 #else
     char path[sizeof(((struct sockaddr_un*)0)->sun_path)];
