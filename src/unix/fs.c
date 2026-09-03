@@ -996,6 +996,101 @@ static int uv__is_cifs_or_smb(int fd) {
 }
 
 
+static int uv__mount_options_contain(const char* options,
+                                     const char* option) {
+  const char* end;
+  size_t option_len;
+
+  option_len = strlen(option);
+
+  while (*options != '\0' && *options != '\n') {
+    options += strspn(options, ",;");
+    end = options + strcspn(options, ",;\n");
+
+    if ((size_t) (end - options) == option_len &&
+        memcmp(options, option, option_len) == 0)
+      return 1;
+
+    options = end;
+  }
+
+  return 0;
+}
+
+
+static int uv__is_wsl_drvfs_without_metadata(int fd) {
+  char fdinfo[256];
+  char fdinfo_path[64];
+  char* end;
+  char* line;
+  char* options;
+  char* separator;
+  FILE* fp;
+  size_t line_size;
+  ssize_t line_len;
+  unsigned long mount_id;
+  unsigned long line_mount_id;
+  int mountinfo_fd;
+  int r;
+
+  snprintf(fdinfo_path, sizeof(fdinfo_path), "/proc/self/fdinfo/%d", fd);
+  if (uv__slurp(fdinfo_path, fdinfo, sizeof(fdinfo)))
+    return 0;
+
+  line = fdinfo;
+  for (;;) {
+    if (strncmp(line, "mnt_id:", 7) == 0)
+      break;
+
+    line = strchr(line, '\n');
+    if (line == NULL)
+      return 0;
+    line++;
+  }
+
+  mount_id = strtoul(line + 7, &end, 10);
+  if (end == line + 7)
+    return 0;
+
+  mountinfo_fd = uv__open_cloexec("/proc/self/mountinfo", O_RDONLY);
+  if (mountinfo_fd < 0)
+    return 0;
+
+  fp = fdopen(mountinfo_fd, "r");
+  if (fp == NULL) {
+    uv__close_nocheckstdio(mountinfo_fd);
+    return 0;
+  }
+
+  line = NULL;
+  line_size = 0;
+  r = 0;
+
+  while ((line_len = getline(&line, &line_size, fp)) != -1) {
+    line_mount_id = strtoul(line, &end, 10);
+    if (end == line || *end != ' ' || line_mount_id != mount_id)
+      continue;
+
+    separator = strstr(end, " - 9p ");
+    if (separator == NULL)
+      break;
+
+    options = strchr(separator + 6, ' ');
+    if (options == NULL)
+      break;
+    options++;
+
+    r = uv__mount_options_contain(options, "aname=drvfs") &&
+        !uv__mount_options_contain(options, "metadata");
+    break;
+  }
+
+  free(line);
+  fclose(fp);
+  return r;
+}
+
+
 static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
                                           int out_fd, size_t len) {
   static _Atomic int no_copy_file_range_support;
@@ -1356,14 +1451,16 @@ static int uv__fs_copyfile(uv_fs_t* req) {
   if (fchmod(dstfd, src_statsbuf.st_mode) == -1) {
     err = UV__ERR(errno);
 #ifdef __linux__
-    /* fchmod() on CIFS shares always fails with EPERM unless the share is
-     * mounted with "noperm". As fchmod() is a meaningless operation on such
-     * shares anyway, detect that condition and squelch the error.
+    /* fchmod() fails with EPERM on CIFS shares unless mounted with "noperm".
+     * WSL DrvFs mounts without metadata support cannot represent arbitrary
+     * Unix permissions either. Detect those conditions and squelch the error.
      */
     if (err != UV_EPERM)
       goto out;
 
-    if (!uv__is_cifs_or_smb(dstfd))
+    if (!uv__is_cifs_or_smb(dstfd) &&
+        (!(src_statsbuf.st_mode & (S_IWUSR | S_IWGRP | S_IWOTH)) ||
+         !uv__is_wsl_drvfs_without_metadata(dstfd)))
       goto out;
 
     err = 0;
