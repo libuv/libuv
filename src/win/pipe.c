@@ -1111,7 +1111,8 @@ void uv__pipe_interrupt_read(uv_pipe_t* handle) {
 
 
 void uv__pipe_read_stop(uv_pipe_t* handle) {
-  handle->flags &= ~UV_HANDLE_READING;
+  handle->read_cb = NULL;
+  handle->alloc_cb = NULL;
   DECREASE_ACTIVE_COUNT(handle->loop, handle);
   uv__pipe_interrupt_read(handle);
 }
@@ -1227,8 +1228,9 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
   int i;
   HANDLE pipeHandle;
 
-  if (handle->flags & UV_HANDLE_READING) {
-    handle->flags &= ~UV_HANDLE_READING;
+  if (handle->read_cb != NULL) {
+    handle->read_cb = NULL;
+    handle->alloc_cb = NULL;
     DECREASE_ACTIVE_COUNT(loop, handle);
   }
 
@@ -1398,7 +1400,7 @@ int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
     return WSAEINVAL;
   }
 
-  if (handle->flags & UV_HANDLE_READING) {
+  if (handle->read_cb != NULL) {
     return WSAEISCONN;
   }
 
@@ -1608,7 +1610,7 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
   uv_read_t* req;
   int result;
 
-  assert(handle->flags & UV_HANDLE_READING);
+  assert(handle->read_cb != NULL);
   assert(!(handle->flags & UV_HANDLE_READ_PENDING));
 
   assert(handle->handle != INVALID_HANDLE_VALUE);
@@ -1671,10 +1673,9 @@ int uv__pipe_read_start(uv_pipe_t* handle,
                         uv_read_cb read_cb) {
   uv_loop_t* loop = handle->loop;
 
-  handle->flags |= UV_HANDLE_READING;
-  INCREASE_ACTIVE_COUNT(loop, handle);
   handle->read_cb = read_cb;
   handle->alloc_cb = alloc_cb;
+  INCREASE_ACTIVE_COUNT(loop, handle);
 
   if (handle->read_req.event_handle == NULL) {
     handle->read_req.event_handle = CreateEvent(NULL, 0, 0, NULL);
@@ -2066,25 +2067,31 @@ int uv__pipe_write(uv_loop_t* loop,
 
 static void uv__pipe_read_eof(uv_loop_t* loop, uv_pipe_t* handle,
     uv_buf_t buf) {
+  uv_read_cb read_cb;
+
   /* If there is an eof timer running, we don't need it any more, so discard
    * it. */
   eof_timer_destroy(handle);
 
+  read_cb = handle->read_cb;
   uv_read_stop((uv_stream_t*) handle);
 
-  handle->read_cb((uv_stream_t*) handle, UV_EOF, &buf);
+  read_cb((uv_stream_t*) handle, UV_EOF, &buf);
 }
 
 
 static void uv__pipe_read_error(uv_loop_t* loop, uv_pipe_t* handle, int error,
     uv_buf_t buf) {
+  uv_read_cb read_cb;
+
   /* If there is an eof timer running, we don't need it any more, so discard
    * it. */
   eof_timer_destroy(handle);
 
+  read_cb = handle->read_cb;
   uv_read_stop((uv_stream_t*) handle);
 
-  handle->read_cb((uv_stream_t*)handle, uv_translate_sys_error(error), &buf);
+  read_cb((uv_stream_t*) handle, uv_translate_sys_error(error), &buf);
 }
 
 
@@ -2337,7 +2344,7 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
   /* At this point, we're done with bookkeeping. If the user has stopped
    * reading the pipe in the meantime, there is nothing left to do, since there
    * is no callback that we can call. */
-  if (!(handle->flags & UV_HANDLE_READING))
+  if (handle->read_cb == NULL)
     return;
 
   if (!REQ_SUCCESS(req)) {
@@ -2353,7 +2360,7 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
   } else {
     /* The zero-read completed without error, indicating there is data
      * available in the kernel buffer. */
-    while (handle->flags & UV_HANDLE_READING &&
+    while (handle->read_cb != NULL &&
            !(handle->flags & UV_HANDLE_READ_PENDING)) {
       bytes_requested = 65536;
       /* Depending on the type of pipe, read either IPC frames or raw data. */
@@ -2370,7 +2377,7 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
   }
 
   /* Start another zero-read request if necessary. */
-  if ((handle->flags & UV_HANDLE_READING) &&
+  if (handle->read_cb != NULL &&
       !(handle->flags & UV_HANDLE_READ_PENDING)) {
     uv__pipe_queue_read(loop, handle);
   }

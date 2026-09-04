@@ -94,7 +94,7 @@ int uv__read_start(uv_stream_t* handle,
 int uv_read_stop(uv_stream_t* handle) {
   int err;
 
-  if (!(handle->flags & UV_HANDLE_READING))
+  if (handle->read_cb == NULL)
     return 0;
 
   err = 0;
@@ -103,7 +103,8 @@ int uv_read_stop(uv_stream_t* handle) {
   } else if (handle->type == UV_NAMED_PIPE) {
     uv__pipe_read_stop((uv_pipe_t*) handle);
   } else {
-    handle->flags &= ~UV_HANDLE_READING;
+    handle->read_cb = NULL;
+    handle->alloc_cb = NULL;
     DECREASE_ACTIVE_COUNT(handle->loop, handle);
   }
 
