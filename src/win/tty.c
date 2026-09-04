@@ -399,7 +399,7 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   }
 
   /* If currently reading, stop, and restart reading. */
-  if (tty->flags & UV_HANDLE_READING) {
+  if (tty->read_cb != NULL) {
     was_reading = 1;
     alloc_cb = tty->alloc_cb;
     read_cb = tty->read_cb;
@@ -479,7 +479,7 @@ static void uv__tty_queue_read_raw(uv_loop_t* loop, uv_tty_t* handle) {
   uv_read_t* req;
   BOOL r;
 
-  assert(handle->flags & UV_HANDLE_READING);
+  assert(handle->read_cb != NULL);
   assert(!(handle->flags & UV_HANDLE_READ_PENDING));
 
   assert(handle->handle && handle->handle != INVALID_HANDLE_VALUE);
@@ -606,7 +606,7 @@ static void uv__tty_queue_read_line(uv_loop_t* loop, uv_tty_t* handle) {
   uv_read_t* req;
   BOOL r;
 
-  assert(handle->flags & UV_HANDLE_READING);
+  assert(handle->read_cb != NULL);
   assert(!(handle->flags & UV_HANDLE_READ_PENDING));
   assert(handle->handle && handle->handle != INVALID_HANDLE_VALUE);
 
@@ -724,35 +724,41 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 
   DWORD records_left, records_read;
   uv_buf_t buf;
+  uv_read_cb read_cb;
   _off_t buf_used;
 
   assert(handle->type == UV_TTY);
   assert(handle->flags & UV_HANDLE_TTY_READABLE);
   handle->flags &= ~UV_HANDLE_READ_PENDING;
 
-  if (!(handle->flags & UV_HANDLE_READING) ||
+  if (handle->read_cb == NULL ||
       !(uv__is_raw_tty_mode(handle->tty.rd.mode.mode))) {
     goto out;
   }
 
   if (!REQ_SUCCESS(req)) {
     /* An error occurred while waiting for the event. */
-    if ((handle->flags & UV_HANDLE_READING)) {
-      handle->flags &= ~UV_HANDLE_READING;
-      handle->read_cb((uv_stream_t*)handle,
-                      uv_translate_sys_error(GET_REQ_ERROR(req)),
-                      &uv_null_buf_);
+    if (handle->read_cb != NULL) {
+      read_cb = handle->read_cb;
+      handle->read_cb = NULL;
+      handle->alloc_cb = NULL;
+      DECREASE_ACTIVE_COUNT(loop, handle);
+      read_cb((uv_stream_t*) handle,
+              uv_translate_sys_error(GET_REQ_ERROR(req)),
+              &uv_null_buf_);
     }
     goto out;
   }
 
   /* Fetch the number of events  */
   if (!GetNumberOfConsoleInputEvents(handle->handle, &records_left)) {
-    handle->flags &= ~UV_HANDLE_READING;
+    read_cb = handle->read_cb;
+    handle->read_cb = NULL;
+    handle->alloc_cb = NULL;
     DECREASE_ACTIVE_COUNT(loop, handle);
-    handle->read_cb((uv_stream_t*)handle,
-                    uv_translate_sys_error(GetLastError()),
-                    &uv_null_buf_);
+    read_cb((uv_stream_t*) handle,
+            uv_translate_sys_error(GetLastError()),
+            &uv_null_buf_);
     goto out;
   }
 
@@ -762,18 +768,20 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
   buf_used = 0;
 
   while ((records_left > 0 || handle->tty.rd.last_key_len > 0) &&
-         (handle->flags & UV_HANDLE_READING)) {
+         handle->read_cb != NULL) {
     if (handle->tty.rd.last_key_len == 0) {
       /* Read the next input record */
       if (!ReadConsoleInputW(handle->handle,
                              &handle->tty.rd.last_input_record,
                              1,
                              &records_read)) {
-        handle->flags &= ~UV_HANDLE_READING;
+        read_cb = handle->read_cb;
+        handle->read_cb = NULL;
+        handle->alloc_cb = NULL;
         DECREASE_ACTIVE_COUNT(loop, handle);
-        handle->read_cb((uv_stream_t*) handle,
-                        uv_translate_sys_error(GetLastError()),
-                        &buf);
+        read_cb((uv_stream_t*) handle,
+                uv_translate_sys_error(GetLastError()),
+                &buf);
         goto out;
       }
       records_left--;
@@ -874,11 +882,13 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
         /* If the utf16 character(s) couldn't be converted something must be
          * wrong. */
         if (char_len == 0) {
-          handle->flags &= ~UV_HANDLE_READING;
+          read_cb = handle->read_cb;
+          handle->read_cb = NULL;
+          handle->alloc_cb = NULL;
           DECREASE_ACTIVE_COUNT(loop, handle);
-          handle->read_cb((uv_stream_t*) handle,
-                          uv_translate_sys_error(GetLastError()),
-                          &buf);
+          read_cb((uv_stream_t*) handle,
+                  uv_translate_sys_error(GetLastError()),
+                  &buf);
           goto out;
         }
 
@@ -963,7 +973,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 
  out:
   /* Wait for more input events. */
-  if ((handle->flags & UV_HANDLE_READING) &&
+  if (handle->read_cb != NULL &&
       !(handle->flags & UV_HANDLE_READ_PENDING)) {
     uv__tty_queue_read(loop, handle);
   }
@@ -978,6 +988,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
 void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
     uv_req_t* req) {
   uv_buf_t buf;
+  uv_read_cb read_cb;
 
   assert(handle->type == UV_TTY);
   assert(handle->flags & UV_HANDLE_TTY_READABLE);
@@ -989,17 +1000,20 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
 
   if (!REQ_SUCCESS(req)) {
     /* Read was not successful */
-    if (handle->flags & UV_HANDLE_READING) {
+    if (handle->read_cb != NULL) {
       /* Real error */
-      handle->flags &= ~UV_HANDLE_READING;
+      read_cb = handle->read_cb;
+      handle->read_cb = NULL;
+      handle->alloc_cb = NULL;
       DECREASE_ACTIVE_COUNT(loop, handle);
-      handle->read_cb((uv_stream_t*) handle,
-                      uv_translate_sys_error(GET_REQ_ERROR(req)),
-                      &buf);
+      read_cb((uv_stream_t*) handle,
+              uv_translate_sys_error(GET_REQ_ERROR(req)),
+              &buf);
     }
   } else {
     if (!(handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING) &&
-        req->u.io.overlapped.InternalHigh != 0) {
+        req->u.io.overlapped.InternalHigh != 0 &&
+        handle->read_cb != NULL) {
       /* Read successful. TODO: read unicode, convert to utf-8 */
       DWORD bytes = req->u.io.overlapped.InternalHigh;
       handle->read_cb((uv_stream_t*) handle, bytes, &buf);
@@ -1008,7 +1022,7 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
   }
 
   /* Wait for more input events. */
-  if ((handle->flags & UV_HANDLE_READING) &&
+  if (handle->read_cb != NULL &&
       !(handle->flags & UV_HANDLE_READ_PENDING)) {
     uv__tty_queue_read(loop, handle);
   }
@@ -1041,10 +1055,9 @@ int uv__tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
     return ERROR_INVALID_PARAMETER;
   }
 
-  handle->flags |= UV_HANDLE_READING;
-  INCREASE_ACTIVE_COUNT(loop, handle);
   handle->read_cb = read_cb;
   handle->alloc_cb = alloc_cb;
+  INCREASE_ACTIVE_COUNT(loop, handle);
 
   /* If reading was stopped and then started again, there could still be a read
    * request pending. */
@@ -1073,7 +1086,8 @@ int uv__tty_read_stop(uv_tty_t* handle) {
   INPUT_RECORD record;
   DWORD written, err;
 
-  handle->flags &= ~UV_HANDLE_READING;
+  handle->read_cb = NULL;
+  handle->alloc_cb = NULL;
   DECREASE_ACTIVE_COUNT(handle->loop, handle);
 
   if (!(handle->flags & UV_HANDLE_READ_PENDING))
@@ -2271,7 +2285,7 @@ void uv__process_tty_write_req(uv_loop_t* loop, uv_tty_t* handle,
 
 void uv__tty_close(uv_tty_t* handle) {
   assert(handle->u.fd == -1 || handle->u.fd > 2);
-  if (handle->flags & UV_HANDLE_READING)
+  if (handle->read_cb != NULL)
     uv__tty_read_stop(handle);
 
   if (handle->u.fd == -1)
