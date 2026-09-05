@@ -789,6 +789,10 @@ UV_EXTERN int uv_udp_set_multicast_interface(uv_udp_t* handle,
                                              const char* interface_addr);
 UV_EXTERN int uv_udp_set_broadcast(uv_udp_t* handle, int on);
 UV_EXTERN int uv_udp_set_ttl(uv_udp_t* handle, int ttl);
+UV_EXTERN int uv_udp_set_tos(uv_udp_t* handle, int tos);
+UV_EXTERN int uv_udp_set_dontfrag(uv_udp_t* handle, int on);
+UV_EXTERN int uv_udp_set_incoming_cpu(uv_udp_t* handle, int cpu);
+UV_EXTERN int uv_udp_get_mtu(const uv_udp_t* handle, int* mtu);
 UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
                           uv_udp_t* handle,
                           const uv_buf_t bufs[],
