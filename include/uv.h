@@ -726,6 +726,36 @@ enum uv_udp_flags {
   UV_UDP_RECVMMSG = 256
 };
 
+/*
+ * Per-send options, used with uv_udp_send2() and uv_udp_try_send3().
+ */
+enum uv_udp_send_flags {
+  /* Mark outgoing packets with a type of service / traffic class
+   * (IP_TOS / IPV6_TCLASS control message); ECN codepoint in the low
+   * two bits.
+   */
+  UV_UDP_SEND_TOS = 1,
+  /* Generic segmentation offload (UDP_SEGMENT): treat the buffers as one
+   * super-datagram the kernel splits into segment_size'd packets on the
+   * way out. Linux 4.18+ only.
+   */
+  UV_UDP_SEND_SEGMENT = 2,
+  /* Select the source address (and optionally interface) of outgoing
+   * packets (IP_PKTINFO / IPV6_PKTINFO control message), as required to
+   * reply from the address a datagram arrived on when bound to a
+   * wildcard address.
+   */
+  UV_UDP_SEND_PKTINFO = 4
+};
+
+typedef struct uv_udp_send_opts_s {
+  unsigned int flags;  /* Bitmask of uv_udp_send_flags; gates all fields. */
+  int tos;
+  unsigned int segment_size;
+  struct sockaddr_storage src;
+  unsigned int ifindex;  /* 0 for any. */
+} uv_udp_send_opts_t;
+
 typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
 typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
                                ssize_t nread,
@@ -804,6 +834,20 @@ UV_EXTERN int uv_udp_try_send2(uv_udp_t* handle,
                                uv_buf_t* bufs[/*count*/],
                                unsigned int nbufs[/*count*/],
                                struct sockaddr* addrs[/*count*/],
+                               unsigned int flags);
+UV_EXTERN int uv_udp_send2(uv_udp_send_t* req,
+                           uv_udp_t* handle,
+                           const uv_buf_t bufs[],
+                           unsigned int nbufs,
+                           const struct sockaddr* addr,
+                           const uv_udp_send_opts_t* opts,
+                           uv_udp_send_cb send_cb);
+UV_EXTERN int uv_udp_try_send3(uv_udp_t* handle,
+                               unsigned int count,
+                               uv_buf_t* bufs[/*count*/],
+                               unsigned int nbufs[/*count*/],
+                               struct sockaddr* addrs[/*count*/],
+                               const uv_udp_send_opts_t* const opts[/*count*/],
                                unsigned int flags);
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,

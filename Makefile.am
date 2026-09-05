@@ -328,6 +328,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-udp-multicast-ttl.c \
                          test/test-udp-open.c \
                          test/test-udp-options.c \
+                         test/test-udp-send-opts.c \
                          test/test-udp-send-and-recv.c \
                          test/test-udp-send-fail.c \
                          test/test-udp-send-hang-loop.c \
