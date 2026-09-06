@@ -577,7 +577,7 @@ int uv__get_constrained_cpu(long long* quota);
 
 #if defined(EVFILT_USER) && defined(NOTE_TRIGGER)
 /* EVFILT_USER is available since OS X 10.6, DragonFlyBSD 4.0,
- * FreeBSD 8.1, and NetBSD 10.0.
+ * FreeBSD 8.1, NetBSD 10.0, and OpenBSD 7.8.
  *
  * Note that even though EVFILT_USER is defined on the current system,
  * it may still fail to work at runtime somehow. In that case, we fall
