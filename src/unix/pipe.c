@@ -564,3 +564,62 @@ int uv__make_pipe(int fds[2], int flags) {
                  flags & UV_NONBLOCK_PIPE,
                  flags & UV_NONBLOCK_PIPE);
 }
+
+
+int uv_pipe_export(uv_pipe_t* handle, uv_file* file) {
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  int err;
+#endif
+
+  if (handle->type != UV_NAMED_PIPE)
+    return UV_EINVAL;
+
+  /* A handle being closed (or already closed) has no usable file.
+   * UV_HANDLE_CLOSING is set by uv_close() before the close callback fires;
+   * UV_HANDLE_CLOSED means teardown is complete.  Either way duplicating the
+   * file would hand the caller something that may vanish under them. */
+  if (uv__is_closing((uv_handle_t*) handle))
+    return UV_EINVAL;
+
+  /* An initialised-but-not-yet-opened pipe handle has io_watcher.fd == -1. */
+  if (handle->io_watcher.fd == -1)
+    return UV_EBADF;
+
+  /* Clone the inner file. Start from a safe number (3). */
+#ifdef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  *file = fcntl(handle->io_watcher.fd, F_DUPFD_CLOEXEC, 3);
+#else
+  *file = fcntl(handle->io_watcher.fd, F_DUPFD, 3);
+#endif
+  if (*file == -1)
+    return UV__ERR(errno);
+
+#ifndef F_DUPFD_CLOEXEC /* POSIX 2008 */
+  /* F_DUPFD_CLOEXEC is unavailable; set close-on-exec in a separate step.
+   * NOTE: pass *file (the descriptor value), not file (the pointer). */
+  err = uv__cloexec(*file, 1);
+  if (err != 0) {
+    uv__close(*file);
+    *file = -1;
+    return err;
+  }
+#endif
+  return 0;
+}
+
+
+int uv_pipe_import(uv_loop_t* loop, uv_file file, uv_pipe_t* out, int ipc) {
+  int err;
+
+  err = uv_pipe_init(loop, out, ipc);
+  if (err)
+    return err;
+
+  err = uv_pipe_open(out, file);
+  if (err) {
+    uv_close((uv_handle_t*) out, NULL);
+    return err;
+  }
+
+  return 0;
+}
