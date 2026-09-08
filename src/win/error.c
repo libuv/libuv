@@ -129,6 +129,7 @@ int uv_translate_sys_error(int sys_errno) {
     case ERROR_BUFFER_OVERFLOW:             return UV_ENAMETOOLONG;
     case ERROR_FILENAME_EXCED_RANGE:        return UV_ENAMETOOLONG;
     case ERROR_NETWORK_UNREACHABLE:         return UV_ENETUNREACH;
+    case WSAENETDOWN:                       return UV_ENETDOWN;
     case WSAENETUNREACH:                    return UV_ENETUNREACH;
     case WSAENOBUFS:                        return UV_ENOBUFS;
     case ERROR_BAD_PATHNAME:                return UV_ENOENT;

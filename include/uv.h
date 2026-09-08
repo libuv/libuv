@@ -875,11 +875,19 @@ enum {
   UV_PIPE_NO_TRUNCATE = 1u << 0
 };
 
+enum uv_pipe_init_flags {
+  /* Enable handle passing between processes. */
+  UV_PIPE_INIT_IPC = 1u << 0,
+  /* Use a Unix domain socket, including on Windows. */
+  UV_PIPE_INIT_UNIX_SOCKET = 1u << 1
+};
+
 /*
  * uv_pipe_t is a subclass of uv_stream_t.
  *
- * Representing a pipe stream or pipe server. On Windows this is a Named
- * Pipe. On Unix this is a Unix domain socket.
+ * Representing a pipe stream or pipe server. On Windows this is a named pipe
+ * or a Unix domain socket selected with UV_PIPE_INIT_UNIX_SOCKET. On Unix
+ * this is a Unix domain socket.
  */
 struct uv_pipe_s {
   UV_HANDLE_FIELDS
@@ -889,6 +897,9 @@ struct uv_pipe_s {
 };
 
 UV_EXTERN int uv_pipe_init(uv_loop_t*, uv_pipe_t* handle, int ipc);
+UV_EXTERN int uv_pipe_init_ex(uv_loop_t* loop,
+                              uv_pipe_t* handle,
+                              unsigned int flags);
 UV_EXTERN int uv_pipe_open(uv_pipe_t*, uv_file file);
 UV_EXTERN int uv_pipe_bind(uv_pipe_t* handle, const char* name);
 UV_EXTERN int uv_pipe_bind2(uv_pipe_t* handle,

@@ -214,6 +214,8 @@ int uv_try_write(uv_stream_t* stream,
     case UV_TTY:
       return uv__tty_try_write((uv_tty_t*) stream, bufs, nbufs);
     case UV_NAMED_PIPE:
+      if (stream->flags & UV_HANDLE_UNIX_SOCKET)
+        return uv__pipe_try_write((uv_pipe_t*) stream, bufs, nbufs);
       return UV_EAGAIN;
     default:
       assert(0);
@@ -274,6 +276,9 @@ int uv_is_writable(const uv_stream_t* handle) {
 int uv_stream_set_blocking(uv_stream_t* handle, int blocking) {
   if (handle->type != UV_NAMED_PIPE)
     return UV_EINVAL;
+
+  if (blocking && (handle->flags & UV_HANDLE_UNIX_SOCKET))
+    return UV_ENOTSUP;
 
   if (blocking != 0)
     handle->flags |= UV_HANDLE_BLOCKING_WRITES;
