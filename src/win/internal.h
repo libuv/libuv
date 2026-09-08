@@ -155,6 +155,8 @@ void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle);
  * TTY
  */
 void uv__console_init(void);
+void uv__console_cleanup(void);
+void uv__thread_cleanup(void);
 
 int uv__tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb);
@@ -235,6 +237,7 @@ void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle);
  * FS
  */
 void uv__fs_init(void);
+void uv__fs_cleanup(void);
 
 
 /*
@@ -256,6 +259,7 @@ void uv__fs_poll_endgame(uv_loop_t* loop, uv_fs_poll_t* handle);
  * Utilities.
  */
 void uv__util_init(void);
+void uv__util_cleanup(void);
 
 uint64_t uv__hrtime(unsigned int scale);
 __declspec(noreturn) void uv_fatal_error(const int errorno, const char* syscall);
@@ -297,6 +301,7 @@ void uv__winapi_init(void);
  * Winsock utility functions
  */
 void uv__winsock_init(void);
+void uv__winsock_cleanup(void);
 
 int uv__ntstatus_to_winsock_error(NTSTATUS status);
 
@@ -331,6 +336,7 @@ void uv__wake_all_loops(void);
  * Init system wake-up detection
  */
 void uv__init_detect_system_wakeup(void);
+void uv__detect_system_wakeup_cleanup(void);
 
 int uv_translate_write_sys_error(int sys_errno);
 

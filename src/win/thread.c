@@ -56,6 +56,12 @@ void uv_once(uv_once_t* guard, uv__once_cb callback) {
 STATIC_ASSERT(sizeof(uv_thread_t) <= sizeof(void*));
 
 static uv_key_t uv__current_thread_key;
+/* Set for threads whose handle in uv__current_thread_key is a duplicate that
+ * uv_thread_self() made, and so is ours to close. Threads started by
+ * uv_thread_create() store the handle the creator owns, which uv_thread_join()
+ * or uv_thread_detach() closes instead.
+ */
+static uv_key_t uv__current_thread_is_dup_key;
 static uv_once_t uv__current_thread_init_guard = UV_ONCE_INIT;
 static uv_once_t uv__thread_name_once = UV_ONCE_INIT;
 HRESULT (WINAPI *pGetThreadDescription)(HANDLE, PWSTR*);
@@ -65,6 +71,36 @@ HRESULT (WINAPI *pSetThreadDescription)(HANDLE, PCWSTR);
 static void uv__init_current_thread_key(void) {
   if (uv_key_create(&uv__current_thread_key))
     abort();
+  if (uv_key_create(&uv__current_thread_is_dup_key))
+    abort();
+}
+
+
+void uv__thread_cleanup(void) {
+  uv_once_t reset = UV_ONCE_INIT;
+  uv_thread_t self;
+  BOOL pending;
+
+  /* The keys exist only if the guard has run; see uv__once_cleanup(). */
+  if (!InitOnceBeginInitialize(&uv__current_thread_init_guard.init_once,
+                               INIT_ONCE_CHECK_ONLY,
+                               &pending,
+                               NULL))
+    return;
+
+  /* Only this thread's slot can be reached from here, which is all there is to
+   * do: uv_library_shutdown() is documented as being called once no other
+   * libuv thread is running.
+   */
+  if (uv_key_get(&uv__current_thread_is_dup_key) != NULL) {
+    self = uv_key_get(&uv__current_thread_key);
+    if (self != NULL)
+      CloseHandle(self);
+  }
+
+  uv_key_delete(&uv__current_thread_key);
+  uv_key_delete(&uv__current_thread_is_dup_key);
+  uv__current_thread_init_guard = reset;
 }
 
 
@@ -259,6 +295,7 @@ uv_thread_t uv_thread_self(void) {
           uv_fatal_error(GetLastError(), "DuplicateHandle");
       }
       uv_key_set(&uv__current_thread_key, key);
+      uv_key_set(&uv__current_thread_is_dup_key, (void*) 1);
   }
   return key;
 }
