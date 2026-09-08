@@ -766,6 +766,27 @@ int uv__tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
 }
 
 
+int uv_tcp_accept_raw(uv_tcp_t* server, uv_os_sock_t* sock) {
+  uv_tcp_accept_t* req = server->tcp.serv.pending_accepts;
+
+  if (!req || req->accept_socket == INVALID_SOCKET)
+    return UV_EAGAIN;
+
+  /* SO_UPDATE_ACCEPT_CONTEXT was already applied in uv__process_tcp_accept_req
+   * before connection_cb fired, so the socket is ready to use as-is. */
+  *sock = req->accept_socket;
+  req->accept_socket = INVALID_SOCKET;
+
+  server->tcp.serv.pending_accepts = req->next_pending;
+  req->next_pending = NULL;
+
+  if (!(server->flags & UV_HANDLE_CLOSING))
+    uv__tcp_queue_accept(server, req);
+
+  return 0;
+}
+
+
 int uv__tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb) {
   uv_loop_t* loop = handle->loop;
