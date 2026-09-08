@@ -133,3 +133,106 @@ TEST_IMPL(tcp_try_write) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+
+static uv_tcp_t wcb_server;
+static uv_tcp_t wcb_client;
+static uv_tcp_t wcb_incoming;
+static uv_write_t wcb_write_req;
+static int wcb_close_cb_called;
+static int wcb_connect_cb_called;
+static int wcb_connection_cb_called;
+static int wcb_write_cb_called;
+static int wcb_bytes_read;
+static int wcb_bytes_written;
+
+
+static void wcb_close_cb(uv_handle_t* handle) {
+  wcb_close_cb_called++;
+}
+
+
+static void wcb_read_cb(uv_stream_t* tcp, ssize_t nread, const uv_buf_t* buf) {
+  if (nread < 0) {
+    uv_close((uv_handle_t*) tcp, wcb_close_cb);
+    uv_close((uv_handle_t*) &wcb_server, wcb_close_cb);
+    return;
+  }
+
+  wcb_bytes_read += nread;
+}
+
+
+static void wcb_connection_cb(uv_stream_t* tcp, int status) {
+  ASSERT_OK(status);
+
+  ASSERT_OK(uv_tcp_init(tcp->loop, &wcb_incoming));
+  ASSERT_OK(uv_accept(tcp, (uv_stream_t*) &wcb_incoming));
+
+  wcb_connection_cb_called++;
+  ASSERT_OK(uv_read_start((uv_stream_t*) &wcb_incoming, alloc_cb, wcb_read_cb));
+}
+
+
+static void wcb_write_cb(uv_write_t* req, int status) {
+  uv_buf_t buf;
+  int r;
+
+  ASSERT_OK(status);
+  wcb_write_cb_called++;
+
+  /* This callback completed the last pending write request, so nothing is in
+   * flight anymore and uv_try_write() must not report UV_EAGAIN. */
+  buf = uv_buf_init("PONG", 4);
+  r = uv_try_write((uv_stream_t*) &wcb_client, &buf, 1);
+  ASSERT_EQ(4, r);
+  wcb_bytes_written += r;
+
+  uv_close((uv_handle_t*) &wcb_client, wcb_close_cb);
+}
+
+
+static void wcb_connect_cb(uv_connect_t* req, int status) {
+  uv_buf_t buf;
+
+  ASSERT_OK(status);
+  wcb_connect_cb_called++;
+
+  buf = uv_buf_init("PING", 4);
+  ASSERT_OK(uv_write(&wcb_write_req,
+                     (uv_stream_t*) &wcb_client,
+                     &buf,
+                     1,
+                     wcb_write_cb));
+  wcb_bytes_written += 4;
+}
+
+
+TEST_IMPL(tcp_try_write_in_write_cb) {
+  uv_connect_t connect_req;
+  struct sockaddr_in addr;
+
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+  ASSERT_OK(uv_tcp_init(uv_default_loop(), &wcb_server));
+  ASSERT_OK(uv_tcp_bind(&wcb_server, (struct sockaddr*) &addr, 0));
+  ASSERT_OK(uv_listen((uv_stream_t*) &wcb_server, 128, wcb_connection_cb));
+
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+  ASSERT_OK(uv_tcp_init(uv_default_loop(), &wcb_client));
+  ASSERT_OK(uv_tcp_connect(&connect_req,
+                           &wcb_client,
+                           (struct sockaddr*) &addr,
+                           wcb_connect_cb));
+
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT_EQ(1, wcb_connect_cb_called);
+  ASSERT_EQ(1, wcb_write_cb_called);
+  ASSERT_EQ(1, wcb_connection_cb_called);
+  ASSERT_EQ(3, wcb_close_cb_called);
+  ASSERT_EQ(8, wcb_bytes_written);
+  ASSERT_EQ(wcb_bytes_read, wcb_bytes_written);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
