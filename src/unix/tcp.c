@@ -148,7 +148,7 @@ int uv_tcp_init(uv_loop_t* loop, uv_tcp_t* tcp) {
 }
 
 
-static int uv__sockaddr_port(const struct sockaddr* addr) {
+static inline int uv__sockaddr_port(const struct sockaddr* addr) {
   if (addr->sa_family == AF_INET)
     return ((const struct sockaddr_in*) addr)->sin_port;
   if (addr->sa_family == AF_INET6)
