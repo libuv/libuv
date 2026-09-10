@@ -1404,6 +1404,27 @@ int uv_spawn2(uv_loop_t* loop,
   startup.StartupInfo.cbReserved2 = uv__stdio_size(child_stdio_buffer);
   startup.StartupInfo.lpReserved2 = (BYTE*) child_stdio_buffer;
 
+  SIZE_T attr_size = 0;
+  /* 1. PROC_THREAD_ATTRIBUTE_HANDLE_LIST (only if any valid handles are found)
+   * 2. PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE
+   * It seems CreateProcessW is fine with an attribute list size larger than
+   * the actual attributes passed. So we don't bother determining whether we
+   * actually pass PROC_THREAD_ATTRIBUTE_HANDLE_LIST or not.
+   */
+  InitializeProcThreadAttributeList(NULL, 2, 0, &attr_size);
+  attr_list = (LPPROC_THREAD_ATTRIBUTE_LIST) uv__malloc(attr_size);
+  if (attr_list == NULL) {
+    err = ERROR_OUTOFMEMORY;
+    goto done;
+  }
+
+  if (!InitializeProcThreadAttributeList(attr_list, 2, 0, &attr_size)) {
+    err = GetLastError();
+    goto done;
+  }
+  attr_list_initialized = 1;
+  startup.lpAttributeList = attr_list;
+
   /* Build the list of handles to inherit. Using
    * PROC_THREAD_ATTRIBUTE_HANDLE_LIST ensures only these specific handles are
    * inherited, closing the race condition where concurrent uv_spawn calls
@@ -1414,7 +1435,6 @@ int uv_spawn2(uv_loop_t* loop,
     int count = CHILD_STDIO_COUNT(child_stdio_buffer);
 #undef CHILD_STDIO_COUNT
     int n = 0;
-    SIZE_T attr_size = 0;
 
     handle_list = (HANDLE*) uv__malloc(count * sizeof(HANDLE));
     if (handle_list == NULL) {
@@ -1422,36 +1442,31 @@ int uv_spawn2(uv_loop_t* loop,
       goto done;
     }
 
-    for (i = 0; i < count; i++) {
+    /* In PTY mode the STDIO handles are connected via a separate mechanism. Skip
+     * them here. */
+    if (options->flags & UV_PROCESS_PTY)
+      i = 3;
+    else
+      i = 0;
+
+    for (; i < count; i++) {
       HANDLE h = uv__stdio_handle(child_stdio_buffer, i);
       if (h != INVALID_HANDLE_VALUE)
         handle_list[n++] = h;
     }
-
-    InitializeProcThreadAttributeList(NULL, 1, 0, &attr_size);
-    attr_list = (LPPROC_THREAD_ATTRIBUTE_LIST) uv__malloc(attr_size);
-    if (attr_list == NULL) {
-      err = ERROR_OUTOFMEMORY;
-      goto done;
-    }
-    if (!InitializeProcThreadAttributeList(attr_list, 1, 0, &attr_size)) {
-      err = GetLastError();
-      goto done;
-    }
-    attr_list_initialized = 1;
-    if (!UpdateProcThreadAttribute(attr_list,
-                                   0,
-                                   PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-                                   handle_list,
-                                   n * sizeof(HANDLE),
-                                   NULL,
-                                   NULL)) {
-      err = GetLastError();
-      goto done;
+    if (n > 0) {
+      if (!UpdateProcThreadAttribute(attr_list,
+                                     0,
+                                     PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                     handle_list,
+                                     n * sizeof(HANDLE),
+                                     NULL,
+                                     NULL)) {
+        err = GetLastError();
+        goto done;
+      }
     }
   }
-
-  startup.lpAttributeList = attr_list;
 
   process_flags = CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT;
 
