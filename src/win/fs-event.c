@@ -164,7 +164,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       unsigned int flags) {
   int is_path_dir;
   DWORD last_error;
-  WCHAR* dir, *pathw = NULL;
+  WCHAR* dir = NULL, *pathw = NULL;
+  WCHAR* dir_to_watch;
   DWORD short_path_buffer_len;
   WCHAR *short_path_buffer;
   WCHAR* short_path = NULL;
@@ -186,12 +187,20 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (last_error)
     goto error_uv;
 
+  /* Determine whether path is a file or a directory. FILE_READ_ATTRIBUTES
+   * is all this needs and, unlike FILE_LIST_DIRECTORY, it does not take
+   * part in the sharing check: another process may have the path open
+   * without FILE_SHARE_READ, a compiler emitting an object file, an
+   * installer, a virus scanner. Fetch the metadata by handle rather than
+   * by path, otherwise there is a race window between fetching and acting
+   * on it where another process can replace the path.
+   */
   file_handle = CreateFileW(pathw,
-                            FILE_LIST_DIRECTORY,
+                            FILE_READ_ATTRIBUTES,
                             FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
                             NULL,
                             OPEN_EXISTING,
-                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
+                            FILE_FLAG_BACKUP_SEMANTICS,
                             NULL);
   if (file_handle == INVALID_HANDLE_VALUE) {
     last_error = GetLastError();
@@ -205,7 +214,12 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   is_path_dir = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
 
-  if (!is_path_dir) {
+  CloseHandle(file_handle);
+  file_handle = INVALID_HANDLE_VALUE;
+
+  if (is_path_dir) {
+    dir_to_watch = pathw;
+  } else {
     /*
      * path is a file.  So we split path into dir & file parts, and
      * watch the dir directory.
@@ -245,40 +259,42 @@ short_path_done:
     uv__free(pathw);
     pathw = NULL;
 
-    /* Open the containing directory and watch that instead. Events for
-     * other files are filtered out in uv__process_fs_event_req().
-     * Not super efficient but c'est ça.
+    /* Watch the containing directory instead. Events for other files are
+     * filtered out in uv__process_fs_event_req(). Not super efficient but
+     * c'est ça.
      */
-    CloseHandle(file_handle);
-    file_handle = CreateFileW(dir,
-                              FILE_LIST_DIRECTORY,
-                              FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
-                              NULL,
-                              OPEN_EXISTING,
-                              FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
-                              NULL);
-    uv__free(dir);
-    dir = NULL;
-    if (file_handle == INVALID_HANDLE_VALUE) {
-      last_error = GetLastError();
-      goto error;
-    }
+    dir_to_watch = dir;
+  }
 
-    if (!GetFileInformationByHandle(file_handle, &info)) {
-      last_error = GetLastError();
-      goto error;
-    }
+  file_handle = CreateFileW(dir_to_watch,
+                            FILE_LIST_DIRECTORY,
+                            FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
+                            NULL,
+                            OPEN_EXISTING,
+                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
+                            NULL);
+  uv__free(dir);
+  dir = NULL;
+  if (file_handle == INVALID_HANDLE_VALUE) {
+    last_error = GetLastError();
+    goto error;
+  }
 
-    /* Race with another process: directory foo in foo/bar was replaced
-     * with a file. Bail out with an error, we're not recursing upwards.
+  if (!GetFileInformationByHandle(file_handle, &info)) {
+    last_error = GetLastError();
+    goto error;
+  }
+
+  /* Race with another process: the directory was replaced with a file
+   * between the two opens. Bail out with an error, we're not recursing
+   * upwards.
+   */
+  if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+    /* TODO(bnoordhuis) ERROR_DIRECTORY is translated to UV_ENOENT,
+     * there's currently nothing that maps to UV_ENOTDIR.
      */
-    if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-      /* TODO(bnoordhuis) ERROR_DIRECTORY is translated to UV_ENOENT,
-       * there's currently nothing that maps to UV_ENOTDIR.
-       */
-      last_error = ERROR_DIRECTORY;
-      goto error;
-    }
+    last_error = ERROR_DIRECTORY;
+    goto error;
   }
 
   handle->dir_handle = file_handle;
