@@ -758,6 +758,9 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
   const char *p;
   const char *z;
   const char *path;
+#ifdef __APPLE__
+  const char *parent_path;
+#endif
   size_t k;
   int err;
   int seen_eacces;
@@ -789,6 +792,23 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
 
   /* Look for the definition of PATH in the provided env */
   path = uv__spawn_find_path_in_env(env);
+
+#ifdef __APPLE__
+  /* posix_spawnp() searches PATH in the parent environment rather than env.
+   * It is safe to use when no cwd change is requested and both PATH values
+   * match. This avoids the macOS cwd bug while preserving custom PATH
+   * semantics. */
+  parent_path = getenv("PATH");
+  if (options->cwd == NULL &&
+      path != NULL &&
+      parent_path != NULL &&
+      strcmp(path, parent_path) == 0) {
+    do
+      err = posix_spawnp(pid, options->file, actions, attrs, options->args, env);
+    while (err == EINTR);
+    return err;
+  }
+#endif
 
   /* The following resolution logic (execvpe emulation) is copied from
    * https://git.musl-libc.org/cgit/musl/tree/src/process/execvp.c

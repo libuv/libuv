@@ -32,8 +32,9 @@ static int done;
 static uv_process_t process;
 static uv_process_options_t options;
 static char exepath[1024];
-static size_t exepath_size = 1024;
+static size_t exepath_size;
 static char* args[3];
+static char* file;
 static uv_pipe_t out;
 
 #define OUTPUT_SIZE 1024
@@ -107,10 +108,10 @@ static void spawn(void) {
   ASSERT_OK(process_open);
   ASSERT_OK(pipe_open);
 
-  args[0] = exepath;
+  args[0] = file;
   args[1] = "spawn_helper";
   args[2] = NULL;
-  options.file = exepath;
+  options.file = file;
   options.args = args;
   options.exit_cb = exit_cb;
 
@@ -134,15 +135,21 @@ static void spawn(void) {
 }
 
 
-BENCHMARK_IMPL(spawn) {
+static void setup_exepath(void) {
+  int r;
+
+  exepath_size = sizeof(exepath) - 1;
+  r = uv_exepath(exepath, &exepath_size);
+  ASSERT_OK(r);
+  exepath[exepath_size] = '\0';
+}
+
+
+static int run_benchmark(const char* name) {
   int r;
   static int64_t start_time, end_time;
 
   loop = uv_default_loop();
-
-  r = uv_exepath(exepath, &exepath_size);
-  ASSERT_OK(r);
-  exepath[exepath_size] = '\0';
 
   uv_update_time(loop);
   start_time = uv_now(loop);
@@ -155,10 +162,61 @@ BENCHMARK_IMPL(spawn) {
   uv_update_time(loop);
   end_time = uv_now(loop);
 
-  fprintf(stderr, "spawn: %.0f spawns/s\n",
+  fprintf(stderr, "%s: %.0f spawns/s\n",
+          name,
           (double) N / (double) (end_time - start_time) * 1000.0);
   fflush(stderr);
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
+}
+
+
+BENCHMARK_IMPL(spawn) {
+  setup_exepath();
+  file = exepath;
+  return run_benchmark("spawn");
+}
+
+
+BENCHMARK_IMPL(spawn_path) {
+#ifdef _WIN32
+  RETURN_SKIP("spawn_path is not supported on Windows.");
+#else
+  char path[4096];
+  char* sep;
+  size_t offset;
+  int i;
+  int r;
+
+  setup_exepath();
+
+  sep = strrchr(exepath, '/');
+  ASSERT_NOT_NULL(sep);
+  file = sep + 1;
+
+  offset = 0;
+  for (i = 0; i < 32; i++) {
+    r = snprintf(path + offset,
+                 sizeof(path) - offset,
+                 "/nonexistent/libuv-spawn-path-%d:",
+                 i);
+    ASSERT_GT(r, 0);
+    ASSERT_LT((size_t) r, sizeof(path) - offset);
+    offset += r;
+  }
+
+  r = snprintf(path + offset,
+               sizeof(path) - offset,
+               "%.*s",
+               (int) (sep - exepath),
+               exepath);
+  ASSERT_GT(r, 0);
+  ASSERT_LT((size_t) r, sizeof(path) - offset);
+
+  r = uv_os_setenv("PATH", path);
+  ASSERT_OK(r);
+
+  return run_benchmark("spawn_path");
+#endif
 }
