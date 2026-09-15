@@ -220,6 +220,17 @@ TEST_DECLARE   (udp_send_unix)
 TEST_DECLARE   (udp_send_fail_nbufs)
 TEST_DECLARE   (udp_sendmmsg_error)
 TEST_DECLARE   (udp_try_send)
+TEST_DECLARE   (pipe_init_ex)
+#ifdef _WIN32
+TEST_DECLARE   (pipe_unix_socket)
+TEST_DECLARE   (pipe_unix_socket_errors)
+TEST_DECLARE   (pipe_unix_socket_cleanup)
+TEST_DECLARE   (pipe_unix_socket_close_connect)
+TEST_DECLARE   (pipe_unix_socket_pending)
+TEST_DECLARE   (pipe_unix_socket_paths)
+TEST_DECLARE   (pipe_unix_socket_close_write)
+TEST_DECLARE   (pipe_unix_socket_version)
+#endif
 TEST_DECLARE   (pipe_bind_error_addrinuse)
 TEST_DECLARE   (pipe_bind_error_addrinuse_pending_instances)
 TEST_DECLARE   (pipe_bind_error_addrnotavail)
@@ -886,6 +897,17 @@ TASK_LIST_START
   TEST_ENTRY  (udp_send_unix)
 #endif
 
+  TEST_ENTRY  (pipe_init_ex)
+#ifdef _WIN32
+  TEST_ENTRY  (pipe_unix_socket)
+  TEST_ENTRY  (pipe_unix_socket_errors)
+  TEST_ENTRY  (pipe_unix_socket_cleanup)
+  TEST_ENTRY  (pipe_unix_socket_close_connect)
+  TEST_ENTRY  (pipe_unix_socket_pending)
+  TEST_ENTRY  (pipe_unix_socket_paths)
+  TEST_ENTRY  (pipe_unix_socket_close_write)
+  TEST_ENTRY  (pipe_unix_socket_version)
+#endif
   TEST_ENTRY  (pipe_bind_error_addrinuse)
   TEST_ENTRY  (pipe_bind_error_addrinuse_pending_instances)
   TEST_ENTRY  (pipe_bind_error_addrnotavail)

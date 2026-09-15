@@ -135,6 +135,9 @@ int uv__pipe_write(uv_loop_t* loop,
                    uv_write_cb cb);
 void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t* req);
 int uv__pipe_write_cancel_non_overlapped(uv_pipe_t* handle, uv_write_t* req);
+int uv__pipe_try_write(uv_pipe_t* handle,
+                        const uv_buf_t bufs[],
+                        unsigned int nbufs);
 
 void uv__process_pipe_read_req(uv_loop_t* loop, uv_pipe_t* handle,
     uv_req_t* req);

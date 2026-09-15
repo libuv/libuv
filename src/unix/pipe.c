@@ -67,6 +67,14 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 }
 
 
+int uv_pipe_init_ex(uv_loop_t* loop, uv_pipe_t* handle, unsigned int flags) {
+  if (flags & ~(UV_PIPE_INIT_IPC | UV_PIPE_INIT_UNIX_SOCKET))
+    return UV_EINVAL;
+
+  return uv_pipe_init(loop, handle, (flags & UV_PIPE_INIT_IPC) != 0);
+}
+
+
 int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   return uv_pipe_bind2(handle, name, strlen(name), 0);
 }
