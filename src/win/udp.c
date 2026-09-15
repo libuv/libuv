@@ -1020,6 +1020,93 @@ SOCKOPT_SETTER(multicast_loop,
 #undef VALIDATE_MULTICAST_TTL
 #undef VALIDATE_MULTICAST_LOOP
 
+#ifndef IPV6_DONTFRAG
+#define IPV6_DONTFRAG 14
+#endif
+
+#ifndef IP_MTU
+#define IP_MTU 73
+#endif
+
+#ifndef IPV6_MTU
+#define IPV6_MTU 72
+#endif
+
+
+int uv_udp_set_tos(uv_udp_t* handle, int tos) {
+  if (tos < 0 || tos > 255)
+    return UV_EINVAL;
+
+  /* Windows has no working socket-level TOS / traffic class setter;
+   * outgoing DSCP requires the QoS API and ECN requires per-send
+   * control messages.
+   */
+  return UV_ENOTSUP;
+}
+
+
+int uv_udp_set_dontfrag(uv_udp_t* handle, int on) {
+  DWORD optval = (DWORD) (on != 0);
+
+  if (handle->socket == INVALID_SOCKET)
+    return UV_EBADF;
+
+  if (!(handle->flags & UV_HANDLE_IPV6)) {
+    if (setsockopt(handle->socket,
+                   IPPROTO_IP,
+                   IP_DONTFRAGMENT,
+                   (char*) &optval,
+                   sizeof optval)) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  } else {
+    if (setsockopt(handle->socket,
+                   IPPROTO_IPV6,
+                   IPV6_DONTFRAG,
+                   (char*) &optval,
+                   sizeof optval)) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  }
+
+  return 0;
+}
+
+
+int uv_udp_set_incoming_cpu(uv_udp_t* handle, int cpu) {
+  return UV_ENOTSUP;
+}
+
+
+int uv_udp_get_mtu(const uv_udp_t* handle, int* mtu) {
+  DWORD optval;
+  int optlen = sizeof(optval);
+
+  if (handle->socket == INVALID_SOCKET)
+    return UV_EBADF;
+
+  if (!(handle->flags & UV_HANDLE_IPV6)) {
+    if (getsockopt(handle->socket,
+                   IPPROTO_IP,
+                   IP_MTU,
+                   (char*) &optval,
+                   &optlen)) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  } else {
+    if (getsockopt(handle->socket,
+                   IPPROTO_IPV6,
+                   IPV6_MTU,
+                   (char*) &optval,
+                   &optlen)) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  }
+
+  *mtu = (int) optval;
+  return 0;
+}
+
 
 /* This function is an egress point, i.e. it returns libuv errors rather than
  * system errors.
