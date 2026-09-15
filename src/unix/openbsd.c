@@ -204,7 +204,7 @@ int uv_cpu_info(uv_cpu_info_t** cpu_infos, int* count) {
 error:
   *count = 0;
   for (j = 0; j < i; j++)
-    uv__free((*cpu_infos)[j].model);
+    uv__free((void*)(*cpu_infos)[j].model);
 
   uv__free(*cpu_infos);
   *cpu_infos = NULL;
