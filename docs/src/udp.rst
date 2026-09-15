@@ -82,6 +82,60 @@ Data types
             UV_UDP_RECVMMSG = 256
         };
 
+.. c:enum:: uv_udp_recv_info_flags
+
+    Per-datagram receive information opt-ins, used with
+    :c:func:`uv_udp_set_recv_info` and reported in the
+    :c:type:`uv_udp_recv_info_t` `valid` mask.
+
+    ::
+
+        enum uv_udp_recv_info_flags {
+            /*
+             * IP_RECVTOS / IPV6_RECVTCLASS; the received type of service or
+             * traffic class, with the ECN codepoint in the low two bits.
+             */
+            UV_UDP_RECV_TOS = 1,
+            /*
+             * IP_RECVTTL / IPV6_RECVHOPLIMIT; the received time to live or
+             * hop limit.
+             */
+            UV_UDP_RECV_TTL = 2,
+            /*
+             * IP_PKTINFO / IPV6_RECVPKTINFO; the local destination address
+             * the datagram arrived on and the receiving interface index.
+             */
+            UV_UDP_RECV_PKTINFO = 4,
+            /*
+             * UDP_GRO; kernel receive coalescing of consecutive datagrams
+             * into a single buffer, with the segment size reported per
+             * receive. Linux 5.0+ only.
+             */
+            UV_UDP_RECV_GRO = 8
+        };
+
+    .. versionadded:: 1.53.0
+
+.. c:type:: uv_udp_recv_info_t
+
+    Per-datagram receive information, retrieved with
+    :c:func:`uv_udp_recv_info` from within a :c:type:`uv_udp_recv_cb`.
+    Fields are only meaningful when the corresponding
+    :c:enum:`uv_udp_recv_info_flags` bit is set in `valid`.
+
+    ::
+
+        typedef struct uv_udp_recv_info_s {
+            unsigned int valid;
+            int tos;
+            int ttl;
+            struct sockaddr_storage dst;
+            unsigned int ifindex;
+            unsigned int segment_size;
+        } uv_udp_recv_info_t;
+
+    .. versionadded:: 1.53.0
+
 .. c:type:: void (*uv_udp_send_cb)(uv_udp_send_t* req, int status)
 
     Type definition for callback passed to :c:func:`uv_udp_send`, which is
@@ -498,6 +552,49 @@ API
     and the platform supports :man:`recvmmsg(2)`, 0 otherwise.
 
     .. versionadded:: 1.39.0
+
+    .. versionchanged:: 1.53.0 returns 0 on macOS when receive information
+                        opt-ins are enabled, as ``recvmsg_x()`` does not
+                        deliver control messages.
+
+.. c:function:: int uv_udp_set_recv_info(uv_udp_t* handle, unsigned int mask)
+
+    Enable or disable per-datagram receive information. `mask` replaces the
+    current set of :c:enum:`uv_udp_recv_info_flags` opt-ins, setting the
+    corresponding socket options; bits not in `mask` are disabled. Pass 0 to
+    disable all. While any opt-in is enabled, per-datagram information can be
+    retrieved with :c:func:`uv_udp_recv_info` from within the receive
+    callback.
+
+    :param handle: UDP handle. Should have been initialized with
+        :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
+        been bound to an address explicitly with :c:func:`uv_udp_bind`, or
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
+
+    :param mask: zero or more or'ed :c:enum:`uv_udp_recv_info_flags` bits.
+
+    :returns: 0 on success, or an error code < 0 on failure. ``UV_ENOTSUP``
+        if a requested opt-in is not supported for the handle's address
+        family on the current platform (all are ``UV_ENOTSUP`` on Windows
+        currently), in which case the enabled set is unchanged.
+
+    .. versionadded:: 1.53.0
+
+.. c:function:: int uv_udp_recv_info(const uv_udp_t* handle, uv_udp_recv_info_t* info)
+
+    Retrieve per-datagram receive information for the datagram currently
+    being delivered. Only valid during a :c:type:`uv_udp_recv_cb` invocation
+    for `handle`; returns ``UV_EINVAL`` otherwise. `info->valid` reports
+    which fields were present, which may vary per datagram and be zero.
+
+    :param handle: UDP handle receiving the current datagram.
+
+    :param info: Pointer to the structure receiving the datagram
+        information.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+
+    .. versionadded:: 1.53.0
 
 .. c:function:: int uv_udp_recv_stop(uv_udp_t* handle)
 
