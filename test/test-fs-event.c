@@ -951,9 +951,8 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
 #endif
 
 #ifdef _WIN32
-/* Regression test: another process holds the file open without
- * FILE_SHARE_READ. uv_fs_event_start() watches the parent directory for a
- * file path, so the lock is no reason for it to fail.
+/* Another process holds the file open without FILE_SHARE_READ. The parent
+ * directory is what gets watched, so that should not matter.
  */
 TEST_IMPL(fs_event_watch_file_exclusively_locked) {
   uv_loop_t* loop;
@@ -987,7 +986,7 @@ TEST_IMPL(fs_event_watch_file_exclusively_locked) {
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
-#endif
+#endif  /* _WIN32 */
 
 TEST_IMPL(fs_event_no_callback_after_close) {
 #if defined(NO_FS_EVENTS)

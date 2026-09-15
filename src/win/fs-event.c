@@ -187,13 +187,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (last_error)
     goto error_uv;
 
-  /* Determine whether path is a file or a directory. FILE_READ_ATTRIBUTES
-   * is all this needs and, unlike FILE_LIST_DIRECTORY, it does not take
-   * part in the sharing check: another process may have the path open
-   * without FILE_SHARE_READ, a compiler emitting an object file, an
-   * installer, a virus scanner. Fetch the metadata by handle rather than
-   * by path, otherwise there is a race window between fetching and acting
-   * on it where another process can replace the path.
+  /* Asking for FILE_LIST_DIRECTORY here would be FILE_READ_DATA on a file
+   * and fail against a process that has it open without FILE_SHARE_READ.
    */
   file_handle = CreateFileW(pathw,
                             FILE_READ_ATTRIBUTES,
@@ -259,9 +254,9 @@ short_path_done:
     uv__free(pathw);
     pathw = NULL;
 
-    /* Watch the containing directory instead. Events for other files are
-     * filtered out in uv__process_fs_event_req(). Not super efficient but
-     * c'est ça.
+    /* Open the containing directory and watch that instead. Events for
+     * other files are filtered out in uv__process_fs_event_req().
+     * Not super efficient but c'est ça.
      */
     dir_to_watch = dir;
   }
@@ -285,9 +280,8 @@ short_path_done:
     goto error;
   }
 
-  /* Race with another process: the directory was replaced with a file
-   * between the two opens. Bail out with an error, we're not recursing
-   * upwards.
+  /* Race with another process: directory foo in foo/bar was replaced
+   * with a file. Bail out with an error, we're not recursing upwards.
    */
   if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
     /* TODO(bnoordhuis) ERROR_DIRECTORY is translated to UV_ENOENT,
