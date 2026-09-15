@@ -418,6 +418,7 @@ int uv_tcp_connect(uv_connect_t* req,
 
 int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr) {
   unsigned int addrlen;
+  int err;
 
   if (handle->type != UV_UDP)
     return UV_EINVAL;
@@ -437,8 +438,19 @@ int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr) {
   else
     return UV_EINVAL;
 
-  if (handle->flags & UV_HANDLE_UDP_CONNECTED)
-    return UV_EISCONN;
+  /* Re-point an already connected handle at a new peer. connect(2) allows this
+   * in place, which keeps the local binding intact; some kernels reject a
+   * consecutive connect() (EINVAL), and there a disconnect must come first.
+   * Note that on those platforms disconnect() preserves the bound port anyway,
+   * whereas on Linux a disconnect of an ephemerally bound socket drops it - so
+   * preferring the in-place connect avoids losing the port there. */
+  if (handle->flags & UV_HANDLE_UDP_CONNECTED) {
+    if (uv__udp_connect(handle, addr, addrlen) == 0)
+      return 0;
+    err = uv__udp_disconnect(handle);
+    if (err)
+      return err;
+  }
 
   return uv__udp_connect(handle, addr, addrlen);
 }
