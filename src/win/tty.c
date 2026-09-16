@@ -61,6 +61,12 @@
 #ifndef ENABLE_VIRTUAL_TERMINAL_INPUT
 #define ENABLE_VIRTUAL_TERMINAL_INPUT 0x0200
 #endif
+#ifndef ENABLE_MOUSE_INPUT
+#define ENABLE_MOUSE_INPUT 0x0010
+#endif
+#ifndef ENABLE_EXTENDED_FLAGS
+#define ENABLE_EXTENDED_FLAGS 0x0080
+#endif
 
 #define CURSOR_SIZE_SMALL     25
 #define CURSOR_SIZE_LARGE     100
@@ -367,6 +373,7 @@ static void uv__tty_capture_initial_style(
 int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   DWORD flags;
   DWORD try_set_flags;
+  DWORD current_mode;
   unsigned char was_reading;
   uv_alloc_cb alloc_cb;
   uv_read_cb read_cb;
@@ -391,6 +398,17 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
       /* fallthrough */
     case UV_TTY_MODE_RAW:
       flags = ENABLE_WINDOW_INPUT;
+      /*
+       * Raw mode only needs to clear the line discipline flags (echo, line
+       * input and processed input). Other input flags the application has
+       * enabled, in particular ENABLE_MOUSE_INPUT and ENABLE_EXTENDED_FLAGS,
+       * are orthogonal to cooked versus raw input and must be preserved.
+       * Otherwise entering raw mode silently turns off mouse reporting for
+       * TUI applications. See https://github.com/libuv/libuv/issues/4979.
+       */
+      if (GetConsoleMode(tty->handle, &current_mode)) {
+        flags |= current_mode & (ENABLE_MOUSE_INPUT | ENABLE_EXTENDED_FLAGS);
+      }
       break;
     case UV_TTY_MODE_IO:
       return UV_ENOTSUP;
