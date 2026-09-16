@@ -54,7 +54,7 @@ static void uv__cancelled(struct uv__work* w) {
 /* To avoid deadlock with uv_cancel() it's crucial that the worker
  * never holds the global mutex and the loop-local mutex at the same time.
  */
-static void worker(void* arg) {
+static void worker(void* arg) UV_EXCLUDES(&mutex) {
   struct uv__work* w;
   struct uv__queue* q;
   int is_slow_work;
@@ -140,7 +140,7 @@ static void worker(void* arg) {
 }
 
 
-static void post(struct uv__queue* q, enum uv__work_kind kind) {
+static void post(struct uv__queue* q, enum uv__work_kind kind) UV_EXCLUDES(&mutex) {
   uv_mutex_lock(&mutex);
   if (kind == UV__WORK_SLOW_IO) {
     /* Insert into a separate queue. */
@@ -165,7 +165,7 @@ static void post(struct uv__queue* q, enum uv__work_kind kind) {
 /* TODO(itodorov) - zos: revisit when Woz compiler is available. */
 __attribute__((destructor))
 #endif
-void uv__threadpool_cleanup(void) {
+void uv__threadpool_cleanup(void) UV_EXCLUDES(&mutex) {
   unsigned int i;
 
   if (nthreads == 0)
@@ -277,7 +277,7 @@ void uv__work_submit(uv_loop_t* loop,
                      struct uv__work* w,
                      enum uv__work_kind kind,
                      void (*work)(struct uv__work* w),
-                     void (*done)(struct uv__work* w, int status)) {
+                     void (*done)(struct uv__work* w, int status)) UV_EXCLUDES(&once, &mutex) {
   uv_once(&once, init_once);
   w->loop = loop;
   w->work = work;
@@ -289,7 +289,7 @@ void uv__work_submit(uv_loop_t* loop,
 /* TODO(bnoordhuis) teach libuv how to cancel file operations
  * that go through io_uring instead of the thread pool.
  */
-static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) {
+static int uv__work_cancel(uv_loop_t* loop, uv_req_t* req, struct uv__work* w) UV_EXCLUDES(&once, &mutex) {
   int cancelled;
 
   uv_once(&once, init_once);  /* Ensure |mutex| is initialized. */
@@ -379,7 +379,7 @@ static void uv__queue_done(struct uv__work* w, int err) {
 int uv_queue_work(uv_loop_t* loop,
                   uv_work_t* req,
                   uv_work_cb work_cb,
-                  uv_after_work_cb after_work_cb) {
+                  uv_after_work_cb after_work_cb) UV_EXCLUDES(&once, &mutex) {
   if (work_cb == NULL)
     return UV_EINVAL;
 
@@ -396,7 +396,7 @@ int uv_queue_work(uv_loop_t* loop,
 }
 
 
-int uv_cancel(uv_req_t* req) {
+int uv_cancel(uv_req_t* req) UV_EXCLUDES(&once, &mutex) {
   struct uv__work* wreq;
   uv_loop_t* loop;
 

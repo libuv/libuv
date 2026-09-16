@@ -94,7 +94,7 @@ char** uv_setup_args(int argc, char** argv) {
 }
 
 
-int uv_set_process_title(const char* title) {
+int uv_set_process_title(const char* title) UV_EXCLUDES(&process_title_mutex_once, &process_title_mutex) {
   struct uv__process_title* pt;
   size_t len;
 
@@ -125,7 +125,7 @@ int uv_set_process_title(const char* title) {
 }
 
 
-int uv_get_process_title(char* buffer, size_t size) {
+int uv_get_process_title(char* buffer, size_t size) UV_EXCLUDES(&process_title_mutex_once, &process_title_mutex) {
   if (buffer == NULL || size == 0)
     return UV_EINVAL;
 

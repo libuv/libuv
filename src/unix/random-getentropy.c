@@ -36,7 +36,7 @@ static void uv__random_getentropy_init(void) {
 }
 
 
-int uv__random_getentropy(void* buf, size_t buflen) {
+int uv__random_getentropy(void* buf, size_t buflen) UV_EXCLUDES(&once) {
   size_t pos;
   size_t stride;
 
