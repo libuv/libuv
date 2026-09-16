@@ -82,6 +82,62 @@ Data types
             UV_UDP_RECVMMSG = 256
         };
 
+.. c:enum:: uv_udp_send_flags
+
+    Per-send options, used in the :c:type:`uv_udp_send_opts_t` flags mask
+    with :c:func:`uv_udp_send2` and :c:func:`uv_udp_try_send3`.
+
+    ::
+
+        enum uv_udp_send_flags {
+            /*
+             * Mark outgoing packets with a type of service / traffic class
+             * (IP_TOS / IPV6_TCLASS control message); ECN codepoint in the
+             * low two bits.
+             */
+            UV_UDP_SEND_TOS = 1,
+            /*
+             * Generic segmentation offload (UDP_SEGMENT): treat the buffers
+             * as one super-datagram the kernel splits into segment_size'd
+             * packets on the way out. Linux 4.18+ only.
+             */
+            UV_UDP_SEND_SEGMENT = 2,
+            /*
+             * Select the source address (and optionally interface) of
+             * outgoing packets (IP_PKTINFO / IPV6_PKTINFO control message),
+             * as required to reply from the address a datagram arrived on
+             * when bound to a wildcard address.
+             */
+            UV_UDP_SEND_PKTINFO = 4
+        };
+
+    .. versionadded:: 1.53.0
+
+.. c:type:: uv_udp_send_opts_t
+
+    Per-send options for :c:func:`uv_udp_send2` and
+    :c:func:`uv_udp_try_send3`. Fields are only read when the corresponding
+    :c:enum:`uv_udp_send_flags` bit is set in `flags`, which allows fields
+    to be added over time; zero-initialize the structure.
+
+    The `src` address family is not cross-checked against the handle;
+    mismatches surface as errors from the kernel at send time. On dual-stack
+    sockets ``UV_UDP_SEND_TOS`` sets the IPv6 traffic class, which Linux
+    does not apply to the IPv4 header of packets sent to IPv4-mapped
+    destinations.
+
+    ::
+
+        typedef struct uv_udp_send_opts_s {
+            unsigned int flags;
+            int tos;
+            unsigned int segment_size;
+            struct sockaddr_storage src;
+            unsigned int ifindex;  /* 0 for any */
+        } uv_udp_send_opts_t;
+
+    .. versionadded:: 1.53.0
+
 .. c:type:: void (*uv_udp_send_cb)(uv_udp_send_t* req, int status)
 
     Type definition for callback passed to :c:func:`uv_udp_send`, which is
@@ -461,6 +517,35 @@ API
         cannot be sent right now; fall back to :c:func:`uv_udp_send`.
 
     .. versionadded:: 1.50.0
+
+.. c:function:: int uv_udp_send2(uv_udp_send_t* req, uv_udp_t* handle, const uv_buf_t bufs[], unsigned int nbufs, const struct sockaddr* addr, const uv_udp_send_opts_t* opts, uv_udp_send_cb send_cb)
+
+    Like :c:func:`uv_udp_send`, with per-send options. `opts` may be `NULL`
+    or have a zero flags mask, which is equivalent to :c:func:`uv_udp_send`.
+    The options are copied and need not outlive the call.
+
+    :returns: 0 on success, or an error code < 0 on failure. ``UV_ENOTSUP``
+        when a requested option is not supported on the current platform
+        (``UV_UDP_SEND_SEGMENT`` outside Linux; any option on Windows
+        currently).
+
+    .. versionadded:: 1.53.0
+
+.. c:function:: int uv_udp_try_send3(uv_udp_t* handle, unsigned int count, uv_buf_t* bufs[/*count*/], unsigned int nbufs[/*count*/], struct sockaddr* addrs[/*count*/], const uv_udp_send_opts_t* const opts[/*count*/], unsigned int flags)
+
+    Like :c:func:`uv_udp_try_send2`, with per-datagram options. `opts` may
+    be `NULL`, and individual entries may be `NULL` or have a zero flags
+    mask. The handle must be fully initialized; call :c:func:`uv_udp_bind`
+    first.
+
+    On macOS a batch with options falls back to a :man:`sendmsg(2)` loop, as
+    ``sendmsg_x()`` does not support control messages.
+
+    :returns: >= 0: number of datagrams sent, as :c:func:`uv_udp_try_send2`.
+        < 0: negative error code. ``UV_ENOTSUP`` when a requested option is
+        not supported on the current platform.
+
+    .. versionadded:: 1.53.0
 
 .. c:function:: int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb, uv_udp_recv_cb recv_cb)
 

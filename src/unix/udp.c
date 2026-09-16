@@ -19,6 +19,11 @@
  * IN THE SOFTWARE.
  */
 
+#if defined(__APPLE__) && !defined(__APPLE_USE_RFC_3542)
+/* For IPV6_PKTINFO and struct in6_pktinfo. */
+# define __APPLE_USE_RFC_3542 1
+#endif
+
 #include "uv.h"
 #include "internal.h"
 
@@ -34,7 +39,20 @@
 
 #if defined(__linux__)
 #include <linux/errqueue.h>
+/* UDP_SEGMENT is Linux 4.18+; define for older toolchains, detected at
+ * runtime through sendmsg failure. */
+# if !defined(UDP_SEGMENT)
+#  define UDP_SEGMENT 103
+# endif
 #endif
+
+/* Space for TOS + UDP_SEGMENT + PKTINFO control messages. */
+#define UV__UDP_SEND_CONTROL_LEN 128
+
+union uv__udp_send_cmsg {
+  struct cmsghdr hdr;
+  char pad[UV__UDP_SEND_CONTROL_LEN];
+};
 
 #if defined(IPV6_JOIN_GROUP) && !defined(IPV6_ADD_MEMBERSHIP)
 # define IPV6_ADD_MEMBERSHIP IPV6_JOIN_GROUP
@@ -53,7 +71,9 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle,
 static int uv__udp_sendmsg1(int fd,
                             const uv_buf_t* bufs,
                             unsigned int nbufs,
-                            const struct sockaddr* addr);
+                            const struct sockaddr* addr,
+                            const uv_udp_send_opts_t* opts,
+                            int ipv6);
 
 
 void uv__udp_close(uv_udp_t* handle) {
@@ -115,6 +135,9 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
     if (req->bufs != req->bufsml)
       uv__free(req->bufs);
     req->bufs = NULL;
+
+    uv__free(req->reserved[0]);
+    req->reserved[0] = NULL;
 
     if (req->send_cb == NULL)
       continue;
@@ -668,10 +691,27 @@ int uv__udp_send(uv_udp_send_t* req,
                  const struct sockaddr* addr,
                  unsigned int addrlen,
                  uv_udp_send_cb send_cb) {
+  return uv__udp_send2(req, handle, bufs, nbufs, addr, addrlen, NULL, send_cb);
+}
+
+
+int uv__udp_send2(uv_udp_send_t* req,
+                  uv_udp_t* handle,
+                  const uv_buf_t bufs[],
+                  unsigned int nbufs,
+                  const struct sockaddr* addr,
+                  unsigned int addrlen,
+                  const uv_udp_send_opts_t* opts,
+                  uv_udp_send_cb send_cb) {
   int err;
   int empty_queue;
 
   assert(nbufs > 0);
+
+#if !defined(__linux__)
+  if (opts != NULL && (opts->flags & UV_UDP_SEND_SEGMENT))
+    return UV_ENOTSUP;
+#endif
 
   if (addr) {
     err = uv__udp_maybe_deferred_bind(handle, addr->sa_family, 0);
@@ -694,6 +734,7 @@ int uv__udp_send(uv_udp_send_t* req,
   req->send_cb = send_cb;
   req->handle = handle;
   req->nbufs = nbufs;
+  req->reserved[0] = NULL;
 
   req->bufs = req->bufsml;
   if (nbufs > ARRAY_SIZE(req->bufsml))
@@ -702,6 +743,18 @@ int uv__udp_send(uv_udp_send_t* req,
   if (req->bufs == NULL) {
     uv__req_unregister(handle->loop);
     return UV_ENOMEM;
+  }
+
+  if (opts != NULL) {
+    req->reserved[0] = uv__malloc(sizeof(*opts));
+    if (req->reserved[0] == NULL) {
+      if (req->bufs != req->bufsml)
+        uv__free(req->bufs);
+      req->bufs = NULL;
+      uv__req_unregister(handle->loop);
+      return UV_ENOMEM;
+    }
+    memcpy(req->reserved[0], opts, sizeof(*opts));
   }
 
   memcpy(req->bufs, bufs, nbufs * sizeof(bufs[0]));
@@ -746,7 +799,7 @@ int uv__udp_try_send(uv_udp_t* handle,
     assert(handle->flags & UV_HANDLE_UDP_CONNECTED);
   }
 
-  err = uv__udp_sendmsg1(handle->io_watcher.fd, bufs, nbufs, addr);
+  err = uv__udp_sendmsg1(handle->io_watcher.fd, bufs, nbufs, addr, NULL, 0);
   if (err)
     return err;
 
@@ -1378,15 +1431,136 @@ static int uv__udp_prep_pkt(struct msghdr* h,
 }
 
 
+static int uv__udp_prep_cmsg(struct msghdr* h,
+                             const uv_udp_send_opts_t* opts,
+                             void* control,
+                             size_t control_len,
+                             int ipv6) {
+  struct cmsghdr* cmsg;
+  size_t space;
+  int val;
+
+  memset(control, 0, control_len);
+  h->msg_control = control;
+  h->msg_controllen = control_len;
+  space = 0;
+  cmsg = CMSG_FIRSTHDR(h);
+
+  if (opts->flags & UV_UDP_SEND_TOS) {
+    if (cmsg == NULL)
+      return UV_ENOBUFS;
+    if (ipv6) {
+#if defined(IPV6_TCLASS)
+      cmsg->cmsg_level = IPPROTO_IPV6;
+      cmsg->cmsg_type = IPV6_TCLASS;
+#else
+      return UV_ENOTSUP;
+#endif
+    } else {
+      cmsg->cmsg_level = IPPROTO_IP;
+      cmsg->cmsg_type = IP_TOS;
+    }
+    val = opts->tos;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(val));
+    memcpy(CMSG_DATA(cmsg), &val, sizeof(val));
+    space += CMSG_SPACE(sizeof(val));
+    cmsg = CMSG_NXTHDR(h, cmsg);
+  }
+
+  if (opts->flags & UV_UDP_SEND_SEGMENT) {
+#if defined(__linux__)
+    uint16_t segment_size;
+
+    if (cmsg == NULL)
+      return UV_ENOBUFS;
+    segment_size = (uint16_t) opts->segment_size;
+    cmsg->cmsg_level = IPPROTO_UDP;
+    cmsg->cmsg_type = UDP_SEGMENT;
+    cmsg->cmsg_len = CMSG_LEN(sizeof(segment_size));
+    memcpy(CMSG_DATA(cmsg), &segment_size, sizeof(segment_size));
+    space += CMSG_SPACE(sizeof(segment_size));
+    cmsg = CMSG_NXTHDR(h, cmsg);
+#else
+    return UV_ENOTSUP;
+#endif
+  }
+
+  if (opts->flags & UV_UDP_SEND_PKTINFO) {
+    if (cmsg == NULL)
+      return UV_ENOBUFS;
+    if (opts->src.ss_family == AF_INET6) {
+#if defined(IPV6_PKTINFO)
+      struct in6_pktinfo pktinfo6;
+
+      memset(&pktinfo6, 0, sizeof(pktinfo6));
+      pktinfo6.ipi6_addr =
+          ((const struct sockaddr_in6*) &opts->src)->sin6_addr;
+      pktinfo6.ipi6_ifindex = opts->ifindex;
+      cmsg->cmsg_level = IPPROTO_IPV6;
+      cmsg->cmsg_type = IPV6_PKTINFO;
+      cmsg->cmsg_len = CMSG_LEN(sizeof(pktinfo6));
+      memcpy(CMSG_DATA(cmsg), &pktinfo6, sizeof(pktinfo6));
+      space += CMSG_SPACE(sizeof(pktinfo6));
+#else
+      return UV_ENOTSUP;
+#endif
+    } else {
+#if defined(IP_PKTINFO)
+      struct in_pktinfo pktinfo;
+
+      memset(&pktinfo, 0, sizeof(pktinfo));
+      /* Linux selects the source from ipi_spec_dst, Darwin from ipi_addr;
+       * setting both is harmless on either. */
+      pktinfo.ipi_spec_dst = ((const struct sockaddr_in*) &opts->src)->sin_addr;
+      pktinfo.ipi_addr = ((const struct sockaddr_in*) &opts->src)->sin_addr;
+      pktinfo.ipi_ifindex = opts->ifindex;
+      cmsg->cmsg_level = IPPROTO_IP;
+      cmsg->cmsg_type = IP_PKTINFO;
+      cmsg->cmsg_len = CMSG_LEN(sizeof(pktinfo));
+      memcpy(CMSG_DATA(cmsg), &pktinfo, sizeof(pktinfo));
+      space += CMSG_SPACE(sizeof(pktinfo));
+#elif defined(IP_SENDSRCADDR)
+      struct in_addr src4;
+
+      src4 = ((const struct sockaddr_in*) &opts->src)->sin_addr;
+      cmsg->cmsg_level = IPPROTO_IP;
+      cmsg->cmsg_type = IP_SENDSRCADDR;
+      cmsg->cmsg_len = CMSG_LEN(sizeof(src4));
+      memcpy(CMSG_DATA(cmsg), &src4, sizeof(src4));
+      space += CMSG_SPACE(sizeof(src4));
+#else
+      return UV_ENOTSUP;
+#endif
+    }
+  }
+
+  if (space == 0) {
+    h->msg_control = NULL;
+    h->msg_controllen = 0;
+  } else {
+    h->msg_controllen = space;
+  }
+
+  return 0;
+}
+
+
 static int uv__udp_sendmsg1(int fd,
                             const uv_buf_t* bufs,
                             unsigned int nbufs,
-                            const struct sockaddr* addr) {
+                            const struct sockaddr* addr,
+                            const uv_udp_send_opts_t* opts,
+                            int ipv6) {
+  union uv__udp_send_cmsg control;
   struct msghdr h;
   int r;
 
   if ((r = uv__udp_prep_pkt(&h, bufs, nbufs, addr)))
     return r;
+
+  if (opts != NULL && opts->flags != 0)
+    if ((r = uv__udp_prep_cmsg(&h, opts, &control, sizeof(control), ipv6)))
+      return r;
 
   do
     r = sendmsg(fd, &h, 0);
@@ -1410,7 +1584,10 @@ static int uv__udp_sendmsgv(int fd,
                             unsigned int count,
                             uv_buf_t* bufs[/*count*/],
                             unsigned int nbufs[/*count*/],
-                            struct sockaddr* addrs[/*count*/]) {
+                            struct sockaddr* addrs[/*count*/],
+                            const uv_udp_send_opts_t* const opts[/*count*/],
+                            int ipv6) {
+  const uv_udp_send_opts_t* o;
   unsigned int i;
   int nsent;
   int r;
@@ -1420,14 +1597,30 @@ static int uv__udp_sendmsgv(int fd,
 
 #if defined(__linux__) || defined(__FreeBSD__) || defined(__APPLE__) || \
   (defined(__sun__) && defined(MSG_WAITFORONE)) || defined(__QNX__)
+#if defined(__APPLE__)
+  /* sendmsg_x() does not support control messages. */
+  if (count > 1 && opts == NULL) {
+#else
   if (count > 1) {
+#endif
     for (i = 0; i < count; /*empty*/) {
-      struct mmsghdr m[20];
+      union uv__udp_send_cmsg controls[20];
+      struct mmsghdr m[ARRAY_SIZE(controls)];
       unsigned int n;
 
-      for (n = 0; i < count && n < ARRAY_SIZE(m); i++, n++)
+      for (n = 0; i < count && n < ARRAY_SIZE(m); i++, n++) {
         if ((r = uv__udp_prep_pkt(&m[n].msg_hdr, bufs[i], nbufs[i], addrs[i])))
           goto exit;
+
+        o = opts == NULL ? NULL : opts[i];
+        if (o != NULL && o->flags != 0)
+          if ((r = uv__udp_prep_cmsg(&m[n].msg_hdr,
+                                     o,
+                                     &controls[n],
+                                     sizeof(controls[n]),
+                                     ipv6)))
+            goto exit;
+      }
 
       do
 #if defined(__APPLE__)
@@ -1451,7 +1644,12 @@ static int uv__udp_sendmsgv(int fd,
 	 */
 
   for (i = 0; i < count; i++, nsent++)
-    if ((r = uv__udp_sendmsg1(fd, bufs[i], nbufs[i], addrs[i])))
+    if ((r = uv__udp_sendmsg1(fd,
+                              bufs[i],
+                              nbufs[i],
+                              addrs[i],
+                              opts == NULL ? NULL : opts[i],
+                              ipv6)))
       goto exit;  /* goto to avoid unused label warning. */
 
 exit:
@@ -1471,29 +1669,44 @@ exit:
 
 static void uv__udp_sendmsg(uv_udp_t* handle) {
   enum { N = 20 };
+  const uv_udp_send_opts_t* opts[N];
   struct sockaddr* addrs[N];
   unsigned int nbufs[N];
   uv_buf_t* bufs[N];
   struct uv__queue* q;
   uv_udp_send_t* req;
+  int any_opts;
+  int ipv6;
   int n;
 
   if (uv__queue_empty(&handle->write_queue))
     return;
 
+  ipv6 = !!(handle->flags & UV_HANDLE_IPV6);
+
 again:
   n = 0;
+  any_opts = 0;
   q = uv__queue_head(&handle->write_queue);
   do {
     req = uv__queue_data(q, uv_udp_send_t, queue);
     addrs[n] = &req->u.addr;
     nbufs[n] = req->nbufs;
     bufs[n] = req->bufs;
+    opts[n] = req->reserved[0];
+    if (opts[n] != NULL)
+      any_opts = 1;
     q = uv__queue_next(q);
     n++;
   } while (n < N && q != &handle->write_queue);
 
-  n = uv__udp_sendmsgv(handle->io_watcher.fd, n, bufs, nbufs, addrs);
+  n = uv__udp_sendmsgv(handle->io_watcher.fd,
+                       n,
+                       bufs,
+                       nbufs,
+                       addrs,
+                       any_opts ? opts : NULL,
+                       ipv6);
   while (n > 0) {
     q = uv__queue_head(&handle->write_queue);
     req = uv__queue_data(q, uv_udp_send_t, queue);
@@ -1531,11 +1744,24 @@ int uv__udp_try_send2(uv_udp_t* handle,
                       uv_buf_t* bufs[/*count*/],
                       unsigned int nbufs[/*count*/],
                       struct sockaddr* addrs[/*count*/]) {
+  return uv__udp_try_send3(handle, count, bufs, nbufs, addrs, NULL);
+}
+
+
+int uv__udp_try_send3(uv_udp_t* handle,
+                      unsigned int count,
+                      uv_buf_t* bufs[/*count*/],
+                      unsigned int nbufs[/*count*/],
+                      struct sockaddr* addrs[/*count*/],
+                      const uv_udp_send_opts_t* const opts[/*count*/]) {
+  int ipv6;
   int fd;
 
   fd = handle->io_watcher.fd;
   if (fd == -1)
     return UV_EINVAL;
 
-  return uv__udp_sendmsgv(fd, count, bufs, nbufs, addrs);
+  ipv6 = !!(handle->flags & UV_HANDLE_IPV6);
+
+  return uv__udp_sendmsgv(fd, count, bufs, nbufs, addrs, opts, ipv6);
 }
