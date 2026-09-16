@@ -4758,6 +4758,9 @@ typedef DWORD (WINAPI *sPowerRegisterSuspendResumeNotification)
                HANDLE        Recipient,
                _PHPOWERNOTIFY RegistrationHandle);
 
+typedef DWORD (WINAPI *sPowerUnregisterSuspendResumeNotification)
+              (_HPOWERNOTIFY RegistrationHandle);
+
 typedef BOOL (WINAPI *sProcessPrng)(/*_Out_*/PBYTE pbData, SIZE_T cbData);
 
 /* from Winuser.h */
@@ -4778,6 +4781,8 @@ typedef HWINEVENTHOOK (WINAPI *sSetWinEventHook)
                        DWORD        idProcess,
                        DWORD        idThread,
                        UINT         dwflags);
+
+typedef BOOL (WINAPI *sUnhookWinEvent)(HWINEVENTHOOK hWinEventHook);
 
 /* From mstcpip.h */
 typedef struct _TCP_INITIAL_RTO_PARAMETERS {
@@ -4826,12 +4831,14 @@ extern sNtQueryInformationProcess pNtQueryInformationProcess;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+extern sPowerUnregisterSuspendResumeNotification pPowerUnregisterSuspendResumeNotification;
 
 /* bcryptprimitives.dll function pointer */
 extern sProcessPrng pProcessPrng;
 
 /* User32.dll function pointer */
 extern sSetWinEventHook pSetWinEventHook;
+extern sUnhookWinEvent pUnhookWinEvent;
 
 /* api-ms-win-core-file-l2-1-4.dll function pointers */
 extern sGetFileInformationByName pGetFileInformationByName;
