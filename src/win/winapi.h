@@ -4177,10 +4177,6 @@ typedef struct _REPARSE_DATA_BUFFER {
     struct {
       UCHAR  DataBuffer[1];
     } GenericReparseBuffer;
-    struct {
-      ULONG StringCount;
-      WCHAR StringList[1];
-    } AppExecLinkReparseBuffer;
   };
 } REPARSE_DATA_BUFFER, *PREPARSE_DATA_BUFFER;
 
@@ -4588,9 +4584,6 @@ typedef struct _SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION {
 #endif
 #ifndef IO_REPARSE_TAG_LX_SYMLINK
 # define IO_REPARSE_TAG_LX_SYMLINK (0xA000001DL)
-#endif
-#ifndef IO_REPARSE_TAG_APPEXECLINK
-# define IO_REPARSE_TAG_APPEXECLINK (0x8000001BL)
 #endif
 
 typedef VOID (NTAPI *PIO_APC_ROUTINE)
