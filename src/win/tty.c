@@ -1002,7 +1002,19 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
         req->u.io.overlapped.InternalHigh != 0) {
       /* Read successful. TODO: read unicode, convert to utf-8 */
       DWORD bytes = req->u.io.overlapped.InternalHigh;
-      handle->read_cb((uv_stream_t*) handle, bytes, &buf);
+
+      /* ReadConsoleW() does not turn a leading Ctrl+Z into EOF, ReadFile()
+       * does. */
+      if (buf.base[0] == 0x1a)
+        handle->flags |= UV_HANDLE_READ_EOF;
+
+      if (!(handle->flags & UV_HANDLE_READ_EOF)) {
+        handle->read_cb((uv_stream_t*) handle, bytes, &buf);
+      } else {
+        handle->flags &= ~UV_HANDLE_READING;
+        DECREASE_ACTIVE_COUNT(loop, handle);
+        handle->read_cb((uv_stream_t*) handle, UV_EOF, &buf);
+      }
     }
     handle->flags &= ~UV_HANDLE_READ_CANCELLATION_PENDING;
   }
@@ -1040,6 +1052,8 @@ int uv__tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
   if (!(handle->flags & UV_HANDLE_TTY_READABLE)) {
     return ERROR_INVALID_PARAMETER;
   }
+
+  handle->flags &= ~UV_HANDLE_READ_EOF;
 
   handle->flags |= UV_HANDLE_READING;
   INCREASE_ACTIVE_COUNT(loop, handle);
