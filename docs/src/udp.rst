@@ -245,9 +245,13 @@ API
     Associate the UDP handle to a remote address and port, so every
     message sent by this handle is automatically sent to that destination.
     Calling this function with a `NULL` `addr` disconnects the handle.
-    Trying to call `uv_udp_connect()` on an already connected handle will result
-    in an `UV_EISCONN` error. Trying to disconnect a handle that is not
-    connected will return an `UV_ENOTCONN` error.
+    Calling `uv_udp_connect()` on an already connected handle re-points it at
+    the new peer, keeping the local binding where the platform allows an
+    in-place `connect(2)`. Trying to disconnect a handle that is not connected
+    will return an `UV_ENOTCONN` error.
+
+    .. versionchanged:: 1.53.0 re-connecting a connected handle re-points the
+        peer instead of returning `UV_EISCONN`.
 
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init`.
