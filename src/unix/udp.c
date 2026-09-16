@@ -1425,8 +1425,11 @@ static int uv__udp_sendmsgv(int fd,
       struct mmsghdr m[20];
       unsigned int n;
 
-      for (n = 0; i < count && n < ARRAY_SIZE(m); i++, n++)
-        if ((r = uv__udp_prep_pkt(&m[n].msg_hdr, bufs[i], nbufs[i], addrs[i])))
+      for (n = 0; i + n < count && n < ARRAY_SIZE(m); n++)
+        if ((r = uv__udp_prep_pkt(&m[n].msg_hdr,
+                                  bufs[i + n],
+                                  nbufs[i + n],
+                                  addrs[i + n])))
           goto exit;
 
       do

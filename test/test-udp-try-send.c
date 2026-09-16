@@ -132,3 +132,86 @@ TEST_IMPL(udp_try_send) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+
+#define OVER_BATCH_COUNT 45
+static int over_batch_seen[OVER_BATCH_COUNT];
+static int over_batch_recv_cb_called;
+static char over_batch_bufs_storage[OVER_BATCH_COUNT][4];
+
+
+static void over_batch_recv_cb(uv_udp_t* handle,
+                                ssize_t nread,
+                                const uv_buf_t* rcvbuf,
+                                const struct sockaddr* addr,
+                                unsigned flags) {
+  unsigned int idx;
+
+  if (nread == 0) {
+    ASSERT_NULL(addr);
+    return;
+  }
+
+  ASSERT_EQ(4, nread);
+  ASSERT_NOT_NULL(addr);
+
+  idx = (unsigned char) rcvbuf->base[2] * 10 + (unsigned char) rcvbuf->base[3];
+  ASSERT_LT(idx, OVER_BATCH_COUNT);
+  over_batch_seen[idx]++;
+  over_batch_recv_cb_called++;
+
+  if (over_batch_recv_cb_called == OVER_BATCH_COUNT)
+    uv_udp_recv_stop(handle);
+}
+
+
+TEST_IMPL(udp_try_send2_over_batch_size) {
+  struct sockaddr_in addr;
+  uv_buf_t* bufs[OVER_BATCH_COUNT];
+  unsigned int nbufs[OVER_BATCH_COUNT];
+  struct sockaddr* addrs[OVER_BATCH_COUNT];
+  uv_buf_t buf_storage[OVER_BATCH_COUNT];
+  unsigned int i;
+  int r;
+
+  /* uv__udp_sendmsgv() batches datagrams in groups of 20 (ARRAY_SIZE(m) in
+   * src/unix/udp.c). Sending more than that in a single try_send2() call
+   * used to corrupt the loop's own bookkeeping: some datagrams past the
+   * first batch were skipped entirely while others got sent twice.
+   */
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", TEST_PORT, &addr));
+  ASSERT_OK(uv_udp_init(uv_default_loop(), &server));
+  ASSERT_OK(uv_udp_bind(&server, (const struct sockaddr*) &addr, 0));
+  ASSERT_OK(uv_udp_recv_start(&server, alloc_cb, over_batch_recv_cb));
+  ASSERT_OK(uv_udp_init(uv_default_loop(), &client));
+  ASSERT_OK(uv_ip4_addr("0.0.0.0", 0, &addr));
+  ASSERT_OK(uv_udp_bind(&client, (const struct sockaddr*) &addr, 0));
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  for (i = 0; i < OVER_BATCH_COUNT; i++) {
+    over_batch_bufs_storage[i][0] = 'P';
+    over_batch_bufs_storage[i][1] = 'K';
+    over_batch_bufs_storage[i][2] = (char) (i / 10);
+    over_batch_bufs_storage[i][3] = (char) (i % 10);
+    buf_storage[i] = uv_buf_init(over_batch_bufs_storage[i], 4);
+    bufs[i] = &buf_storage[i];
+    nbufs[i] = 1;
+    addrs[i] = (struct sockaddr*) &addr;
+  }
+
+  r = uv_udp_try_send2(&client, OVER_BATCH_COUNT, bufs, nbufs, addrs, 0);
+  ASSERT_EQ(r, OVER_BATCH_COUNT);
+
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT_EQ(OVER_BATCH_COUNT, over_batch_recv_cb_called);
+  for (i = 0; i < OVER_BATCH_COUNT; i++)
+    ASSERT_EQ(1, over_batch_seen[i]);
+
+  uv_close((uv_handle_t*) &server, close_cb);
+  uv_close((uv_handle_t*) &client, close_cb);
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
