@@ -28,6 +28,18 @@
 #include "stream-inl.h"
 #include "req-inl.h"
 
+
+/* WSARecvMsg GUID: SIO_GET_EXTENSION_FUNCTION_POINTER for WSARecvMsg. */
+static const GUID uv__wsarecvmsg_guid = {
+  0xf689d7c8, 0x6f1f, 0x436b,
+  { 0x8a, 0x53, 0xe5, 0x4f, 0xe3, 0x51, 0xc3, 0x22 }
+};
+
+/* Forward declarations for recv dispatch helpers. */
+static void uv__process_udp_recv_legacy(uv_loop_t* loop, uv_udp_t* handle);
+static void uv__process_udp_recv2_req(uv_loop_t* loop, uv_udp_t* handle);
+
+
 int uv_udp_getpeername(const uv_udp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
@@ -115,6 +127,26 @@ static int uv__udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     assert(!(handle->flags & UV_HANDLE_IPV6));
   }
 
+  /* Obtain WSARecvMsg function pointer if ECN or pktinfo is requested. */
+  if (handle->flags & (UV_HANDLE_UDP_RECVECN | UV_HANDLE_UDP_RECVPKTINFO)) {
+    DWORD bytes;
+    LPFN_WSARECVMSG func = NULL;
+    if (WSAIoctl(socket,
+                 SIO_GET_EXTENSION_FUNCTION_POINTER,
+                 (void*) &uv__wsarecvmsg_guid,
+                 sizeof(uv__wsarecvmsg_guid),
+                 &func,
+                 sizeof(func),
+                 &bytes,
+                 NULL,
+                 NULL) != SOCKET_ERROR) {
+      handle->func_wsarecvmsg = func;
+    }
+    /* If WSAIoctl fails, func_wsarecvmsg stays NULL. We still set the
+     * socket options so the kernel collects the data, but we won't be
+     * able to read it via WSARecvMsg until the recv path is wired up. */
+  }
+
   return 0;
 }
 
@@ -129,6 +161,7 @@ int uv__udp_init_ex(uv_loop_t* loop,
   handle->activecnt = 0;
   handle->func_wsarecv = WSARecv;
   handle->func_wsarecvfrom = WSARecvFrom;
+  handle->func_wsarecvmsg = NULL;
   handle->send_queue_size = 0;
   handle->send_queue_count = 0;
   UV_REQ_INIT(loop, &handle->recv_req, UV_UDP_RECV);
@@ -322,6 +355,7 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
     return uv_translate_sys_error(err);
 
   handle->flags |= UV_HANDLE_READING;
+  handle->flags &= ~UV_HANDLE_UDP_RECV2;
   INCREASE_ACTIVE_COUNT(loop, handle);
 
   handle->recv_cb = recv_cb;
@@ -336,9 +370,43 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
 }
 
 
+int uv__udp_recv_start2(uv_udp_t* handle,
+                        uv_alloc_cb alloc_cb,
+                        uv_udp_recv2_cb recv_cb) {
+  uv_loop_t* loop = handle->loop;
+  int err;
+
+  if (handle->flags & UV_HANDLE_READING) {
+    return UV_EALREADY;
+  }
+
+  err = uv__udp_maybe_bind(handle,
+                           (const struct sockaddr*) &uv_addr_ip4_any_,
+                           sizeof(uv_addr_ip4_any_),
+                           0);
+  if (err)
+    return uv_translate_sys_error(err);
+
+  handle->flags |= UV_HANDLE_READING;
+  handle->flags |= UV_HANDLE_UDP_RECV2;
+  INCREASE_ACTIVE_COUNT(loop, handle);
+
+  memcpy(&handle->recv_cb, &recv_cb, sizeof(handle->recv_cb));
+  handle->alloc_cb = alloc_cb;
+
+  /* If reading was stopped and then started again, there could still be a recv
+   * request pending. */
+  if (!(handle->flags & UV_HANDLE_READ_PENDING))
+    uv__udp_queue_recv(loop, handle);
+
+  return 0;
+}
+
+
 int uv__udp_recv_stop(uv_udp_t* handle) {
   if (handle->flags & UV_HANDLE_READING) {
     handle->flags &= ~UV_HANDLE_READING;
+    handle->flags &= ~UV_HANDLE_UDP_RECV2;
     DECREASE_ACTIVE_COUNT(loop, handle);
   }
 
@@ -395,6 +463,59 @@ static int uv__send(uv_udp_send_t* req,
 }
 
 
+static int uv__udp_win_parse_ecn(WSAMSG* msg, int is_ipv6) {
+  WSACMSGHDR* cm;
+
+  for (cm = WSA_CMSG_FIRSTHDR(msg); cm; cm = WSA_CMSG_NXTHDR(msg, cm)) {
+    /* Windows may deliver IPv4 TOS as cmsg_type IP_TOS or IP_RECVTOS
+     * depending on the platform version. Check both. */
+    if (!is_ipv6 &&
+        cm->cmsg_level == IPPROTO_IP &&
+        (cm->cmsg_type == IP_TOS || cm->cmsg_type == IP_RECVTOS)) {
+      return *(unsigned char*) WSA_CMSG_DATA(cm) & 0x03;
+    }
+    if (is_ipv6 &&
+        cm->cmsg_level == IPPROTO_IPV6 &&
+        cm->cmsg_type == IPV6_TCLASS) {
+      DWORD tclass;
+      memcpy(&tclass, WSA_CMSG_DATA(cm), sizeof tclass);
+      return (int) (tclass & 0x03);
+    }
+  }
+  return 0;
+}
+
+
+static void uv__udp_win_parse_pktinfo(WSAMSG* msg,
+                                      uv_udp_recv_t* recv_info) {
+  WSACMSGHDR* cm;
+
+  memset(&recv_info->local, 0, sizeof recv_info->local);
+  recv_info->ifindex = 0;
+
+  for (cm = WSA_CMSG_FIRSTHDR(msg); cm; cm = WSA_CMSG_NXTHDR(msg, cm)) {
+    if (cm->cmsg_level == IPPROTO_IP && cm->cmsg_type == IP_PKTINFO) {
+      IN_PKTINFO pki;
+      struct sockaddr_in* a;
+      memcpy(&pki, WSA_CMSG_DATA(cm), sizeof pki);
+      a = (struct sockaddr_in*) &recv_info->local;
+      a->sin_family = AF_INET;
+      a->sin_addr = pki.ipi_addr;
+      recv_info->ifindex = pki.ipi_ifindex;
+    }
+    if (cm->cmsg_level == IPPROTO_IPV6 && cm->cmsg_type == IPV6_PKTINFO) {
+      IN6_PKTINFO pki;
+      struct sockaddr_in6* a;
+      memcpy(&pki, WSA_CMSG_DATA(cm), sizeof pki);
+      a = (struct sockaddr_in6*) &recv_info->local;
+      a->sin6_family = AF_INET6;
+      a->sin6_addr = pki.ipi6_addr;
+      recv_info->ifindex = pki.ipi6_ifindex;
+    }
+  }
+}
+
+
 void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     uv_req_t* req) {
   uv_buf_t buf;
@@ -418,78 +539,31 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
       if (handle->flags & UV_HANDLE_READING) {
         uv_udp_recv_stop(handle);
         buf = uv_buf_init(NULL, 0);
-        handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
+        if (handle->flags & UV_HANDLE_UDP_RECV2) {
+          uv_udp_recv_t recv_info;
+          uv_udp_recv2_cb recv2_cb;
+          memcpy(&recv2_cb, &handle->recv_cb, sizeof(recv2_cb));
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = uv_translate_sys_error(err);
+          recv_info.buf = &buf;
+          recv_info.addr = NULL;
+          recv2_cb(handle, &recv_info);
+        } else {
+          handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
+        }
       }
       goto done;
     }
   }
 
   if (handle->flags & UV_HANDLE_READING) {
-    DWORD bytes, err, flags;
-    struct sockaddr_storage from;
-    int from_len;
-    int count;
-
-    /* Prevent loop starvation when the data comes in as fast as
-     * (or faster than) we can read it. */
-    count = 32;
-
-    do {
-      /* Do at most `count` nonblocking receive. */
-      buf = uv_buf_init(NULL, 0);
-      handle->alloc_cb((uv_handle_t*) handle, UV__UDP_DGRAM_MAXSIZE, &buf);
-      if (buf.base == NULL || buf.len == 0) {
-        handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
-        goto done;
-      }
-
-      memset(&from, 0, sizeof from);
-      from_len = sizeof from;
-
-      flags = 0;
-
-      if (WSARecvFrom(handle->socket,
-                      (WSABUF*)&buf,
-                      1,
-                      &bytes,
-                      &flags,
-                      (struct sockaddr*) &from,
-                      &from_len,
-                      NULL,
-                      NULL) != SOCKET_ERROR) {
-
-        /* Message received */
-        err = ERROR_SUCCESS;
-        handle->recv_cb(handle, bytes, &buf, (const struct sockaddr*) &from, 0);
-      } else {
-        err = WSAGetLastError();
-        if (err == WSAEMSGSIZE) {
-          /* Message truncated */
-          handle->recv_cb(handle,
-                          bytes,
-                          &buf,
-                          (const struct sockaddr*) &from,
-                          UV_UDP_PARTIAL);
-        } else if (err == WSAEWOULDBLOCK) {
-          /* Kernel buffer empty */
-          handle->recv_cb(handle, 0, &buf, NULL, 0);
-        } else if (err == WSAECONNRESET || err == WSAENETRESET) {
-          /* WSAECONNRESET/WSANETRESET is ignored because this just indicates
-           * that a previous sendto operation failed.
-           */
-          handle->recv_cb(handle, 0, &buf, NULL, 0);
-        } else {
-          /* Any other error that we want to report back to the user. */
-          uv_udp_recv_stop(handle);
-          handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
-        }
-      }
+    if (handle->flags & UV_HANDLE_UDP_RECV2) {
+      /* Enhanced recv2 path with cmsg support. */
+      uv__process_udp_recv2_req(loop, handle);
+    } else {
+      /* Legacy recv path. */
+      uv__process_udp_recv_legacy(loop, handle);
     }
-    while (err == ERROR_SUCCESS &&
-           count-- > 0 &&
-           /* The recv_cb callback may decide to pause or close the handle. */
-           (handle->flags & UV_HANDLE_READING) &&
-           !(handle->flags & UV_HANDLE_READ_PENDING));
   }
 
 done:
@@ -500,6 +574,225 @@ done:
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
+}
+
+
+static void uv__process_udp_recv_legacy(uv_loop_t* loop, uv_udp_t* handle) {
+  uv_buf_t buf;
+  DWORD bytes, err, flags;
+  struct sockaddr_storage from;
+  int from_len;
+  int count;
+
+  /* Prevent loop starvation when the data comes in as fast as
+   * (or faster than) we can read it. */
+  count = 32;
+
+  do {
+    /* Do at most `count` nonblocking receive. */
+    buf = uv_buf_init(NULL, 0);
+    handle->alloc_cb((uv_handle_t*) handle, UV__UDP_DGRAM_MAXSIZE, &buf);
+    if (buf.base == NULL || buf.len == 0) {
+      handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
+      return;
+    }
+
+    memset(&from, 0, sizeof from);
+    from_len = sizeof from;
+
+    flags = 0;
+
+    if (WSARecvFrom(handle->socket,
+                    (WSABUF*)&buf,
+                    1,
+                    &bytes,
+                    &flags,
+                    (struct sockaddr*) &from,
+                    &from_len,
+                    NULL,
+                    NULL) != SOCKET_ERROR) {
+
+      /* Message received */
+      err = ERROR_SUCCESS;
+      handle->recv_cb(handle, bytes, &buf, (const struct sockaddr*) &from, 0);
+    } else {
+      err = WSAGetLastError();
+      if (err == WSAEMSGSIZE) {
+        /* Message truncated */
+        handle->recv_cb(handle,
+                        bytes,
+                        &buf,
+                        (const struct sockaddr*) &from,
+                        UV_UDP_PARTIAL);
+      } else if (err == WSAEWOULDBLOCK) {
+        /* Kernel buffer empty */
+        handle->recv_cb(handle, 0, &buf, NULL, 0);
+      } else if (err == WSAECONNRESET || err == WSAENETRESET) {
+        /* WSAECONNRESET/WSANETRESET is ignored because this just indicates
+         * that a previous sendto operation failed.
+         */
+        handle->recv_cb(handle, 0, &buf, NULL, 0);
+      } else {
+        /* Any other error that we want to report back to the user. */
+        uv_udp_recv_stop(handle);
+        handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
+      }
+    }
+  }
+  while (err == ERROR_SUCCESS &&
+         count-- > 0 &&
+         /* The recv_cb callback may decide to pause or close the handle. */
+         (handle->flags & UV_HANDLE_READING) &&
+         !(handle->flags & UV_HANDLE_READ_PENDING));
+}
+
+
+static void uv__process_udp_recv2_req(uv_loop_t* loop, uv_udp_t* handle) {
+  uv_udp_recv_t recv_info;
+  uv_udp_recv2_cb recv2_cb;
+  uv_buf_t buf;
+  DWORD bytes, err, flags;
+  struct sockaddr_storage from;
+  int from_len;
+  int count;
+
+  memcpy(&recv2_cb, &handle->recv_cb, sizeof(recv2_cb));
+
+  /* Prevent loop starvation when the data comes in as fast as
+   * (or faster than) we can read it. */
+  count = 32;
+
+  do {
+    buf = uv_buf_init(NULL, 0);
+    handle->alloc_cb((uv_handle_t*) handle, UV__UDP_DGRAM_MAXSIZE, &buf);
+    if (buf.base == NULL || buf.len == 0) {
+      memset(&recv_info, 0, sizeof(recv_info));
+      recv_info.nread = UV_ENOBUFS;
+      recv_info.buf = &buf;
+      recv2_cb(handle, &recv_info);
+      return;
+    }
+
+    memset(&from, 0, sizeof from);
+    from_len = sizeof from;
+    flags = 0;
+
+    if (handle->func_wsarecvmsg != NULL) {
+      WSAMSG msg;
+      WSABUF data;
+      char control[256];
+      int is_ipv6;
+
+      data.buf = buf.base;
+      data.len = (ULONG) buf.len;
+
+      memset(&msg, 0, sizeof msg);
+      msg.name = (LPSOCKADDR) &from;
+      msg.namelen = sizeof from;
+      msg.lpBuffers = &data;
+      msg.dwBufferCount = 1;
+      msg.Control.buf = control;
+      msg.Control.len = sizeof control;
+
+      is_ipv6 = !!(handle->flags & UV_HANDLE_IPV6);
+
+      if (handle->func_wsarecvmsg(handle->socket,
+                                   &msg,
+                                   &bytes,
+                                   NULL,
+                                   NULL) != SOCKET_ERROR) {
+        err = ERROR_SUCCESS;
+        memset(&recv_info, 0, sizeof(recv_info));
+        recv_info.nread = bytes;
+        recv_info.buf = &buf;
+        recv_info.addr = (const struct sockaddr*) &from;
+        if (handle->flags & UV_HANDLE_UDP_RECVECN)
+          recv_info.ecn = uv__udp_win_parse_ecn(&msg, is_ipv6);
+        if (handle->flags & UV_HANDLE_UDP_RECVPKTINFO)
+          uv__udp_win_parse_pktinfo(&msg, &recv_info);
+        recv2_cb(handle, &recv_info);
+      } else {
+        err = WSAGetLastError();
+        if (err == WSAEMSGSIZE) {
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = bytes;
+          recv_info.buf = &buf;
+          recv_info.addr = (const struct sockaddr*) &from;
+          recv_info.flags = UV_UDP_PARTIAL;
+          if (handle->flags & UV_HANDLE_UDP_RECVECN)
+            recv_info.ecn = uv__udp_win_parse_ecn(&msg, is_ipv6);
+          if (handle->flags & UV_HANDLE_UDP_RECVPKTINFO)
+            uv__udp_win_parse_pktinfo(&msg, &recv_info);
+          recv2_cb(handle, &recv_info);
+          err = ERROR_SUCCESS;
+        } else if (err == WSAEWOULDBLOCK) {
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = 0;
+          recv_info.buf = &buf;
+          recv2_cb(handle, &recv_info);
+        } else if (err == WSAECONNRESET || err == WSAENETRESET) {
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = 0;
+          recv_info.buf = &buf;
+          recv2_cb(handle, &recv_info);
+        } else {
+          uv_udp_recv_stop(handle);
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = uv_translate_sys_error(err);
+          recv_info.buf = &buf;
+          recv2_cb(handle, &recv_info);
+        }
+      }
+    } else {
+      /* No WSARecvMsg available; fall back to WSARecvFrom. */
+      if (WSARecvFrom(handle->socket,
+                      (WSABUF*) &buf,
+                      1,
+                      &bytes,
+                      &flags,
+                      (struct sockaddr*) &from,
+                      &from_len,
+                      NULL,
+                      NULL) != SOCKET_ERROR) {
+        err = ERROR_SUCCESS;
+        memset(&recv_info, 0, sizeof(recv_info));
+        recv_info.nread = bytes;
+        recv_info.buf = &buf;
+        recv_info.addr = (const struct sockaddr*) &from;
+        recv2_cb(handle, &recv_info);
+      } else {
+        err = WSAGetLastError();
+        if (err == WSAEMSGSIZE) {
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = bytes;
+          recv_info.buf = &buf;
+          recv_info.addr = (const struct sockaddr*) &from;
+          recv_info.flags = UV_UDP_PARTIAL;
+          recv2_cb(handle, &recv_info);
+          err = ERROR_SUCCESS;
+        } else if (err == WSAEWOULDBLOCK) {
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = 0;
+          recv_info.buf = &buf;
+          recv2_cb(handle, &recv_info);
+        } else if (err == WSAECONNRESET || err == WSAENETRESET) {
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = 0;
+          recv_info.buf = &buf;
+          recv2_cb(handle, &recv_info);
+        } else {
+          uv_udp_recv_stop(handle);
+          memset(&recv_info, 0, sizeof(recv_info));
+          recv_info.nread = uv_translate_sys_error(err);
+          recv_info.buf = &buf;
+          recv2_cb(handle, &recv_info);
+        }
+      }
+    }
+  } while (err == ERROR_SUCCESS &&
+           count-- > 0 &&
+           (handle->flags & UV_HANDLE_READING) &&
+           !(handle->flags & UV_HANDLE_READ_PENDING));
 }
 
 
@@ -924,14 +1217,14 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
 #define SOCKOPT_SETTER(name, option4, option6, validate)                      \
   int uv_udp_set_##name(uv_udp_t* handle, int value) {                        \
     DWORD optval = (DWORD) value;                                             \
-                                                                              \
+                                                                               \
     if (!(validate(value))) {                                                 \
       return UV_EINVAL;                                                       \
     }                                                                         \
-                                                                              \
+                                                                               \
     if (handle->socket == INVALID_SOCKET)                                     \
       return UV_EBADF;                                                        \
-                                                                              \
+                                                                               \
     if (!(handle->flags & UV_HANDLE_IPV6)) {                                  \
       /* Set IPv4 socket option */                                            \
       if (setsockopt(handle->socket,                                          \
@@ -989,6 +1282,106 @@ int uv__udp_bind(uv_udp_t* handle,
   err = uv__udp_maybe_bind(handle, addr, addrlen, flags);
   if (err)
     return uv_translate_sys_error(err);
+
+  /* Apply socket options after bind. */
+  if (flags & UV_UDP_RECVECN) {
+    if (handle->flags & UV_HANDLE_IPV6) {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IPV6,
+                 IPV6_RECVTCLASS,
+                 (char*) &yes,
+                 sizeof yes);
+    } else {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IP,
+                 IP_RECVTOS,
+                 (char*) &yes,
+                 sizeof yes);
+    }
+    handle->flags |= UV_HANDLE_UDP_RECVECN;
+
+    /* Obtain WSARecvMsg if not already obtained. */
+    if (handle->func_wsarecvmsg == NULL) {
+      DWORD bytes;
+      LPFN_WSARECVMSG func = NULL;
+      if (WSAIoctl(handle->socket,
+                   SIO_GET_EXTENSION_FUNCTION_POINTER,
+                   (void*) &uv__wsarecvmsg_guid,
+                   sizeof(uv__wsarecvmsg_guid),
+                   &func,
+                   sizeof(func),
+                   &bytes,
+                   NULL,
+                   NULL) != SOCKET_ERROR) {
+        handle->func_wsarecvmsg = func;
+      }
+    }
+  }
+
+  if (flags & UV_UDP_PMTUD) {
+    if (handle->flags & UV_HANDLE_IPV6) {
+      DWORD val = IP_PMTUDISC_PROBE;
+      setsockopt(handle->socket,
+                 IPPROTO_IPV6,
+                 IPV6_MTU_DISCOVER,
+                 (char*) &val,
+                 sizeof val);
+    } else {
+      /* On Windows, use IP_DONTFRAGMENT for IPv4 PMTUD. */
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IP,
+                 IP_DONTFRAGMENT,
+                 (char*) &yes,
+                 sizeof yes);
+    }
+  }
+
+  if (flags & UV_UDP_RECVPKTINFO) {
+    if (handle->flags & UV_HANDLE_IPV6) {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IPV6,
+                 IPV6_PKTINFO,
+                 (char*) &yes,
+                 sizeof yes);
+    } else {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IP,
+                 IP_PKTINFO,
+                 (char*) &yes,
+                 sizeof yes);
+    }
+    handle->flags |= UV_HANDLE_UDP_RECVPKTINFO;
+
+    /* Obtain WSARecvMsg if not already obtained. */
+    if (handle->func_wsarecvmsg == NULL) {
+      DWORD bytes;
+      LPFN_WSARECVMSG func = NULL;
+      if (WSAIoctl(handle->socket,
+                   SIO_GET_EXTENSION_FUNCTION_POINTER,
+                   (void*) &uv__wsarecvmsg_guid,
+                   sizeof(uv__wsarecvmsg_guid),
+                   &func,
+                   sizeof(func),
+                   &bytes,
+                   NULL,
+                   NULL) != SOCKET_ERROR) {
+        handle->func_wsarecvmsg = func;
+      }
+    }
+  }
+
+  if ((flags & UV_UDP_GRO) && (flags & UV_UDP_GRO_RAW))
+    return UV_EINVAL;
+
+  if (flags & UV_UDP_GRO)
+    handle->flags |= UV_HANDLE_UDP_GRO;
+  if (flags & UV_UDP_GRO_RAW)
+    handle->flags |= UV_HANDLE_UDP_GRO_RAW;
 
   return 0;
 }
@@ -1140,4 +1533,306 @@ int uv__udp_try_send2(uv_udp_t* handle,
   }
 
   return i;
+}
+
+
+static int uv__udp_obtain_wsarecvmsg(uv_udp_t* handle) {
+  if (handle->func_wsarecvmsg != NULL)
+    return 0;
+
+  {
+    DWORD bytes;
+    LPFN_WSARECVMSG func = NULL;
+    if (WSAIoctl(handle->socket,
+                 SIO_GET_EXTENSION_FUNCTION_POINTER,
+                 (void*) &uv__wsarecvmsg_guid,
+                 sizeof(uv__wsarecvmsg_guid),
+                 &func,
+                 sizeof(func),
+                 &bytes,
+                 NULL,
+                 NULL) != SOCKET_ERROR) {
+      handle->func_wsarecvmsg = func;
+      return 0;
+    }
+  }
+  return -1;
+}
+
+
+int uv_udp_set_ecn(uv_udp_t* handle, int ecn) {
+  int r;
+
+  if (ecn < 0 || ecn > 3)
+    return UV_EINVAL;
+
+  if (handle->socket == INVALID_SOCKET)
+    return UV_EBADF;
+
+  if (handle->flags & UV_HANDLE_IPV6) {
+    DWORD val = (DWORD) ecn;
+    r = setsockopt(handle->socket,
+                   IPPROTO_IPV6,
+                   IPV6_TCLASS,
+                   (char*) &val,
+                   sizeof val);
+  } else {
+    /* Preserve DSCP bits, set only the low 2 (ECN) bits. */
+    DWORD tos = 0;
+    int len = sizeof(tos);
+    getsockopt(handle->socket, IPPROTO_IP, IP_TOS, (char*) &tos, &len);
+    tos = (tos & ~0x03) | ((DWORD) ecn & 0x03);
+    r = setsockopt(handle->socket,
+                   IPPROTO_IP,
+                   IP_TOS,
+                   (char*) &tos,
+                   sizeof tos);
+  }
+
+  if (r == SOCKET_ERROR)
+    return uv_translate_sys_error(WSAGetLastError());
+
+  return 0;
+}
+
+
+int uv_udp_set_pmtud(uv_udp_t* handle, enum uv_udp_pmtud mode) {
+  if (handle->socket == INVALID_SOCKET)
+    return UV_EBADF;
+
+  if (handle->flags & UV_HANDLE_IPV6) {
+    DWORD val;
+    switch (mode) {
+      case UV_UDP_PMTUD_OFF:
+        val = IP_PMTUDISC_NOT_SET;
+        break;
+      case UV_UDP_PMTUD_DO:
+        val = IP_PMTUDISC_DO;
+        break;
+      case UV_UDP_PMTUD_PROBE:
+        val = IP_PMTUDISC_PROBE;
+        break;
+      default:
+        return UV_EINVAL;
+    }
+    if (setsockopt(handle->socket,
+                   IPPROTO_IPV6,
+                   IPV6_MTU_DISCOVER,
+                   (char*) &val,
+                   sizeof val) == SOCKET_ERROR) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  } else {
+    /* IPv4: use IP_DONTFRAGMENT as a boolean, and IP_MTU_DISCOVER for mode. */
+    DWORD val;
+    switch (mode) {
+      case UV_UDP_PMTUD_OFF:
+        val = IP_PMTUDISC_NOT_SET;
+        break;
+      case UV_UDP_PMTUD_DO:
+        val = IP_PMTUDISC_DO;
+        break;
+      case UV_UDP_PMTUD_PROBE:
+        val = IP_PMTUDISC_PROBE;
+        break;
+      default:
+        return UV_EINVAL;
+    }
+    if (setsockopt(handle->socket,
+                   IPPROTO_IP,
+                   IP_MTU_DISCOVER,
+                   (char*) &val,
+                   sizeof val) == SOCKET_ERROR) {
+      /* Fallback: try IP_DONTFRAGMENT if IP_MTU_DISCOVER is not available. */
+      if (mode != UV_UDP_PMTUD_OFF) {
+        DWORD yes = 1;
+        if (setsockopt(handle->socket,
+                       IPPROTO_IP,
+                       IP_DONTFRAGMENT,
+                       (char*) &yes,
+                       sizeof yes) == SOCKET_ERROR) {
+          return uv_translate_sys_error(WSAGetLastError());
+        }
+      } else {
+        DWORD no = 0;
+        if (setsockopt(handle->socket,
+                       IPPROTO_IP,
+                       IP_DONTFRAGMENT,
+                       (char*) &no,
+                       sizeof no) == SOCKET_ERROR) {
+          return uv_translate_sys_error(WSAGetLastError());
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+
+int uv_udp_getmtu(const uv_udp_t* handle, size_t* mtu) {
+  DWORD val;
+  int len;
+
+  if (handle->socket == INVALID_SOCKET)
+    return UV_EBADF;
+
+  if (mtu == NULL)
+    return UV_EINVAL;
+
+  len = sizeof(val);
+
+  if (handle->flags & UV_HANDLE_IPV6) {
+    if (getsockopt(handle->socket,
+                   IPPROTO_IPV6,
+                   IPV6_MTU,
+                   (char*) &val,
+                   &len) == SOCKET_ERROR) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  } else {
+    if (getsockopt(handle->socket,
+                   IPPROTO_IP,
+                   IP_MTU,
+                   (char*) &val,
+                   &len) == SOCKET_ERROR) {
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+  }
+
+  *mtu = (size_t) val;
+  return 0;
+}
+
+
+int uv_udp_configure(uv_udp_t* handle, unsigned int flags) {
+  /* Only accept the configuration flags. */
+  if (flags & ~(UV_UDP_RECVECN | UV_UDP_PMTUD | UV_UDP_RECVPKTINFO))
+    return UV_EINVAL;
+
+  if (handle->socket == INVALID_SOCKET)
+    return UV_EBADF;
+
+  if (flags & UV_UDP_RECVECN) {
+    if (handle->flags & UV_HANDLE_IPV6) {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IPV6,
+                 IPV6_RECVTCLASS,
+                 (char*) &yes,
+                 sizeof yes);
+    } else {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IP,
+                 IP_RECVTOS,
+                 (char*) &yes,
+                 sizeof yes);
+    }
+    handle->flags |= UV_HANDLE_UDP_RECVECN;
+
+    /* Obtain WSARecvMsg if not already obtained. */
+    uv__udp_obtain_wsarecvmsg(handle);
+  }
+
+  if (flags & UV_UDP_PMTUD) {
+    if (handle->flags & UV_HANDLE_IPV6) {
+      DWORD val = IP_PMTUDISC_PROBE;
+      setsockopt(handle->socket,
+                 IPPROTO_IPV6,
+                 IPV6_MTU_DISCOVER,
+                 (char*) &val,
+                 sizeof val);
+    } else {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IP,
+                 IP_DONTFRAGMENT,
+                 (char*) &yes,
+                 sizeof yes);
+    }
+  }
+
+  if (flags & UV_UDP_RECVPKTINFO) {
+    if (handle->flags & UV_HANDLE_IPV6) {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IPV6,
+                 IPV6_PKTINFO,
+                 (char*) &yes,
+                 sizeof yes);
+    } else {
+      DWORD yes = 1;
+      setsockopt(handle->socket,
+                 IPPROTO_IP,
+                 IP_PKTINFO,
+                 (char*) &yes,
+                 sizeof yes);
+    }
+    handle->flags |= UV_HANDLE_UDP_RECVPKTINFO;
+
+    /* Obtain WSARecvMsg if not already obtained. */
+    uv__udp_obtain_wsarecvmsg(handle);
+  }
+
+  return 0;
+}
+
+
+int uv_udp_try_send_batch(uv_udp_t* handle,
+                          uv_udp_mmsg_t* msgs,
+                          unsigned int count) {
+  unsigned int i;
+  int r;
+  int nsent;
+
+  if (handle->socket == INVALID_SOCKET)
+    return UV_EINVAL;
+
+  if (count == 0)
+    return 0;
+
+  /* No GSO on Windows; send each message individually. */
+  nsent = 0;
+  for (i = 0; i < count; i++) {
+    const struct sockaddr* sa;
+    int addrlen;
+    DWORD bytes;
+
+    sa = msgs[i].addr;
+    addrlen = 0;
+    if (sa != NULL)
+      addrlen = sa->sa_family == AF_INET6 ?
+          sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in);
+
+    r = WSASendTo(handle->socket,
+                  (WSABUF*) msgs[i].bufs,
+                  msgs[i].nbufs,
+                  &bytes,
+                  0,
+                  sa,
+                  addrlen,
+                  NULL,
+                  NULL);
+    if (r == SOCKET_ERROR) {
+      if (nsent > 0)
+        return nsent;
+      return uv_translate_sys_error(WSAGetLastError());
+    }
+    nsent++;
+  }
+  return nsent;
+}
+
+
+unsigned int uv_udp_gso_max_segments(const uv_udp_t* handle) {
+  (void) handle;
+  return 0;
+}
+
+
+int uv_udp_set_cpu_affinity(uv_udp_t* handle, int cpu) {
+  (void) handle;
+  (void) cpu;
+  return UV_ENOTSUP;
 }

@@ -555,6 +555,16 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
 }
 
 
+int uv_udp_recv_start2(uv_udp_t* handle,
+                       uv_alloc_cb alloc_cb,
+                       uv_udp_recv2_cb recv_cb) {
+  if (handle->type != UV_UDP || alloc_cb == NULL || recv_cb == NULL)
+    return UV_EINVAL;
+  else
+    return uv__udp_recv_start2(handle, alloc_cb, recv_cb);
+}
+
+
 void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
   struct uv__queue queue;
   struct uv__queue* q;

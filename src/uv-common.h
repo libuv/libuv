@@ -114,6 +114,11 @@ enum {
   UV_HANDLE_UDP_PROCESSING              = 0x01000000,
   UV_HANDLE_UDP_CONNECTED               = 0x02000000,
   UV_HANDLE_UDP_RECVMMSG                = 0x04000000,
+  UV_HANDLE_UDP_RECVECN                 = 0x08000000,
+  UV_HANDLE_UDP_RECVPKTINFO             = 0x10000000,
+  UV_HANDLE_UDP_GRO                     = 0x20000000,
+  UV_HANDLE_UDP_GRO_RAW                 = 0x40000000,
+  UV_HANDLE_UDP_RECV2                   = 0x80000000,
 
   /* Only used by uv_pipe_t handles. */
   UV_HANDLE_NON_OVERLAPPED_PIPE         = 0x01000000,
@@ -195,6 +200,10 @@ int uv__udp_try_send2(uv_udp_t* handle,
 
 int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloccb,
                        uv_udp_recv_cb recv_cb);
+
+int uv__udp_recv_start2(uv_udp_t* handle,
+                        uv_alloc_cb alloc_cb,
+                        uv_udp_recv2_cb recv_cb);
 
 int uv__udp_recv_stop(uv_udp_t* handle);
 

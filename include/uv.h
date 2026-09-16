@@ -223,6 +223,7 @@ typedef struct uv_dir_s uv_dir_t;
 typedef struct uv_stream_s uv_stream_t;
 typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
+
 typedef struct uv_pipe_s uv_pipe_t;
 typedef struct uv_tty_s uv_tty_t;
 typedef struct uv_poll_s uv_poll_t;
@@ -243,6 +244,7 @@ typedef struct uv_shutdown_s uv_shutdown_t;
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
 typedef struct uv_udp_send_s uv_udp_send_t;
+
 typedef struct uv_fs_s uv_fs_t;
 typedef struct uv_work_s uv_work_t;
 typedef struct uv_random_s uv_random_t;
@@ -745,7 +747,44 @@ enum uv_udp_flags {
   /*
    * Indicates that recvmmsg should be used, if available.
    */
-  UV_UDP_RECVMMSG = 256
+  UV_UDP_RECVMMSG = 256,
+  /* Enable ECN codepoint reporting on received datagrams.
+   * Sets IP_RECVTOS (IPv4) / IPV6_RECVTCLASS (IPv6).
+   * The ECN codepoint (0-3) is reported in uv_udp_recv_t.ecn.
+   * No-op on platforms without IP_RECVTOS (e.g. OpenBSD IPv4). */
+  UV_UDP_RECVECN = 512,
+  /* Enable Path MTU Discovery (set the Don't Fragment bit).
+   * Default mode is PROBE (IP_PMTUDISC_PROBE on Linux); oversized sends
+   * fail with UV_EMSGSIZE. Use uv_udp_set_pmtud() to change the mode.
+   * No-op where unsupported (e.g. OpenBSD IPv4). */
+  UV_UDP_PMTUD = 1024,
+  /* Enable local destination address and interface index reporting.
+   * Reports via uv_udp_recv_t.local and uv_udp_recv_t.ifindex.
+   * No-op where unsupported. */
+  UV_UDP_RECVPKTINFO = 2048,
+  /* Enable UDP GRO (Generic Receive Offload) receive coalescing.
+   * The kernel coalesces consecutive datagrams from the same source into a
+   * single super-packet. libuv splits them and calls recv_cb once per
+   * segment. recv_t.segment_size is set to the original segment stride.
+   * Linux 5.0+ only; silently ignored elsewhere.
+   * Mutually exclusive with UV_UDP_GRO_RAW. */
+  UV_UDP_GRO = 4096,
+  /* Enable UDP GRO without automatic splitting. recv_cb is called once per
+   * super-packet. recv_t.buf contains N back-to-back segments and
+   * recv_t.segment_size is the per-segment stride. The application is
+   * responsible for splitting: for i in [0, nread, segment_size).
+   * Linux 5.0+ only; silently ignored elsewhere.
+   * Mutually exclusive with UV_UDP_GRO. */
+  UV_UDP_GRO_RAW = 8192,
+  /* Enable kernel packet pacing via SO_TXTIME. When set, the txtime field
+   * in uv_udp_mmsg_t specifies a target transmission time (nanoseconds
+   * since CLOCK_TAI). The Linux FQ qdisc holds the packet until that time.
+   * Linux 4.19+ only; silently ignored elsewhere. */
+  UV_UDP_TXTIME = 16384,
+  /* Indicates data from the Linux MSG_ERRQUEUE error queue.
+   * Set in uv_udp_recv_t.flags when the received message came from the
+   * socket error queue (IP_RECVERR / IPV6_RECVERR). */
+  UV_UDP_RECV_LINUX_RECVERR = 32768
 };
 
 typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
@@ -831,6 +870,99 @@ UV_EXTERN int uv_udp_using_recvmmsg(const uv_udp_t* handle);
 UV_EXTERN int uv_udp_recv_stop(uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_size(const uv_udp_t* handle);
 UV_EXTERN size_t uv_udp_get_send_queue_count(const uv_udp_t* handle);
+
+
+enum uv_udp_pmtud {
+  /* Disable PMTUD (clear DF bit, allow fragmentation). */
+  UV_UDP_PMTUD_OFF = 0,
+  /*
+   * Set DF bit; kernel enforces cached PMTU (EMSGSIZE if pkt > cached PMTU).
+   * Maps to IP_PMTUDISC_DO on Linux, IP_DONTFRAG on BSD/macOS.
+   */
+  UV_UDP_PMTUD_DO = 1,
+  /*
+   * Set DF bit; kernel does NOT enforce cached PMTU.
+   * EMSGSIZE only if pkt > interface MTU. Preferred for application-level
+   * PMTUD. Maps to IP_PMTUDISC_PROBE on Linux. On BSD/macOS, same as DO
+   * (no distinction between modes).
+   */
+  UV_UDP_PMTUD_PROBE = 2
+};
+
+/* Per-packet receive metadata. Stack-allocated and passed to uv_udp_recv2_cb
+ * by const pointer. Valid only for the duration of the callback. */
+typedef struct uv_udp_recv_s uv_udp_recv_t;
+struct uv_udp_recv_s {
+  ssize_t nread;
+  const uv_buf_t* buf;
+  const struct sockaddr* addr;
+  struct sockaddr_storage local;
+  unsigned int ifindex;
+  int ecn;
+  unsigned int flags;
+  unsigned int segment_size;
+};
+
+typedef void (*uv_udp_recv2_cb)(uv_udp_t* handle,
+                                const uv_udp_recv_t* recv);
+
+/* Enhanced receive: passes per-packet metadata (ECN, pktinfo, GRO) through
+ * the uv_udp_recv_t struct. The alloc_cb follows the standard uv_alloc_cb
+ * signature. The callback style is tracked internally via a handle flag;
+ * call uv_udp_recv_stop() before switching between recv_start/recv_start2. */
+UV_EXTERN int uv_udp_recv_start2(uv_udp_t* handle,
+                                  uv_alloc_cb alloc_cb,
+                                  uv_udp_recv2_cb recv_cb);
+
+/* Configure socket options on a handle that already has a socket (after
+ * uv_udp_init_ex with AF hint, uv_udp_open, or uv_udp_bind). Accepts
+ * UV_UDP_RECVECN, UV_UDP_PMTUD, UV_UDP_RECVPKTINFO, UV_UDP_LINUX_RECVERR.
+ * Returns UV_EBADF if no socket exists. */
+UV_EXTERN int uv_udp_configure(uv_udp_t* handle, unsigned int flags);
+
+/* Set the ECN codepoint for all outgoing datagrams.
+ * ecn: 0=Not-ECT, 1=ECT(1), 2=ECT(0), 3=CE.
+ * Uses IP_TOS / IPV6_TCLASS. Call after bind/connect.
+ * CE (3) may be rejected on some platforms (Windows). */
+UV_EXTERN int uv_udp_set_ecn(uv_udp_t* handle, int ecn);
+
+/* Set the PMTUD mode. UV_UDP_PMTUD bind flag defaults to PROBE.
+ * On BSD/macOS, DO and PROBE are equivalent (boolean DF bit). */
+UV_EXTERN int uv_udp_set_pmtud(uv_udp_t* handle, enum uv_udp_pmtud mode);
+
+/* Query the kernel's cached path MTU (connected sockets only).
+ * Supported on Linux and Windows. Returns UV_ENOTSUP on BSD/macOS. */
+UV_EXTERN int uv_udp_getmtu(const uv_udp_t* handle, size_t* mtu);
+
+typedef struct uv_udp_mmsg_s uv_udp_mmsg_t;
+struct uv_udp_mmsg_s {
+  uv_buf_t* bufs;
+  unsigned int nbufs;
+  const struct sockaddr* addr;
+  unsigned int gso_size;
+  uint64_t txtime;
+};
+
+/* Send a batch of datagrams with optional GSO (UDP segmentation offload).
+ * Each message in msgs[] is sent as a single sendmsg call. When gso_size > 0,
+ * the kernel splits the concatenated buffer in bufs into segments of gso_size
+ * bytes (last segment may be shorter). GSO requires Linux 4.18+; on other
+ * platforms or older kernels, each message is sent without GSO and the buffer
+ * must contain exactly one datagram's worth of data.
+ * Returns the number of messages sent, or a negative error code. */
+UV_EXTERN int uv_udp_try_send_batch(uv_udp_t* handle,
+                                     uv_udp_mmsg_t* msgs,
+                                     unsigned int count);
+
+/* Returns the maximum number of GSO segments per send, or 0 if GSO is
+ * unavailable on this platform or socket. */
+UV_EXTERN unsigned int uv_udp_gso_max_segments(const uv_udp_t* handle);
+
+/* Set the CPU affinity for incoming packets on this socket.
+ * With SO_REUSEPORT, this pins the socket to receive packets processed by
+ * the specified CPU, reducing cross-CPU cache bouncing.
+ * Linux 3.9+ only. Returns UV_ENOTSUP elsewhere. */
+UV_EXTERN int uv_udp_set_cpu_affinity(uv_udp_t* handle, int cpu);
 
 
 /*
