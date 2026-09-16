@@ -913,6 +913,18 @@ API
         return 0;
     }
 
+.. c:function:: void uv_credentials_changed()
+
+    To be called by embedders to notify `libuv` that credentials of the
+    running process have changed. Only functional if iouring sqpoll-ring is
+    enabled: it synchronizes the ring credentials with the process'. In any
+    other scenario is a no-op.
+
+    Without calling this function after dropping privileges, a process could
+    still perform privileged filesystem operations through io_uring.
+
+    .. versionadded:: 1.53.0
+
 String manipulation functions
 -----------------------------
 
