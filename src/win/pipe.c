@@ -35,6 +35,21 @@
 #include <aclapi.h>
 #include <accctrl.h>
 
+/* Keep the Windows SDK's AF_UNIX address layout private so this also builds
+ * with SDKs that predate afunix.h. Availability is checked at runtime. */
+typedef struct {
+  ADDRESS_FAMILY sun_family;
+  char sun_path[108];
+} uv__sockaddr_un;
+
+/* AcceptEx needs its address buffer until completion. Extending this private
+ * allocation leaves the public uv_pipe_accept_t layout unchanged. */
+typedef struct {
+  uv_pipe_accept_t req;
+  LPFN_ACCEPTEX acceptex;
+  char buffer[2 * (sizeof(uv__sockaddr_un) + 16)];
+} uv__uds_accept_t;
+
 /* A zero-size buffer for use by uv_pipe_read */
 static char uv_zero_[] = "";
 
@@ -155,6 +170,38 @@ int uv_pipe_init(uv_loop_t* loop, uv_pipe_t* handle, int ipc) {
 }
 
 
+int uv_pipe_init_ex(uv_loop_t* loop,
+                    uv_pipe_t* handle,
+                    unsigned int flags) {
+  SOCKET socket;
+  int err;
+
+  if (flags & ~(UV_PIPE_INIT_IPC | UV_PIPE_INIT_UNIX_SOCKET))
+    return UV_EINVAL;
+
+  if ((flags & (UV_PIPE_INIT_IPC | UV_PIPE_INIT_UNIX_SOCKET)) ==
+      (UV_PIPE_INIT_IPC | UV_PIPE_INIT_UNIX_SOCKET))
+    return UV_ENOTSUP;
+
+  if (flags & UV_PIPE_INIT_UNIX_SOCKET) {
+    uv__once_init();
+    socket = WSASocketW(AF_UNIX, SOCK_STREAM, 0, NULL, 0,
+                        WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
+    if (socket == INVALID_SOCKET) {
+      err = WSAGetLastError();
+      return uv_translate_sys_error(err);
+    }
+    closesocket(socket);
+  }
+
+  uv_pipe_init(loop, handle, (flags & UV_PIPE_INIT_IPC) != 0);
+  if (flags & UV_PIPE_INIT_UNIX_SOCKET)
+    handle->flags |= UV_HANDLE_UNIX_SOCKET;
+
+  return 0;
+}
+
+
 static void uv__pipe_connection_init(uv_pipe_t* handle) {
   assert(!(handle->flags & UV_HANDLE_PIPESERVER));
   uv__connection_init((uv_stream_t*) handle);
@@ -223,7 +270,9 @@ static HANDLE open_named_pipe(const WCHAR* name, DWORD* duplex_flags) {
 
 static void close_pipe(uv_pipe_t* pipe) {
   assert(pipe->u.fd == -1 || pipe->u.fd > 2);
-  if (pipe->u.fd == -1)
+  if (pipe->flags & UV_HANDLE_UNIX_SOCKET)
+    closesocket((SOCKET) pipe->handle);
+  else if (pipe->u.fd == -1)
     CloseHandle(pipe->handle);
   else
     _close(pipe->u.fd);
@@ -455,6 +504,9 @@ int uv__create_stdio_pipe_pair(uv_loop_t* loop,
   unsigned int client_flags;
   int err;
 
+  if (parent_pipe->flags & UV_HANDLE_UNIX_SOCKET)
+    return ERROR_NOT_SUPPORTED;
+
   uv__pipe_connection_init(parent_pipe);
 
   server_pipe = INVALID_HANDLE_VALUE;
@@ -654,6 +706,11 @@ void uv__pipe_shutdown(uv_loop_t* loop, uv_pipe_t* handle, uv_shutdown_t *req) {
     return;
   }
 
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    uv__insert_pending_req(loop, (uv_req_t*) req);
+    return;
+  }
+
   /* Try to avoid flushing the pipe buffer in the thread pool. */
   nt_status = pNtQueryInformationFile(handle->handle,
                                       &io_status,
@@ -741,10 +798,228 @@ void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle) {
 
 
 void uv_pipe_pending_instances(uv_pipe_t* handle, int count) {
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+    return;
   if (handle->flags & UV_HANDLE_BOUND)
     return;
   handle->pipe.serv.pending_instances = count;
   handle->flags |= UV_HANDLE_PIPESERVER;
+}
+
+
+static int uv__pipe_uds_address(uv__sockaddr_un* addr,
+                                const char* name,
+                                size_t namelen) {
+  if (namelen >= sizeof(addr->sun_path))
+    return UV_EINVAL;
+
+  /* Device pipe names always belong to the named-pipe transport. */
+  if (namelen >= 8 &&
+      (name[0] == '\\' || name[0] == '/') &&
+      (name[1] == '\\' || name[1] == '/') &&
+      (name[2] == '.' || name[2] == '?') &&
+      (name[3] == '\\' || name[3] == '/') &&
+      _strnicmp(name + 4, "pipe", 4) == 0 &&
+      (namelen == 8 || name[8] == '\\' || name[8] == '/'))
+    return UV_EINVAL;
+
+  memset(addr, 0, sizeof(*addr));
+  addr->sun_family = AF_UNIX;
+  memcpy(addr->sun_path, name, namelen);
+  return 0;
+}
+
+
+static int uv__pipe_uds_socket(uv_loop_t* loop, SOCKET* result) {
+  SOCKET socket;
+  u_long nonblocking;
+  int err;
+
+  socket = WSASocketW(AF_UNIX, SOCK_STREAM, 0, NULL, 0,
+                      WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
+  if (socket == INVALID_SOCKET)
+    return WSAGetLastError();
+
+  nonblocking = 1;
+  if (ioctlsocket(socket, FIONBIO, &nonblocking) == SOCKET_ERROR) {
+    err = WSAGetLastError();
+    goto error;
+  }
+
+  if (CreateIoCompletionPort((HANDLE) socket,
+                             loop->iocp,
+                             (ULONG_PTR) socket,
+                             0) == NULL) {
+    err = GetLastError();
+    goto error;
+  }
+
+  *result = socket;
+  return 0;
+
+error:
+  closesocket(socket);
+  return err;
+}
+
+
+static int uv__pipe_uds_bind(uv_pipe_t* handle,
+                             const char* name,
+                             size_t namelen) {
+  uv__sockaddr_un addr;
+  uv__uds_accept_t* accept;
+  SOCKET socket;
+  WCHAR* wname;
+  WCHAR* full_name;
+  DWORD len;
+  DWORD full_len;
+  int err;
+
+  if (handle->flags & UV_HANDLE_CONNECTION)
+    return UV_EINVAL;
+
+  err = uv__pipe_uds_address(&addr, name, namelen);
+  if (err)
+    return err;
+
+  err = uv__convert_utf8_to_utf16(addr.sun_path, &wname);
+  if (err)
+    return err;
+
+  full_name = NULL;
+  accept = NULL;
+  socket = INVALID_SOCKET;
+  len = GetFullPathNameW(wname, 0, NULL, NULL);
+  if (len == 0) {
+    err = uv_translate_sys_error(GetLastError());
+    goto error;
+  }
+  full_name = uv__malloc(len * sizeof(*full_name));
+  if (full_name == NULL) {
+    err = UV_ENOMEM;
+    goto error;
+  }
+  full_len = GetFullPathNameW(wname, len, full_name, NULL);
+  if (full_len == 0) {
+    err = uv_translate_sys_error(GetLastError());
+    goto error;
+  }
+  if (full_len >= len) {
+    err = UV_ENAMETOOLONG;
+    goto error;
+  }
+
+  accept = uv__calloc(1, sizeof(*accept));
+  if (accept == NULL) {
+    err = UV_ENOMEM;
+    goto error;
+  }
+  UV_REQ_INIT(&accept->req, UV_ACCEPT);
+  accept->req.data = handle;
+  accept->req.pipeHandle = INVALID_HANDLE_VALUE;
+
+  err = uv__pipe_uds_socket(handle->loop, &socket);
+  if (err) {
+    err = uv_translate_sys_error(err);
+    goto error;
+  }
+  if (!uv__get_acceptex_function(socket, &accept->acceptex)) {
+    err = uv_translate_sys_error(WSAGetLastError());
+    goto error;
+  }
+
+  /* Make bind the last fallible step: a failed bind never owns the pathname. */
+  if (bind(socket, (const struct sockaddr*) &addr, sizeof(addr))) {
+    err = uv_translate_sys_error(WSAGetLastError());
+    goto error;
+  }
+
+  handle->handle = (HANDLE) socket;
+  handle->name = full_name;
+  handle->pipe.serv.accept_reqs = &accept->req;
+  handle->pipe.serv.pending_accepts = NULL;
+  handle->pipe.serv.pending_instances = 1;
+  handle->flags |= UV_HANDLE_PIPESERVER | UV_HANDLE_BOUND;
+  uv__free(wname);
+  return 0;
+
+error:
+  if (socket != INVALID_SOCKET)
+    closesocket(socket);
+  uv__free(accept);
+  uv__free(full_name);
+  uv__free(wname);
+  return err;
+}
+
+
+static int uv__pipe_uds_connect(uv_connect_t* req,
+                                uv_pipe_t* handle,
+                                const char* name,
+                                size_t namelen) {
+  uv__sockaddr_un addr;
+  uv__sockaddr_un local_addr;
+  LPFN_CONNECTEX connectex;
+  SOCKET socket;
+  DWORD bytes;
+  int err;
+
+  err = uv__pipe_uds_address(&addr, name, namelen);
+  if (err)
+    return err;
+  if (uv__is_closing(handle) || handle->flags & UV_HANDLE_PIPESERVER)
+    return UV_EINVAL;
+  if (handle->flags & UV_HANDLE_CONNECTION)
+    return UV_EBUSY;
+
+  memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+  uv__pipe_connection_init(handle);
+  socket = INVALID_SOCKET;
+  err = uv__pipe_uds_socket(handle->loop, &socket);
+  if (err)
+    goto error;
+  if (!uv__get_connectex_function(socket, &connectex)) {
+    err = WSAGetLastError();
+    goto error;
+  }
+
+  /* ConnectEx requires a bound socket. An empty pathname binds an unnamed
+   * local endpoint and creates no filesystem entry. */
+  memset(&local_addr, 0, sizeof(local_addr));
+  local_addr.sun_family = AF_UNIX;
+  if (bind(socket, (const struct sockaddr*) &local_addr, sizeof(local_addr))) {
+    err = WSAGetLastError();
+    goto error;
+  }
+
+  /* Keep ownership on the handle while ConnectEx is pending, so uv_close can
+   * cancel it without storing anything in the live OVERLAPPED union. */
+  handle->handle = (HANDLE) socket;
+  if (!connectex(socket,
+                  (const struct sockaddr*) &addr,
+                  sizeof(addr),
+                  NULL,
+                  0,
+                  &bytes,
+                  &req->u.io.overlapped)) {
+    err = WSAGetLastError();
+    if (err != ERROR_IO_PENDING)
+      goto error;
+  }
+
+  handle->reqs_pending++;
+  REGISTER_HANDLE_REQ(handle->loop, handle);
+  return 0;
+
+error:
+  if (socket != INVALID_SOCKET)
+    closesocket(socket);
+  handle->handle = INVALID_HANDLE_VALUE;
+  SET_REQ_ERROR(req, err);
+  uv__insert_pending_req(handle->loop, (uv_req_t*) req);
+  handle->reqs_pending++;
+  REGISTER_HANDLE_REQ(handle->loop, handle);
+  return 0;
 }
 
 
@@ -786,6 +1061,9 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (uv__is_closing(handle)) {
     return UV_EINVAL;
   }
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+    return uv__pipe_uds_bind(handle, name, namelen);
 
   name_copy = uv__malloc(namelen + 1);
   if (name_copy == NULL) {
@@ -957,6 +1235,9 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (includes_nul(name, namelen)) {
     return UV_EINVAL;
   }
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+    return uv__pipe_uds_connect(req, handle, name, namelen);
 
   name_copy = uv__malloc(namelen + 1);
   if (name_copy == NULL) {
@@ -1243,6 +1524,30 @@ void uv__pipe_close(uv_loop_t* loop, uv_pipe_t* handle) {
 
   uv__pipe_interrupt_read(handle);
 
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    if (handle->flags & UV_HANDLE_PIPESERVER) {
+      if (handle->pipe.serv.accept_reqs != NULL) {
+        pipeHandle = handle->pipe.serv.accept_reqs->pipeHandle;
+        if (pipeHandle != INVALID_HANDLE_VALUE) {
+          closesocket((SOCKET) pipeHandle);
+          handle->pipe.serv.accept_reqs->pipeHandle = INVALID_HANDLE_VALUE;
+        }
+      }
+    }
+    if (handle->handle != INVALID_HANDLE_VALUE)
+      close_pipe(handle);
+    if (handle->name != NULL) {
+      /* Only successfully bound listeners own a pathname. */
+      assert(handle->flags & UV_HANDLE_PIPESERVER);
+      DeleteFileW(handle->name);
+      uv__free(handle->name);
+      handle->name = NULL;
+    }
+    if (handle->reqs_pending == 0)
+      uv__want_endgame(loop, (uv_handle_t*) handle);
+    return;
+  }
+
   if (handle->name) {
     uv__free(handle->name);
     handle->name = NULL;
@@ -1292,6 +1597,41 @@ static void uv__pipe_queue_accept(uv_loop_t* loop, uv_pipe_t* handle,
   BOOL success;
 
   assert(handle->flags & UV_HANDLE_LISTENING);
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    uv__uds_accept_t* accept = (uv__uds_accept_t*) req;
+    SOCKET socket;
+    DWORD bytes;
+    int err;
+
+    assert(req->pipeHandle == INVALID_HANDLE_VALUE);
+    socket = WSASocketW(AF_UNIX, SOCK_STREAM, 0, NULL, 0,
+                        WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
+    if (socket == INVALID_SOCKET) {
+      err = WSAGetLastError();
+    } else {
+      req->pipeHandle = (HANDLE) socket;
+      memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+      success = accept->acceptex((SOCKET) handle->handle,
+                                 socket,
+                                 accept->buffer,
+                                 0,
+                                 sizeof(uv__sockaddr_un) + 16,
+                                 sizeof(uv__sockaddr_un) + 16,
+                                 &bytes,
+                                 &req->u.io.overlapped);
+      err = success ? 0 : WSAGetLastError();
+    }
+    if (err != 0 && err != ERROR_IO_PENDING) {
+      if (socket != INVALID_SOCKET)
+        closesocket(socket);
+      req->pipeHandle = INVALID_HANDLE_VALUE;
+      SET_REQ_ERROR(req, err);
+      uv__insert_pending_req(loop, (uv_req_t*) req);
+    }
+    handle->reqs_pending++;
+    return;
+  }
 
   if (!firstInstance && !pipe_alloc_accept(loop, handle, req, FALSE)) {
     SET_REQ_ERROR(req, GetLastError());
@@ -1353,7 +1693,45 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
       return err;
 
   } else {
+    if (client->type != UV_NAMED_PIPE ||
+        ((server->flags ^ client->flags) & UV_HANDLE_UNIX_SOCKET))
+      return ERROR_INVALID_PARAMETER;
+
     pipe_client = (uv_pipe_t*) client;
+    if (server->flags & UV_HANDLE_UNIX_SOCKET) {
+      u_long nonblocking = 1;
+
+      if (client->flags & (UV_HANDLE_CONNECTION | UV_HANDLE_PIPESERVER) ||
+          uv__is_closing(client))
+        return ERROR_INVALID_PARAMETER;
+      req = server->pipe.serv.pending_accepts;
+      if (req == NULL)
+        return WSAEWOULDBLOCK;
+
+      err = 0;
+      if (ioctlsocket((SOCKET) req->pipeHandle, FIONBIO, &nonblocking))
+        err = WSAGetLastError();
+      else if (CreateIoCompletionPort(req->pipeHandle,
+                                      client->loop->iocp,
+                                      (ULONG_PTR) req->pipeHandle,
+                                      0) == NULL)
+        err = GetLastError();
+
+      if (err) {
+        closesocket((SOCKET) req->pipeHandle);
+      } else {
+        uv__pipe_connection_init(pipe_client);
+        pipe_client->handle = req->pipeHandle;
+        pipe_client->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
+      }
+      server->pipe.serv.pending_accepts = req->next_pending;
+      req->next_pending = NULL;
+      req->pipeHandle = INVALID_HANDLE_VALUE;
+      if (!(server->flags & UV_HANDLE_CLOSING))
+        uv__pipe_queue_accept(loop, server, req, FALSE);
+      return err;
+    }
+
     uv__pipe_connection_init(pipe_client);
 
     /* Find a connection instance that has been connected, but not yet
@@ -1392,6 +1770,8 @@ int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
 
   if (handle->flags & UV_HANDLE_LISTENING) {
     handle->stream.serv.connection_cb = cb;
+    if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+      return 0;
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND)) {
@@ -1410,12 +1790,18 @@ int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
     return WSAEINVAL;
   }
 
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    if (listen((SOCKET) handle->handle, backlog) == SOCKET_ERROR)
+      return WSAGetLastError();
+  }
+
   handle->flags |= UV_HANDLE_LISTENING;
   INCREASE_ACTIVE_COUNT(loop, handle);
   handle->stream.serv.connection_cb = cb;
 
   /* First pipe handle should have already been created in uv_pipe_bind */
-  assert(handle->pipe.serv.accept_reqs[0].pipeHandle != INVALID_HANDLE_VALUE);
+  assert((handle->flags & UV_HANDLE_UNIX_SOCKET) ||
+         handle->pipe.serv.accept_reqs[0].pipeHandle != INVALID_HANDLE_VALUE);
 
   for (i = 0; i < handle->pipe.serv.pending_instances; i++) {
     uv__pipe_queue_accept(loop, handle, &handle->pipe.serv.accept_reqs[i], i == 0);
@@ -1614,6 +2000,32 @@ static void uv__pipe_queue_read(uv_loop_t* loop, uv_pipe_t* handle) {
   assert(handle->handle != INVALID_HANDLE_VALUE);
 
   req = &handle->read_req;
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    uv_buf_t buf = uv_buf_init(uv_zero_, 0);
+    DWORD bytes;
+    DWORD flags = 0;
+    int err;
+
+    memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
+    result = WSARecv((SOCKET) handle->handle,
+                     (WSABUF*) &buf,
+                     1,
+                     &bytes,
+                     &flags,
+                     &req->u.io.overlapped,
+                     NULL);
+    if (result == SOCKET_ERROR) {
+      err = WSAGetLastError();
+      if (err != ERROR_IO_PENDING) {
+        SET_REQ_ERROR(req, err);
+        uv__insert_pending_req(loop, (uv_req_t*) req);
+      }
+    }
+    handle->flags |= UV_HANDLE_READ_PENDING;
+    handle->reqs_pending++;
+    return;
+  }
 
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     assert(handle->pipe.conn.readfile_thread_handle == INVALID_HANDLE_VALUE);
@@ -1821,6 +2233,37 @@ static int uv__pipe_write_data(uv_loop_t* loop,
   if (write_buf.len > UV__IO_MAX_BYTES)
     return ERROR_INVALID_PARAMETER; /* Maps to UV_EINVAL. */
 
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    DWORD bytes;
+
+    assert(!(handle->flags & UV_HANDLE_BLOCKING_WRITES));
+    result = WSASend((SOCKET) handle->handle,
+                     (WSABUF*) &write_buf,
+                     1,
+                     &bytes,
+                     0,
+                     &req->u.io.overlapped,
+                     NULL);
+    if (result == SOCKET_ERROR) {
+      err = WSAGetLastError();
+      if (err != ERROR_IO_PENDING) {
+        if (req->coalesced) {
+          uv__free(req->write_buffer.base);
+          req->write_buffer = uv_null_buf_;
+        }
+        return err;
+      }
+      req->u.io.queued_bytes = write_buf.len;
+      handle->write_queue_size += write_buf.len;
+    } else {
+      req->u.io.queued_bytes = 0;
+    }
+    REGISTER_HANDLE_REQ(loop, handle);
+    handle->reqs_pending++;
+    handle->stream.conn.write_reqs_pending++;
+    return 0;
+  }
+
   if ((handle->flags &
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) ==
       (UV_HANDLE_BLOCKING_WRITES | UV_HANDLE_NON_OVERLAPPED_PIPE)) {
@@ -1924,6 +2367,26 @@ static int uv__pipe_write_data(uv_loop_t* loop,
   handle->stream.conn.write_reqs_pending++;
 
   return 0;
+}
+
+
+int uv__pipe_try_write(uv_pipe_t* handle,
+                        const uv_buf_t bufs[],
+                        unsigned int nbufs) {
+  DWORD bytes;
+
+  assert(handle->flags & UV_HANDLE_UNIX_SOCKET);
+  if (handle->stream.conn.write_reqs_pending != 0)
+    return UV_EAGAIN;
+  if (WSASend((SOCKET) handle->handle,
+               (WSABUF*) bufs,
+               nbufs,
+               &bytes,
+               0,
+               NULL,
+               NULL) == SOCKET_ERROR)
+    return uv_translate_sys_error(WSAGetLastError());
+  return bytes;
 }
 
 
@@ -2177,6 +2640,33 @@ static int uv__pipe_read_data(uv_loop_t* loop,
   if (max_bytes > buf.len)
     max_bytes = buf.len;
 
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    int bytes;
+
+    bytes = recv((SOCKET) handle->handle, buf.base, max_bytes, 0);
+    if (bytes > 0) {
+      *bytes_read = bytes;
+      handle->read_cb((uv_stream_t*) handle, bytes, &buf);
+      return (DWORD) bytes == max_bytes;
+    }
+    *bytes_read = 0;
+    if (bytes == 0) {
+      handle->flags &= ~UV_HANDLE_READABLE;
+      uv__pipe_read_eof(loop, handle, buf);
+    } else {
+      r = WSAGetLastError();
+      if (r == WSAEWOULDBLOCK) {
+        handle->read_cb((uv_stream_t*) handle, 0, &buf);
+      } else {
+        if (r == WSAECONNABORTED)
+          r = WSAECONNRESET;
+        handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
+        uv__pipe_read_error(loop, handle, r, buf);
+      }
+    }
+    return 0;
+  }
+
   if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     /* The user failed to supply a pipe that can be used non-blocking or with
      * threads. Try to estimate the amount of data that is safe to read without
@@ -2342,13 +2832,24 @@ void uv__process_pipe_read_req(uv_loop_t* loop,
 
   if (!REQ_SUCCESS(req)) {
     /* An error occurred doing the zero-read. */
-    err = GET_REQ_ERROR(req);
+    if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+      err = GET_REQ_SOCK_ERROR(req);
+    else
+      err = GET_REQ_ERROR(req);
 
     /* If the read was cancelled by uv__pipe_interrupt_read(), the request may
      * indicate an ERROR_OPERATION_ABORTED error. This error isn't relevant to
      * the user; we'll start a new zero-read at the end of this function. */
-    if (err != ERROR_OPERATION_ABORTED)
-      uv__pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
+    if (err != ERROR_OPERATION_ABORTED && err != WSAEINTR) {
+      if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+        if (err == WSAECONNABORTED)
+          err = WSAECONNRESET;
+        handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
+        uv__pipe_read_error(loop, handle, err, uv_null_buf_);
+      } else {
+        uv__pipe_read_error_or_eof(loop, handle, err, uv_null_buf_);
+      }
+    }
 
   } else {
     /* The zero-read completed without error, indicating there is data
@@ -2401,7 +2902,15 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     req->event_handle = NULL;
   }
 
-  err = GET_REQ_ERROR(req);
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    err = GET_REQ_SOCK_ERROR(req);
+    /* Match TCP: Winsock reports an aborted local write when closing the
+     * socket cancels an outstanding operation. */
+    if (err == WSAECONNABORTED)
+      err = ERROR_OPERATION_ABORTED;
+  } else {
+    err = GET_REQ_ERROR(req);
+  }
 
   /* For non-overlapped pipes, if this request was the active write
    * (dispatched to the thread pool), clear the active slot and dispatch the
@@ -2451,6 +2960,32 @@ void uv__process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
     return;
   }
 
+  if ((handle->flags & UV_HANDLE_UNIX_SOCKET) &&
+      req->pipeHandle == INVALID_HANDLE_VALUE) {
+    /* Failure to queue AcceptEx concerns the listener, rather than one
+     * incoming connection. Match TCP by stopping and reporting the error. */
+    if (handle->flags & UV_HANDLE_LISTENING) {
+      handle->flags &= ~UV_HANDLE_LISTENING;
+      DECREASE_ACTIVE_COUNT(loop, handle);
+      if (handle->stream.serv.connection_cb)
+        handle->stream.serv.connection_cb(
+            (uv_stream_t*) handle,
+            uv_translate_sys_error(GET_REQ_SOCK_ERROR(req)));
+    }
+    DECREASE_PENDING_REQ_COUNT(handle);
+    return;
+  }
+
+  if ((handle->flags & UV_HANDLE_UNIX_SOCKET) && REQ_SUCCESS(req)) {
+    SOCKET socket = (SOCKET) handle->handle;
+    if (setsockopt((SOCKET) req->pipeHandle,
+                    SOL_SOCKET,
+                    SO_UPDATE_ACCEPT_CONTEXT,
+                    (const char*) &socket,
+                    sizeof(socket)) == SOCKET_ERROR)
+      SET_REQ_ERROR(req, WSAGetLastError());
+  }
+
   if (REQ_SUCCESS(req)) {
     assert(req->pipeHandle != INVALID_HANDLE_VALUE);
     req->next_pending = handle->pipe.serv.pending_accepts;
@@ -2461,7 +2996,10 @@ void uv__process_pipe_accept_req(uv_loop_t* loop, uv_pipe_t* handle,
     }
   } else {
     if (req->pipeHandle != INVALID_HANDLE_VALUE) {
-      CloseHandle(req->pipeHandle);
+      if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+        closesocket((SOCKET) req->pipeHandle);
+      else
+        CloseHandle(req->pipeHandle);
       req->pipeHandle = INVALID_HANDLE_VALUE;
     }
     if (!(handle->flags & UV_HANDLE_CLOSING)) {
@@ -2482,6 +3020,39 @@ void uv__process_pipe_connect_req(uv_loop_t* loop, uv_pipe_t* handle,
   assert(handle->type == UV_NAMED_PIPE);
 
   UNREGISTER_HANDLE_REQ(loop, handle);
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    /* The void uv_pipe_connect wrapper queues validation failures as libuv
+     * errors, without submitting an overlapped operation or owning a socket. */
+    err = (int) GET_REQ_STATUS(req);
+    if (err < 0 && err > UV_ERRNO_MAX) {
+      if (req->cb)
+        req->cb(req, err);
+      DECREASE_PENDING_REQ_COUNT(handle);
+      return;
+    }
+
+    if (handle->flags & UV_HANDLE_CLOSING) {
+      err = UV_ECANCELED;
+    } else if (!REQ_SUCCESS(req)) {
+      err = uv_translate_sys_error(GET_REQ_SOCK_ERROR(req));
+    } else if (setsockopt((SOCKET) handle->handle,
+                           SOL_SOCKET,
+                           SO_UPDATE_CONNECT_CONTEXT,
+                           NULL,
+                           0) == SOCKET_ERROR) {
+      err = uv_translate_sys_error(WSAGetLastError());
+    } else {
+      handle->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
+      err = 0;
+    }
+    if (err && handle->handle != INVALID_HANDLE_VALUE)
+      close_pipe(handle);
+    if (req->cb)
+      req->cb(req, err);
+    DECREASE_PENDING_REQ_COUNT(handle);
+    return;
+  }
 
   err = 0;
   if (REQ_SUCCESS(req)) {
@@ -2518,6 +3089,13 @@ void uv__process_pipe_shutdown_req(uv_loop_t* loop, uv_pipe_t* handle,
   if (handle->flags & UV_HANDLE_CLOSING) {
     /* Already closing. Cancel the shutdown. */
     err = UV_ECANCELED;
+  } else if (handle->flags & UV_HANDLE_UNIX_SOCKET) {
+    if (shutdown((SOCKET) handle->handle, SD_SEND) == SOCKET_ERROR)
+      err = uv_translate_sys_error(WSAGetLastError());
+    else {
+      handle->flags |= UV_HANDLE_SHUT;
+      err = 0;
+    }
   } else if (!REQ_SUCCESS(req)) {
     /* An error occurred in trying to shutdown gracefully. */
     err = uv_translate_sys_error(GET_REQ_ERROR(req));
@@ -2633,13 +3211,18 @@ static void eof_timer_close_cb(uv_handle_t* handle) {
 
 
 int uv_pipe_open(uv_pipe_t* pipe, uv_file file) {
-  HANDLE os_handle = uv__get_osfhandle(file);
+  HANDLE os_handle;
   NTSTATUS nt_status;
   IO_STATUS_BLOCK io_status;
   FILE_ACCESS_INFORMATION access;
   DWORD duplex_flags = 0;
   int err;
 
+  /* uv_file is a CRT descriptor on Windows, not a pointer-sized SOCKET. */
+  if (pipe->flags & UV_HANDLE_UNIX_SOCKET)
+    return UV_ENOTSUP;
+
+  os_handle = uv__get_osfhandle(file);
   if (os_handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
   if (pipe->flags & UV_HANDLE_PIPESERVER)
@@ -2816,9 +3399,46 @@ int uv_pipe_pending_count(uv_pipe_t* handle) {
 }
 
 
+static int uv__pipe_uds_getname(const uv_pipe_t* handle,
+                                uv__peersockfunc func,
+                                char* buffer,
+                                size_t* size) {
+  uv__sockaddr_un addr;
+  int addrlen;
+  int err;
+  size_t len;
+  char* end;
+
+  memset(&addr, 0, sizeof(addr));
+  addrlen = sizeof(addr);
+  err = uv__getsockpeername((const uv_handle_t*) handle,
+                            func,
+                            (struct sockaddr*) &addr,
+                            &addrlen,
+                            0);
+  if (err) {
+    *size = 0;
+    return err;
+  }
+  end = memchr(addr.sun_path, '\0', sizeof(addr.sun_path));
+  len = end == NULL ? sizeof(addr.sun_path) : (size_t) (end - addr.sun_path);
+  if (*size <= len) {
+    *size = len + 1;
+    return UV_ENOBUFS;
+  }
+  memcpy(buffer, addr.sun_path, len);
+  buffer[len] = '\0';
+  *size = len;
+  return 0;
+}
+
+
 int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+    return uv__pipe_uds_getname(handle, getsockname, buffer, size);
 
   if (handle->flags & UV_HANDLE_BOUND)
     return uv__pipe_getname(handle, buffer, size);
@@ -2836,6 +3456,9 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
 int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
   if (buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+    return uv__pipe_uds_getname(handle, getpeername, buffer, size);
 
   /* emulate unix behaviour */
   if (handle->flags & UV_HANDLE_BOUND)
@@ -2872,6 +3495,9 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 
   if (handle == NULL || handle->handle == INVALID_HANDLE_VALUE)
     return UV_EBADF;
+
+  if (handle->flags & UV_HANDLE_UNIX_SOCKET)
+    return UV_ENOTSUP;
 
   if (mode != UV_READABLE &&
       mode != UV_WRITABLE &&
