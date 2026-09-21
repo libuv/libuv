@@ -394,6 +394,83 @@ API
 
     :returns: 0 on success, or an error code < 0 on failure.
 
+.. c:function:: int uv_udp_set_tos(uv_udp_t* handle, int tos)
+
+    Set the IPv4 type of service (``IP_TOS``) or IPv6 traffic class
+    (``IPV6_TCLASS``) of outgoing packets. The value carries the DSCP field
+    in the high six bits and the ECN codepoint in the low two bits.
+
+    For dual-stack sockets only the IPv6 traffic class is set.
+
+    :param handle: UDP handle. Should have been initialized with
+        :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
+        been bound to an address explicitly with :c:func:`uv_udp_bind`, or
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
+
+    :param tos: 0 through 255.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+        ``UV_ENOTSUP`` on Windows, which has no socket-level TOS setter, and
+        for IPv6 handles on platforms without ``IPV6_TCLASS``.
+
+    .. versionadded:: 1.53.0
+
+.. c:function:: int uv_udp_set_dontfrag(uv_udp_t* handle, int on)
+
+    Enable or disable the don't-fragment flag on outgoing packets, as
+    required for application-level path MTU discovery. On Linux this sets
+    ``IP_MTU_DISCOVER`` / ``IPV6_MTU_DISCOVER`` to ``*_PMTUDISC_PROBE``, so
+    packets larger than the kernel's path MTU estimate are passed through
+    rather than fragmented or rejected; disabling sets ``*_PMTUDISC_DONT``,
+    clearing the flag and allowing fragmentation. On other Unixes this sets
+    ``IP_DONTFRAG`` / ``IPV6_DONTFRAG`` and on Windows ``IP_DONTFRAGMENT`` /
+    ``IPV6_DONTFRAG``.
+
+    :param handle: UDP handle. Should have been initialized with
+        :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
+        been bound to an address explicitly with :c:func:`uv_udp_bind`, or
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
+
+    :param on: 1 for on, 0 for off.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+        ``UV_ENOTSUP`` on platforms without don't-fragment control.
+
+    .. versionadded:: 1.53.0
+
+.. c:function:: int uv_udp_set_incoming_cpu(uv_udp_t* handle, int cpu)
+
+    Set the CPU whose receive queue incoming packets for this socket are
+    steered to (``SO_INCOMING_CPU``). Only supported on Linux.
+
+    :param handle: UDP handle. Should have been initialized with
+        :c:func:`uv_udp_init_ex` as either ``AF_INET`` or ``AF_INET6``, or have
+        been bound to an address explicitly with :c:func:`uv_udp_bind`, or
+        implicitly with :c:func:`uv_udp_send` or :c:func:`uv_udp_recv_start`.
+
+    :param cpu: CPU index, 0 or greater.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+        ``UV_ENOTSUP`` on platforms without ``SO_INCOMING_CPU``.
+
+    .. versionadded:: 1.53.0
+
+.. c:function:: int uv_udp_get_mtu(const uv_udp_t* handle, int* mtu)
+
+    Get the kernel's current path MTU estimate for a connected UDP handle
+    (``IP_MTU`` / ``IPV6_MTU``). The handle must have been connected with
+    :c:func:`uv_udp_connect`. Only supported on Linux and Windows.
+
+    :param handle: UDP handle. Should have been connected with
+        :c:func:`uv_udp_connect`.
+
+    :param mtu: Pointer to the variable receiving the path MTU in bytes.
+
+    :returns: 0 on success, or an error code < 0 on failure.
+        ``UV_ENOTSUP`` on platforms without a path MTU query.
+
+    .. versionadded:: 1.53.0
+
 .. c:function:: int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, const uv_buf_t bufs[], unsigned int nbufs, const struct sockaddr* addr, uv_udp_send_cb send_cb)
 
     Send data over the UDP socket. If the socket has not previously been bound
