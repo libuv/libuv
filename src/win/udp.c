@@ -1021,6 +1021,25 @@ SOCKOPT_SETTER(multicast_loop,
 #undef VALIDATE_MULTICAST_LOOP
 
 
+int uv_udp_set_recv_info(uv_udp_t* handle, unsigned int mask) {
+  if (mask & ~(unsigned int) (UV_UDP_RECV_TOS | UV_UDP_RECV_TTL |
+                              UV_UDP_RECV_PKTINFO | UV_UDP_RECV_GRO))
+    return UV_EINVAL;
+
+  if (mask == 0)
+    return 0;
+
+  /* Requires a WSARecvMsg receive path; not yet implemented. */
+  return UV_ENOTSUP;
+}
+
+
+int uv_udp_recv_info(const uv_udp_t* handle, uv_udp_recv_info_t* info) {
+  /* No datagram delivery can have receive info enabled. */
+  return UV_EINVAL;
+}
+
+
 /* This function is an egress point, i.e. it returns libuv errors rather than
  * system errors.
  */
