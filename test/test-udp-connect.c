@@ -104,6 +104,8 @@ TEST_IMPL(udp_connect) {
   uv_udp_send_t req;
   struct sockaddr_in ext_addr;
   struct sockaddr_in tmp_addr;
+  struct sockaddr_in local_addr;
+  struct sockaddr_in reconnect_addr;
   int r;
   int addrlen;
 
@@ -139,8 +141,34 @@ TEST_IMPL(udp_connect) {
 
   r = uv_udp_connect(&client, (const struct sockaddr*) &lo_addr);
   ASSERT_OK(r);
-  r = uv_udp_connect(&client, (const struct sockaddr*) &ext_addr);
-  ASSERT_EQ(r, UV_EISCONN);
+
+  /* Re-connecting a connected handle re-points the peer in place, keeping the
+   * local binding. connect(2) permits this as long as the source address does
+   * not have to change; where a consecutive connect() is rejected
+   * uv_udp_connect() disconnects first. On Linux a disconnect drops an
+   * ephemerally bound port, so the in-place connect is what preserves it. */
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT_2, &reconnect_addr));
+
+  addrlen = sizeof(local_addr);
+  r = uv_udp_getsockname(&client, (struct sockaddr*) &local_addr, &addrlen);
+  ASSERT_OK(r);
+
+  r = uv_udp_connect(&client, (const struct sockaddr*) &reconnect_addr);
+  ASSERT_OK(r);
+
+  addrlen = sizeof(tmp_addr);
+  r = uv_udp_getpeername(&client, (struct sockaddr*) &tmp_addr, &addrlen);
+  ASSERT_OK(r);
+  ASSERT_EQ(tmp_addr.sin_port, reconnect_addr.sin_port);
+
+  addrlen = sizeof(tmp_addr);
+  r = uv_udp_getsockname(&client, (struct sockaddr*) &tmp_addr, &addrlen);
+  ASSERT_OK(r);
+  ASSERT_EQ(tmp_addr.sin_port, local_addr.sin_port);
+
+  /* Re-point back at the server for the remainder of the test. */
+  r = uv_udp_connect(&client, (const struct sockaddr*) &lo_addr);
+  ASSERT_OK(r);
 
   addrlen = sizeof(tmp_addr);
   r = uv_udp_getpeername(&client, (struct sockaddr*) &tmp_addr, &addrlen);
