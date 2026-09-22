@@ -23,6 +23,13 @@
 #include "task.h"
 #include <string.h>
 
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#if !TARGET_OS_IPHONE
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+#endif
+
 
 static void set_title(const char* title) {
   char buffer[512];
@@ -132,4 +139,113 @@ void process_title_big_argv(void) {
   /* Return value deliberately ignored. */
   uv_get_process_title(buf, sizeof(buf));
   ASSERT_NE(0, strcmp(buf, "fail"));
+}
+
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+static struct {
+  uv_mutex_t mutex;
+  size_t allocations;
+  size_t outstanding;
+} cf_allocator;
+
+
+static void* cf_allocate(CFIndex size, CFOptionFlags flags, void* info) {
+  void* ptr;
+
+  ptr = malloc(size);
+  if (ptr != NULL) {
+    uv_mutex_lock(&cf_allocator.mutex);
+    cf_allocator.allocations++;
+    cf_allocator.outstanding++;
+    uv_mutex_unlock(&cf_allocator.mutex);
+  }
+  return ptr;
+}
+
+
+static void cf_deallocate(void* ptr, void* info) {
+  if (ptr == NULL)
+    return;
+
+  uv_mutex_lock(&cf_allocator.mutex);
+  ASSERT_GT(cf_allocator.outstanding, 0);
+  cf_allocator.outstanding--;
+  uv_mutex_unlock(&cf_allocator.mutex);
+  free(ptr);
+}
+
+
+static void* cf_reallocate(void* ptr,
+                           CFIndex size,
+                           CFOptionFlags flags,
+                           void* info) {
+  if (ptr == NULL)
+    return cf_allocate(size, flags, info);
+  if (size == 0) {
+    cf_deallocate(ptr, info);
+    return NULL;
+  }
+  return realloc(ptr, size);
+}
+#endif
+
+
+TEST_IMPL(process_title_no_leak) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  CFAllocatorRef (*pCFAllocatorCreate)(CFAllocatorRef, CFAllocatorContext*);
+  CFAllocatorRef (*pCFAllocatorGetDefault)(void);
+  void (*pCFAllocatorSetDefault)(CFAllocatorRef);
+  void (*pCFRelease)(CFTypeRef);
+  CFAllocatorContext context;
+  CFAllocatorRef previous_allocator;
+  CFAllocatorRef allocator;
+  size_t allocations;
+  size_t outstanding;
+  uv_lib_t library;
+  int i;
+
+  ASSERT_OK(uv_dlopen("/System/Library/Frameworks/CoreFoundation.framework/"
+                     "Versions/A/CoreFoundation", &library));
+  ASSERT_OK(uv_dlsym(&library, "CFAllocatorCreate",
+                    (void**) &pCFAllocatorCreate));
+  ASSERT_OK(uv_dlsym(&library, "CFAllocatorGetDefault",
+                    (void**) &pCFAllocatorGetDefault));
+  ASSERT_OK(uv_dlsym(&library, "CFAllocatorSetDefault",
+                    (void**) &pCFAllocatorSetDefault));
+  ASSERT_OK(uv_dlsym(&library, "CFRelease", (void**) &pCFRelease));
+
+  /* Core Foundation keeps a default allocator alive even after replacement. */
+  ASSERT_OK(uv_mutex_init(&cf_allocator.mutex));
+  memset(&context, 0, sizeof(context));
+  context.allocate = cf_allocate;
+  context.reallocate = cf_reallocate;
+  context.deallocate = cf_deallocate;
+  allocator = pCFAllocatorCreate(NULL, &context);
+  ASSERT_NOT_NULL(allocator);
+  previous_allocator = pCFAllocatorGetDefault();
+  pCFAllocatorSetDefault(allocator);
+
+  /* Warm up framework caches before measuring repeated identical calls. */
+  for (i = 0; i < 10; i++)
+    set_title("process title leak test");
+  uv_mutex_lock(&cf_allocator.mutex);
+  allocations = cf_allocator.allocations;
+  outstanding = cf_allocator.outstanding;
+  uv_mutex_unlock(&cf_allocator.mutex);
+
+  for (i = 0; i < 10; i++)
+    set_title("process title leak test");
+  pCFAllocatorSetDefault(previous_allocator);
+  pCFRelease(allocator);
+
+  uv_mutex_lock(&cf_allocator.mutex);
+  ASSERT_GT(cf_allocator.allocations, allocations);
+  ASSERT_EQ(cf_allocator.outstanding, outstanding);
+  uv_mutex_unlock(&cf_allocator.mutex);
+  uv_dlclose(&library);
+  return 0;
+#else
+  RETURN_SKIP("Core Foundation is only used for process titles on macOS.");
+#endif
 }
