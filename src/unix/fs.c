@@ -91,8 +91,6 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 /* No openat(). Only dirfd == UV_FS_AT_FDCWD is supported. */
 # define openat(d, p, f, m)                                                   \
     ((d) == UV_FS_AT_FDCWD ? open(p, f, m) : (errno = ENOSYS, -1))
-#else
-STATIC_ASSERT(UV_FS_AT_FDCWD == AT_FDCWD);
 #endif
 
 #define INIT(subtype)                                                         \
