@@ -35,6 +35,9 @@ TEST_DECLARE   (loop_update_time)
 TEST_DECLARE   (loop_backend_timeout)
 TEST_DECLARE   (loop_configure)
 TEST_DECLARE   (loop_init_oom)
+#ifndef _WIN32
+TEST_DECLARE   (loop_watcher_resize_oom)
+#endif
 TEST_DECLARE   (default_loop_close)
 TEST_DECLARE   (barrier_1)
 TEST_DECLARE   (barrier_2)
@@ -642,6 +645,9 @@ TASK_LIST_START
   TEST_ENTRY  (loop_backend_timeout)
   TEST_ENTRY  (loop_configure)
   TEST_ENTRY  (loop_init_oom)
+#ifndef _WIN32
+  TEST_ENTRY  (loop_watcher_resize_oom)
+#endif
   TEST_ENTRY  (default_loop_close)
   TEST_ENTRY  (barrier_1)
   TEST_ENTRY  (barrier_2)
