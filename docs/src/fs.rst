@@ -238,6 +238,34 @@ API
         in binary mode. Because of this the O_BINARY and O_TEXT flags are not
         supported.
 
+.. c:function:: int uv_fs_openat(uv_loop_t* loop, uv_fs_t* req, uv_file dirfd, const char* path, int flags, int mode, uv_fs_cb cb)
+
+    Equivalent to :man:`openat(2)`.
+
+    A relative `path` is resolved against the directory open at `dirfd`
+    rather than the current working directory. Resolution follows the
+    directory itself, so renaming or moving it after it was opened does not
+    change what the request operates on. An absolute `path` ignores `dirfd`.
+    With `dirfd` set to ``UV_FS_AT_FDCWD`` this function is identical to
+    :c:func:`uv_fs_open`.
+
+    `dirfd` must remain open until the request completes. A `dirfd` that is
+    not open fails with ``UV_EBADF``; one that is not a directory fails with
+    ``UV_ENOTDIR``.
+
+    .. note::
+        On Windows a relative `path` is resolved by `NtCreateFile` under the
+        directory handle, without Win32 path normalization: ``.`` and ``..``
+        components are not interpreted, and a rooted (``\foo``) or
+        drive-relative (``C:foo``) path fails with ``UV_EINVAL``. Forward
+        slashes are accepted.
+
+    .. note::
+        z/OS: only ``UV_FS_AT_FDCWD`` is supported. Any other `dirfd` fails
+        with ``UV_ENOSYS``.
+
+    .. versionadded:: 1.53.0
+
 .. c:function:: int uv_fs_read(uv_loop_t* loop, uv_fs_t* req, uv_file file, const uv_buf_t bufs[], unsigned int nbufs, int64_t offset, uv_fs_cb cb)
 
     Equivalent to :man:`preadv(2)`. If the `offset` argument is `-1`, then
