@@ -165,11 +165,11 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   int is_path_dir;
   DWORD last_error;
   WCHAR* dir = NULL, *pathw = NULL;
-  WCHAR* dir_to_watch;
   DWORD short_path_buffer_len;
   WCHAR *short_path_buffer;
   WCHAR* short_path = NULL;
   HANDLE file_handle = INVALID_HANDLE_VALUE;
+  HANDLE dir_handle = INVALID_HANDLE_VALUE;
   BY_HANDLE_FILE_INFORMATION info;
 
   if (uv__is_active(handle))
@@ -209,11 +209,19 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   is_path_dir = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
 
-  CloseHandle(file_handle);
-  file_handle = INVALID_HANDLE_VALUE;
-
   if (is_path_dir) {
-    dir_to_watch = pathw;
+    /* Reopen the same file object with the access we actually need instead
+     * of resolving the path a second time, so a concurrent rename cannot
+     * swap the directory out from under us between the two opens.
+     */
+    dir_handle = ReOpenFile(file_handle,
+                            FILE_LIST_DIRECTORY,
+                            FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
+                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED);
+    if (dir_handle == INVALID_HANDLE_VALUE) {
+      last_error = GetLastError();
+      goto error;
+    }
   } else {
     /*
      * path is a file.  So we split path into dir & file parts, and
@@ -258,46 +266,42 @@ short_path_done:
      * other files are filtered out in uv__process_fs_event_req().
      * Not super efficient but c'est ça.
      */
-    dir_to_watch = dir;
-  }
+    dir_handle = CreateFileW(dir,
+                             FILE_LIST_DIRECTORY,
+                             FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
+                             NULL);
+    uv__free(dir);
+    dir = NULL;
+    if (dir_handle == INVALID_HANDLE_VALUE) {
+      last_error = GetLastError();
+      goto error;
+    }
 
-  file_handle = CreateFileW(dir_to_watch,
-                            FILE_LIST_DIRECTORY,
-                            FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
-                            NULL,
-                            OPEN_EXISTING,
-                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
-                            NULL);
-  uv__free(dir);
-  dir = NULL;
-  if (file_handle == INVALID_HANDLE_VALUE) {
-    last_error = GetLastError();
-    goto error;
-  }
+    if (!GetFileInformationByHandle(dir_handle, &info)) {
+      last_error = GetLastError();
+      goto error;
+    }
 
-  if (!GetFileInformationByHandle(file_handle, &info)) {
-    last_error = GetLastError();
-    goto error;
-  }
-
-  /* Race with another process: directory foo in foo/bar was replaced
-   * with a file. Bail out with an error, we're not recursing upwards.
-   */
-  if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-    /* TODO(bnoordhuis) ERROR_DIRECTORY is translated to UV_ENOENT,
-     * there's currently nothing that maps to UV_ENOTDIR.
+    /* Race with another process: directory foo in foo/bar was replaced
+     * with a file. Bail out with an error, we're not recursing upwards.
      */
-    last_error = ERROR_DIRECTORY;
-    goto error;
+    if (!(info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+      /* TODO(bnoordhuis) ERROR_DIRECTORY is translated to UV_ENOENT,
+       * there's currently nothing that maps to UV_ENOTDIR.
+       */
+      last_error = ERROR_DIRECTORY;
+      goto error;
+    }
   }
 
-  handle->dir_handle = file_handle;
+  CloseHandle(file_handle);
   file_handle = INVALID_HANDLE_VALUE;
 
-  if (handle->dir_handle == INVALID_HANDLE_VALUE) {
-    last_error = GetLastError();
-    goto error;
-  }
+  handle->dir_handle = dir_handle;
+  dir_handle = INVALID_HANDLE_VALUE;
 
   if (CreateIoCompletionPort(handle->dir_handle,
                              handle->loop->iocp,
@@ -348,6 +352,11 @@ error_uv:
   if (file_handle != INVALID_HANDLE_VALUE) {
     CloseHandle(file_handle);
     file_handle = INVALID_HANDLE_VALUE;
+  }
+
+  if (dir_handle != INVALID_HANDLE_VALUE) {
+    CloseHandle(dir_handle);
+    dir_handle = INVALID_HANDLE_VALUE;
   }
 
   if (handle->path) {
