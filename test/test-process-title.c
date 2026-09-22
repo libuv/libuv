@@ -25,9 +25,6 @@
 
 #ifdef __APPLE__
 #include <TargetConditionals.h>
-#if !TARGET_OS_IPHONE
-#include <CoreFoundation/CoreFoundation.h>
-#endif
 #endif
 
 
@@ -143,107 +140,106 @@ void process_title_big_argv(void) {
 
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
-static struct {
-  uv_mutex_t mutex;
-  size_t allocations;
-  size_t outstanding;
-} cf_allocator;
+#include <dlfcn.h>
+#include "../src/unix/darwin-stub.h"
+
+static CFStringRef (*cf_string_create)(CFAllocatorRef,
+                                      const char*,
+                                      CFStringEncoding);
+static void (*cf_release)(CFTypeRef);
+static CFStringRef cf_strings[7];
+static unsigned int cf_create_calls;
+static unsigned int cf_string_count;
+static unsigned int cf_release_count;
+static unsigned int cf_fail_at;
 
 
-static void* cf_allocate(CFIndex size, CFOptionFlags flags, void* info) {
-  void* ptr;
+static CFStringRef tracked_cf_string_create(CFAllocatorRef allocator,
+                                            const char* string,
+                                            CFStringEncoding encoding) {
+  CFStringRef result;
 
-  ptr = malloc(size);
-  if (ptr != NULL) {
-    uv_mutex_lock(&cf_allocator.mutex);
-    cf_allocator.allocations++;
-    cf_allocator.outstanding++;
-    uv_mutex_unlock(&cf_allocator.mutex);
-  }
-  return ptr;
-}
-
-
-static void cf_deallocate(void* ptr, void* info) {
-  if (ptr == NULL)
-    return;
-
-  uv_mutex_lock(&cf_allocator.mutex);
-  ASSERT_GT(cf_allocator.outstanding, 0);
-  cf_allocator.outstanding--;
-  uv_mutex_unlock(&cf_allocator.mutex);
-  free(ptr);
-}
-
-
-static void* cf_reallocate(void* ptr,
-                           CFIndex size,
-                           CFOptionFlags flags,
-                           void* info) {
-  if (ptr == NULL)
-    return cf_allocate(size, flags, info);
-  if (size == 0) {
-    cf_deallocate(ptr, info);
+  if (++cf_create_calls == cf_fail_at)
     return NULL;
-  }
-  return realloc(ptr, size);
+
+  result = cf_string_create(allocator, string, encoding);
+  ASSERT_NOT_NULL(result);
+  ASSERT_LT(cf_string_count, ARRAY_SIZE(cf_strings));
+  cf_strings[cf_string_count++] = result;
+  return result;
 }
+
+
+static void tracked_cf_release(CFTypeRef object) {
+  unsigned int i;
+
+  ASSERT_NOT_NULL(object);
+  for (i = 0; i < cf_string_count; i++)
+    if (cf_strings[i] == object)
+      break;
+  ASSERT_LT(i, cf_string_count);
+  cf_strings[i] = NULL;
+  cf_release_count++;
+  cf_release(object);
+}
+
+
+static void* tracked_dlsym(void* handle, const char* symbol) {
+  void* result;
+
+  result = dlsym(handle, symbol);
+  if (result == NULL)
+    return NULL;
+  if (strcmp(symbol, "CFStringCreateWithCString") == 0) {
+    *(void**) &cf_string_create = result;
+    return (void*) tracked_cf_string_create;
+  }
+  if (strcmp(symbol, "CFRelease") == 0) {
+    *(void**) &cf_release = result;
+    return (void*) tracked_cf_release;
+  }
+  return result;
+}
+
+
+/* Track the helper's owned references, excluding framework-internal memory. */
+#define dlsym tracked_dlsym
+#define uv__set_process_title test_darwin_set_process_title
+#define uv__thread_setname uv_thread_setname
+#include "../src/unix/darwin-proctitle.c"
+#undef uv__thread_setname
+#undef uv__set_process_title
+#undef dlsym
 #endif
 
 
-TEST_IMPL(process_title_no_leak) {
+TEST_IMPL(process_title_cf_strings) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
-  CFAllocatorRef (*pCFAllocatorCreate)(CFAllocatorRef, CFAllocatorContext*);
-  CFAllocatorRef (*pCFAllocatorGetDefault)(void);
-  void (*pCFAllocatorSetDefault)(CFAllocatorRef);
-  void (*pCFRelease)(CFTypeRef);
-  CFAllocatorContext context;
-  CFAllocatorRef previous_allocator;
-  CFAllocatorRef allocator;
-  size_t allocations;
-  size_t outstanding;
-  uv_lib_t library;
-  int i;
+  unsigned int create_calls;
+  unsigned int i;
+  int err;
 
-  ASSERT_OK(uv_dlopen("/System/Library/Frameworks/CoreFoundation.framework/"
-                     "Versions/A/CoreFoundation", &library));
-  ASSERT_OK(uv_dlsym(&library, "CFAllocatorCreate",
-                    (void**) &pCFAllocatorCreate));
-  ASSERT_OK(uv_dlsym(&library, "CFAllocatorGetDefault",
-                    (void**) &pCFAllocatorGetDefault));
-  ASSERT_OK(uv_dlsym(&library, "CFAllocatorSetDefault",
-                    (void**) &pCFAllocatorSetDefault));
-  ASSERT_OK(uv_dlsym(&library, "CFRelease", (void**) &pCFRelease));
-
-  /* Core Foundation keeps a default allocator alive even after replacement. */
-  ASSERT_OK(uv_mutex_init(&cf_allocator.mutex));
-  memset(&context, 0, sizeof(context));
-  context.allocate = cf_allocate;
-  context.reallocate = cf_reallocate;
-  context.deallocate = cf_deallocate;
-  allocator = pCFAllocatorCreate(NULL, &context);
-  ASSERT_NOT_NULL(allocator);
-  previous_allocator = pCFAllocatorGetDefault();
-  pCFAllocatorSetDefault(allocator);
-
-  /* Warm up framework caches before measuring repeated identical calls. */
-  for (i = 0; i < 10; i++)
-    set_title("process title leak test");
-  uv_mutex_lock(&cf_allocator.mutex);
-  allocations = cf_allocator.allocations;
-  outstanding = cf_allocator.outstanding;
-  uv_mutex_unlock(&cf_allocator.mutex);
-
-  for (i = 0; i < 10; i++)
-    set_title("process title leak test");
-  pCFAllocatorSetDefault(previous_allocator);
-  pCFRelease(allocator);
-
-  uv_mutex_lock(&cf_allocator.mutex);
-  ASSERT_GT(cf_allocator.allocations, allocations);
-  ASSERT_EQ(cf_allocator.outstanding, outstanding);
-  uv_mutex_unlock(&cf_allocator.mutex);
-  uv_dlclose(&library);
+  create_calls = ARRAY_SIZE(cf_strings);
+  for (cf_fail_at = 0; cf_fail_at <= create_calls; cf_fail_at++) {
+    cf_create_calls = 0;
+    cf_string_count = 0;
+    cf_release_count = 0;
+    err = test_darwin_set_process_title("process title leak test");
+    if (cf_fail_at != 0) {
+      ASSERT_EQ(err, UV_ENOMEM);
+      ASSERT_EQ(cf_create_calls, cf_fail_at);
+    } else {
+      /* LaunchServices can be unavailable or reject the display-name update. */
+      ASSERT(err == 0 || err == UV_EINVAL ||
+             err == UV_ENOENT || err == UV_EBUSY);
+      create_calls = cf_create_calls;
+    }
+    ASSERT_EQ(cf_string_count, cf_release_count);
+    for (i = 0; i < cf_string_count; i++)
+      ASSERT_NULL(cf_strings[i]);
+  }
+  if (create_calls == 0)
+    RETURN_SKIP("Core Foundation process-title functions are unavailable.");
   return 0;
 #else
   RETURN_SKIP("Core Foundation is only used for process titles on macOS.");
