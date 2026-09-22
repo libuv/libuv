@@ -1493,7 +1493,6 @@ UV_EXTERN int uv_fs_open(uv_loop_t* loop,
                          int flags,
                          int mode,
                          uv_fs_cb cb);
-#define UV_FS_AT_FDCWD (-100)
 UV_EXTERN int uv_fs_openat(uv_loop_t* loop,
                            uv_fs_t* req,
                            uv_file dirfd,
