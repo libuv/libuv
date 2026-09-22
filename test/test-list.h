@@ -449,6 +449,9 @@ TEST_DECLARE   (fs_event_immediate_close)
 TEST_DECLARE   (fs_event_close_with_pending_event)
 TEST_DECLARE   (fs_event_close_with_pending_delete_event)
 TEST_DECLARE   (fs_event_close_in_callback)
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+TEST_DECLARE   (fs_event_start_oom)
+#endif
 TEST_DECLARE   (fs_event_start_and_close)
 TEST_DECLARE   (fs_event_getpath)
 TEST_DECLARE   (fs_event_stop_in_cb)
@@ -1208,6 +1211,9 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_close_with_pending_event)
   TEST_ENTRY  (fs_event_close_with_pending_delete_event)
   TEST_ENTRY  (fs_event_close_in_callback)
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  TEST_ENTRY  (fs_event_start_oom)
+#endif
   TEST_ENTRY  (fs_event_start_and_close)
   TEST_ENTRY  (fs_event_getpath)
   TEST_ENTRY  (fs_event_stop_in_cb)
