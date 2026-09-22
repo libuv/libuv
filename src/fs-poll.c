@@ -123,8 +123,8 @@ int uv_fs_poll_stop(uv_fs_poll_t* handle) {
   assert(ctx != NULL);
   assert(ctx->parent_handle == handle);
 
-  /* Close the timer if it's active. If it's inactive, there's a stat request
-   * in progress and poll_cb will take care of the cleanup.
+  /* Close the timer if it's active. Otherwise a pending stat request or
+   * a ready timer callback will take care of the cleanup.
    */
   if (uv_is_active((uv_handle_t*)&ctx->timer_handle))
     uv_close((uv_handle_t*)&ctx->timer_handle, timer_close_cb);
@@ -177,7 +177,13 @@ static void timer_cb(uv_timer_t* timer) {
 
   ctx = container_of(timer, struct poll_ctx, timer_handle);
   assert(ctx->parent_handle != NULL);
-  assert(ctx->parent_handle->poll_ctx == ctx);
+  /* Another due timer may have stopped or restarted the handle. */
+  if (ctx->parent_handle->poll_ctx != ctx ||
+      !uv_is_active((uv_handle_t*)ctx->parent_handle) ||
+      uv__is_closing(ctx->parent_handle)) {
+    uv_close((uv_handle_t*)timer, timer_close_cb);
+    return;
+  }
   ctx->start_time = uv_now(ctx->loop);
 
   if (uv_fs_stat(ctx->loop, &ctx->fs_req, ctx->path, poll_cb))

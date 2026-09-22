@@ -353,3 +353,43 @@ TEST_IMPL(fs_poll_restart_from_callback) {
   test_fs_poll_restart(1);
   return 0;
 }
+
+
+static void poll_restart_timer_cb(uv_timer_t* timer) {
+  uv_fs_poll_t* handle;
+
+  handle = timer->data;
+  ASSERT_EQ(1, poll_cb_called);
+  ASSERT_OK(uv_fs_poll_stop(handle));
+  ASSERT_OK(uv_fs_poll_start(handle, poll_restart_cb, FIXTURE, 60000));
+  uv_close((uv_handle_t*) timer, NULL);
+}
+
+
+TEST_IMPL(fs_poll_restart_from_timer) {
+  uv_loop_t loop;
+  uv_fs_poll_t poll_handle;
+  uv_timer_t timer;
+
+  remove(FIXTURE);
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_fs_poll_init(&loop, &poll_handle));
+  ASSERT_OK(uv_fs_poll_start(&poll_handle, poll_restart_cb, FIXTURE, 1));
+  uv_unref((uv_handle_t*) &poll_handle);
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(1, poll_cb_called);
+
+  ASSERT_OK(uv_timer_init(&loop, &timer));
+  timer.data = &poll_handle;
+  ASSERT_OK(uv_timer_start(&timer, poll_restart_timer_cb, 0, 0));
+  /* Make both timers due before the earlier user timer restarts the poll. */
+  uv_sleep(10);
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(2, poll_cb_called);
+
+  uv_close((uv_handle_t*) &poll_handle, close_cb);
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(1, close_cb_called);
+  ASSERT_OK(uv_loop_close(&loop));
+  return 0;
+}
