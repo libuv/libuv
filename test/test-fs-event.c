@@ -1266,6 +1266,11 @@ static void fs_event_no_leak_cb(uv_fs_event_t* handle,
                                 int events,
                                 int status) {
   ASSERT_OK(status);
+  if (filename == NULL || strcmp(filename, "file") != 0)
+    return;
+  ASSERT_NE(0, events);
+  fs_event_cb_called++;
+  uv_close((uv_handle_t*) handle, NULL);
 }
 #endif
 
@@ -1282,6 +1287,7 @@ TEST_IMPL(fs_event_no_leak) {
 
   create_dir("watch_no_leak");
   ASSERT_OK(uv_mutex_init(&fs_event_alloc_mutex));
+  /* Count libuv allocations, including the C path buffer, but not CF objects. */
   ASSERT_OK(uv_replace_allocator(fs_event_malloc,
                                  fs_event_realloc,
                                  fs_event_calloc,
@@ -1301,17 +1307,23 @@ TEST_IMPL(fs_event_no_leak) {
                                 0));
     /* Stopping waits for FSEvents to rebuild the remaining watched paths. */
     ASSERT_OK(uv_fs_event_stop(&watcher));
+    /* Deliver rebuild errors while the anchor is still active. */
+    ASSERT_NE(0, uv_run(&loop, UV_RUN_NOWAIT));
   }
 
   uv_close((uv_handle_t*) &watcher, NULL);
-  uv_close((uv_handle_t*) &anchor, NULL);
+  /* The callback closes the anchor only after receiving a real file event. */
+  create_file("watch_no_leak/file");
+  touch_file("watch_no_leak/file");
   ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(1, fs_event_cb_called);
   ASSERT_OK(uv_loop_close(&loop));
   ASSERT_EQ(0, fs_event_allocations);
 
   /* The test runner allocated its arguments before replacing the allocator. */
   ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
   uv_mutex_destroy(&fs_event_alloc_mutex);
+  ASSERT_OK(delete_file("watch_no_leak/file"));
   ASSERT_OK(delete_dir("watch_no_leak"));
   uv_library_shutdown();
   return 0;
