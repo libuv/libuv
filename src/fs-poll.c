@@ -194,7 +194,8 @@ static void poll_cb(uv_fs_t* req) {
   ctx = container_of(req, struct poll_ctx, fs_req);
   handle = ctx->parent_handle;
 
-  if (!uv_is_active((uv_handle_t*)handle) || uv__is_closing(handle))
+  if (handle->poll_ctx != ctx ||
+      !uv_is_active((uv_handle_t*)handle) || uv__is_closing(handle))
     goto out;
 
   if (req->result != 0) {
@@ -220,7 +221,8 @@ static void poll_cb(uv_fs_t* req) {
 out:
   uv_fs_req_cleanup(req);
 
-  if (!uv_is_active((uv_handle_t*)handle) || uv__is_closing(handle)) {
+  if (handle->poll_ctx != ctx ||
+      !uv_is_active((uv_handle_t*)handle) || uv__is_closing(handle)) {
     uv_close((uv_handle_t*)&ctx->timer_handle, timer_close_cb);
     return;
   }
