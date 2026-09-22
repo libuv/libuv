@@ -470,6 +470,17 @@ static void open_cb(uv_fs_t* req) {
 }
 
 
+static int openat_cb_count;
+
+static void openat_cb(uv_fs_t* req) {
+  ASSERT_EQ(req->fs_type, UV_FS_OPEN);
+  ASSERT_GE(req->result, 0);
+  close(req->result);
+  openat_cb_count++;
+  uv_fs_req_cleanup(req);
+}
+
+
 static void open_cb_simple(uv_fs_t* req) {
   uv_fs_t close_req;
 
@@ -3480,6 +3491,174 @@ static void fs_file_open_append(int add_flags) {
   /* Cleanup */
   unlink("test_file");
 }
+TEST_FS_IMPL(fs_openat) {
+  char cwd[PATHMAX];
+  char path[PATHMAX + 32];
+  uv_stat_t* s;
+  uv_fs_t req;
+  uv_file dirfd;
+  uv_file fd;
+  size_t len;
+  int r;
+
+  /* Setup. */
+  unlink("test_dir/file");
+  unlink("test_dir/sub/file");
+  rmdir("test_dir/sub");
+  rmdir("test_dir");
+  unlink("test_dir_moved/file");
+  unlink("test_dir_moved/sub/file");
+  rmdir("test_dir_moved/sub");
+  rmdir("test_dir_moved");
+
+  loop = uv_default_loop();
+
+  r = uv_fs_mkdir(NULL, &req, "test_dir", 0755, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_mkdir(NULL, &req, "test_dir/sub", 0755, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* UV_FS_AT_FDCWD resolves like uv_fs_open(). */
+  r = uv_fs_openat(NULL, &req, UV_FS_AT_FDCWD, "test_dir/file",
+                   UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_EXCL,
+                   S_IWUSR | S_IRUSR, NULL);
+  ASSERT_GE(r, 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, r, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_unlink(NULL, &req, "test_dir/file", NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_open(NULL, &req, "test_dir", UV_FS_O_RDONLY | UV_FS_O_DIRECTORY, 0,
+                 NULL);
+  ASSERT_GE(r, 0);
+  dirfd = r;
+  uv_fs_req_cleanup(&req);
+
+  /* A relative path is resolved against dirfd, not the cwd. */
+  r = uv_fs_openat(NULL, &req, dirfd, "file",
+                   UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_EXCL,
+                   S_IWUSR | S_IRUSR, NULL);
+  ASSERT_GE(r, 0);
+  fd = r;
+  uv_fs_req_cleanup(&req);
+
+  iov = uv_buf_init(test_buf, sizeof(test_buf));
+  r = uv_fs_write(NULL, &req, fd, &iov, 1, -1, NULL);
+  ASSERT_EQ(r, sizeof(test_buf));
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, fd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, "file", NULL);
+  ASSERT_EQ(r, UV_ENOENT);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, "test_dir/file", NULL);
+  ASSERT_OK(r);
+  s = req.ptr;
+  ASSERT_EQ(s->st_size, sizeof(test_buf));
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_openat(NULL, &req, dirfd, "sub/file",
+                   UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_EXCL,
+                   S_IWUSR | S_IRUSR, NULL);
+  ASSERT_GE(r, 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, r, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, "test_dir/sub/file", NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* An absolute path ignores dirfd. */
+  len = sizeof(cwd);
+  ASSERT_OK(uv_cwd(cwd, &len));
+  snprintf(path, sizeof(path), "%s/test_dir/file", cwd);
+  r = uv_fs_openat(NULL, &req, dirfd, path, UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_GE(r, 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, r, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Errors. */
+  r = uv_fs_openat(NULL, &req, -1, "file", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_EQ(r, UV_EBADF);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_openat(NULL, &req, dirfd, "file", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_GE(r, 0);
+  fd = r;
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_openat(NULL, &req, fd, "file", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_EQ(r, UV_ENOTDIR);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, fd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_openat(NULL, &req, dirfd, "missing", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_EQ(r, UV_ENOENT);
+  uv_fs_req_cleanup(&req);
+
+  /* dirfd follows the directory, not its name. */
+  r = uv_fs_rename(NULL, &req, "test_dir", "test_dir_moved", NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_openat(NULL, &req, dirfd, "file", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_GE(r, 0);
+  fd = r;
+  uv_fs_req_cleanup(&req);
+
+  memset(buf, 0, sizeof(buf));
+  iov = uv_buf_init(buf, sizeof(buf));
+  r = uv_fs_read(NULL, &req, fd, &iov, 1, 0, NULL);
+  ASSERT_EQ(r, sizeof(test_buf));
+  ASSERT_OK(strcmp(buf, test_buf));
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, fd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  /* Async. */
+  r = uv_fs_openat(loop, &req, dirfd, "file", UV_FS_O_RDONLY, 0, openat_cb);
+  ASSERT_OK(r);
+  uv_run(loop, UV_RUN_DEFAULT);
+  ASSERT_EQ(1, openat_cb_count);
+
+  /* Cleanup. */
+  r = uv_fs_close(NULL, &req, dirfd, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  unlink("test_dir_moved/file");
+  unlink("test_dir_moved/sub/file");
+  rmdir("test_dir_moved/sub");
+  rmdir("test_dir_moved");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
 TEST_FS_IMPL(fs_file_open_append) {
   fs_file_open_append(0);
   fs_file_open_append(UV_FS_O_FILEMAP);

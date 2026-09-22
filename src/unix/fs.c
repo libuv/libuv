@@ -87,6 +87,14 @@
 extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 #endif
 
+#if defined(__MVS__)
+/* No openat(). Only dirfd == UV_FS_AT_FDCWD is supported. */
+# define openat(d, p, f, m)                                                   \
+    ((d) == UV_FS_AT_FDCWD ? open(p, f, m) : (errno = ENOSYS, -1))
+#else
+STATIC_ASSERT(UV_FS_AT_FDCWD == AT_FDCWD);
+#endif
+
 #define INIT(subtype)                                                         \
   do {                                                                        \
     if (req == NULL)                                                          \
@@ -361,14 +369,14 @@ clobber:
 
 static int uv__fs_open(uv_fs_t* req) {
 #ifdef O_CLOEXEC
-  return open(req->path, req->flags | O_CLOEXEC, req->mode);
+  return openat(req->file, req->path, req->flags | O_CLOEXEC, req->mode);
 #else  /* O_CLOEXEC */
   int r;
 
   if (req->cb != NULL)
     uv_rwlock_rdlock(&req->loop->cloexec_lock);
 
-  r = open(req->path, req->flags, req->mode);
+  r = openat(req->file, req->path, req->flags, req->mode);
 
   /* In case of failure `uv__cloexec` will leave error in `errno`,
    * so it is enough to just set `r` to `-1`.
@@ -2019,8 +2027,20 @@ int uv_fs_open(uv_loop_t* loop,
                int flags,
                int mode,
                uv_fs_cb cb) {
+  return uv_fs_openat(loop, req, UV_FS_AT_FDCWD, path, flags, mode, cb);
+}
+
+
+int uv_fs_openat(uv_loop_t* loop,
+                 uv_fs_t* req,
+                 uv_file dirfd,
+                 const char* path,
+                 int flags,
+                 int mode,
+                 uv_fs_cb cb) {
   INIT(OPEN);
   PATH;
+  req->file = dirfd;
   req->flags = flags;
   req->mode = mode;
   if (cb != NULL)
