@@ -256,9 +256,9 @@ API
     .. note::
         On Windows a relative `path` is resolved by `NtCreateFile` under the
         directory handle, without Win32 path normalization: ``.`` and ``..``
-        components are not interpreted, and a rooted (``\foo``) or
-        drive-relative (``C:foo``) path fails with ``UV_EINVAL``. Forward
-        slashes are accepted.
+        components are not interpreted. Forward slashes are accepted. Any
+        path that is not relative, including a rooted (``\foo``) or
+        drive-relative (``C:foo``) one, ignores `dirfd`.
 
     .. note::
         z/OS: only ``UV_FS_AT_FDCWD`` is supported. Any other `dirfd` fails
