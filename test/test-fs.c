@@ -3583,6 +3583,14 @@ TEST_FS_IMPL(fs_openat) {
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
 
+  r = uv_fs_openat(NULL, &req, dirfd, "sub//file", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_GE(r, 0);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_close(NULL, &req, r, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
   /* An absolute path ignores dirfd. */
   len = sizeof(cwd);
   ASSERT_OK(uv_cwd(cwd, &len));

@@ -443,8 +443,8 @@ static void uv__fs_req_init(uv_loop_t* loop,
 
 /* CreateFileW(), with a relative path resolved against the directory open at
  * dirfd rather than the cwd. NtCreateFile() looks the name up under the
- * RootDirectory handle without Win32 path normalization: only backslashes
- * separate components and "." and ".." are not interpreted. */
+ * RootDirectory handle without Win32 path normalization, so "." and ".."
+ * components are not interpreted. */
 static HANDLE fs__create_file(int dirfd,
                               WCHAR* path,
                               DWORD access,
@@ -459,23 +459,21 @@ static HANDLE fs__create_file(int dirfd,
   HANDLE handle;
   ULONG options;
   WCHAR* p;
+  WCHAR* q;
 
-  /* A fully qualified path ignores dirfd. */
-  if (dirfd == UV_FS_AT_FDCWD ||
-      (IS_SLASH(path[0]) && IS_SLASH(path[1])) ||
-      (IS_LETTER(path[0]) && path[1] == L':' && IS_SLASH(path[2])))
+  if (dirfd == UV_FS_AT_FDCWD)
     return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
-
-  /* Rooted and drive-relative paths are relative to neither. */
-  if (IS_SLASH(path[0]) || (IS_LETTER(path[0]) && path[1] == L':')) {
-    SetLastError(ERROR_INVALID_PARAMETER);
-    return INVALID_HANDLE_VALUE;
-  }
 
   if (path[0] == L'\0') {
     SetLastError(ERROR_PATH_NOT_FOUND);
     return INVALID_HANDLE_VALUE;
   }
+
+  /* A path that is not relative ignores dirfd, as on UNIX. Rooted (\foo) and
+   * drive-relative (C:foo) paths are classified as Win32 does and resolve
+   * like any other. */
+  if (IS_SLASH(path[0]) || path[1] == L':')
+    return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
 
   handle = uv__get_osfhandle(dirfd);
   if (handle == INVALID_HANDLE_VALUE) {
@@ -494,11 +492,17 @@ static HANDLE fs__create_file(int dirfd,
     return INVALID_HANDLE_VALUE;
   }
 
-  for (p = path; *p != L'\0'; p++)
-    if (*p == L'/')
-      *p = L'\\';
+  /* NtCreateFile() takes the name literally: only backslashes separate
+   * components and a run of them is an error. */
+  for (p = q = path; *p != L'\0'; p++) {
+    if (!IS_SLASH(*p))
+      *q++ = *p;
+    else if (!IS_SLASH(p[1]))
+      *q++ = L'\\';
+  }
+  *q = L'\0';
 
-  status = uv__RtlUnicodeStringInit(&name, path, p - path);
+  status = uv__RtlUnicodeStringInit(&name, path, q - path);
   if (!NT_SUCCESS(status)) {
     SetLastError(pRtlNtStatusToDosError(status));
     return INVALID_HANDLE_VALUE;
