@@ -57,6 +57,8 @@
 
 #if defined(__APPLE__)
 # include <sys/sysctl.h>
+# include <sys/attr.h>
+# include <sys/clonefile.h>
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
 # define FICLONE _IOW(0x94, 9, int)
@@ -1273,6 +1275,24 @@ static int uv__fs_copyfile(uv_fs_t* req) {
     err = UV__ERR(errno);
     goto out;
   }
+
+#if defined(__APPLE__)
+  if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE ||
+      req->flags & UV_FS_COPYFILE_FICLONE) {
+    if (clonefileat(AT_FDCWD,
+                    req->path,
+                    AT_FDCWD,
+                    req->new_path,
+                    CLONE_NOFOLLOW) == 0)
+      goto out;
+
+    /* If cloning is required, return the error to the caller. */
+    if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+      err = UV__ERR(errno);
+      goto out;
+    }
+  }
+#endif
 
   dst_flags = O_WRONLY | O_CREAT;
 
