@@ -77,7 +77,7 @@ typedef struct {
   FSEventStreamEventId event_id;
   uint64_t generation;
   FSEventStreamRef live_stream;
-  uv_sem_t ready;
+  int ready;
   int live_only;
 } uv__fsevents_handle_t;
 typedef struct uv__cf_loop_signal_s uv__cf_loop_signal_t;
@@ -106,7 +106,7 @@ struct uv__cf_loop_state_s {
   CFRunLoopSourceRef signal_source;
   int fsevent_need_reschedule;
   FSEventStreamRef fsevent_stream;
-  uv_sem_t fsevent_sem;
+  uv_cond_t fsevent_cond;
   uv_mutex_t fsevent_mutex;
   struct uv__queue fsevent_handles;
   unsigned int fsevent_handle_count;
@@ -117,9 +117,7 @@ struct uv__cf_loop_state_s {
 /* Forward declarations */
 static void uv__cf_loop_cb(void* arg);
 static void* uv__cf_loop_runner(void* arg);
-static int uv__cf_loop_signal(uv_loop_t* loop,
-                              uv_fs_event_t* handle,
-                              uv__cf_loop_signal_type_t type);
+static int uv__cf_loop_signal(uv_loop_t* loop, uv_fs_event_t* handle);
 
 /* Lazy-loaded by uv__fsevents_global_init(). */
 static CFArrayRef (*pCFArrayCreate)(CFAllocatorRef,
@@ -485,8 +483,7 @@ static int uv__fsevents_create_live_stream(uv_loop_t* loop,
 
 /* Runs in CF thread, when there're new fsevent handles to add to stream */
 static void uv__fsevents_reschedule(uv__cf_loop_state_t* state,
-                                    uv_loop_t* loop,
-                                    uv__cf_loop_signal_type_t type) {
+                                    uv_loop_t* loop) {
   struct uv__queue* q;
   uv_fs_event_t* curr;
   CFArrayRef cf_paths;
@@ -592,15 +589,6 @@ final:
     }
     uv_mutex_unlock(&state->fsevent_mutex);
   }
-
-  /*
-   * Main thread will block until the removal of handle from the list,
-   * we must tell it when we're ready.
-   *
-   * NOTE: This is coupled with `uv_sem_wait()` in `uv__fsevents_close`
-   */
-  if (type == kUVCFLoopSignalClosing)
-    uv_sem_post(&state->fsevent_sem);
 }
 
 
@@ -710,9 +698,9 @@ static int uv__fsevents_loop_init(uv_loop_t* loop) {
 
   uv__queue_init(&loop->cf_signals);
 
-  err = uv_sem_init(&state->fsevent_sem, 0);
+  err = uv_cond_init(&state->fsevent_cond);
   if (err)
-    goto fail_fsevent_sem_init;
+    goto fail_fsevent_cond_init;
 
   err = uv_mutex_init(&state->fsevent_mutex);
   if (err)
@@ -759,9 +747,9 @@ fail_signal_source_create:
   uv_mutex_destroy(&state->fsevent_mutex);
 
 fail_fsevent_mutex_init:
-  uv_sem_destroy(&state->fsevent_sem);
+  uv_cond_destroy(&state->fsevent_cond);
 
-fail_fsevent_sem_init:
+fail_fsevent_cond_init:
   uv_sem_destroy(&loop->cf_sem);
 
 fail_sem_init:
@@ -782,7 +770,7 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
   if (loop->cf_state == NULL)
     return;
 
-  if (uv__cf_loop_signal(loop, NULL, kUVCFLoopSignalRegular) != 0)
+  if (uv__cf_loop_signal(loop, NULL) != 0)
     abort();
 
   uv_thread_join(&loop->cf_thread);
@@ -799,7 +787,7 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 
   /* Destroy state */
   state = loop->cf_state;
-  uv_sem_destroy(&state->fsevent_sem);
+  uv_cond_destroy(&state->fsevent_cond);
   uv_mutex_destroy(&state->fsevent_mutex);
   pCFRelease(state->signal_source);
   uv__free(state);
@@ -841,6 +829,8 @@ static void uv__cf_loop_cb(void* arg) {
   struct uv__queue split_head;
   uv__cf_loop_signal_t* s;
   uv__fsevents_handle_t* h;
+  uv_fs_event_t* handle;
+  uv__cf_loop_signal_type_t type;
   int err;
 
   loop = arg;
@@ -855,43 +845,51 @@ static void uv__cf_loop_cb(void* arg) {
     uv__queue_remove(item);
 
     s = uv__queue_data(item, uv__cf_loop_signal_t, member);
+    handle = s->handle;
+    type = s->type;
+    /* Closing signals live on the waiting UV thread's stack. Do not access
+     * the signal again after publishing completion below.
+     */
+    if (type != kUVCFLoopSignalClosing)
+      uv__free(s);
 
     /* This was a termination signal */
-    if (s->handle == NULL) {
+    if (handle == NULL) {
       pCFRunLoopStop(state->loop);
     } else {
-      h = (uv__fsevents_handle_t*) s->handle->cf_cb;
+      h = (uv__fsevents_handle_t*) handle->cf_cb;
       if (!h->live_only) {
-        uv__fsevents_reschedule(state, loop, s->type);
-      } else if (s->type == kUVCFLoopSignalClosing) {
+        uv__fsevents_reschedule(state, loop);
+      } else if (type == kUVCFLoopSignalClosing) {
         uv__fsevents_destroy_stream(&h->live_stream);
-        uv_sem_post(&state->fsevent_sem);
       } else {
-        err = uv__fsevents_create_live_stream(loop, s->handle);
+        err = uv__fsevents_create_live_stream(loop, handle);
         if (err != 0)
-          uv__fsevents_push_event(s->handle, NULL, err);
-        uv_sem_post(&h->ready);
+          uv__fsevents_push_event(handle, NULL, err);
+        else
+          /* Live-only admission completes after native activation. Reject
+           * events queued during activation, before start returns.
+           */
+          h->event_id = pFSEventsGetCurrentEventId();
+      }
+
+      /* Publish completion after the last access to the handle. The UV
+       * thread may then finish admission or reclaim the closing handle.
+       */
+      if (h->live_only || type == kUVCFLoopSignalClosing) {
+        uv_mutex_lock(&state->fsevent_mutex);
+        h->ready = 1;
+        uv_cond_signal(&state->fsevent_cond);
+        uv_mutex_unlock(&state->fsevent_mutex);
       }
     }
-
-    uv__free(s);
   }
 }
 
 
-/* Runs in UV loop to notify CF thread */
-int uv__cf_loop_signal(uv_loop_t* loop,
-                       uv_fs_event_t* handle,
-                       uv__cf_loop_signal_type_t type) {
-  uv__cf_loop_signal_t* item;
+/* Runs in UV loop to publish an owned signal to the CF thread. */
+static void uv__cf_loop_send(uv_loop_t* loop, uv__cf_loop_signal_t* item) {
   uv__cf_loop_state_t* state;
-
-  item = uv__malloc(sizeof(*item));
-  if (item == NULL)
-    return UV_ENOMEM;
-
-  item->handle = handle;
-  item->type = type;
 
   uv_mutex_lock(&loop->cf_mutex);
   uv__queue_insert_tail(&loop->cf_signals, &item->member);
@@ -902,7 +900,20 @@ int uv__cf_loop_signal(uv_loop_t* loop,
   pCFRunLoopWakeUp(state->loop);
 
   uv_mutex_unlock(&loop->cf_mutex);
+}
 
+
+/* Runs in UV loop to notify CF thread asynchronously. */
+int uv__cf_loop_signal(uv_loop_t* loop, uv_fs_event_t* handle) {
+  uv__cf_loop_signal_t* item;
+
+  item = uv__malloc(sizeof(*item));
+  if (item == NULL)
+    return UV_ENOMEM;
+
+  item->handle = handle;
+  item->type = kUVCFLoopSignalRegular;
+  uv__cf_loop_send(loop, item);
   return 0;
 }
 
@@ -957,14 +968,7 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   h = (uv__fsevents_handle_t*) handle->cf_cb;
   h->live_only = live_only;
   h->live_stream = NULL;
-  if (live_only) {
-    err = uv_sem_init(&h->ready, 0);
-    if (err) {
-      uv__free(h);
-      handle->cf_cb = NULL;
-      goto fail_cf_cb_malloc;
-    }
-  }
+  h->ready = 0;
 
   handle->cf_cb->data = handle;
   uv_async_init(handle->loop, handle->cf_cb, uv__fsevents_cb);
@@ -993,13 +997,15 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
 
   /* Reschedule FSEventStream */
   assert(handle != NULL);
-  err = uv__cf_loop_signal(handle->loop, handle, kUVCFLoopSignalRegular);
+  err = uv__cf_loop_signal(handle->loop, handle);
   if (err)
     goto fail_loop_signal;
 
   if (live_only) {
-    uv_sem_wait(&h->ready);
-    uv_sem_destroy(&h->ready);
+    uv_mutex_lock(&state->fsevent_mutex);
+    while (!h->ready)
+      uv_cond_wait(&state->fsevent_cond, &state->fsevent_mutex);
+    uv_mutex_unlock(&state->fsevent_mutex);
   }
   return 0;
 
@@ -1007,8 +1013,6 @@ fail_loop_signal:
   uv_mutex_destroy(&handle->cf_mutex);
 
 fail_cf_mutex_init:
-  if (live_only)
-    uv_sem_destroy(&h->ready);
   uv__free(handle->cf_cb);
   handle->cf_cb = NULL;
 
@@ -1023,30 +1027,37 @@ fail_cf_cb_malloc:
 
 /* Runs in UV loop to de-initialize handle */
 int uv__fsevents_close(uv_fs_event_t* handle) {
-  int err;
   uv__cf_loop_state_t* state;
+  uv__fsevents_handle_t* h;
+  uv__cf_loop_signal_t signal;
 
   if (handle->cf_cb == NULL)
     return UV_EINVAL;
 
-  /* Remove handle from  the list */
+  /* Remove handle from the list. */
   state = handle->loop->cf_state;
+  h = (uv__fsevents_handle_t*) handle->cf_cb;
   uv_mutex_lock(&state->fsevent_mutex);
+  h->ready = 0;
   uv__queue_remove(&handle->cf_member);
-  if (!((uv__fsevents_handle_t*) handle->cf_cb)->live_only) {
+  if (!h->live_only) {
     state->fsevent_handle_count--;
     state->fsevent_need_reschedule = 1;
   }
   uv_mutex_unlock(&state->fsevent_mutex);
 
-  /* Reschedule FSEventStream */
-  assert(handle != NULL);
-  err = uv__cf_loop_signal(handle->loop, handle, kUVCFLoopSignalClosing);
-  if (err)
-    return UV__ERR(err);
+  /* Closing must drain queued references even when allocation fails. The
+   * stack signal remains valid until the CF thread acknowledges completion.
+   */
+  signal.handle = handle;
+  signal.type = kUVCFLoopSignalClosing;
+  uv__cf_loop_send(handle->loop, &signal);
 
-  /* Wait for deinitialization */
-  uv_sem_wait(&state->fsevent_sem);
+  /* Wait for the CF thread to release its last reference to the handle. */
+  uv_mutex_lock(&state->fsevent_mutex);
+  while (!h->ready)
+    uv_cond_wait(&state->fsevent_cond, &state->fsevent_mutex);
+  uv_mutex_unlock(&state->fsevent_mutex);
 
   uv_close((uv_handle_t*) handle->cf_cb, (uv_close_cb) uv__free);
   handle->cf_cb = NULL;

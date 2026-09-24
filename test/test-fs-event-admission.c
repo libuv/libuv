@@ -109,6 +109,7 @@ static void gated_stop(FSEventStreamRef ref) {
 }
 static int gated_start(FSEventStreamRef ref) {
   int rc = real_start(ref);
+  checkpoint(4);
   uv_mutex_lock(&gate_mutex);
   starts++;
   uv_cond_signal(&gate_cond);
@@ -275,6 +276,8 @@ static int run_case(const char* mode) {
   if (strcmp(mode, "create") == 0) arm(3, path);
   if (strcmp(mode, "live") == 0)
     arm(3, barrier);
+  if (strcmp(mode, "live-preadmission") == 0)
+    arm(4, old);
   if (strncmp(mode, "live", 4) == 0)
     start_live(&a, dir_a);
   else
@@ -375,7 +378,8 @@ static int run_case(const char* mode) {
     arm(2, path);
     ASSERT(uv_fs_event_stop(&b) == 0);
     wait_started(3);
-  } else if (strcmp(mode, "control") == 0 || strcmp(mode, "live") == 0) {
+  } else if (strcmp(mode, "control") == 0 || strcmp(mode, "live") == 0 ||
+             strcmp(mode, "live-preadmission") == 0) {
     mutation_at = uv_hrtime();
     mutation_id = uv__test_fsevents_observer_mutate(path);
   }
@@ -460,6 +464,85 @@ static int run_live_failure(void) {
   ASSERT(uv_loop_close(&test_loop) == 0);
   pFSEventsCopyUUIDForDevice = real_history;
   pFSEventStreamStart = real_start;
+  ASSERT(rmdir(root) == 0);
+  uv_library_shutdown();
+  return 0;
+}
+
+
+static int deferred_signal;
+static int close_stops;
+static int close_releases;
+static void (*real_release)(FSEventStreamRef);
+
+static void count_close_stop(FSEventStreamRef stream) {
+  real_stop(stream);
+  uv_mutex_lock(&gate_mutex);
+  close_stops++;
+  uv_mutex_unlock(&gate_mutex);
+}
+
+static void count_close_release(FSEventStreamRef stream) {
+  real_release(stream);
+  uv_mutex_lock(&gate_mutex);
+  close_releases++;
+  uv_mutex_unlock(&gate_mutex);
+}
+
+static void defer_first_signal(CFRunLoopSourceRef source) {
+  if (deferred_signal++ != 0)
+    real_signal(source);
+}
+
+static void* fail_malloc(size_t size) {
+  (void) size;
+  return NULL;
+}
+
+static void close_and_free(uv_handle_t* handle) {
+  wanted++;
+  free(handle);
+}
+
+static int run_close_oom(int live_only) {
+  char root[] = "close-oom-XXXXXX";
+  uv_fs_event_t* handle;
+
+  ASSERT(mkdtemp(root) != NULL);
+  ASSERT(uv__fsevents_global_init() == 0);
+  real_signal = pCFRunLoopSourceSignal;
+  real_history = pFSEventsCopyUUIDForDevice;
+  real_stop = pFSEventStreamStop;
+  real_release = pFSEventStreamRelease;
+  ASSERT(uv_mutex_init(&gate_mutex) == 0);
+  pFSEventStreamStop = count_close_stop;
+  pFSEventStreamRelease = count_close_release;
+  if (live_only)
+    pFSEventsCopyUUIDForDevice = no_history;
+  else
+    /* Leave the ADD signal queued until close publishes its notification. */
+    pCFRunLoopSourceSignal = defer_first_signal;
+  handle = malloc(sizeof(*handle));
+  ASSERT(handle != NULL);
+  ASSERT(uv_loop_init(&test_loop) == 0);
+  ASSERT(uv_fs_event_init(&test_loop, handle) == 0);
+  ASSERT(uv_fs_event_start(handle, on_event, root, 0) == 0);
+  ASSERT(uv_replace_allocator(fail_malloc, realloc, calloc, free) == 0);
+  uv_close((uv_handle_t*) handle, close_and_free);
+  ASSERT(uv_replace_allocator(malloc, realloc, calloc, free) == 0);
+  if (live_only) {
+    uv_mutex_lock(&gate_mutex);
+    ASSERT(close_stops == 1 && close_releases == 1);
+    uv_mutex_unlock(&gate_mutex);
+  }
+  ASSERT(uv_run(&test_loop, UV_RUN_DEFAULT) == 0);
+  ASSERT(wanted == 1);
+  ASSERT(uv_loop_close(&test_loop) == 0);
+  pCFRunLoopSourceSignal = real_signal;
+  pFSEventsCopyUUIDForDevice = real_history;
+  pFSEventStreamStop = real_stop;
+  pFSEventStreamRelease = real_release;
+  uv_mutex_destroy(&gate_mutex);
   ASSERT(rmdir(root) == 0);
   uv_library_shutdown();
   return 0;
@@ -623,6 +706,30 @@ TEST_IMPL(fs_event_admission_live_reacquire) {
 TEST_IMPL(fs_event_admission_live_failure) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE && defined(UV_TEST_FSEVENTS)
   return run_live_failure();
+#else
+  RETURN_SKIP("Requires the macOS static FSEvents test build.");
+#endif
+}
+
+TEST_IMPL(fs_event_admission_close_oom) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && defined(UV_TEST_FSEVENTS)
+  return run_close_oom(0);
+#else
+  RETURN_SKIP("Requires the macOS static FSEvents test build.");
+#endif
+}
+
+TEST_IMPL(fs_event_admission_live_close_oom) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && defined(UV_TEST_FSEVENTS)
+  return run_close_oom(1);
+#else
+  RETURN_SKIP("Requires the macOS static FSEvents test build.");
+#endif
+}
+
+TEST_IMPL(fs_event_admission_live_preadmission) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && defined(UV_TEST_FSEVENTS)
+  return run_case("live-preadmission");
 #else
   RETURN_SKIP("Requires the macOS static FSEvents test build.");
 #endif
