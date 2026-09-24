@@ -929,8 +929,9 @@ static void uv__cpu_relax(void) {
  * and the uv_async_cb invocation sequentially consistent — all accesses
  * (reads and writes) before uv_async_send are visible to the callback.
  *
- * uv__pending_load and uv__pending_fetch_add are relaxed; they touch only the
- * busy counter and need not participate in that ordering. */
+ * uv__pending_fetch_add (busy counter decrement) is a release and
+ * uv__pending_load (busy counter poll) is an acquire, so the sender's wakeup
+ * happens-before uv__async_stop tears down the wakeup fd. */
 #ifdef _MSC_VER
 
 static int uv__pending_cas(int* p, int* expected, int desired) {
@@ -941,7 +942,7 @@ static int uv__pending_cas(int* p, int* expected, int desired) {
   return 0;
 }
 
-#define uv__pending_load(p)       ((int) *(volatile int*)(p))
+#define uv__pending_load(p)       ((int) ReadAcquire((LONG const volatile*)(p)))
 #define uv__pending_fetch_add(p, v) \
   ((void) InterlockedExchangeAdd((LONG volatile*)(p), (LONG)(v)))
 #define uv__pending_fetch_or(p, v) \
@@ -954,9 +955,9 @@ static int uv__pending_cas(int* p, int* expected, int desired) {
 }
 
 #define uv__pending_load(p) \
-  atomic_load_explicit((_Atomic int*)(p), memory_order_relaxed)
+  atomic_load_explicit((_Atomic int*)(p), memory_order_acquire)
 #define uv__pending_fetch_add(p, v) \
-  ((void) atomic_fetch_add_explicit((_Atomic int*)(p), (v), memory_order_relaxed))
+  ((void) atomic_fetch_add_explicit((_Atomic int*)(p), (v), memory_order_release))
 #define uv__pending_fetch_or(p, v) \
   ((int) atomic_fetch_or((_Atomic int*)(p), (v)))
 
