@@ -1591,8 +1591,11 @@ TEST_FS_IMPL(fs_fstat) {
   ASSERT_EQ(s->st_birthtim.tv_sec, t.st_birthtimespec.tv_sec);
   ASSERT_EQ(s->st_birthtim.tv_nsec, t.st_birthtimespec.tv_nsec);
 # elif defined(__linux__)
-  /* Linux struct stat does not expose birth time. Compare with the path API:
-   * metadata updates can change ctime without changing the creation time.
+  /* Linux struct stat does not expose birth time, so compare with the path
+   * API instead of ctime. This works around a kernel quirk: while creating
+   * the file, ext4, f2fs and xfs record the birth time and then update ctime
+   * again when they write the initial xattrs (e.g. the SELinux label on
+   * Android), so ctime can end up slightly ahead of the birth time.
    */
   ASSERT_OK(uv_fs_stat(NULL, &stat_req, "test_file", NULL));
   ASSERT_EQ(s->st_birthtim.tv_sec, stat_req.statbuf.st_birthtim.tv_sec);
