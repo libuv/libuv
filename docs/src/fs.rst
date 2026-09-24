@@ -395,7 +395,10 @@ API
     - `UV_FS_COPYFILE_FICLONE_FORCE`: If present, `uv_fs_copyfile()` will
       attempt to create a copy-on-write reflink. If the underlying platform does
       not support copy-on-write, or an error occurs while attempting to use
-      copy-on-write, then an error is returned.
+      copy-on-write, then an error is returned. On macOS, if the destination
+      already exists, `UV_EEXIST` is returned even though copy-on-write is
+      supported, because the underlying `clonefile(2)` call refuses to
+      overwrite an existing file.
 
     .. warning::
         If the destination path is created, but an error occurs while copying

@@ -213,6 +213,41 @@ TEST_FS_IMPL(fs_copyfile) {
     handle_result(&req);
 
 #ifndef _WIN32
+  /* Copying a symlink copies the target's contents, not the link itself
+   * (regression test for https://github.com/libuv/libuv/issues/3940). */
+  unlink(src);
+  unlink(dst);
+  touch_file(src, 8);
+  r = symlink(src, "test_file_src_link");
+  ASSERT_OK(r);
+  r = uv_fs_copyfile(NULL, &req, "test_file_src_link", dst,
+                     UV_FS_COPYFILE_FICLONE, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_lstat(NULL, &req, dst, NULL);
+  ASSERT_OK(r);
+  ASSERT(!S_ISLNK(req.statbuf.st_mode));
+  ASSERT_EQ(req.statbuf.st_size, 8);
+  uv_fs_req_cleanup(&req);
+  unlink("test_file_src_link");
+  unlink(src);
+  unlink(dst);
+
+  /* UV_FS_COPYFILE_FICLONE_FORCE against an existing destination fails with
+   * UV_EEXIST on macOS, because clonefile(2) refuses to overwrite an
+   * existing file (regression test for
+   * https://github.com/libuv/libuv/issues/3940). */
+  touch_file(dst, 4);
+  r = uv_fs_copyfile(NULL, &req, fixture, dst, UV_FS_COPYFILE_FICLONE_FORCE,
+                     NULL);
+  uv_fs_req_cleanup(&req);
+#if defined(__APPLE__)
+  ASSERT_EQ(r, UV_EEXIST);
+#else
+  ASSERT_LE(r, 0);
+#endif
+  unlink(dst);
+
   /* Copying respects permissions/mode. */
   unlink(dst);
   touch_file(dst, 0);
