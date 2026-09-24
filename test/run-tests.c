@@ -226,11 +226,12 @@ static int maybe_run_test(int argc, char **argv) {
 #else
     ASSERT_GT(open_fd, 2);
     ASSERT_GT(closed_fd, 2);
-# if defined(__PASE__)  /* On IBMi PASE, write() returns 1 */
-    ASSERT_EQ(1, write(closed_fd, "x", 1));
-# else
+    /* The fd was closed in the child via O_CLOEXEC on exec().
+     * Writing to it must fail with EBADF on all Unix platforms.
+     * Note: an older PASE libc incorrectly returned 1 here; current PASE
+     * libc (IBM i 7.3+) correctly returns -1/EBADF like every other Unix. */
     ASSERT_EQ(-1, write(closed_fd, "x", 1));
-# endif  /* !__PASE__ */
+    ASSERT_EQ(EBADF, errno);
 #endif
     return 1;
   }
