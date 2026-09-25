@@ -1398,8 +1398,10 @@ int uv_write2(uv_write_t* req,
   if (nbufs > ARRAY_SIZE(req->bufsml))
     req->bufs = uv__malloc(nbufs * sizeof(bufs[0]));
 
-  if (req->bufs == NULL)
+  if (req->bufs == NULL) {
+    uv__req_unregister(stream->loop);
     return UV_ENOMEM;
+  }
 
   memcpy(req->bufs, bufs, nbufs * sizeof(bufs[0]));
   req->nbufs = nbufs;
