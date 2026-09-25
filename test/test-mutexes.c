@@ -50,7 +50,7 @@ TEST_IMPL(thread_mutex) {
 }
 
 
-TEST_IMPL(thread_mutex_recursive) {
+TEST_IMPL(thread_mutex_recursive) UV_NO_THREAD_SAFETY_ANALYSIS {
   uv_mutex_t mutex;
   int r;
 
@@ -88,14 +88,14 @@ TEST_IMPL(thread_rwlock) {
 
 
 /* Call when holding |mutex|. */
-static void synchronize_nowait(void) {
+static void synchronize_nowait(void) UV_REQUIRES(&mutex) {
   step += 1;
   uv_cond_signal(&condvar);
 }
 
 
 /* Call when holding |mutex|. */
-static void synchronize(void) {
+static void synchronize(void) UV_REQUIRES(&mutex) {
   int current;
 
   synchronize_nowait();
@@ -105,7 +105,7 @@ static void synchronize(void) {
 }
 
 
-static void thread_rwlock_trylock_peer(void* unused) {
+static void thread_rwlock_trylock_peer(void* unused) UV_EXCLUDES(&mutex, &rwlock) {
   (void) &unused;
 
   uv_mutex_lock(&mutex);
@@ -136,7 +136,7 @@ static void thread_rwlock_trylock_peer(void* unused) {
 }
 
 
-TEST_IMPL(thread_rwlock_trylock) {
+TEST_IMPL(thread_rwlock_trylock) UV_EXCLUDES(&mutex, &rwlock) {
   uv_thread_t thread;
 
   ASSERT_OK(uv_cond_init(&condvar));
