@@ -4120,6 +4120,17 @@ typedef struct _UNICODE_STRING {
 
 typedef const UNICODE_STRING *PCUNICODE_STRING;
 
+typedef struct _OBJECT_ATTRIBUTES {
+  ULONG           Length;
+  HANDLE          RootDirectory;
+  PUNICODE_STRING ObjectName;
+  ULONG           Attributes;
+  PVOID           SecurityDescriptor;
+  PVOID           SecurityQualityOfService;
+} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
+
+#define OBJ_CASE_INSENSITIVE                    0x00000040
+
 /* from ntifs.h */
 #ifndef DEVICE_TYPE
 # define DEVICE_TYPE DWORD
@@ -4389,8 +4400,23 @@ typedef struct _FILE_PIPE_LOCAL_INFORMATION {
   ULONG NamedPipeEnd;
 } FILE_PIPE_LOCAL_INFORMATION, *PFILE_PIPE_LOCAL_INFORMATION;
 
+#define FILE_OPEN                               0x00000001
+#define FILE_CREATE                             0x00000002
+#define FILE_OPEN_IF                            0x00000003
+#define FILE_OVERWRITE                          0x00000004
+#define FILE_OVERWRITE_IF                       0x00000005
+
+#define FILE_DIRECTORY_FILE                     0x00000001
+#define FILE_WRITE_THROUGH                      0x00000002
+#define FILE_SEQUENTIAL_ONLY                    0x00000004
+#define FILE_NO_INTERMEDIATE_BUFFERING          0x00000008
 #define FILE_SYNCHRONOUS_IO_ALERT               0x00000010
 #define FILE_SYNCHRONOUS_IO_NONALERT            0x00000020
+#define FILE_NON_DIRECTORY_FILE                 0x00000040
+#define FILE_RANDOM_ACCESS                      0x00000800
+#define FILE_DELETE_ON_CLOSE                    0x00001000
+#define FILE_OPEN_FOR_BACKUP_INTENT             0x00004000
+#define FILE_OPEN_REPARSE_POINT                 0x00200000
 
 typedef enum _FS_INFORMATION_CLASS {
   FileFsVolumeInformation       = 1,
@@ -4616,6 +4642,19 @@ typedef NTSTATUS (NTAPI *sNtDeviceIoControlFile)
                   PVOID OutputBuffer,
                   ULONG OutputBufferLength);
 
+typedef NTSTATUS (NTAPI *sNtCreateFile)
+                 (PHANDLE FileHandle,
+                  ACCESS_MASK DesiredAccess,
+                  POBJECT_ATTRIBUTES ObjectAttributes,
+                  PIO_STATUS_BLOCK IoStatusBlock,
+                  PLARGE_INTEGER AllocationSize,
+                  ULONG FileAttributes,
+                  ULONG ShareAccess,
+                  ULONG CreateDisposition,
+                  ULONG CreateOptions,
+                  PVOID EaBuffer,
+                  ULONG EaLength);
+
 typedef NTSTATUS (NTAPI *sNtQueryInformationFile)
                  (HANDLE FileHandle,
                   PIO_STATUS_BLOCK IoStatusBlock,
@@ -4817,6 +4856,7 @@ typedef BOOL(WINAPI* sGetFileInformationByName)(
 extern sRtlGetVersion pRtlGetVersion;
 extern sRtlNtStatusToDosError pRtlNtStatusToDosError;
 extern sNtDeviceIoControlFile pNtDeviceIoControlFile;
+extern sNtCreateFile pNtCreateFile;
 extern sNtQueryInformationFile pNtQueryInformationFile;
 extern sNtSetInformationFile pNtSetInformationFile;
 extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
