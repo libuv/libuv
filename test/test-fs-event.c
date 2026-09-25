@@ -1333,3 +1333,138 @@ TEST_IMPL(fs_event_stop_in_cb) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+static uv_key_t fs_event_oom_key;
+
+
+static void* fs_event_oom_malloc(size_t size) {
+  int* countdown;
+
+  /* The CF thread must never read the loop thread's injection state. */
+  countdown = uv_key_get(&fs_event_oom_key);
+  if (countdown != NULL && --*countdown == 0)
+    return NULL;
+  return malloc(size);
+}
+
+
+static void fs_event_oom_walk(uv_handle_t* handle, void* arg) {
+  int* count;
+
+  count = arg;
+  ASSERT_EQ(UV_FS_EVENT, uv_handle_get_type(handle));
+  (*count)++;
+}
+
+
+static void fs_event_oom_anchor_cb(uv_fs_event_t* handle,
+                                   const char* filename,
+                                   int events,
+                                   int status) {
+  ASSERT_OK(status);
+}
+
+
+static void fs_event_oom_cb(uv_fs_event_t* handle,
+                            const char* filename,
+                            int events,
+                            int status) {
+  ASSERT_OK(status);
+  ASSERT_NOT_NULL(filename);
+  /* The directory creation event can arrive after watching starts. */
+  if (strcmp(filename, "fs_event_start_oom") == 0)
+    return;
+  ASSERT_OK(strcmp(filename, "file"));
+  ASSERT_NE(0, events & (UV_CHANGE | UV_RENAME));
+  fs_event_cb_called++;
+  uv_close((uv_handle_t*) handle, NULL);
+  uv_close((uv_handle_t*) &timer, NULL);
+}
+
+
+static void fs_event_oom_touch(uv_timer_t* handle) {
+  touch_file("fs_event_start_oom/file");
+}
+
+
+TEST_IMPL(fs_event_start_oom) {
+  uv_loop_t loop;
+  uv_fs_event_t anchor;
+  uv_fs_event_t warmup;
+  int countdown;
+  int fail;
+  int count;
+  int r;
+
+  ASSERT_OK(uv_key_create(&fs_event_oom_key));
+  ASSERT_OK(uv_replace_allocator(fs_event_oom_malloc, realloc, calloc, free));
+  ASSERT_OK(uv_loop_init(&loop));
+  create_dir("fs_event_start_oom");
+  create_file("fs_event_start_oom/file");
+
+  /* Initialize the CF loop and wait for its first stream to be created. */
+  ASSERT_OK(uv_fs_event_init(&loop, &anchor));
+  ASSERT_OK(uv_fs_event_start(&anchor,
+                              fs_event_oom_anchor_cb,
+                              "fs_event_start_oom",
+                              0));
+  uv_unref((uv_handle_t*) &anchor);
+  ASSERT_OK(uv_fs_event_init(&loop, &warmup));
+  ASSERT_OK(uv_fs_event_start(&warmup,
+                              fs_event_oom_anchor_cb,
+                              "fs_event_start_oom",
+                              0));
+  uv_close((uv_handle_t*) &warmup, NULL);
+  uv_run(&loop, UV_RUN_NOWAIT);
+
+  /* Fail each loop-thread allocation without affecting the CF thread. */
+  for (fail = 1; ; fail++) {
+    ASSERT_LT(fail, 32);
+    ASSERT_OK(uv_fs_event_init(&loop, &fs_event));
+    countdown = fail;
+    uv_key_set(&fs_event_oom_key, &countdown);
+    r = uv_fs_event_start(&fs_event,
+                          fs_event_oom_cb,
+                          "fs_event_start_oom",
+                          0);
+    uv_key_set(&fs_event_oom_key, NULL);
+
+    count = 0;
+    uv_walk(&loop, fs_event_oom_walk, &count);
+    ASSERT_EQ(2, count);
+    if (r != 0) {
+      ASSERT_EQ(UV_ENOMEM, r);
+      ASSERT_OK(countdown);
+      ASSERT_OK(uv_is_active((uv_handle_t*) &fs_event));
+      uv_run(&loop, UV_RUN_NOWAIT);
+      ASSERT_OK(uv_fs_event_start(&fs_event,
+                                  fs_event_oom_cb,
+                                  "fs_event_start_oom",
+                                  0));
+    }
+
+    /* A retry must deliver events, not just return success. */
+    fs_event_cb_called = 0;
+    ASSERT_OK(uv_timer_init(&loop, &timer));
+    ASSERT_OK(uv_timer_start(&timer, fs_event_oom_touch, 100, 100));
+    ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+    ASSERT_EQ(1, fs_event_cb_called);
+    if (r == 0) {
+      ASSERT_GT(countdown, 0);
+      ASSERT_GT(fail, 1);
+      break;
+    }
+  }
+
+  uv_close((uv_handle_t*) &anchor, NULL);
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_loop_close(&loop));
+  ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
+  uv_key_delete(&fs_event_oom_key);
+  ASSERT_OK(delete_file("fs_event_start_oom/file"));
+  ASSERT_OK(delete_dir("fs_event_start_oom"));
+  return 0;
+}
+#endif
