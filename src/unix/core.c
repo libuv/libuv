@@ -887,8 +887,8 @@ static int maybe_resize(uv_loop_t* loop, unsigned int len) {
   }
 
   nwatchers = next_power_of_two(len + 2) - 2;
-  watchers = uv__reallocf(loop->watchers,
-                          (nwatchers + 2) * sizeof(loop->watchers[0]));
+  watchers = uv__realloc(loop->watchers,
+                         (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     return UV_ENOMEM;
@@ -960,10 +960,10 @@ int uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   assert(w->fd >= 0);
   assert(w->fd < INT_MAX);
 
-  w->pevents |= events;
   err = maybe_resize(loop, w->fd + 1);
   if (err)
     return err;
+  w->pevents |= events;
 
 #if !defined(__sun)
   /* The event ports backend needs to rearm all file descriptors on each and
