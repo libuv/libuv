@@ -542,7 +542,7 @@ static void uv__tcp_queue_read(uv_loop_t* loop, uv_tcp_t* handle) {
   int result;
   DWORD bytes, flags;
 
-  assert(handle->flags & UV_HANDLE_READING);
+  assert(handle->read_cb != NULL);
   assert(!(handle->flags & UV_HANDLE_READ_PENDING));
 
   req = &handle->read_req;
@@ -619,7 +619,7 @@ int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     handle->stream.serv.connection_cb = cb;
   }
 
-  if (handle->flags & UV_HANDLE_READING) {
+  if (handle->read_cb != NULL) {
     return WSAEISCONN;
   }
 
@@ -770,7 +770,6 @@ int uv__tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb) {
   uv_loop_t* loop = handle->loop;
 
-  handle->flags |= UV_HANDLE_READING;
   handle->read_cb = read_cb;
   handle->alloc_cb = alloc_cb;
   INCREASE_ACTIVE_COUNT(loop, handle);
@@ -1032,6 +1031,7 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
     uv_req_t* req) {
   DWORD bytes, flags, err;
   uv_buf_t buf;
+  uv_read_cb read_cb;
   int count;
 
   assert(handle->type == UV_TCP);
@@ -1040,9 +1040,10 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   if (!REQ_SUCCESS(req)) {
     /* An error occurred doing the read. */
-    if ((handle->flags & UV_HANDLE_READING) ||
-        !(handle->flags & UV_HANDLE_ZERO_READ)) {
-      handle->flags &= ~UV_HANDLE_READING;
+    if (handle->read_cb != NULL) {
+      read_cb = handle->read_cb;
+      handle->read_cb = NULL;
+      handle->alloc_cb = NULL;
       DECREASE_ACTIVE_COUNT(loop, handle);
       buf = (handle->flags & UV_HANDLE_ZERO_READ) ?
             uv_buf_init(NULL, 0) : handle->tcp.conn.read_buffer;
@@ -1056,12 +1057,10 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
       }
       handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
-      handle->read_cb((uv_stream_t*)handle,
-                      uv_translate_sys_error(err),
-                      &buf);
+      read_cb((uv_stream_t*) handle, uv_translate_sys_error(err), &buf);
     }
   } else {
-    if (!(handle->flags & UV_HANDLE_ZERO_READ)) {
+    if (!(handle->flags & UV_HANDLE_ZERO_READ) && handle->read_cb != NULL) {
       /* The read was done with a non-zero buffer length. */
       if (req->u.io.overlapped.InternalHigh > 0) {
         /* Successful read */
@@ -1074,21 +1073,23 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
         }
       } else {
         /* Connection closed */
-        if (handle->flags & UV_HANDLE_READING) {
-          handle->flags &= ~UV_HANDLE_READING;
-          DECREASE_ACTIVE_COUNT(loop, handle);
-        }
+        read_cb = handle->read_cb;
+        handle->read_cb = NULL;
+        handle->alloc_cb = NULL;
+        DECREASE_ACTIVE_COUNT(loop, handle);
 
         buf.base = 0;
         buf.len = 0;
-        handle->read_cb((uv_stream_t*)handle, UV_EOF, &handle->tcp.conn.read_buffer);
+        read_cb((uv_stream_t*) handle,
+                UV_EOF,
+                &handle->tcp.conn.read_buffer);
         goto done;
       }
     }
 
     /* Do nonblocking reads until the buffer is empty */
     count = 32;
-    while ((handle->flags & UV_HANDLE_READING) && (count-- > 0)) {
+    while (handle->read_cb != NULL && (count-- > 0)) {
       buf = uv_buf_init(NULL, 0);
       handle->alloc_cb((uv_handle_t*) handle, 65536, &buf);
       if (buf.base == NULL || buf.len == 0) {
@@ -1116,10 +1117,12 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
           }
         } else {
           /* Connection closed */
-          handle->flags &= ~UV_HANDLE_READING;
+          read_cb = handle->read_cb;
+          handle->read_cb = NULL;
+          handle->alloc_cb = NULL;
           DECREASE_ACTIVE_COUNT(loop, handle);
 
-          handle->read_cb((uv_stream_t*)handle, UV_EOF, &buf);
+          read_cb((uv_stream_t*) handle, UV_EOF, &buf);
           break;
         }
       } else {
@@ -1129,7 +1132,9 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
           handle->read_cb((uv_stream_t*)handle, 0, &buf);
         } else {
           /* Ouch! serious error. */
-          handle->flags &= ~UV_HANDLE_READING;
+          read_cb = handle->read_cb;
+          handle->read_cb = NULL;
+          handle->alloc_cb = NULL;
           DECREASE_ACTIVE_COUNT(loop, handle);
 
           if (err == WSAECONNABORTED) {
@@ -1139,9 +1144,7 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
           }
           handle->flags &= ~(UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
-          handle->read_cb((uv_stream_t*)handle,
-                          uv_translate_sys_error(err),
-                          &buf);
+          read_cb((uv_stream_t*) handle, uv_translate_sys_error(err), &buf);
         }
         break;
       }
@@ -1149,7 +1152,7 @@ void uv__process_tcp_read_req(uv_loop_t* loop, uv_tcp_t* handle,
 
 done:
     /* Post another read if still reading and not closing. */
-    if ((handle->flags & UV_HANDLE_READING) &&
+    if (handle->read_cb != NULL &&
         !(handle->flags & UV_HANDLE_READ_PENDING)) {
       uv__tcp_queue_read(loop, handle);
     }
@@ -1502,7 +1505,7 @@ static void uv__tcp_try_cancel_reqs(uv_tcp_t* tcp) {
 
 void uv__tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
   if (tcp->flags & UV_HANDLE_CONNECTION) {
-    if (tcp->flags & UV_HANDLE_READING) {
+    if (tcp->read_cb != NULL) {
       uv_read_stop((uv_stream_t*) tcp);
     }
     uv__tcp_try_cancel_reqs(tcp);
@@ -1519,7 +1522,7 @@ void uv__tcp_close(uv_loop_t* loop, uv_tcp_t* tcp) {
         }
       }
     }
-    assert(!(tcp->flags & UV_HANDLE_READING));
+    assert(tcp->read_cb == NULL);
   }
 
   if (tcp->flags & UV_HANDLE_LISTENING) {
