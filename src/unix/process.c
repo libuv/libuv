@@ -329,6 +329,7 @@ static void uv__process_child_init(const uv_process_options_t* options,
                                    int stdio_count,
                                    int (*pipes)[2],
                                    int error_fd) {
+  struct sigaction hup;
   sigset_t signewset;
   int close_fd;
   int use_fd;
@@ -336,12 +337,18 @@ static void uv__process_child_init(const uv_process_options_t* options,
   int fd;
   int n;
 
+  /* Check if SIGHUP is ignored, if so, keep it ignored. */
+  sigaction(SIGHUP, NULL, &hup);
+
   /* Reset signal disposition first. Use a hard-coded limit because NSIG is not
    * fixed on Linux: it's either 32, 34 or 64, depending on whether RT signals
    * are enabled. We are not allowed to touch RT signal handlers, glibc uses
    * them internally.
    */
   for (n = 1; n < 32; n += 1) {
+    if (n == SIGHUP && hup.sa_handler == SIG_IGN)
+      continue;  /* Obey nohup. */
+
     if (n == SIGKILL || n == SIGSTOP)
       continue;  /* Can't be changed. */
 

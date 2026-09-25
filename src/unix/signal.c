@@ -224,6 +224,13 @@ static int uv__signal_register_handler(int signum, int oneshot) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
 
+  /* Check if SIGHUP is ignored, if so, keep it ignored. */
+  if (signum == SIGHUP) {
+    sigaction(signum, NULL, &sa);
+    if (sa.sa_handler == SIG_IGN)
+      return 0;
+  }
+
   /* XXX use a separate signal stack? */
   memset(&sa, 0, sizeof(sa));
   if (sigfillset(&sa.sa_mask))
@@ -244,6 +251,13 @@ static int uv__signal_register_handler(int signum, int oneshot) {
 static void uv__signal_unregister_handler(int signum) {
   /* When this function is called, the signal lock must be held. */
   struct sigaction sa;
+
+  /* Check if SIGHUP is ignored, if so, keep it ignored. */
+  if (signum == SIGHUP) {
+    sigaction(signum, NULL, &sa);
+    if (sa.sa_handler == SIG_IGN)
+      return;
+  }
 
   memset(&sa, 0, sizeof(sa));
   sa.sa_handler = SIG_DFL;
