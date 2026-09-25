@@ -22,6 +22,7 @@
 #include "uv.h"
 #include "task.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 #define FIXTURE "testfile"
@@ -49,6 +50,28 @@ static uv_loop_t* loop;
 static int poll_cb_called;
 static int timer_cb_called;
 static int close_cb_called;
+static uv_thread_t oom_thread;
+static int fail_malloc;
+static int malloc_failures;
+
+
+static void* oom_malloc(size_t size) {
+  uv_thread_t self;
+
+  self = uv_thread_self();
+  /* Only the test thread reads or changes the failure-injection state. */
+  if (uv_thread_equal(&self, &oom_thread) && fail_malloc) {
+    malloc_failures++;
+    return NULL;
+  }
+
+  return malloc(size);
+}
+
+
+static void oom_walk_cb(uv_handle_t* handle, void* arg) {
+  ASSERT_PTR_EQ(handle, arg);
+}
 
 
 static void touch_file(const char* path) {
@@ -165,6 +188,40 @@ TEST_IMPL(fs_poll) {
   ASSERT_EQ(1, close_cb_called);
 
   MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+
+TEST_IMPL(fs_poll_start_oom) {
+  uv_loop_t loop;
+  uv_fs_poll_t handle;
+  struct uv__queue* queue_tail;
+  int err;
+
+  ASSERT_OK(uv_replace_allocator(oom_malloc, realloc, calloc, free));
+  oom_thread = uv_thread_self();
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_fs_poll_init(&loop, &handle));
+  queue_tail = loop.handle_queue.prev;
+
+  /* The context uses calloc; fail the stat request's path allocation. */
+  fail_malloc = 1;
+  err = uv_fs_poll_start(&handle, poll_cb_fail, ".", 100);
+  fail_malloc = 0;
+  ASSERT_EQ(UV_ENOMEM, err);
+  ASSERT_EQ(1, malloc_failures);
+  ASSERT_OK(uv_is_active((uv_handle_t*) &handle));
+  ASSERT_NULL(handle.poll_ctx);
+  /* uv_walk skips internal handles, so also check the timer was not left. */
+  ASSERT_PTR_EQ(queue_tail, loop.handle_queue.prev);
+  uv_walk(&loop, oom_walk_cb, &handle);
+
+  ASSERT_OK(uv_fs_poll_start(&handle, poll_cb_fail, ".", 100));
+  uv_close((uv_handle_t*) &handle, close_cb);
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(&loop);
   return 0;
 }
 

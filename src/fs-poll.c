@@ -89,16 +89,14 @@ int uv_fs_poll_start(uv_fs_poll_t* handle,
   ctx->parent_handle = handle;
   memcpy(ctx->path, path, len + 1);
 
-  err = uv_timer_init(loop, &ctx->timer_handle);
-  if (err < 0)
-    goto error;
-
-  ctx->timer_handle.flags |= UV_HANDLE_INTERNAL;
-  uv__handle_unref(&ctx->timer_handle);
-
   err = uv_fs_stat(loop, &ctx->fs_req, ctx->path, poll_cb);
   if (err < 0)
     goto error;
+
+  /* Register the timer only after the stat request has been accepted. */
+  uv_timer_init(loop, &ctx->timer_handle);
+  ctx->timer_handle.flags |= UV_HANDLE_INTERNAL;
+  uv__handle_unref(&ctx->timer_handle);
 
   if (handle->poll_ctx != NULL)
     ctx->previous = handle->poll_ctx;
