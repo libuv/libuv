@@ -753,6 +753,145 @@ TEST_IMPL(spawn_stdio_greater_than_3) {
 }
 
 
+#ifndef _WIN32
+TEST_IMPL(spawn_stdio_high_fd) {
+  uv_stdio_container_t* stdio;
+  uv_pipe_t pipe;
+  char fd_arg[32];
+  int sentinel;
+  int flags;
+  int fd;
+
+  init_process_options("spawn_helper5", exit_cb);
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe, 0));
+
+  fd = open("/dev/null", O_RDONLY | O_NONBLOCK);
+  ASSERT_GE(fd, 0);
+  sentinel = fcntl(fd, F_DUPFD, 64);
+  ASSERT_GE(sentinel, 64);
+  ASSERT_OK(close(fd));
+  flags = fcntl(sentinel, F_GETFL);
+  ASSERT_GE(flags, 0);
+
+  stdio = calloc(sentinel, sizeof(*stdio));
+  ASSERT_NOT_NULL(stdio);
+  stdio[sentinel - 1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  stdio[sentinel - 1].data.stream = (uv_stream_t*) &pipe;
+  options.stdio = stdio;
+  options.stdio_count = sentinel;
+  snprintf(fd_arg, sizeof(fd_arg), "%d", sentinel - 1);
+  args[2] = fd_arg;
+  args[3] = "ignored";
+
+  /* The child must move the low pipe fd aside before mapping it to the high
+   * stdio slot. That temporary child fd must not affect the parent. */
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_EQ(flags, fcntl(sentinel, F_GETFL));
+  ASSERT_OK(close(sentinel));
+  free(stdio);
+
+  /* EOF also proves that the parent closed its copy of the child endpoint. */
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe, on_alloc, on_read));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(2, close_cb_called);
+  ASSERT_OK(strcmp("fourth stdio!\n", output));
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+static void spawn_inherit_nonblock_alloc(uv_handle_t* handle,
+                                        size_t suggested_size,
+                                        uv_buf_t* buf) {
+  buf->base = output + output_used;
+  buf->len = 1;
+}
+
+
+static int spawn_inherit_nonblock(uv_stdio_flags flags, int missing) {
+  uv_stdio_container_t* stdio;
+  uv_pipe_t pipe;
+  int fds[2];
+  int child_fd;
+  int before;
+  int r;
+
+  init_process_options("spawn_helper1", exit_cb);
+  ASSERT_OK(uv_pipe(fds, UV_NONBLOCK_PIPE, 0));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe, 0));
+  ASSERT_OK(uv_pipe_open(&pipe, fds[0]));
+  before = fcntl(fds[0], F_GETFL);
+  ASSERT_GE(before, 0);
+  ASSERT_NE(0, before & O_NONBLOCK);
+
+  /* Exercise an upward remapping to a nonstandard child descriptor. */
+  child_fd = fds[0] + 1;
+  ASSERT_GT(child_fd, 2);
+  stdio = calloc(child_fd + 1, sizeof(*stdio));
+  ASSERT_NOT_NULL(stdio);
+  stdio[child_fd].flags = flags;
+  if (flags == UV_INHERIT_STREAM)
+    stdio[child_fd].data.stream = (uv_stream_t*) &pipe;
+  else
+    stdio[child_fd].data.fd = fds[0];
+  options.stdio = stdio;
+  options.stdio_count = child_fd + 1;
+  if (missing)
+    options.file = "./test-file-does-not-exist";
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  if (missing) {
+    ASSERT_EQ(UV_ENOENT, r);
+    uv_close((uv_handle_t*) &process, close_cb);
+  } else {
+    ASSERT_OK(r);
+  }
+  ASSERT_EQ(before, fcntl(fds[0], F_GETFL));
+  free(stdio);
+
+  /* Fill the one-byte buffer so the reader tries again while the writer is
+   * still open. A short read or EOF would hide a blocking descriptor. */
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe,
+                          spawn_inherit_nonblock_alloc,
+                          on_read));
+  ASSERT_EQ(1, write(fds[1], "x", 1));
+  ASSERT_EQ(1, uv_run(uv_default_loop(), UV_RUN_NOWAIT));
+  ASSERT_EQ(1, output_used);
+  ASSERT_EQ('x', output[0]);
+
+  ASSERT_OK(close(fds[1]));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(!missing, exit_cb_called);
+  ASSERT_EQ(2, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+TEST_IMPL(spawn_inherit_stream_nonblock) {
+  return spawn_inherit_nonblock(UV_INHERIT_STREAM, 0);
+}
+
+
+TEST_IMPL(spawn_inherit_stream_nonblock_fails) {
+  return spawn_inherit_nonblock(UV_INHERIT_STREAM, 1);
+}
+
+
+TEST_IMPL(spawn_inherit_fd_nonblock) {
+  return spawn_inherit_nonblock(UV_INHERIT_FD, 0);
+}
+
+
+TEST_IMPL(spawn_inherit_fd_nonblock_fails) {
+  return spawn_inherit_nonblock(UV_INHERIT_FD, 1);
+}
+
+#endif
+
+
 int spawn_tcp_server_helper(void) {
   uv_tcp_t tcp;
   uv_os_sock_t handle;
