@@ -1581,7 +1581,8 @@ void uv__stream_close(uv_stream_t* handle) {
     uv_thread_join(&s->thread);
     uv_sem_destroy(&s->close_sem);
     uv_sem_destroy(&s->async_sem);
-    uv__close(s->fake_fd);
+    if (s->fd > STDERR_FILENO)
+      uv__close(s->fd);
     uv__close(s->int_fd);
     uv_close((uv_handle_t*) &s->async, uv__stream_osx_cb_close);
 
