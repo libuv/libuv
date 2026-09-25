@@ -69,7 +69,9 @@ static void send_cb(uv_udp_send_t* req, int status) {
 
 static void send_cb_recverr(uv_udp_send_t* req, int status) {
   ASSERT_PTR_NE(req, NULL);
-  ASSERT(status == 0 || status == UV_ECONNREFUSED);
+  /* Windows reports the ICMP error as ECONNRESET, and on a send when it is the
+   * send that runs into it first. */
+  ASSERT(status == 0 || status == UV_ECONNREFUSED || status == UV_ECONNRESET);
   CHECK_HANDLE(req->handle);
   send_cb_called++;
 }
@@ -84,7 +86,7 @@ static void recv_cb(uv_udp_t* handle,
 
   if (nread < 0) {
     if (flags && can_recverr)
-      ASSERT(flags & UV_UDP_LINUX_RECVERR);
+      ASSERT(flags & UV_UDP_RECVERR);
     else
       ASSERT(0 && "unexpected error");
   } else if (nread == 0) {
@@ -114,7 +116,7 @@ TEST_IMPL(udp_send_unreachable) {
   uv_buf_t buf;
   int r;
 
-#ifdef __linux__
+#if defined(__linux__) || defined(_WIN32)
   can_recverr = 1;
 #endif
 
@@ -164,7 +166,7 @@ TEST_IMPL(udp_send_unreachable) {
 
     r = uv_udp_bind(&client2,
                     (const struct sockaddr*) &addr3,
-                    UV_UDP_LINUX_RECVERR);
+                    UV_UDP_RECVERR);
     ASSERT_OK(r);
 
     r = uv_udp_recv_start(&client2, alloc_cb, recv_cb);
