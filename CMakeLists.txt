@@ -557,6 +557,8 @@ if(LIBUV_BUILD_TESTS)
        test/test-fork.c
        test/test-fs-copyfile.c
        test/test-fs-event.c
+       test/test-fs-event-admission.c
+       test/test-fs-event-admission-observer.c
        test/test-fs-poll.c
        test/test-fs.c
        test/test-fs-readdir.c
@@ -740,6 +742,14 @@ if(LIBUV_BUILD_TESTS)
   endif()
   add_executable(uv_run_tests_a ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    # The static archive uses the implementation compiled into this test TU.
+    # This allows deterministic native call gates without production hooks.
+    target_compile_definitions(uv_run_tests_a PRIVATE UV_TEST_FSEVENTS=1)
+    target_include_directories(uv_run_tests_a PRIVATE src src/unix)
+    target_link_libraries(uv_run_tests_a "-framework CoreServices")
+    target_link_libraries(uv_run_tests "-framework CoreServices")
+  endif()
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
   if(QEMU)
     target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries} -static)

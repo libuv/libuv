@@ -178,6 +178,8 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-fail-always.c \
                          test/test-fs-copyfile.c \
                          test/test-fs-event.c \
+                         test/test-fs-event-admission.c \
+                         test/test-fs-event-admission-observer.c \
                          test/test-fs-poll.c \
                          test/test-fs.c \
                          test/test-fs-readdir.c \
@@ -436,6 +438,12 @@ libuv_la_SOURCES += src/unix/cygwin.c \
 endif
 
 if DARWIN
+test_run_tests_LDFLAGS += -framework CoreServices
+if LIBUV_ENABLE_STATIC
+# Source-including native tests replace the archive's fsevents object.
+test_run_tests_CFLAGS += -DUV_TEST_FSEVENTS=1
+test_run_tests_LDFLAGS += -static
+endif
 uvinclude_HEADERS += include/uv/darwin.h
 libuv_la_CFLAGS += -D_DARWIN_USE_64_BIT_INODE=1
 libuv_la_CFLAGS += -D_DARWIN_UNLIMITED_SELECT=1
