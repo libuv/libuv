@@ -437,8 +437,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
 endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
-  list(APPEND uv_test_libraries util)
-  list(APPEND uv_libraries m)
+  list(APPEND uv_test_libraries m util)
 endif()
 
 if(CYGWIN OR MSYS)
