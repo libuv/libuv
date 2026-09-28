@@ -237,7 +237,9 @@ typedef HANDLE uv_thread_t;
 
 typedef HANDLE uv_sem_t;
 
-typedef CRITICAL_SECTION uv_mutex_t;
+typedef struct UV_CAPABILITY("uv_mutex") uv_mutex_s {
+  CRITICAL_SECTION cs;
+} uv_mutex_t;
 
 /* This condition variable implementation is based on the SetEvent solution
  * (section 3.2) at http://www.cs.wustl.edu/~schmidt/win32-cv-1.html
@@ -256,7 +258,7 @@ typedef union {
   } unused_; /* TODO: retained for ABI compatibility; remove me in v2.x. */
 } uv_cond_t;
 
-typedef struct {
+typedef struct UV_CAPABILITY("uv_rwlock") uv_rwlock_s {
   SRWLOCK read_write_lock_;
   /* TODO: retained for ABI compatibility; remove me in v2.x */
 #ifdef _WIN64
@@ -281,7 +283,7 @@ typedef struct {
 
 #define UV_ONCE_INIT { 0, INIT_ONCE_STATIC_INIT }
 
-typedef struct uv_once_s {
+typedef struct UV_CAPABILITY("uv_once") uv_once_s {
   unsigned char unused;
   INIT_ONCE init_once;
 } uv_once_t;

@@ -315,7 +315,7 @@ int uv_thread_getname(uv_thread_t* tid, char* name, size_t size) {
 
 int uv_mutex_init(uv_mutex_t* mutex) {
 #if defined(NDEBUG) || !defined(PTHREAD_MUTEX_ERRORCHECK)
-  return UV__ERR(pthread_mutex_init(mutex, NULL));
+  return UV__ERR(pthread_mutex_init(&mutex->m, NULL));
 #else
   pthread_mutexattr_t attr;
   int err;
@@ -326,7 +326,7 @@ int uv_mutex_init(uv_mutex_t* mutex) {
   if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK))
     abort();
 
-  err = pthread_mutex_init(mutex, &attr);
+  err = pthread_mutex_init(&mutex->m, &attr);
 
   if (pthread_mutexattr_destroy(&attr))
     abort();
@@ -346,7 +346,7 @@ int uv_mutex_init_recursive(uv_mutex_t* mutex) {
   if (pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE))
     abort();
 
-  err = pthread_mutex_init(mutex, &attr);
+  err = pthread_mutex_init(&mutex->m, &attr);
 
   if (pthread_mutexattr_destroy(&attr))
     abort();
@@ -356,21 +356,21 @@ int uv_mutex_init_recursive(uv_mutex_t* mutex) {
 
 
 void uv_mutex_destroy(uv_mutex_t* mutex) {
-  if (pthread_mutex_destroy(mutex))
+  if (pthread_mutex_destroy(&mutex->m))
     abort();
 }
 
 
-void uv_mutex_lock(uv_mutex_t* mutex) {
-  if (pthread_mutex_lock(mutex))
+void uv_mutex_lock(uv_mutex_t* mutex) UV_NO_THREAD_SAFETY_ANALYSIS {
+  if (pthread_mutex_lock(&mutex->m))
     abort();
 }
 
 
-int uv_mutex_trylock(uv_mutex_t* mutex) {
+int uv_mutex_trylock(uv_mutex_t* mutex) UV_NO_THREAD_SAFETY_ANALYSIS {
   int err;
 
-  err = pthread_mutex_trylock(mutex);
+  err = pthread_mutex_trylock(&mutex->m);
   if (err) {
     if (err != EBUSY && err != EAGAIN)
       abort();
@@ -381,33 +381,33 @@ int uv_mutex_trylock(uv_mutex_t* mutex) {
 }
 
 
-void uv_mutex_unlock(uv_mutex_t* mutex) {
-  if (pthread_mutex_unlock(mutex))
+void uv_mutex_unlock(uv_mutex_t* mutex) UV_NO_THREAD_SAFETY_ANALYSIS {
+  if (pthread_mutex_unlock(&mutex->m))
     abort();
 }
 
 
 int uv_rwlock_init(uv_rwlock_t* rwlock) {
-  return UV__ERR(pthread_rwlock_init(rwlock, NULL));
+  return UV__ERR(pthread_rwlock_init(&rwlock->rw, NULL));
 }
 
 
 void uv_rwlock_destroy(uv_rwlock_t* rwlock) {
-  if (pthread_rwlock_destroy(rwlock))
+  if (pthread_rwlock_destroy(&rwlock->rw))
     abort();
 }
 
 
-void uv_rwlock_rdlock(uv_rwlock_t* rwlock) {
-  if (pthread_rwlock_rdlock(rwlock))
+void uv_rwlock_rdlock(uv_rwlock_t* rwlock) UV_NO_THREAD_SAFETY_ANALYSIS {
+  if (pthread_rwlock_rdlock(&rwlock->rw))
     abort();
 }
 
 
-int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
+int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) UV_NO_THREAD_SAFETY_ANALYSIS {
   int err;
 
-  err = pthread_rwlock_tryrdlock(rwlock);
+  err = pthread_rwlock_tryrdlock(&rwlock->rw);
   if (err) {
     if (err != EBUSY && err != EAGAIN)
       abort();
@@ -418,22 +418,22 @@ int uv_rwlock_tryrdlock(uv_rwlock_t* rwlock) {
 }
 
 
-void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) {
-  if (pthread_rwlock_unlock(rwlock))
+void uv_rwlock_rdunlock(uv_rwlock_t* rwlock) UV_NO_THREAD_SAFETY_ANALYSIS {
+  if (pthread_rwlock_unlock(&rwlock->rw))
     abort();
 }
 
 
-void uv_rwlock_wrlock(uv_rwlock_t* rwlock) {
-  if (pthread_rwlock_wrlock(rwlock))
+void uv_rwlock_wrlock(uv_rwlock_t* rwlock) UV_NO_THREAD_SAFETY_ANALYSIS {
+  if (pthread_rwlock_wrlock(&rwlock->rw))
     abort();
 }
 
 
-int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
+int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) UV_NO_THREAD_SAFETY_ANALYSIS {
   int err;
 
-  err = pthread_rwlock_trywrlock(rwlock);
+  err = pthread_rwlock_trywrlock(&rwlock->rw);
   if (err) {
     if (err != EBUSY && err != EAGAIN)
       abort();
@@ -444,14 +444,14 @@ int uv_rwlock_trywrlock(uv_rwlock_t* rwlock) {
 }
 
 
-void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) {
-  if (pthread_rwlock_unlock(rwlock))
+void uv_rwlock_wrunlock(uv_rwlock_t* rwlock) UV_NO_THREAD_SAFETY_ANALYSIS {
+  if (pthread_rwlock_unlock(&rwlock->rw))
     abort();
 }
 
 
-void uv_once(uv_once_t* guard, void (*callback)(void)) {
-  if (pthread_once(guard, callback))
+void uv_once(uv_once_t* guard, void (*callback)(void)) UV_NO_THREAD_SAFETY_ANALYSIS {
+  if (pthread_once(&guard->o, callback))
     abort();
 }
 
@@ -816,7 +816,7 @@ void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
   int r;
 
   errno = 0;
-  r = pthread_cond_wait(cond, mutex);
+  r = pthread_cond_wait(cond, &mutex->m);
 
   /* Workaround for a bug in OS X at least up to 13.6
    * See https://github.com/libuv/libuv/issues/4165
@@ -832,7 +832,7 @@ void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
 #else /* !(defined(__APPLE__) && defined(__MACH__)) */
 
 void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
-  if (pthread_cond_wait(cond, mutex))
+  if (pthread_cond_wait(cond, &mutex->m))
     abort();
 }
 
@@ -848,7 +848,7 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
 #if defined(__APPLE__) && defined(__MACH__)
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
-  r = pthread_cond_timedwait_relative_np(cond, mutex, &ts);
+  r = pthread_cond_timedwait_relative_np(cond, &mutex->m, &ts);
 #else
 #if defined(__MVS__)
   if (gettimeofday(&tv, NULL))
@@ -859,7 +859,7 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
 #endif
   ts.tv_sec = timeout / NANOSEC;
   ts.tv_nsec = timeout % NANOSEC;
-  r = pthread_cond_timedwait(cond, mutex, &ts);
+  r = pthread_cond_timedwait(cond, &mutex->m, &ts);
 #endif
 
 

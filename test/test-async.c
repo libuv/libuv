@@ -35,7 +35,7 @@ static int prepare_cb_called;
 static int close_cb_called;
 
 
-static void thread_cb(void *arg) {
+static void thread_cb(void *arg) UV_EXCLUDES(&mutex) {
   int n;
   int r;
 
@@ -75,7 +75,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void async_cb(uv_async_t* handle) {
+static void async_cb(uv_async_t* handle) UV_EXCLUDES(&mutex) {
   int n;
 
   ASSERT_PTR_EQ(handle, &async);
@@ -99,13 +99,14 @@ static void prepare_cb(uv_prepare_t* handle) {
   if (prepare_cb_called++)
     return;
 
+  uv_mutex_assume_locked(&mutex);
   r = uv_thread_create(&thread, thread_cb, NULL);
   ASSERT_OK(r);
   uv_mutex_unlock(&mutex);
 }
 
 
-TEST_IMPL(async) {
+TEST_IMPL(async) UV_EXCLUDES(&mutex) {
   int r;
 
   r = uv_mutex_init(&mutex);
@@ -115,8 +116,11 @@ TEST_IMPL(async) {
   r = uv_prepare_init(uv_default_loop(), &prepare);
   ASSERT_OK(r);
   r = uv_prepare_start(&prepare, prepare_cb);
+  /* This is true since prepare_cb must run at least once before async_cb. */
+  uv_mutex_assume_unlocked(&mutex);
   ASSERT_OK(r);
 
+  uv_mutex_assert_unlocked(&mutex);
   r = uv_async_init(uv_default_loop(), &async, async_cb);
   ASSERT_OK(r);
 
