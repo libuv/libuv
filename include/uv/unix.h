@@ -244,6 +244,7 @@ typedef struct {
 
 #define UV_WRITE_PRIVATE_FIELDS                                               \
   struct uv__queue queue;                                                     \
+  uv_stream_t* send_handle;                                                   \
   unsigned int write_index;                                                   \
   uv_buf_t* bufs;                                                             \
   unsigned int nbufs;                                                         \

@@ -1656,7 +1656,6 @@ static int uv__pipe_write_data(uv_loop_t* loop,
 
   UV_REQ_INIT(loop, req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
-  req->send_handle = NULL;
   req->cb = cb;
   req->nwritten = 0;
   /* Private fields. */

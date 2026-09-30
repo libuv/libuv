@@ -627,7 +627,6 @@ UV_EXTERN size_t uv_write_nwritten(const uv_write_t* req);
 struct uv_write_s {
   UV_REQ_FIELDS
   uv_write_cb cb;
-  uv_stream_t* send_handle; /* TODO: make private and unix-only in v2.x. */
   uv_stream_t* handle;
   UV_WRITE_PRIVATE_FIELDS
 };

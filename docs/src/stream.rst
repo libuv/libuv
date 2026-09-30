@@ -96,9 +96,7 @@ Public members
 
     Pointer to the stream where this write request is running.
 
-.. c:member:: uv_stream_t* uv_write_t.send_handle
-
-    Pointer to the stream being sent using this write request.
+.. versionchanged:: 2.0.0 the ``send_handle`` member is no longer public.
 
 .. seealso:: The :c:type:`uv_handle_t` members also apply.
 
