@@ -1,0 +1,41 @@
+name: CI-openbsd
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-openbsd.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  build-openbsd:
+    runs-on: ubuntu-24.04
+    name: Build on OpenBSD
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build
+        uses: vmactions/openbsd-vm@86cdc08415d9d0865267e686561e276c52d62530 # v1.4.7
+        with:
+          copyback: false
+          cache-after-prepare: true
+          # A bare "pkg_add autoconf" prints an "Ambiguous: ..." list and
+          # still exits 0 without installing anything, so pin the branches.
+          prepare: pkg_add -I autoconf%2.72 automake%1.18 libtool gmake
+          run: |
+            set -e -u -x
+            export AUTOCONF_VERSION=2.72
+            export AUTOMAKE_VERSION=1.18
+            ./autogen.sh
+            mkdir build
+            cd build
+            ../configure
+            gmake -j2

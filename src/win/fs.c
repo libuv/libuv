@@ -890,6 +890,7 @@ void fs__read(uv_fs_t* req) {
   bytes = 0;
   do {
     DWORD incremental_bytes;
+    DWORD to_read;
 
     if (offset != -1) {
       offset_.QuadPart = offset + bytes;
@@ -897,9 +898,12 @@ void fs__read(uv_fs_t* req) {
       overlapped.OffsetHigh = offset_.HighPart;
     }
 
+    to_read = req->fs.info.bufs[index].len;
+    if (to_read > UV__IO_MAX_BYTES)
+      to_read = UV__IO_MAX_BYTES;
     result = ReadFile(handle,
                       req->fs.info.bufs[index].base,
-                      req->fs.info.bufs[index].len,
+                      to_read,
                       &incremental_bytes,
                       overlapped_ptr);
     bytes += incremental_bytes;
@@ -1097,7 +1101,7 @@ void fs__write(uv_fs_t* req) {
 
     result = WriteFile(handle,
                        req->fs.info.bufs[index].base,
-                       req->fs.info.bufs[index].len,
+                       (DWORD) req->fs.info.bufs[index].len,
                        &incremental_bytes,
                        overlapped_ptr);
     bytes += incremental_bytes;
@@ -1151,9 +1155,8 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   }
 
   if (isrmdir && !(info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-    /* Error if we're in rmdir mode but it is not a dir.
-     * TODO: change it to UV_NOTDIR in v2. */
-    SET_REQ_UV_ERROR(req, UV_ENOENT, ERROR_DIRECTORY);
+    /* Error if we're in rmdir mode but it is not a dir. */
+    SET_REQ_UV_ERROR(req, UV_ENOTDIR, ERROR_DIRECTORY);
     CloseHandle(handle);
     return;
   }
@@ -3323,6 +3326,11 @@ int uv_fs_write(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
+  if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES) {
+    SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
+    return UV_EINVAL;
+  }
+
   req->file.hFile = handle;
 
   req->fs.info.nbufs = nbufs;
@@ -3692,6 +3700,8 @@ int uv_fs_sendfile(uv_loop_t* loop, uv_fs_t* req, uv_os_fd_t fd_out,
   req->file.hFile = fd_in;
   req->fs.info.hFile_out = fd_out;
   req->fs.info.offset = in_offset;
+  if (length > UV__IO_MAX_BYTES)
+    return UV_EINVAL;
   req->fs.info.bufsml[0].len = length;
   POST;
 }
