@@ -588,6 +588,7 @@ TEST_DECLARE   (signal_close_loop_alive)
 TEST_DECLARE   (osx_resident_set_memory)
 TEST_DECLARE   (osx_select)
 TEST_DECLARE   (osx_select_many_fds)
+TEST_DECLARE   (osx_select_close)
 #endif
 HELPER_DECLARE (tcp4_echo_server)
 HELPER_DECLARE (tcp6_echo_server)
@@ -1167,6 +1168,7 @@ TASK_LIST_START
   TEST_ENTRY (osx_resident_set_memory)
   TEST_ENTRY (osx_select)
   TEST_ENTRY (osx_select_many_fds)
+  TEST_ENTRY (osx_select_close)
 #endif
 
   TEST_FS_ENTRY  (fs_file_noent)
