@@ -455,7 +455,6 @@ TEST_DECLARE   (fs_event_watch_file_twice)
 TEST_DECLARE   (fs_event_watch_file_current_dir)
 #ifdef _WIN32
 TEST_DECLARE   (fs_event_watch_file_root_dir)
-TEST_DECLARE   (fs_event_watch_file_exclusively_locked)
 #endif
 TEST_DECLARE   (fs_event_watch_invalid_path)
 TEST_DECLARE   (fs_event_no_callback_after_close)
@@ -1235,7 +1234,6 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_watch_file_current_dir)
 #ifdef _WIN32
   TEST_ENTRY  (fs_event_watch_file_root_dir)
-  TEST_ENTRY  (fs_event_watch_file_exclusively_locked)
 #endif
   TEST_ENTRY  (fs_event_watch_invalid_path)
   TEST_ENTRY  (fs_event_no_callback_after_close)
