@@ -797,7 +797,7 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   char* buf;
   int err;
   uv__cf_loop_state_t* state;
-  uv__cf_loop_signal_t* signal;
+  uv__cf_loop_signal_t* item;
 
   err = uv__fsevents_loop_init(handle->loop);
   if (err)
@@ -828,8 +828,8 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   }
 
   /* Finish fallible setup before registering the async handle. */
-  signal = uv__malloc(sizeof(*signal));
-  if (signal == NULL) {
+  item = uv__malloc(sizeof(*item));
+  if (item == NULL) {
     err = UV_ENOMEM;
     goto fail_signal_malloc;
   }
@@ -855,10 +855,7 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
 
   /* Reschedule FSEventStream */
   assert(handle != NULL);
-  uv__cf_loop_signal_post(handle->loop,
-                         signal,
-                         handle,
-                         kUVCFLoopSignalRegular);
+  uv__cf_loop_signal_post(handle->loop, item, handle, kUVCFLoopSignalRegular);
 
   return 0;
 
@@ -866,7 +863,7 @@ fail_async_init:
   uv_mutex_destroy(&handle->cf_mutex);
 
 fail_cf_mutex_init:
-  uv__free(signal);
+  uv__free(item);
 
 fail_signal_malloc:
   uv__free(handle->cf_cb);
