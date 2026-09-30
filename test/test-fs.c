@@ -898,7 +898,7 @@ static void check_utime(const char* path,
      */
       ASSERT_GT(s->st_atim.tv_sec, 1739710000);
   } else {
-    ASSERT_OK(0);
+    ASSERT(0);
   }
 
   if (isfinite(mtime)) {
@@ -930,7 +930,7 @@ static void check_utime(const char* path,
      */
       ASSERT_GT(s->st_mtim.tv_sec, 1739710000);
   } else {
-    ASSERT_OK(0);
+    ASSERT(0);
   }
 
   uv_fs_req_cleanup(&req);
