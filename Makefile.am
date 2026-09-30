@@ -128,7 +128,8 @@ EXTRA_DIST = test/fixtures/empty_file \
              CONTRIBUTING.md \
              LICENSE \
              LICENSE-extra \
-             README.md
+             README.md \
+             uv_win_longpath.manifest
 
 
 
@@ -218,6 +219,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-mutexes.c \
                          test/test-not-readable-nor-writable-on-read-error.c \
                          test/test-not-writable-after-shutdown.c \
+                         test/test-osx-resident-set-memory.c \
                          test/test-osx-select.c \
                          test/test-pass-always.c \
                          test/test-ping-pong.c \
@@ -294,6 +296,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-tcp-write-in-a-row.c \
                          test/test-tcp-try-write-error.c \
                          test/test-write-cancel.c \
+                         test/test-tcp-write-in-read-cb-backend-timeout.c \
                          test/test-tcp-write-queue-order.c \
                          test/test-test-macros.c \
                          test/test-thread-equal.c \

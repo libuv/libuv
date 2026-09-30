@@ -437,8 +437,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "QNX")
 endif()
 
 if(APPLE OR CMAKE_SYSTEM_NAME MATCHES "DragonFly|FreeBSD|Linux|NetBSD|OpenBSD")
-  list(APPEND uv_test_libraries util)
-  list(APPEND uv_libraries m)
+  list(APPEND uv_test_libraries m util)
 endif()
 
 if(CYGWIN OR MSYS)
@@ -596,6 +595,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-mutexes.c
        test/test-not-readable-nor-writable-on-read-error.c
        test/test-not-writable-after-shutdown.c
+       test/test-osx-resident-set-memory.c
        test/test-osx-select.c
        test/test-pass-always.c
        test/test-ping-pong.c
@@ -670,6 +670,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-tcp-write-after-connect.c
        test/test-tcp-write-fail.c
        test/test-write-cancel.c
+       test/test-tcp-write-in-read-cb-backend-timeout.c
        test/test-tcp-write-queue-order.c
        test/test-tcp-write-to-half-open-connection.c
        test/test-tcp-writealot.c
@@ -722,6 +723,7 @@ if(LIBUV_BUILD_TESTS)
   target_compile_definitions(uv_run_tests
                              PRIVATE ${uv_defines} USING_UV_SHARED=1)
   target_compile_options(uv_run_tests PRIVATE ${uv_cflags})
+  target_include_directories(uv_run_tests PRIVATE src)
   target_link_libraries(uv_run_tests uv ${uv_test_libraries})
   add_test(NAME uv_test
            COMMAND uv_run_tests
@@ -739,6 +741,7 @@ if(LIBUV_BUILD_TESTS)
   add_executable(uv_run_tests_a ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
+  target_include_directories(uv_run_tests_a PRIVATE src)
   if(QEMU)
     target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries} -static)
   else()

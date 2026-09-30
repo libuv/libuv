@@ -42,6 +42,10 @@
 #elif defined(_AIX)
 #define _PATH_DEFPATH "/opt/freeware/bin:/usr/bin:/bin"
 #endif
+/* Some platforms (e.g. Solaris) do not define this in <paths.h>. */
+#ifndef _PATH_DEFPATH
+#define _PATH_DEFPATH "/usr/bin:/bin"
+#endif
 #ifndef NAME_MAX
 #define NAME_MAX 255
 #endif
@@ -205,6 +209,23 @@ void uv__wait_children(uv_loop_t* loop) {
  * avoided. Since this isn't called on those targets, the function
  * doesn't even need to be defined for them.
  */
+/* Raise a socket buffer to at least `size` bytes but never shrink it: the
+ * defaults differ wildly between platforms (8 KiB on macOS, ~208 KiB on Linux)
+ * and a smaller buffer means more wake-ups per bulk transfer over stdio.
+ */
+static void uv__process_stdio_bufsize(int fd, int opt, int size) {
+  socklen_t len;
+  int cur;
+
+  len = sizeof(cur);
+  if (getsockopt(fd, SOL_SOCKET, opt, &cur, &len))
+    cur = 0;
+
+  if (cur < size)
+    setsockopt(fd, SOL_SOCKET, opt, &size, sizeof(size));
+}
+
+
 static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
   int mask;
   int fd;
@@ -228,8 +249,8 @@ static int uv__process_init_stdio(uv_stdio_container_t* container, int fds[2]) {
 
       if (ret == 0)
         for (i = 0; i < 2; i++) {
-          setsockopt(fds[i], SOL_SOCKET, SO_RCVBUF, &size, sizeof(size));
-          setsockopt(fds[i], SOL_SOCKET, SO_SNDBUF, &size, sizeof(size));
+          uv__process_stdio_bufsize(fds[i], SO_RCVBUF, size);
+          uv__process_stdio_bufsize(fds[i], SO_SNDBUF, size);
         }
     }
 
@@ -464,6 +485,12 @@ static void uv__spawn_init_can_use_setsid(void) {
 
 
 static void uv__spawn_init_posix_spawn(void) {
+#if defined(__OpenBSD__)
+  /* Always use fork(). Its posix_spawn() works different from other
+   * Unices in that it returns 0 instead of EACCES or ENOENT for paths
+   * that don't exist. See https://github.com/libuv/libuv/issues/5240.
+   */
+#else
 #if !defined(__linux__) && !defined(_AIX) && !defined(__PASE__)
   posix_spawn_works = 1;
 #elif !defined(__ANDROID__)
@@ -500,6 +527,7 @@ static void uv__spawn_init_posix_spawn(void) {
   /* Otherwise, if SETSID is defined, we can use it
    * (added in glibc 2.26 circa 2017). */
   posix_spawn_can_use_setsid = 1;
+#endif
 #endif
 }
 
@@ -582,11 +610,14 @@ static int uv__spawn_set_posix_spawn_file_actions(
     const uv_process_options_t* options,
     int stdio_count,
     int (*pipes)[2]) {
+  int child_fds_storage[8];
+  int* child_fds;
   int fd;
   int fd2;
   int use_fd;
   int err;
 
+  child_fds = child_fds_storage;
   err = posix_spawn_file_actions_init(actions);
   if (err != 0) {
     /* If initialization fails, no need to de-init, just return */
@@ -605,14 +636,25 @@ static int uv__spawn_set_posix_spawn_file_actions(
       goto error;
   }
 
-  /* Do not return ENOSYS after this point, as we may mutate pipes. */
+  if (stdio_count > (int) ARRAY_SIZE(child_fds_storage)) {
+    child_fds = uv__malloc(stdio_count * sizeof(*child_fds));
+    if (child_fds == NULL) {
+      err = ENOMEM;
+      goto error;
+    }
+  }
+
+  /* File actions only remap descriptors in the child. Keep the parent's
+   * descriptors intact for stream setup and cleanup. */
+  for (fd = 0; fd < stdio_count; fd++)
+    child_fds[fd] = pipes[fd][1];
 
   /* First duplicate low numbered fds, since it's not safe to duplicate them,
    * they could get replaced. Example: swapping stdout and stderr; without
    * this fd 2 (stderr) would be duplicated into fd 1, thus making both
    * stdout and stderr go to the same fd, which was not the intention. */
   for (fd = 0; fd < stdio_count; fd++) {
-    use_fd = pipes[fd][1];
+    use_fd = child_fds[fd];
 #if defined(__APPLE__) || defined(__linux__)
     if (use_fd < 0 || use_fd >= fd)
       continue;
@@ -628,24 +670,24 @@ static int uv__spawn_set_posix_spawn_file_actions(
       /* If we were not setting POSIX_SPAWN_CLOEXEC_DEFAULT, we would need to
        * also consider whether fcntl(fd, F_GETFD) returned without the
        * FD_CLOEXEC flag set. */
-      if (pipes[fd2][1] == use_fd) {
+      if (child_fds[fd2] == use_fd) {
         use_fd++;
         fd2 = 0;
       }
     }
     err = posix_spawn_file_actions_adddup2(
       actions,
-      pipes[fd][1],
+      child_fds[fd],
       use_fd);
     assert(err != ENOSYS);
     if (err != 0)
       goto error;
-    pipes[fd][1] = use_fd;
+    child_fds[fd] = use_fd;
   }
 
   /* Second, move the descriptors into their respective places */
   for (fd = 0; fd < stdio_count; fd++) {
-    use_fd = pipes[fd][1];
+    use_fd = child_fds[fd];
     if (use_fd < 0) {
       if (fd >= 3)
         continue;
@@ -674,20 +716,21 @@ static int uv__spawn_set_posix_spawn_file_actions(
     if (err != 0)
       goto error;
 
-    /* Make sure the fd is marked as non-blocking (state shared between child
-     * and parent). */
-    uv__nonblock_fcntl(use_fd, 0);
+    /* Make sure standard descriptors are blocking (state shared between
+     * child and parent). Leave other inherited descriptors unchanged. */
+    if (fd <= 2)
+      uv__nonblock_fcntl(pipes[fd][1], 0);
   }
 
   /* Finally, close all the superfluous descriptors */
   for (fd = 0; fd < stdio_count; fd++) {
-    use_fd = pipes[fd][1];
+    use_fd = child_fds[fd];
     if (use_fd < stdio_count)
       continue;
 
     /* Check if we already closed this. */
     for (fd2 = 0; fd2 < fd; fd2++) {
-      if (pipes[fd2][1] == use_fd)
+      if (child_fds[fd2] == use_fd)
           break;
     }
     if (fd2 < fd)
@@ -699,9 +742,13 @@ static int uv__spawn_set_posix_spawn_file_actions(
       goto error;
   }
 
+  if (child_fds != child_fds_storage)
+    uv__free(child_fds);
   return 0;
 
 error:
+  if (child_fds != child_fds_storage)
+    uv__free(child_fds);
   (void) posix_spawn_file_actions_destroy(actions);
   return err;
 }
@@ -834,7 +881,6 @@ static int uv__spawn_and_init_child_posix_spawn(
   if (err != 0)
     goto error;
 
-  /* This may mutate pipes. */
   err = uv__spawn_set_posix_spawn_file_actions(&actions,
                                                options,
                                                stdio_count,

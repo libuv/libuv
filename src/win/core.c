@@ -251,18 +251,9 @@ void uv__once_cleanup(void) {
    * those threads use. */
   uv__console_cleanup();
 
-  /* Two things are deliberately left for the process to exit with.
-   *
-   * The global job object: closing it terminates every process still assigned
-   * to it, which is what should happen when this process exits, not when it
-   * merely stops using libuv.
-   *
-   * The dummy overlapped and event in poll.c: uv__poll_close() submits a poll
-   * with them and accepts WSA_IO_PENDING, so that operation is not tracked by
-   * the handle, the loop, or anything else. The kernel can still be holding
-   * both when we get here, and reclaiming them under a live operation is how
-   * poll_closesocket died with STATUS_INVALID_HANDLE inside an AppContainer,
-   * where a stale handle raises instead of failing quietly.
+  /* The global job object is deliberately left open. Closing it terminates
+   * every process still assigned to it, which is what should happen when this
+   * process exits, not when it merely stops using libuv.
    */
   uv__detect_system_wakeup_cleanup();
   uv__fs_cleanup();
@@ -293,8 +284,10 @@ int uv_loop_init(uv_loop_t* loop) {
     return uv_translate_sys_error(GetLastError());
 
   lfields = (uv__loop_internal_fields_t*) uv__calloc(1, sizeof(*lfields));
-  if (lfields == NULL)
-    return UV_ENOMEM;
+  if (lfields == NULL) {
+    err = UV_ENOMEM;
+    goto fail_lfields_alloc;
+  }
   loop->internal_fields = lfields;
 
   err = uv_mutex_init(&lfields->loop_metrics.lock);
@@ -370,6 +363,8 @@ fail_timers_alloc:
 fail_metrics_mutex_init:
   uv__free(lfields);
   loop->internal_fields = NULL;
+
+fail_lfields_alloc:
   CloseHandle(loop->iocp);
   loop->iocp = INVALID_HANDLE_VALUE;
 

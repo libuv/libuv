@@ -426,6 +426,7 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 #ifndef _WIN32
   int r;
+  int saved_stderr;
   uv_file file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[3];
@@ -435,6 +436,13 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   unlink("stdout_file");
 
   init_process_options("spawn_helper6", exit_cb);
+
+  /* This test replaces fd 2, so stash the real stderr and put it back
+   * afterwards. Without that the process ends up with no stderr at all, which
+   * silently swallows the output of any later assertion failure.
+   */
+  saved_stderr = dup(STDERR_FILENO);
+  ASSERT_NE(saved_stderr, -1);
 
   /* Replace stderr with our file */
   r = uv_fs_open(NULL,
@@ -447,6 +455,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   uv_fs_req_cleanup(&fs_req);
   file = dup2(r, STDERR_FILENO);
   ASSERT_NE(file, -1);
+  /* dup2() put a copy on fd 2, the original descriptor is redundant now. */
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  uv_fs_req_cleanup(&fs_req);
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_IGNORE;
@@ -470,9 +481,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
   ASSERT_EQ(27, r);
   uv_fs_req_cleanup(&fs_req);
 
-  r = uv_fs_close(NULL, &fs_req, file, NULL);
-  ASSERT_OK(r);
-  uv_fs_req_cleanup(&fs_req);
+  /* Putting the real stderr back also closes the file sitting on fd 2. */
+  ASSERT_NE(-1, dup2(saved_stderr, STDERR_FILENO));
+  ASSERT_OK(close(saved_stderr));
 
   printf("output is: %s", output);
   ASSERT_OK(strcmp("hello world\nhello errworld\n", output));
@@ -491,6 +502,8 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 #ifndef _WIN32
   int r;
+  int saved_stdout;
+  int saved_stderr;
   uv_file stdout_file;
   uv_file stderr_file;
   uv_fs_t fs_req;
@@ -503,6 +516,15 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 
   init_process_options("spawn_helper6", exit_cb);
 
+  /* This test replaces fds 1 and 2, so stash the real ones and put them back
+   * afterwards. Without that the process ends up with no stdout or stderr at
+   * all, which silently swallows anything printed from here on.
+   */
+  saved_stdout = dup(STDOUT_FILENO);
+  ASSERT_NE(saved_stdout, -1);
+  saved_stderr = dup(STDERR_FILENO);
+  ASSERT_NE(saved_stderr, -1);
+
   /* open 'stdout_file' and replace STDOUT_FILENO with it */
   r = uv_fs_open(NULL,
                  &fs_req,
@@ -514,6 +536,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   uv_fs_req_cleanup(&fs_req);
   stdout_file = dup2(r, STDOUT_FILENO);
   ASSERT_NE(stdout_file, -1);
+  /* dup2() put a copy on fd 1, the original descriptor is redundant now. */
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  uv_fs_req_cleanup(&fs_req);
 
   /* open 'stderr_file' and replace STDERR_FILENO with it */
   r = uv_fs_open(NULL, &fs_req, "stderr_file", O_CREAT | O_RDWR,
@@ -522,6 +547,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   uv_fs_req_cleanup(&fs_req);
   stderr_file = dup2(r, STDERR_FILENO);
   ASSERT_NE(stderr_file, -1);
+  /* dup2() put a copy on fd 2, the original descriptor is redundant now. */
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  uv_fs_req_cleanup(&fs_req);
 
   /* now we're going to swap them: the child process' stdout will be our
    * stderr_file and vice versa */
@@ -549,9 +577,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   ASSERT_GE(r, 15);
   uv_fs_req_cleanup(&fs_req);
 
-  r = uv_fs_close(NULL, &fs_req, stdout_file, NULL);
-  ASSERT_OK(r);
-  uv_fs_req_cleanup(&fs_req);
+  /* Putting the real stdout back also closes the file sitting on fd 1. */
+  ASSERT_NE(-1, dup2(saved_stdout, STDOUT_FILENO));
+  ASSERT_OK(close(saved_stdout));
 
   printf("output is: %s", output);
   ASSERT_OK(strncmp("hello errworld\n", output, 15));
@@ -561,9 +589,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   ASSERT_GE(r, 12);
   uv_fs_req_cleanup(&fs_req);
 
-  r = uv_fs_close(NULL, &fs_req, stderr_file, NULL);
-  ASSERT_OK(r);
-  uv_fs_req_cleanup(&fs_req);
+  /* Putting the real stderr back also closes the file sitting on fd 2. */
+  ASSERT_NE(-1, dup2(saved_stderr, STDERR_FILENO));
+  ASSERT_OK(close(saved_stderr));
 
   printf("output is: %s", output);
   ASSERT_OK(strncmp("hello world\n", output, 12));
@@ -578,6 +606,73 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
   RETURN_SKIP("Unix only test");
 #endif
 }
+
+
+#ifndef _WIN32
+/* The stdio "pipes" handed to a child are AF_UNIX stream socket pairs whose
+ * buffers are raised to at least 64 KiB, but never shrunk below what the
+ * platform hands out by default.
+ */
+TEST_IMPL(spawn_stdio_socket_buffer_size) {
+  uv_stdio_container_t stdio[2];
+  uv_pipe_t in;
+  uv_pipe_t out;
+  uv_os_fd_t fd;
+  socklen_t len;
+  int defaults[2];
+  int sndbuf;
+  int rcvbuf;
+  int sv[2];
+  int r;
+
+  /* What does a fresh socket pair get on this system? */
+  ASSERT_OK(socketpair(AF_UNIX, SOCK_STREAM, 0, sv));
+  len = sizeof(defaults[0]);
+  ASSERT_OK(getsockopt(sv[0], SOL_SOCKET, SO_SNDBUF, &defaults[0], &len));
+  len = sizeof(defaults[1]);
+  ASSERT_OK(getsockopt(sv[0], SOL_SOCKET, SO_RCVBUF, &defaults[1], &len));
+  close(sv[0]);
+  close(sv[1]);
+
+  init_process_options("spawn_helper1", exit_cb);
+
+  uv_pipe_init(uv_default_loop(), &out, 0);
+  uv_pipe_init(uv_default_loop(), &in, 0);
+  options.stdio = stdio;
+  options.stdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE;
+  options.stdio[0].data.stream = (uv_stream_t*) &in;
+  options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  options.stdio[1].data.stream = (uv_stream_t*) &out;
+  options.stdio_count = 2;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT_OK(r);
+
+  ASSERT_OK(uv_fileno((uv_handle_t*) &in, &fd));
+  len = sizeof(sndbuf);
+  ASSERT_OK(getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &sndbuf, &len));
+  len = sizeof(rcvbuf);
+  ASSERT_OK(getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf, &len));
+
+  ASSERT_GE(sndbuf, 64 * 1024);
+  ASSERT_GE(rcvbuf, 64 * 1024);
+  ASSERT_GE(sndbuf, defaults[0]);
+  ASSERT_GE(rcvbuf, defaults[1]);
+
+  r = uv_read_start((uv_stream_t*) &out, on_alloc, on_read);
+  ASSERT_OK(r);
+  uv_close((uv_handle_t*) &in, close_cb);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT_OK(r);
+
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(3, close_cb_called); /* Once for process twice for the pipe. */
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+#endif
 
 
 TEST_IMPL(spawn_stdin) {
@@ -656,6 +751,145 @@ TEST_IMPL(spawn_stdio_greater_than_3) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+
+#ifndef _WIN32
+TEST_IMPL(spawn_stdio_high_fd) {
+  uv_stdio_container_t* stdio;
+  uv_pipe_t pipe;
+  char fd_arg[32];
+  int sentinel;
+  int flags;
+  int fd;
+
+  init_process_options("spawn_helper5", exit_cb);
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe, 0));
+
+  fd = open("/dev/null", O_RDONLY | O_NONBLOCK);
+  ASSERT_GE(fd, 0);
+  sentinel = fcntl(fd, F_DUPFD, 64);
+  ASSERT_GE(sentinel, 64);
+  ASSERT_OK(close(fd));
+  flags = fcntl(sentinel, F_GETFL);
+  ASSERT_GE(flags, 0);
+
+  stdio = calloc(sentinel, sizeof(*stdio));
+  ASSERT_NOT_NULL(stdio);
+  stdio[sentinel - 1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  stdio[sentinel - 1].data.stream = (uv_stream_t*) &pipe;
+  options.stdio = stdio;
+  options.stdio_count = sentinel;
+  snprintf(fd_arg, sizeof(fd_arg), "%d", sentinel - 1);
+  args[2] = fd_arg;
+  args[3] = "ignored";
+
+  /* The child must move the low pipe fd aside before mapping it to the high
+   * stdio slot. That temporary child fd must not affect the parent. */
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_EQ(flags, fcntl(sentinel, F_GETFL));
+  ASSERT_OK(close(sentinel));
+  free(stdio);
+
+  /* EOF also proves that the parent closed its copy of the child endpoint. */
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe, on_alloc, on_read));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(2, close_cb_called);
+  ASSERT_OK(strcmp("fourth stdio!\n", output));
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+static void spawn_inherit_nonblock_alloc(uv_handle_t* handle,
+                                        size_t suggested_size,
+                                        uv_buf_t* buf) {
+  buf->base = output + output_used;
+  buf->len = 1;
+}
+
+
+static int spawn_inherit_nonblock(uv_stdio_flags flags, int missing) {
+  uv_stdio_container_t* stdio;
+  uv_pipe_t pipe;
+  int fds[2];
+  int child_fd;
+  int before;
+  int r;
+
+  init_process_options("spawn_helper1", exit_cb);
+  ASSERT_OK(uv_pipe(fds, UV_NONBLOCK_PIPE, 0));
+  ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipe, 0));
+  ASSERT_OK(uv_pipe_open(&pipe, fds[0]));
+  before = fcntl(fds[0], F_GETFL);
+  ASSERT_GE(before, 0);
+  ASSERT_NE(0, before & O_NONBLOCK);
+
+  /* Exercise an upward remapping to a nonstandard child descriptor. */
+  child_fd = fds[0] + 1;
+  ASSERT_GT(child_fd, 2);
+  stdio = calloc(child_fd + 1, sizeof(*stdio));
+  ASSERT_NOT_NULL(stdio);
+  stdio[child_fd].flags = flags;
+  if (flags == UV_INHERIT_STREAM)
+    stdio[child_fd].data.stream = (uv_stream_t*) &pipe;
+  else
+    stdio[child_fd].data.fd = fds[0];
+  options.stdio = stdio;
+  options.stdio_count = child_fd + 1;
+  if (missing)
+    options.file = "./test-file-does-not-exist";
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  if (missing) {
+    ASSERT_EQ(UV_ENOENT, r);
+    uv_close((uv_handle_t*) &process, close_cb);
+  } else {
+    ASSERT_OK(r);
+  }
+  ASSERT_EQ(before, fcntl(fds[0], F_GETFL));
+  free(stdio);
+
+  /* Fill the one-byte buffer so the reader tries again while the writer is
+   * still open. A short read or EOF would hide a blocking descriptor. */
+  ASSERT_OK(uv_read_start((uv_stream_t*) &pipe,
+                          spawn_inherit_nonblock_alloc,
+                          on_read));
+  ASSERT_EQ(1, write(fds[1], "x", 1));
+  ASSERT_EQ(1, uv_run(uv_default_loop(), UV_RUN_NOWAIT));
+  ASSERT_EQ(1, output_used);
+  ASSERT_EQ('x', output[0]);
+
+  ASSERT_OK(close(fds[1]));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(!missing, exit_cb_called);
+  ASSERT_EQ(2, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+TEST_IMPL(spawn_inherit_stream_nonblock) {
+  return spawn_inherit_nonblock(UV_INHERIT_STREAM, 0);
+}
+
+
+TEST_IMPL(spawn_inherit_stream_nonblock_fails) {
+  return spawn_inherit_nonblock(UV_INHERIT_STREAM, 1);
+}
+
+
+TEST_IMPL(spawn_inherit_fd_nonblock) {
+  return spawn_inherit_nonblock(UV_INHERIT_FD, 0);
+}
+
+
+TEST_IMPL(spawn_inherit_fd_nonblock_fails) {
+  return spawn_inherit_nonblock(UV_INHERIT_FD, 1);
+}
+
+#endif
 
 
 int spawn_tcp_server_helper(void) {
@@ -1747,6 +1981,11 @@ TEST_IMPL(spawn_fs_open) {
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+#ifdef _WIN32
+  ASSERT_NE(0, CloseHandle(dup_fd));
+#else
+  ASSERT_OK(close(dup_fd));
+#endif
 
   ASSERT_EQ(1, exit_cb_called);
   ASSERT_EQ(2, close_cb_called);  /* One for `in`, one for process */
