@@ -814,8 +814,9 @@ TEST_IMPL(fs_event_watch_file) {
 }
 
 TEST_IMPL(fs_event_watch_file_immediate) {
-#if !defined(__APPLE__)
-  RETURN_SKIP("Test only applies to the kqueue backend on macOS.");
+#if !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && \
+    !defined(__OpenBSD__) && !defined(__DragonFly__)
+  RETURN_SKIP("Test requires the kqueue backend.");
 #else
   uv_loop_t* loop = uv_default_loop();
   int r;
@@ -839,7 +840,8 @@ TEST_IMPL(fs_event_watch_file_immediate) {
   r = uv_timer_start(&timer, fs_event_immediate_timeout, 100, 0);
   ASSERT_OK(r);
 
-  /* The event must not depend on a later event-loop tick to install the watch. */
+  /* The event must not depend on a later event-loop tick to install
+   * the watch. */
   touch_file("watch_dir/watch_immediate");
 
   uv_run(loop, UV_RUN_DEFAULT);
