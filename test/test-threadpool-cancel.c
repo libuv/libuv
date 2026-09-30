@@ -141,6 +141,22 @@ static void fs_cb(uv_fs_t* req) {
   fs_cb_called++;
 }
 
+
+static void closedir_cancel_cb(uv_fs_t* req) {
+  ASSERT_EQ(req->fs_type, UV_FS_CLOSEDIR);
+  ASSERT_EQ(req->result, UV_ECANCELED);
+  uv_fs_req_cleanup(req);
+  fs_cb_called++;
+}
+
+
+static void closedir_cb(uv_fs_t* req) {
+  ASSERT_EQ(req->fs_type, UV_FS_CLOSEDIR);
+  ASSERT_OK(req->result);
+  uv_fs_req_cleanup(req);
+  fs_cb_called++;
+}
+
 #ifdef __linux__
 static void iouring_fs_cb(uv_fs_t* req) {
   iouring_fs_result = req->result;
@@ -401,6 +417,40 @@ TEST_FS_IMPL(threadpool_cancel_fs) {
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
+
+TEST_IMPL(threadpool_cancel_fs_closedir) {
+  uv_dirent_t dirent;
+  uv_loop_t* loop;
+  uv_dir_t* dir;
+  uv_fs_t req;
+
+  loop = uv_default_loop();
+  ASSERT_OK(uv_fs_opendir(loop, &req, ".", NULL));
+  dir = req.ptr;
+  ASSERT_NOT_NULL(dir);
+  uv_fs_req_cleanup(&req);
+
+  saturate_threadpool();
+  ASSERT_OK(uv_fs_closedir(loop, &req, dir, closedir_cancel_cb));
+  ASSERT_OK(uv_cancel((uv_req_t*) &req));
+  unblock_threadpool();
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(fs_cb_called, 1);
+
+  /* Cancelling the close must leave the directory usable after cleanup. */
+  dir->dirents = &dirent;
+  dir->nentries = 1;
+  ASSERT_GE(uv_fs_readdir(loop, &req, dir, NULL), 0);
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_OK(uv_fs_closedir(loop, &req, dir, closedir_cb));
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(fs_cb_called, 2);
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
 
 TEST_IMPL(threadpool_cancel_fs_iouring_sync_cancel) {
 #ifdef __linux__
