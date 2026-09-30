@@ -18,8 +18,22 @@ permissions: read-all
 jobs:
   build-linux:
     runs-on: ubuntu-latest
+    name: build-linux${{ matrix.suffix }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {suffix: '',    cc: gcc}
+          - {suffix: '-32', cc: gcc -m32, packages: gcc-multilib}
+    env:
+      CC: ${{ matrix.cc }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install ${{ matrix.packages }}
+        if: matrix.packages
+        run: |
+          sudo apt update
+          sudo apt install ${{ matrix.packages }} -y
       - name: configure
         run: |
           ./autogen.sh
