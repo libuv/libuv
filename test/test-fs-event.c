@@ -389,14 +389,13 @@ static void fs_event_cb_file_modified_in_cb(uv_fs_event_t* handle,
   ++fs_event_in_cb_cb_called;
   ASSERT_PTR_EQ(handle, &fs_event);
   ASSERT_OK(status);
-  ASSERT_NE(0, events);
+  ASSERT_EQ(events, UV_CHANGE);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
   ASSERT_OK(strcmp(filename, "watch_in_cb"));
   #else
   ASSERT(filename == NULL || strcmp(filename, "watch_in_cb") == 0);
   #endif
   if (fs_event_in_cb_cb_called == 1) {
-    ASSERT_EQ(events, UV_CHANGE);
     /* Must be reported even though it happens before this callback returns. */
     touch_file("watch_dir/watch_in_cb");
     return;

@@ -515,6 +515,7 @@ static int uv__fs_event_arm(uv_loop_t* loop, uv__io_t* w) {
 
 void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
+  int is_dir;
   int events;
   const char* path;
 #if defined(F_GETPATH)
@@ -523,11 +524,18 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
 #endif
 
   handle = container_of(w, uv_fs_event_t, event_watcher);
+  is_dir = handle->flags & UV_HANDLE_FS_EVENT_DIR;
 
-  if (fflags & (NOTE_ATTRIB | NOTE_EXTEND))
-    events = UV_CHANGE;
-  else
+  /* NOTE_WRITE and NOTE_EXTEND mean the contents of a regular file changed,
+   * but for a directory they mean an entry was added, removed or renamed,
+   * which inotify reports as IN_CREATE, IN_DELETE or IN_MOVED_*.
+   */
+  if (fflags & (NOTE_RENAME | NOTE_DELETE | NOTE_REVOKE))
     events = UV_RENAME;
+  else if (is_dir && (fflags & (NOTE_WRITE | NOTE_EXTEND)))
+    events = UV_RENAME;
+  else
+    events = UV_CHANGE;
 
   path = NULL;
 #if defined(F_GETPATH)
@@ -542,11 +550,9 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
    * the struct's kf_structsize must be initialised beforehand
    * whether with the KINFO_FILE_SIZE constant or this way.
    */
-  struct stat statbuf;
   struct kinfo_file kf;
 
-  if (handle->event_watcher.fd != -1 &&
-     (!uv__fstat(handle->event_watcher.fd, &statbuf) && !(statbuf.st_mode & S_IFDIR))) {
+  if (!is_dir) {
      /* we are purposely not using KINFO_FILE_SIZE here
       * as it is not available on non intl archs
       * and here it gives 1392 too on intel.
@@ -572,11 +578,9 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       uv_fs_event_cb cb,
                       const char* path,
                       unsigned int flags) {
+  struct stat statbuf;
   int fd;
   int r;
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
-  struct stat statbuf;
-#endif
 
   if (uv__is_active(handle))
     return UV_EINVAL;
@@ -594,6 +598,11 @@ int uv_fs_event_start(uv_fs_event_t* handle,
     return UV__ERR(errno);
   }
 
+  /* Remember the vnode type, uv__fs_event() needs it to classify events. */
+  handle->flags &= ~UV_HANDLE_FS_EVENT_DIR;
+  if (uv__fstat(fd, &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+    handle->flags |= UV_HANDLE_FS_EVENT_DIR;
+
 #if defined(__APPLE__) && MAC_OS_X_VERSION_MAX_ALLOWED >= 1070
   /* Nullify field to perform checks later */
   handle->cf_cb = NULL;
@@ -601,10 +610,8 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   handle->realpath_len = 0;
   handle->cf_flags = flags;
 
-  if (uv__fstat(fd, &statbuf))
-    goto fallback;
   /* FSEvents works only with directories */
-  if (!(statbuf.st_mode & S_IFDIR))
+  if (!(handle->flags & UV_HANDLE_FS_EVENT_DIR))
     goto fallback;
 
   if (0 == atomic_load_explicit(&uv__has_forked_with_cfrunloop,
