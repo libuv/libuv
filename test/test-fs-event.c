@@ -42,6 +42,7 @@ static int close_cb_called;
 static int fs_event_created;
 static int fs_event_removed;
 static int fs_event_cb_called;
+static int fs_event_immediate_cb_called;
 #if defined(PATH_MAX)
 static char fs_event_filename[PATH_MAX];
 #else
@@ -361,6 +362,27 @@ static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   #endif
   ASSERT_OK(uv_fs_event_stop(handle));
   uv_close((uv_handle_t*)handle, close_cb);
+}
+
+static void fs_event_cb_file_immediate(uv_fs_event_t* handle,
+                                       const char* filename,
+                                       int events,
+                                       int status) {
+  ++fs_event_immediate_cb_called;
+  ASSERT_PTR_EQ(handle, &fs_event);
+  ASSERT_OK(status);
+  ASSERT_EQ(events, UV_CHANGE);
+  ASSERT_OK(strcmp(filename, "watch_immediate"));
+  ASSERT_OK(uv_fs_event_stop(handle));
+  uv_timer_stop(&timer);
+  uv_close((uv_handle_t*) &timer, close_cb);
+  uv_close((uv_handle_t*) handle, close_cb);
+}
+
+static void fs_event_immediate_timeout(uv_timer_t* handle) {
+  ASSERT_OK(uv_fs_event_stop(&fs_event));
+  uv_close((uv_handle_t*) &fs_event, close_cb);
+  uv_close((uv_handle_t*) handle, close_cb);
 }
 
 static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
@@ -789,6 +811,47 @@ TEST_IMPL(fs_event_watch_file) {
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
+}
+
+TEST_IMPL(fs_event_watch_file_immediate) {
+#if !defined(__APPLE__)
+  RETURN_SKIP("Test only applies to the kqueue backend on macOS.");
+#else
+  uv_loop_t* loop = uv_default_loop();
+  int r;
+
+  delete_file("watch_dir/watch_immediate");
+  delete_dir("watch_dir/");
+  create_dir("watch_dir");
+  create_file("watch_dir/watch_immediate");
+
+  fs_event_immediate_cb_called = 0;
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event,
+                        fs_event_cb_file_immediate,
+                        "watch_dir/watch_immediate",
+                        0);
+  ASSERT_OK(r);
+  r = uv_timer_init(loop, &timer);
+  ASSERT_OK(r);
+  r = uv_timer_start(&timer, fs_event_immediate_timeout, 100, 0);
+  ASSERT_OK(r);
+
+  /* The event must not depend on a later event-loop tick to install the watch. */
+  touch_file("watch_dir/watch_immediate");
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(1, fs_event_immediate_cb_called);
+
+  delete_file("watch_dir/watch_immediate");
+  delete_dir("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+#endif
 }
 
 TEST_IMPL(fs_event_watch_file_exact_path) {

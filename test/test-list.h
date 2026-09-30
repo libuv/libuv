@@ -439,6 +439,7 @@ TEST_DECLARE   (fs_event_watch_dir_recursive)
 TEST_DECLARE   (fs_event_watch_dir_short_path)
 #endif
 TEST_DECLARE   (fs_event_watch_file)
+TEST_DECLARE   (fs_event_watch_file_immediate)
 TEST_DECLARE   (fs_event_watch_file_exact_path)
 TEST_DECLARE   (fs_event_watch_file_twice)
 TEST_DECLARE   (fs_event_watch_file_current_dir)
@@ -1201,6 +1202,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_watch_dir_short_path)
 #endif
   TEST_ENTRY  (fs_event_watch_file)
+  TEST_ENTRY  (fs_event_watch_file_immediate)
   TEST_ENTRY  (fs_event_watch_file_exact_path)
   TEST_ENTRY  (fs_event_watch_file_twice)
   TEST_ENTRY  (fs_event_watch_file_current_dir)

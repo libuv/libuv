@@ -494,6 +494,26 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 }
 
 
+static int uv__kqueue_register_fs_event(uv_loop_t* loop, uv__io_t* w) {
+  struct kevent ev;
+
+  EV_SET(&ev,
+         w->fd,
+         EVFILT_VNODE,
+         EV_ADD | EV_ONESHOT,
+         NOTE_ATTRIB | NOTE_WRITE | NOTE_RENAME | NOTE_DELETE | NOTE_EXTEND |
+             NOTE_REVOKE,
+         0,
+         0);
+
+  if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL) == -1)
+    return UV__ERR(errno);
+
+  w->events = w->pevents;
+  return 0;
+}
+
+
 void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
   struct kevent ev;
@@ -623,6 +643,12 @@ fallback:
                         UV__FS_EVENT,
                         fd,
                         POLLIN);
+
+  if (r == 0) {
+    r = uv__kqueue_register_fs_event(handle->loop, &handle->event_watcher);
+    if (r != 0)
+      uv__io_stop(handle->loop, &handle->event_watcher, POLLIN);
+  }
 
   if (!r)
     uv__handle_start(handle);
