@@ -238,8 +238,10 @@ int uv_loop_init(uv_loop_t* loop) {
     return uv_translate_sys_error(GetLastError());
 
   lfields = (uv__loop_internal_fields_t*) uv__calloc(1, sizeof(*lfields));
-  if (lfields == NULL)
-    return UV_ENOMEM;
+  if (lfields == NULL) {
+    err = UV_ENOMEM;
+    goto fail_lfields_alloc;
+  }
   loop->internal_fields = lfields;
 
   err = uv_mutex_init(&lfields->loop_metrics.lock);
@@ -315,6 +317,8 @@ fail_timers_alloc:
 fail_metrics_mutex_init:
   uv__free(lfields);
   loop->internal_fields = NULL;
+
+fail_lfields_alloc:
   CloseHandle(loop->iocp);
   loop->iocp = INVALID_HANDLE_VALUE;
 

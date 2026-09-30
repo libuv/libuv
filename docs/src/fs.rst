@@ -302,6 +302,9 @@ API
     Closes the directory stream represented by `dir` and frees the memory
     allocated by `uv_fs_opendir()`.
 
+    If the request is cancelled, the directory remains open. After cleaning up
+    the cancelled request, the caller must call `uv_fs_closedir()` again.
+
     .. versionadded:: 1.28.0
 
 .. c:function:: int uv_fs_readdir(uv_loop_t* loop, uv_fs_t* req, uv_dir_t* dir, uv_fs_cb cb)

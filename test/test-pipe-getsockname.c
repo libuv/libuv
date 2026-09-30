@@ -379,7 +379,7 @@ static void long_path_connect_cb(uv_connect_t* req, int status) {
 #endif
 
 TEST_IMPL(pipe_getsockname_long_path) {
-#ifndef SOCK_MAXADDRLEN
+#if !defined(SOCK_MAXADDRLEN) || defined(__FreeBSD__)
   RETURN_SKIP("long unix paths not supported on this platform");
 #else
   uv_loop_t* loop;

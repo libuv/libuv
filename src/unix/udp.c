@@ -315,7 +315,12 @@ static void uv__udp_recvmsg(uv_udp_t* handle, int flag) {
     buf = uv_buf_init(NULL, 0);
     handle->alloc_cb((uv_handle_t*) handle, UV__UDP_DGRAM_MAXSIZE, &buf);
     if (buf.base == NULL || buf.len == 0) {
-      handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
+      /* alloc_cb is not supposed to stop or close the handle (see the
+       * uv_alloc_cb documentation) but guard against it anyway, same as
+       * the POLLERR check in uv__udp_io() above.
+       */
+      if (handle->recv_cb != NULL)
+        handle->recv_cb(handle, UV_ENOBUFS, &buf, NULL, 0);
       return;
     }
     assert(buf.base != NULL);

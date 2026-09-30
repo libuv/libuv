@@ -63,6 +63,14 @@ Data types
     Each buffer is used only once and the user is responsible for freeing it in the
     :c:type:`uv_udp_recv_cb` or the :c:type:`uv_read_cb` callback.
 
+    The alloc_cb must not call :c:func:`uv_read_stop`, :c:func:`uv_udp_recv_stop`,
+    :c:func:`uv_close`, or otherwise stop or close the handle it was invoked for.
+    The handle is still in the middle of dispatching a read/recv when alloc_cb runs,
+    and libuv may invoke the handle's :c:type:`uv_read_cb` or :c:type:`uv_udp_recv_cb`
+    immediately after alloc_cb returns (for example with ``UV_ENOBUFS``, if a
+    zero-length buffer was returned). Stopping or closing the handle from within
+    alloc_cb is unsupported and its effects are undefined.
+
     A suggested size (65536 at the moment in most cases) is provided, but it's just an indication,
     not related in any way to the pending data to be read. The user is free to allocate the amount
     of memory they decide.

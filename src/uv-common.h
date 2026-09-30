@@ -58,12 +58,18 @@ extern int snprintf(char*, size_t, const char*, ...);
 #define container_of(ptr, type, member) \
   ((type *) ((char *) (ptr) - offsetof(type, member)))
 
-/* C11 defines static_assert to be a macro which calls _Static_assert. */
-#if defined(static_assert)
+/* C11 defines static_assert to be a macro which calls _Static_assert.
+ * tcc gets confused by glibc's definition of _Static_assert in sys/cdefs.h
+ * so fall back to our pre-C11 workaround.
+ */
+#if defined(static_assert) && !defined(__TINYC__)
 #define STATIC_ASSERT(expr) static_assert(expr, #expr)
 #else
+#define UV_CONCAT_MORE(x, y)  x##y
+#define UV_CONCAT(x, y)       UV_CONCAT_MORE(x, y)
 #define STATIC_ASSERT(expr)                                                   \
-  void uv__static_assert(int static_assert_failed[1 - 2 * !(expr)])
+  void UV_CONCAT(uv__static_assert, __LINE__)(                                \
+      int static_assert_failed[1 - 2 * !(expr)])
 #endif
 
 #define UV__UDP_DGRAM_MAXSIZE (64 * 1024)

@@ -45,35 +45,6 @@ typedef struct uv_single_fd_set_s {
 } uv_single_fd_set_t;
 
 
-static OVERLAPPED overlapped_dummy_;
-static uv_once_t overlapped_dummy_init_guard_ = UV_ONCE_INIT;
-
-static AFD_POLL_INFO afd_poll_info_dummy_;
-
-
-static void uv__init_overlapped_dummy(void) {
-  HANDLE event;
-
-  event = CreateEvent(NULL, TRUE, TRUE, NULL);
-  if (event == NULL)
-    uv_fatal_error(GetLastError(), "CreateEvent");
-
-  memset(&overlapped_dummy_, 0, sizeof overlapped_dummy_);
-  overlapped_dummy_.hEvent = (HANDLE) ((uintptr_t) event | 1);
-}
-
-
-static OVERLAPPED* uv__get_overlapped_dummy(void) {
-  uv_once(&overlapped_dummy_init_guard_, uv__init_overlapped_dummy);
-  return &overlapped_dummy_;
-}
-
-
-static AFD_POLL_INFO* uv__get_afd_poll_info_dummy(void) {
-  return &afd_poll_info_dummy_;
-}
-
-
 static void uv__fast_poll_submit_poll_req(uv_loop_t* loop, uv_poll_t* handle) {
   uv_req_t* req;
   AFD_POLL_INFO* afd_poll_info;
@@ -531,10 +502,6 @@ void uv__process_poll_req(uv_loop_t* loop, uv_poll_t* handle, uv_req_t* req) {
 
 
 int uv__poll_close(uv_loop_t* loop, uv_poll_t* handle) {
-  AFD_POLL_INFO afd_poll_info;
-  DWORD error;
-  int result;
-
   handle->events = 0;
   uv__handle_closing(handle);
 
@@ -547,25 +514,21 @@ int uv__poll_close(uv_loop_t* loop, uv_poll_t* handle) {
   if (handle->flags & UV_HANDLE_POLL_SLOW)
     return 0;
 
-  /* Cancel outstanding poll requests by executing another, unique poll
-   * request that forces the outstanding ones to return. */
-  afd_poll_info.Exclusive = TRUE;
-  afd_poll_info.NumberOfHandles = 1;
-  afd_poll_info.Timeout.QuadPart = INT64_MAX;
-  afd_poll_info.Handles[0].Handle = (HANDLE) handle->socket;
-  afd_poll_info.Handles[0].Status = 0;
-  afd_poll_info.Handles[0].Events = AFD_POLL_ALL;
+  /* Cancel the outstanding poll requests. They were issued on the peer socket,
+   * not on the watched socket, which only appears in the poll info, so that is
+   * the handle CancelIoEx() has to name; cancelling therefore still even works
+   * when the caller has already closed the watched socket. Peer sockets are
+   * shared between poll handles, so each request is cancelled by its own
+   * overlapped. They come back with handle->events zero, so nothing is
+   * reported and the handle proceeds to its endgame.
+   */
+  if (handle->submitted_events_1 != 0)
+    CancelIoEx((HANDLE) handle->peer_socket,
+               &handle->poll_req_1.u.io.overlapped);
 
-  result = uv__msafd_poll(handle->socket,
-                          &afd_poll_info,
-                          uv__get_afd_poll_info_dummy(),
-                          uv__get_overlapped_dummy());
-
-  if (result == SOCKET_ERROR) {
-    error = WSAGetLastError();
-    if (error != WSA_IO_PENDING)
-      return uv_translate_sys_error(error);
-  }
+  if (handle->submitted_events_2 != 0)
+    CancelIoEx((HANDLE) handle->peer_socket,
+               &handle->poll_req_2.u.io.overlapped);
 
   return 0;
 }
