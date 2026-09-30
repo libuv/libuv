@@ -27,6 +27,7 @@
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <AvailabilityMacros.h>
+void uv__test_fsevents_fixture_ready(const char*);
 #endif
 
 static uv_fs_event_t fs_event;
@@ -110,7 +111,7 @@ static void touch_file(const char* name) {
 
   buf = uv_buf_init("foo", 4);
   r = uv_fs_write(NULL, &req, file, &buf, 1, -1, NULL);
-  ASSERT_GE(r, 0);
+  ASSERT_EQ(r, buf.len);
   uv_fs_req_cleanup(&req);
 
   r = uv_fs_close(NULL, &req, file, NULL);
@@ -193,17 +194,13 @@ static void fs_event_del_dir(uv_timer_t* handle) {
 }
 
 static void fs_event_unlink_files(uv_timer_t* handle) {
-  int r;
   int i;
 
   /* NOTE: handle might be NULL if invoked not as timer callback */
   if (handle == NULL) {
     /* Unlink all files */
-    for (i = 0; i < 16; i++) {
-      r = delete_file(fs_event_get_filename(i));
-      if (handle != NULL)
-        ASSERT_OK(r);
-    }
+    for (i = 0; i < fs_event_file_count; i++)
+      delete_file(fs_event_get_filename(i));
   } else {
     /* Make sure we're not attempting to remove files we do not intend */
     ASSERT_LT(fs_event_removed, fs_event_file_count);
@@ -270,17 +267,13 @@ static void fs_event_create_files_in_subdir(uv_timer_t* handle) {
 }
 
 static void fs_event_unlink_files_in_subdir(uv_timer_t* handle) {
-  int r;
   int i;
 
   /* NOTE: handle might be NULL if invoked not as timer callback */
   if (handle == NULL) {
     /* Unlink all files */
-    for (i = 0; i < 16; i++) {
-      r = delete_file(fs_event_get_filename_in_subdir(i));
-      if (handle != NULL)
-        ASSERT_OK(r);
-    }
+    for (i = 0; i < fs_event_file_count; i++)
+      delete_file(fs_event_get_filename_in_subdir(i));
   } else {
     /* Make sure we're not attempting to remove files we do not intend */
     ASSERT_LT(fs_event_removed, fs_event_file_count);
@@ -303,6 +296,9 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
                                                  const char* filename,
                                                  int events,
                                                  int status) {
+  ASSERT_PTR_EQ(handle, &fs_event);
+  ASSERT_OK(status);
+  ASSERT_NOT_NULL(filename);
 #ifdef _WIN32
   /* Each file created (or deleted) will cause this callback to be called twice
    * under Windows: once with the name of the file, and second time with the
@@ -318,8 +314,6 @@ static void fs_event_cb_dir_multi_file_in_subdir(uv_fs_event_t* handle,
     return;
 
   fs_multievent_cb_called++;
-  ASSERT_PTR_EQ(handle, &fs_event);
-  ASSERT_OK(status);
   ASSERT(events == UV_CHANGE || events == UV_RENAME);
   #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
   ASSERT_OK(strncmp(filename,
@@ -451,6 +445,9 @@ TEST_IMPL(fs_event_watch_dir) {
   delete_file("watch_dir/file1");
   delete_dir("watch_dir/");
   create_dir("watch_dir");
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  uv__test_fsevents_fixture_ready("watch_dir");
+#endif
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT_OK(r);
@@ -492,6 +489,9 @@ TEST_IMPL(fs_event_watch_delete_dir) {
   fs_event_unlink_files(NULL);
   delete_dir("watch_del_dir/");
   create_dir("watch_del_dir");
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  uv__test_fsevents_fixture_ready("watch_del_dir");
+#endif
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT_OK(r);
@@ -571,12 +571,16 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
   /* Setup */
   loop = uv_default_loop();
   fs_event_unlink_files(NULL);
+  fs_event_unlink_files_in_subdir(NULL);
   delete_file("watch_dir/file2");
   delete_file("watch_dir/file1");
   delete_dir("watch_dir/subdir");
   delete_dir("watch_dir/");
   create_dir("watch_dir");
   create_dir("watch_dir/subdir");
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  uv__test_fsevents_fixture_ready("watch_dir");
+#endif
 
   r = uv_fs_event_init(loop, &fs_event);
   ASSERT_OK(r);
@@ -1262,7 +1266,8 @@ TEST_IMPL(fs_event_getpath) {
     close_cb_called = 0;
   }
 
-  delete_dir("watch_dir/");
+  ASSERT_OK(delete_dir("watch_dir/subfolder"));
+  ASSERT_OK(delete_dir("watch_dir/"));
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
@@ -1292,7 +1297,8 @@ static int fs_event_cb_stop_calls;
 
 static void fs_event_cb_stop(uv_fs_event_t* handle, const char* path,
                              int events, int status) {
-  uv_fs_event_stop(handle);
+  ASSERT_OK(status);
+  ASSERT_OK(uv_fs_event_stop(handle));
   fs_event_cb_stop_calls++;
 }
 
