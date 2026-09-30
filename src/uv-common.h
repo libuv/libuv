@@ -90,8 +90,6 @@ enum {
   UV_HANDLE_SHUT                        = 0x00000200,
   UV_HANDLE_READ_EOF                    = 0x00000800,
 
-  /* Used by streams and UDP handles. */
-  UV_HANDLE_READING                     = 0x00001000,
   UV_HANDLE_BOUND                       = 0x00002000,
   UV_HANDLE_READABLE                    = 0x00004000,
   UV_HANDLE_WRITABLE                    = 0x00008000,

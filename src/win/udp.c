@@ -123,6 +123,8 @@ int uv__udp_init_ex(uv_loop_t* loop,
   handle->socket = INVALID_SOCKET;
   handle->reqs_pending = 0;
   handle->activecnt = 0;
+  handle->alloc_cb = NULL;
+  handle->recv_cb = NULL;
   handle->func_wsarecv = WSARecv;
   handle->func_wsarecvfrom = WSARecvFrom;
   handle->send_queue_size = 0;
@@ -268,7 +270,7 @@ static void uv__udp_queue_recv(uv_loop_t* loop, uv_udp_t* handle) {
   DWORD bytes, flags;
   int result;
 
-  assert(handle->flags & UV_HANDLE_READING);
+  assert(handle->recv_cb != NULL);
   assert(!(handle->flags & UV_HANDLE_READ_PENDING));
 
   req = &handle->recv_req;
@@ -312,7 +314,7 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
   uv_loop_t* loop = handle->loop;
   int err;
 
-  if (handle->flags & UV_HANDLE_READING) {
+  if (handle->recv_cb != NULL) {
     return UV_EALREADY;
   }
 
@@ -323,11 +325,9 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
   if (err)
     return uv_translate_sys_error(err);
 
-  handle->flags |= UV_HANDLE_READING;
-  INCREASE_ACTIVE_COUNT(loop, handle);
-
   handle->recv_cb = recv_cb;
   handle->alloc_cb = alloc_cb;
+  INCREASE_ACTIVE_COUNT(loop, handle);
 
   /* If reading was stopped and then started again, there could still be a recv
    * request pending. */
@@ -339,8 +339,9 @@ int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
 
 
 int uv__udp_recv_stop(uv_udp_t* handle) {
-  if (handle->flags & UV_HANDLE_READING) {
-    handle->flags &= ~UV_HANDLE_READING;
+  if (handle->recv_cb != NULL) {
+    handle->recv_cb = NULL;
+    handle->alloc_cb = NULL;
     DECREASE_ACTIVE_COUNT(loop, handle);
   }
 
@@ -401,6 +402,7 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     uv_req_t* req) {
   uv_buf_t buf;
   int partial;
+  uv_udp_recv_cb recv_cb;
 
   assert(handle->type == UV_UDP);
 
@@ -422,17 +424,18 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
     } else {
       /* A real error occurred. Report the error to the user only if we're
        * currently reading. */
-      if (handle->flags & UV_HANDLE_READING) {
+      if (handle->recv_cb != NULL) {
+        recv_cb = handle->recv_cb;
         uv_udp_recv_stop(handle);
         buf = (handle->flags & UV_HANDLE_ZERO_READ) ?
               uv_buf_init(NULL, 0) : handle->recv_buffer;
-        handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
+        recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
       }
       goto done;
     }
   }
 
-  if (!(handle->flags & UV_HANDLE_ZERO_READ)) {
+  if (!(handle->flags & UV_HANDLE_ZERO_READ) && handle->recv_cb != NULL) {
     /* Successful read */
     partial = !REQ_SUCCESS(req);
     handle->recv_cb(handle,
@@ -440,7 +443,7 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
                     &handle->recv_buffer,
                     (const struct sockaddr*) &handle->recv_from,
                     partial ? UV_UDP_PARTIAL : 0);
-  } else if (handle->flags & UV_HANDLE_READING) {
+  } else if (handle->recv_cb != NULL) {
     DWORD bytes, err, flags;
     struct sockaddr_storage from;
     int from_len;
@@ -496,21 +499,22 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
           handle->recv_cb(handle, 0, &buf, NULL, 0);
         } else {
           /* Any other error that we want to report back to the user. */
+          recv_cb = handle->recv_cb;
           uv_udp_recv_stop(handle);
-          handle->recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
+          recv_cb(handle, uv_translate_sys_error(err), &buf, NULL, 0);
         }
       }
     }
     while (err == ERROR_SUCCESS &&
            count-- > 0 &&
            /* The recv_cb callback may decide to pause or close the handle. */
-           (handle->flags & UV_HANDLE_READING) &&
+           handle->recv_cb != NULL &&
            !(handle->flags & UV_HANDLE_READ_PENDING));
   }
 
 done:
   /* Post another read if still reading and not closing. */
-  if ((handle->flags & UV_HANDLE_READING) &&
+  if (handle->recv_cb != NULL &&
       !(handle->flags & UV_HANDLE_READ_PENDING)) {
     uv__udp_queue_recv(loop, handle);
   }
