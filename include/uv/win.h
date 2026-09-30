@@ -150,11 +150,10 @@ typedef CONDITION_VARIABLE uv_cond_t;
 typedef SRWLOCK uv_rwlock_t;
 
 typedef struct {
+  uv_mutex_t mutex;
+  uv_cond_t cond;
   unsigned threshold;
   unsigned in;
-  uv_mutex_t mutex;
-  /* TODO: in v2 make this a uv_cond_t, without unused_ */
-  CONDITION_VARIABLE cond;
   unsigned out;
 } uv_barrier_t;
 
