@@ -1161,6 +1161,7 @@ done:
 
 void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
     uv_write_t* req) {
+  uv_shutdown_t* shutdown_req;
   int err;
 
   assert(handle->type == UV_TCP);
@@ -1182,6 +1183,16 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
     }
   }
 
+  /* Retire the request before running the callback. uv__tcp_try_write() bails
+   * out with UV_EAGAIN while writes are in flight and there is nothing left in
+   * flight when this was the last one. */
+  handle->stream.conn.write_reqs_pending--;
+
+  /* Only a shutdown request that is already pending is ours to dispatch below.
+   * One that the callback starts is queued by uv_shutdown() itself, because it
+   * now observes write_reqs_pending == 0. */
+  shutdown_req = handle->stream.conn.shutdown_req;
+
   if (req->cb) {
     err = uv_translate_sys_error(GET_REQ_SOCK_ERROR(req));
     if (err == UV_ECONNABORTED) {
@@ -1191,16 +1202,15 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
     req->cb(req, err);
   }
 
-  handle->stream.conn.write_reqs_pending--;
   if (handle->stream.conn.write_reqs_pending == 0) {
-    if (handle->flags & UV_HANDLE_CLOSING) {
+    /* The socket is already gone when the callback called uv_close(). */
+    if (handle->flags & UV_HANDLE_CLOSING &&
+        handle->socket != INVALID_SOCKET) {
       closesocket(handle->socket);
       handle->socket = INVALID_SOCKET;
     }
-    if (uv__is_stream_shutting(handle))
-      uv__process_tcp_shutdown_req(loop,
-                                   handle,
-                                   handle->stream.conn.shutdown_req);
+    if (shutdown_req != NULL)
+      uv__process_tcp_shutdown_req(loop, handle, shutdown_req);
   }
 
   DECREASE_PENDING_REQ_COUNT(handle);
