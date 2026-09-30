@@ -162,7 +162,13 @@ typedef struct {
   DWORD tls_index;
 } uv_key_t;
 
+<<<<<<< HEAD
 #define UV_ONCE_INIT { INIT_ONCE_STATIC_INIT }
+||||||| 1cfa32ff5
+#define UV_ONCE_INIT { 0, { NULL } }
+=======
+#define UV_ONCE_INIT { 0, INIT_ONCE_STATIC_INIT }
+>>>>>>> v1.53.0
 
 typedef struct uv_once_s {
   INIT_ONCE init_once;
@@ -242,6 +248,10 @@ typedef struct {
   UV_WAKEUP,                                                                  \
   UV_SIGNAL_REQ,
 
+struct uv__req_write_extra_s {
+  size_t nwritten;
+};
+
 #define UV_REQ_PRIVATE_FIELDS                                                 \
   union {                                                                     \
     /* Used by I/O operations */                                              \
@@ -254,10 +264,16 @@ typedef struct {
       ULONG_PTR result; /* overlapped.Internal is reused to hold the result */\
       HANDLE pipeHandle;                                                      \
       DWORD duplex_flags;                                                     \
-      WCHAR* name;                                                             \
+      WCHAR* name;                                                            \
     } connect;                                                                \
   } u;                                                                        \
-  struct uv_req_s* next_req;
+  /* Singly linked list of pending reqs. For non-overlapped pipes, also used  \
+   * to keep track of reqs no yet submitted to the thread pool */             \
+  struct uv_req_s* next_req;                                                  \
+  union {                                                                     \
+    void* reserved2[1];                                                       \
+    struct uv__req_write_extra_s write_extra;                                 \
+  };
 
 #define UV_WRITE_PRIVATE_FIELDS \
   struct uv__queue queue;       \
@@ -350,6 +366,17 @@ typedef struct {
   uv_pipe_accept_t* pending_accepts;
 
 #define uv_pipe_connection_fields                                             \
+<<<<<<< HEAD
+||||||| 1cfa32ff5
+  uv_timer_t* eof_timer;                                                      \
+  uv_write_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
+=======
+  uv_timer_t* eof_timer;                                                      \
+  /* TODO: This is here for ABI compat - remove in 2.x. */                    \
+  uintptr_t dummy[sizeof(uv_write_t) / sizeof(uintptr_t) - 2];                \
+  uv_write_t* non_overlapped_write_active;                                    \
+  volatile HANDLE writefile_thread_handle;                                    \
+>>>>>>> v1.53.0
   DWORD ipc_remote_pid;                                                       \
   struct {                                                                    \
     uint32_t payload_remaining;                                               \
@@ -357,7 +384,7 @@ typedef struct {
   struct uv__queue ipc_xfer_queue;                                            \
   int ipc_xfer_queue_length;                                                  \
   uv_write_t* non_overlapped_writes_tail;                                     \
-  CRITICAL_SECTION readfile_thread_lock;                                      \
+  CRITICAL_SECTION thread_lock;                                               \
   volatile HANDLE readfile_thread_handle;
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
@@ -429,7 +456,14 @@ typedef struct {
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   struct uv__queue queue;                                                     \
   uv_async_cb async_cb;                                                       \
+<<<<<<< HEAD
   LONG volatile async_sent;
+||||||| 1cfa32ff5
+  /* char to avoid alignment issues */                                        \
+  char volatile async_sent;
+=======
+  int pending;
+>>>>>>> v1.53.0
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   struct uv__queue queue;                                                     \

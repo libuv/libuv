@@ -135,7 +135,7 @@ Signals
 -------
 
 libuv provides wrappers around Unix signals with `some Windows support
-<http://docs.libuv.org/en/v1.x/signal.html#signal>`_ as well.
+<https://docs.libuv.org/en/v1.x/signal.html#signal>`_ as well.
 
 Use ``uv_signal_init()`` to initialize
 a handle and associate it with a loop. To listen for particular signals on
@@ -282,7 +282,7 @@ communicate with IPC. This is discussed below.
 .. _mkfifo(1): https://man7.org/linux/man-pages/man1/mkfifo.1.html
 .. _socketpair(2): https://man7.org/linux/man-pages/man2/socketpair.2.html
 .. _Unix Domain Socket: https://man7.org/linux/man-pages/man7/unix.7.html
-.. _Named Pipe: https://docs.microsoft.com/en-us/windows/win32/ipc/named-pipes
+.. _Named Pipe: https://learn.microsoft.com/en-us/windows/win32/ipc/named-pipes
 
 
 Arbitrary process IPC
