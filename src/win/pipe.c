@@ -78,38 +78,6 @@ typedef struct {
 STATIC_ASSERT(sizeof(uv__ipc_frame_header_t) == 16);
 STATIC_ASSERT(sizeof(uv__ipc_socket_xfer_info_t) == 632);
 
-<<<<<<< HEAD
-/* Coalesced write request. */
-typedef struct {
-  uv_write_t req;       /* Internal heap-allocated write request. */
-  uv_write_t* user_req; /* Pointer to user-specified uv_write_t. */
-} uv__coalesced_write_t;
-
-
-||||||| 1cfa32ff5
-/* Coalesced write request. */
-typedef struct {
-  uv_write_t req;       /* Internal heap-allocated write request. */
-  uv_write_t* user_req; /* Pointer to user-specified uv_write_t. */
-} uv__coalesced_write_t;
-
-
-static void eof_timer_init(uv_pipe_t* pipe);
-static void eof_timer_start(uv_pipe_t* pipe);
-static void eof_timer_stop(uv_pipe_t* pipe);
-static void eof_timer_cb(uv_timer_t* timer);
-static void eof_timer_destroy(uv_pipe_t* pipe);
-static void eof_timer_close_cb(uv_handle_t* handle);
-
-=======
-static void eof_timer_init(uv_pipe_t* pipe);
-static void eof_timer_start(uv_pipe_t* pipe);
-static void eof_timer_stop(uv_pipe_t* pipe);
-static void eof_timer_cb(uv_timer_t* timer);
-static void eof_timer_destroy(uv_pipe_t* pipe);
-static void eof_timer_close_cb(uv_handle_t* handle);
-
->>>>>>> v1.53.0
 
 /* Does the file path contain embedded nul bytes? */
 static int includes_nul(const char *s, size_t n) {
@@ -1744,21 +1712,13 @@ static int uv__pipe_write_data(uv_loop_t* loop,
     SET_REQ_NWRITTEN(req, bytes);
     REGISTER_HANDLE_REQ(loop, handle);
     handle->reqs_pending++;
-<<<<<<< HEAD
     uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
-    POST_COMPLETION_FOR_REQ(loop, req);
-||||||| 1cfa32ff5
-    handle->stream.conn.write_reqs_pending++;
-    POST_COMPLETION_FOR_REQ(loop, req);
-=======
-    handle->stream.conn.write_reqs_pending++;
     uv__insert_pending_req(loop, (uv_req_t*)req);
->>>>>>> v1.53.0
     return 0;
   } else if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     req->write_buffer = write_buf;
     uv__insert_non_overlapped_write_req(handle, req);
-    if (uv__queue_empty(&handle->stream.conn.write_queue)) {
+    if (handle->pipe.conn.non_overlapped_write_active == NULL) {
       uv__queue_non_overlapped_write(handle);
       /* There shouldn't have been any queued writes before, so we should have
        * dispatched the request we just added. Sanity check the state
@@ -2307,26 +2267,8 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
 
   err = GET_REQ_ERROR(req);
 
-<<<<<<< HEAD
-  /* If this was a coalesced write, extract pointer to the user_provided
-   * uv_write_t structure so we can pass the expected pointer to the callback,
-   * then free the heap-allocated write req. */
   uv__queue_remove(&req->queue);
-  if (req->coalesced) {
-    uv__coalesced_write_t* coalesced_write =
-        container_of(req, uv__coalesced_write_t, req);
-    req = coalesced_write->user_req;
-    uv__free(coalesced_write);
-||||||| 1cfa32ff5
-  /* If this was a coalesced write, extract pointer to the user_provided
-   * uv_write_t structure so we can pass the expected pointer to the callback,
-   * then free the heap-allocated write req. */
-  if (req->coalesced) {
-    uv__coalesced_write_t* coalesced_write =
-        container_of(req, uv__coalesced_write_t, req);
-    req = coalesced_write->user_req;
-    uv__free(coalesced_write);
-=======
+
   /* For non-overlapped pipes, if this request was the active write
    * (dispatched to the thread pool), clear the active slot and dispatch the
    * next queued write.  Queue-cancelled writes (removed by
@@ -2337,7 +2279,6 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
       handle->pipe.conn.non_overlapped_write_active = NULL;
       uv__queue_non_overlapped_write(handle);
     }
->>>>>>> v1.53.0
   }
 
   /* If this was a coalesced write, free the heap-allocated merged data
@@ -2355,34 +2296,6 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     handle->flags &= ~UV_HANDLE_IN_WRITE_CB;
   }
 
-<<<<<<< HEAD
-  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE &&
-      handle->pipe.conn.non_overlapped_writes_tail) {
-    assert(!uv__queue_empty(&handle->stream.conn.write_queue));
-    uv__queue_non_overlapped_write(handle);
-  }
-
-||||||| 1cfa32ff5
-  handle->stream.conn.write_reqs_pending--;
-
-  if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE &&
-      handle->pipe.conn.non_overlapped_writes_tail) {
-    assert(handle->stream.conn.write_reqs_pending > 0);
-    uv__queue_non_overlapped_write(handle);
-  }
-
-  if (handle->stream.conn.write_reqs_pending == 0 &&
-      uv__is_stream_shutting(handle))
-    uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
-
-=======
-  handle->stream.conn.write_reqs_pending--;
-
-  if (handle->stream.conn.write_reqs_pending == 0 &&
-      uv__is_stream_shutting(handle))
-    uv__pipe_shutdown(loop, handle, handle->stream.conn.shutdown_req);
-
->>>>>>> v1.53.0
   DECREASE_PENDING_REQ_COUNT(handle);
 }
 

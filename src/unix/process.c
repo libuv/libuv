@@ -33,12 +33,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
-<<<<<<< HEAD
-#include <poll.h>
 #include <sched.h>
-||||||| 1cfa32ff5
-#include <poll.h>
-=======
 #include <spawn.h>
 #include <paths.h>
 #include <dlfcn.h>
@@ -55,7 +50,6 @@
 #ifndef NAME_MAX
 #define NAME_MAX 255
 #endif
->>>>>>> v1.53.0
 
 #if defined(__APPLE__)
 # include <sys/kauth.h>

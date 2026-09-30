@@ -290,11 +290,8 @@ API
     `base` and `len` members of the uv_buf_t struct. The user is responsible for
     freeing `base` after the uv_buf_t is done. Return struct passed by value.
 
-<<<<<<< HEAD
     .. versionchanged:: 2.0.0 `buf.len` is capped to INT32_MAX.
 
-||||||| 1cfa32ff5
-=======
    .. warning:: It is discouraged to set `len` to a large value as that may
                 result in spurious failures.  Specifically, Windows may fail on
                 writes larger than about 511 MB, and various Unicies may fail
@@ -302,7 +299,6 @@ API
                 generally better to split the data into multiple `uv_write`
                 calls (attach the `write_cb` to the last one).
 
->>>>>>> v1.53.0
 .. c:function:: char** uv_setup_args(int argc, char** argv)
 
     Store the program arguments. Required for getting / setting the process title

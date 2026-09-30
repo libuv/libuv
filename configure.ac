@@ -13,13 +13,7 @@
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 AC_PREREQ(2.57)
-<<<<<<< HEAD
 AC_INIT([libuv], [2.0.0], [https://github.com/libuv/libuv/issues])
-||||||| 1cfa32ff5
-AC_INIT([libuv], [1.52.1], [https://github.com/libuv/libuv/issues])
-=======
-AC_INIT([libuv], [1.53.0], [https://github.com/libuv/libuv/issues])
->>>>>>> v1.53.0
 AC_CONFIG_MACRO_DIR([m4])
 m4_include([m4/libuv-extra-automake-flags.m4])
 m4_include([m4/as_case.m4])
@@ -80,13 +74,7 @@ AM_CONDITIONAL([OS400],    [AS_CASE([$host_os],[os400],         [true], [false])
 AM_CONDITIONAL([SUNOS],    [AS_CASE([$host_os],[solaris*],      [true], [false])])
 AM_CONDITIONAL([WINNT],    [AS_CASE([$host_os],[mingw*],        [true], [false])])
 AS_CASE([$host_os],[mingw*], [
-<<<<<<< HEAD
-    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -lsecur32 -luserenv -luser32 -ldbghelp -lole32"
-||||||| 1cfa32ff5
-    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -luserenv -luser32 -ldbghelp -lole32 -lshell32"
-=======
-    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -luserenv -luser32 -ldbghelp -lole32 -lshell32 -lsynchronization"
->>>>>>> v1.53.0
+    LIBS="$LIBS -lws2_32 -lpsapi -liphlpapi -lshell32 -lsecur32 -luserenv -luser32 -ldbghelp -lole32 -lsynchronization"
 ])
 AS_CASE([$host_os], [solaris2.10], [
     CFLAGS="$CFLAGS -DSUNOS_NO_IFADDRS"

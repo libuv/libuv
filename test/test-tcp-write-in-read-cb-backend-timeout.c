@@ -28,6 +28,7 @@
 #include "uv.h"
 #include "task.h"
 
+#if !defined(_WIN32) && !defined(__sun)
 static uv_tcp_t server;
 static uv_tcp_t client;
 static uv_tcp_t incoming;
@@ -97,6 +98,7 @@ static void connection_cb(uv_stream_t* s, int status) {
                           alloc_cb,
                           incoming_read_cb));
 }
+#endif
 
 TEST_IMPL(tcp_write_in_read_cb_backend_timeout) {
 #if defined(_WIN32)

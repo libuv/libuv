@@ -363,40 +363,6 @@ UNUSED static int is_in_appcontainer(void) {
 
 #endif
 
-<<<<<<< HEAD
-#if defined(__clang__) ||                                \
-    defined(__GNUC__) ||                                 \
-    defined(__INTEL_COMPILER)
-# define UNUSED __attribute__((unused))
-#else
-# define UNUSED
-#endif
-
-#if defined(_WIN32)
-#define notify_parent_process() ((void) 0)
-#else
-||||||| 1cfa32ff5
-#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
-extern int snprintf(char*, size_t, const char*, ...);
-#endif
-
-#if defined(__clang__) ||                                \
-    defined(__GNUC__) ||                                 \
-    defined(__INTEL_COMPILER)
-# define UNUSED __attribute__((unused))
-#else
-# define UNUSED
-#endif
-
-#if defined(_WIN32)
-#define notify_parent_process() ((void) 0)
-#else
-=======
-#if !defined(snprintf) && defined(_MSC_VER) && _MSC_VER < 1900
-extern int snprintf(char*, size_t, const char*, ...);
-#endif
-
->>>>>>> v1.53.0
 extern void notify_parent_process(void);
 
 /* Fully close a loop */

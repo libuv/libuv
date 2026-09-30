@@ -185,7 +185,7 @@ static void pipe_cancel_connection_cb(uv_stream_t* listener, int status) {
 
 static void pipe_cancel_setup(uv_loop_t* loop, int pipe_flags, int ipc) {
   uv_buf_t bufs[4];
-  uv_file fds[2];
+  uv_os_fd_t fds[2];
   int r;
   int i;
 
@@ -356,7 +356,7 @@ TEST_IMPL(pipe_write_cancel_all_overlapped) {
 
 TEST_IMPL(pipe_write_cancel_after_close) {
   uv_buf_t buf;
-  uv_file fds[2];
+  uv_os_fd_t fds[2];
   uv_loop_t* loop;
   uv_pipe_t reader;
   uv_pipe_t writer;
@@ -504,7 +504,7 @@ static void pipe_write_cb(uv_write_t* req, int status) {
 TEST_IMPL(pipe_write_nwritten) {
   uv_loop_t* loop;
   uv_buf_t buf;
-  uv_file fds[2];
+  uv_os_fd_t fds[2];
 
   loop = uv_default_loop();
 

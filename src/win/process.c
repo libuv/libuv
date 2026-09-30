@@ -1049,15 +1049,6 @@ int uv_spawn(uv_loop_t* loop,
   startup.StartupInfo.hStdOutput = uv__stdio_handle(child_stdio_buffer, 1);
   startup.StartupInfo.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
 
-<<<<<<< HEAD
-  process_flags = CREATE_UNICODE_ENVIRONMENT | CREATE_DEFAULT_ERROR_MODE;
-
-  if (options->flags & UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE) {
-    process_flags &= ~(CREATE_DEFAULT_ERROR_MODE);
-  }
-||||||| 1cfa32ff5
-  process_flags = CREATE_UNICODE_ENVIRONMENT;
-=======
   /* Build the list of handles to inherit. Using
    * PROC_THREAD_ATTRIBUTE_HANDLE_LIST ensures only these specific handles are
    * inherited, closing the race condition where concurrent uv_spawn calls
@@ -1107,8 +1098,13 @@ int uv_spawn(uv_loop_t* loop,
 
   startup.lpAttributeList = attr_list;
 
-  process_flags = CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT;
->>>>>>> v1.53.0
+  process_flags = CREATE_UNICODE_ENVIRONMENT |
+                  EXTENDED_STARTUPINFO_PRESENT |
+                  CREATE_DEFAULT_ERROR_MODE;
+
+  if (options->flags & UV_PROCESS_WINDOWS_USE_PARENT_ERROR_MODE) {
+    process_flags &= ~(CREATE_DEFAULT_ERROR_MODE);
+  }
 
   if ((options->flags & UV_PROCESS_WINDOWS_HIDE_CONSOLE) ||
       (options->flags & UV_PROCESS_WINDOWS_HIDE)) {

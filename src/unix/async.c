@@ -79,12 +79,6 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   uv__handle_init(loop, (uv_handle_t*)handle, UV_ASYNC);
   handle->async_cb = async_cb;
   handle->pending = 0;
-<<<<<<< HEAD
-  handle->busy = 0;
-||||||| 1cfa32ff5
-  handle->u.fd = 0; /* This will be used as a busy flag. */
-=======
->>>>>>> v1.53.0
 
   uv__queue_insert_tail(&loop->async_handles, &handle->queue);
   uv__handle_start(handle);
@@ -93,126 +87,8 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 }
 
 
-<<<<<<< HEAD
-int uv_async_send(uv_async_t* handle) {
-  _Atomic int* pending;
-  _Atomic int* busy;
-
-  pending = (_Atomic int*) &handle->pending;
-  busy = (_Atomic int*) &handle->busy;
-
-  /* Do a cheap read first. */
-  if (atomic_load_explicit(pending, memory_order_relaxed) != 0)
-    return 0;
-
-  /* Set the loop to busy. */
-  atomic_fetch_add(busy, 1);
-
-  /* Wake up the other thread's event loop. */
-  if (atomic_exchange(pending, 1) == 0)
-    uv__async_send(handle->loop);
-
-  /* Set the loop to not-busy. */
-  atomic_fetch_add(busy, -1);
-
-  return 0;
-}
-
-
-/* Wait for the busy flag to clear before closing.
- * Only call this from the event loop thread. */
-static void uv__async_spin(uv_async_t* handle) {
-  _Atomic int* pending;
-  _Atomic int* busy;
-  int i;
-
-  pending = (_Atomic int*) &handle->pending;
-  busy = (_Atomic int*) &handle->busy;
-
-  /* Set the pending flag first, so no new events will be added by other
-   * threads after this function returns. */
-  atomic_store(pending, 1);
-
-  for (;;) {
-    /* 997 is not completely chosen at random. It's a prime number, acyclic by
-     * nature, and should therefore hopefully dampen sympathetic resonance.
-     */
-    for (i = 0; i < 997; i++) {
-      if (atomic_load(busy) == 0)
-        return;
-
-      /* Other thread is busy with this handle, spin until it's done. */
-      uv__cpu_relax();
-    }
-
-    /* Yield the CPU. We may have preempted the other thread while it's
-     * inside the critical section and if it's running on the same CPU
-     * as us, we'll just burn CPU cycles until the end of our time slice.
-     */
-    sched_yield();
-  }
-||||||| 1cfa32ff5
-int uv_async_send(uv_async_t* handle) {
-  _Atomic int* pending;
-  _Atomic int* busy;
-
-  pending = (_Atomic int*) &handle->pending;
-  busy = (_Atomic int*) &handle->u.fd;
-
-  /* Do a cheap read first. */
-  if (atomic_load_explicit(pending, memory_order_relaxed) != 0)
-    return 0;
-
-  /* Set the loop to busy. */
-  atomic_fetch_add(busy, 1);
-
-  /* Wake up the other thread's event loop. */
-  if (atomic_exchange(pending, 1) == 0)
-    uv__async_send(handle->loop);
-
-  /* Set the loop to not-busy. */
-  atomic_fetch_add(busy, -1);
-
-  return 0;
-}
-
-
-/* Wait for the busy flag to clear before closing.
- * Only call this from the event loop thread. */
-static void uv__async_spin(uv_async_t* handle) {
-  _Atomic int* pending;
-  _Atomic int* busy;
-  int i;
-
-  pending = (_Atomic int*) &handle->pending;
-  busy = (_Atomic int*) &handle->u.fd;
-
-  /* Set the pending flag first, so no new events will be added by other
-   * threads after this function returns. */
-  atomic_store(pending, 1);
-
-  for (;;) {
-    /* 997 is not completely chosen at random. It's a prime number, acyclic by
-     * nature, and should therefore hopefully dampen sympathetic resonance.
-     */
-    for (i = 0; i < 997; i++) {
-      if (atomic_load(busy) == 0)
-        return;
-
-      /* Other thread is busy with this handle, spin until it's done. */
-      uv__cpu_relax();
-    }
-
-    /* Yield the CPU. We may have preempted the other thread while it's
-     * inside the critical section and if it's running on the same CPU
-     * as us, we'll just burn CPU cycles until the end of our time slice.
-     */
-    sched_yield();
-  }
-=======
 void uv__async_notify(uv_async_t* handle) {
   uv__async_send(handle->loop);
->>>>>>> v1.53.0
 }
 
 
@@ -475,17 +351,7 @@ int uv__async_fork(uv_loop_t* loop) {
      * behavior anyways, unless async-signal-safe, for multithreaded programs
      * like libuv, and nothing interesting in pthreads is async-signal-safe.
      */
-<<<<<<< HEAD
-    h->pending = 0;
-    /* We just abruptly lost all other threads, so destroy their state too. */
-    h->busy = 0;
-||||||| 1cfa32ff5
-    h->pending = 0;
-    /* This is the busy flag, and we just abruptly lost all other threads. */
-    h->u.fd = 0;
-=======
     h->pending = 0; /* Clears both the pending flag and busy counter. */
->>>>>>> v1.53.0
   }
 
   /* Recreate these, since they still exist, but belong to the wrong pid now. */

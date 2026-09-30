@@ -53,9 +53,9 @@ TEST_IMPL(io_64_safe) {
   struct sockaddr* t2_addrs[1];
   uv_buf_t buf;
   uv_buf_t bufs2[2];
-  uv_file fd;
-  uv_file in_fd;
-  uv_file out_fd;
+  uv_os_fd_t fd;
+  uv_os_fd_t in_fd;
+  uv_os_fd_t out_fd;
 
   loop = uv_default_loop();
 
@@ -72,9 +72,9 @@ TEST_IMPL(io_64_safe) {
   /* uv_fs_write: reject synchronous filesystem write > UV__IO_MAX_BYTES.   */
   /* ------------------------------------------------------------------ */
   {
-    fd = uv_fs_open(NULL, &open_req, TEST_FILE,
-                    UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_TRUNC, S_IRUSR | S_IWUSR, NULL);
-    ASSERT_GE(fd, 0);
+    ASSERT_OK(uv_fs_open(NULL, &open_req, TEST_FILE,
+                         UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_TRUNC, S_IRUSR | S_IWUSR, NULL));
+    fd = (uv_os_fd_t) open_req.result;
     uv_fs_req_cleanup(&open_req);
 
     ASSERT_EQ(UV_EINVAL, uv_fs_write(NULL, &fs_req, fd, &buf, 1, 0, NULL));
@@ -92,15 +92,15 @@ TEST_IMPL(io_64_safe) {
   /* uv_fs_sendfile: reject len > UV__IO_MAX_BYTES.                         */
   /* ------------------------------------------------------------------ */
   {
-    in_fd = uv_fs_open(NULL, &open_req, TEST_FILE,
-                       UV_FS_O_RDONLY | UV_FS_O_CREAT, S_IRUSR | S_IWUSR, NULL);
-    ASSERT_GE(in_fd, 0);
+    ASSERT_OK(uv_fs_open(NULL, &open_req, TEST_FILE,
+                         UV_FS_O_RDONLY | UV_FS_O_CREAT, S_IRUSR | S_IWUSR, NULL));
+    in_fd = (uv_os_fd_t) open_req.result;
     uv_fs_req_cleanup(&open_req);
 
-    out_fd = uv_fs_open(NULL, &open_req, TEST_FILE,
-                        UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_APPEND, S_IRUSR | S_IWUSR,
-                        NULL);
-    ASSERT_GE(out_fd, 0);
+    ASSERT_OK(uv_fs_open(NULL, &open_req, TEST_FILE,
+                         UV_FS_O_WRONLY | UV_FS_O_CREAT | UV_FS_O_APPEND,
+                         S_IRUSR | S_IWUSR, NULL));
+    out_fd = (uv_os_fd_t) open_req.result;
     uv_fs_req_cleanup(&open_req);
 
     ASSERT_EQ(UV_EINVAL,

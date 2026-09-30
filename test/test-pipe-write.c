@@ -26,7 +26,6 @@
 #ifndef _WIN32
 #include <fcntl.h>
 #include <unistd.h>
-#endif
 
 
 static int write_cb_called;
@@ -45,6 +44,7 @@ static void write_cb(uv_write_t* req, int status) {
   write_cb_called++;
   uv_close((uv_handle_t*) req->handle, close_cb);
 }
+#endif
 
 
 TEST_IMPL(pipe_write_trailing_empty_buf) {

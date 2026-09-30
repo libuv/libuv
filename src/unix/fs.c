@@ -304,78 +304,8 @@ static int uv__fs_fdatasync(uv_fs_t* req) {
 }
 
 
-<<<<<<< HEAD
-static ssize_t uv__fs_futime(uv_fs_t* req) {
-#if defined(_AIX71)                                                           \
-||||||| 1cfa32ff5
-#if defined(__APPLE__)                                                        \
-    || defined(_AIX71)                                                        \
-    || defined(__DragonFly__)                                                 \
-    || defined(__FreeBSD__)                                                   \
-    || defined(__HAIKU__)                                                     \
-    || defined(__NetBSD__)                                                    \
-    || defined(__OpenBSD__)                                                   \
-    || defined(__linux__)                                                     \
-    || defined(__sun)                                                         \
-    || defined(__QNX__)
-static struct timespec uv__fs_to_timespec(double time) {
-  struct timespec ts;
-
-  if (uv__isinf(time))
-    return (struct timespec){UTIME_NOW, UTIME_NOW};
-  if (uv__isnan(time))
-    return (struct timespec){UTIME_OMIT, UTIME_OMIT};
-
-  ts.tv_sec  = time;
-  ts.tv_nsec = (time - ts.tv_sec) * 1e9;
-
-  if (ts.tv_nsec < 0) {
-    ts.tv_nsec += 1e9;
-    ts.tv_sec -= 1;
-  }
-  return ts;
-}
-#endif
-
-
-static ssize_t uv__fs_futime(uv_fs_t* req) {
-#if defined(__APPLE__)                                                        \
-    || defined(_AIX71)                                                        \
-=======
-#if defined(__APPLE__)                                                        \
-    || defined(_AIX71)                                                        \
-    || defined(__DragonFly__)                                                 \
-    || defined(__FreeBSD__)                                                   \
-    || defined(__HAIKU__)                                                     \
-    || defined(__NetBSD__)                                                    \
-    || defined(__OpenBSD__)                                                   \
-    || defined(__linux__)                                                     \
-    || defined(__sun)                                                         \
-    || defined(__QNX__)
-static struct timespec uv__fs_to_timespec(double time) {
-  struct timespec ts;
-
-  if (uv__isinf(time))
-    return (struct timespec){UTIME_NOW, UTIME_NOW};
-  if (uv__isnan(time))
-    return (struct timespec){UTIME_OMIT, UTIME_OMIT};
-
-  ts.tv_sec  = time;
-  ts.tv_nsec = (time - ts.tv_sec) * 1e9;
-
-  if (ts.tv_nsec < 0) {
-    ts.tv_nsec += 1e9;
-    ts.tv_sec -= 1;
-  }
-  return ts;
-}
-#endif
-
-
 static int uv__fs_futime(uv_fs_t* req) {
-#if defined(__APPLE__)                                                        \
-    || defined(_AIX71)                                                        \
->>>>>>> v1.53.0
+#if defined(_AIX71)                                                           \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
     || defined(__HAIKU__)                                                     \
@@ -1306,18 +1236,8 @@ static int uv__fs_sendfile(uv_fs_t* req) {
 }
 
 
-<<<<<<< HEAD
-static ssize_t uv__fs_utime(uv_fs_t* req) {
-#if defined(_AIX71)                                                        \
-||||||| 1cfa32ff5
-static ssize_t uv__fs_utime(uv_fs_t* req) {
-#if defined(__APPLE__)                                                        \
-    || defined(_AIX71)                                                        \
-=======
 static int uv__fs_utime(uv_fs_t* req) {
-#if defined(__APPLE__)                                                        \
-    || defined(_AIX71)                                                        \
->>>>>>> v1.53.0
+#if defined(_AIX71)                                                        \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
     || defined(__HAIKU__)                                                     \

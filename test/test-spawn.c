@@ -430,14 +430,9 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 #ifndef _WIN32
   int r;
-<<<<<<< HEAD
-  uv_os_fd_t file;
-||||||| 1cfa32ff5
-  uv_file file;
-=======
   int saved_stderr;
-  uv_file file;
->>>>>>> v1.53.0
+  uv_os_fd_t fd;
+  uv_os_fd_t file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[3];
   uv_buf_t buf;
@@ -462,12 +457,12 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
                  S_IRUSR | S_IWUSR,
                  NULL);
   ASSERT_OK(r);
-  file = (uv_os_fd_t)fs_req.result;
+  fd = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-  file = dup2(file, STDERR_FILENO);
+  file = dup2(fd, STDERR_FILENO);
   ASSERT_NE(file, -1);
   /* dup2() put a copy on fd 2, the original descriptor is redundant now. */
-  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, fd, NULL));
   uv_fs_req_cleanup(&fs_req);
 
   options.stdio = stdio;
@@ -513,18 +508,11 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file2) {
 TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
 #ifndef _WIN32
   int r;
-<<<<<<< HEAD
-  uv_os_fd_t stdout_file;
-  uv_os_fd_t stderr_file;
-||||||| 1cfa32ff5
-  uv_file stdout_file;
-  uv_file stderr_file;
-=======
   int saved_stdout;
   int saved_stderr;
-  uv_file stdout_file;
-  uv_file stderr_file;
->>>>>>> v1.53.0
+  uv_os_fd_t fd;
+  uv_os_fd_t stdout_file;
+  uv_os_fd_t stderr_file;
   uv_fs_t fs_req;
   uv_stdio_container_t stdio[3];
   uv_buf_t buf;
@@ -552,24 +540,24 @@ TEST_IMPL(spawn_stdout_and_stderr_to_file_swap) {
                  S_IRUSR | S_IWUSR,
                  NULL);
   ASSERT_OK(r);
-  stdout_file = (uv_os_fd_t)fs_req.result;
+  fd = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-  stdout_file = dup2(stdout_file, STDOUT_FILENO);
+  stdout_file = dup2(fd, STDOUT_FILENO);
   ASSERT_NE(stdout_file, -1);
   /* dup2() put a copy on fd 1, the original descriptor is redundant now. */
-  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, fd, NULL));
   uv_fs_req_cleanup(&fs_req);
 
   /* open 'stderr_file' and replace STDERR_FILENO with it */
   r = uv_fs_open(NULL, &fs_req, "stderr_file", O_CREAT | O_RDWR,
       S_IRUSR | S_IWUSR, NULL);
   ASSERT_OK(r);
-  stderr_file = (uv_os_fd_t)fs_req.result;
+  fd = (uv_os_fd_t)fs_req.result;
   uv_fs_req_cleanup(&fs_req);
-  stderr_file = dup2(stderr_file, STDERR_FILENO);
+  stderr_file = dup2(fd, STDERR_FILENO);
   ASSERT_NE(stderr_file, -1);
   /* dup2() put a copy on fd 2, the original descriptor is redundant now. */
-  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
+  ASSERT_OK(uv_fs_close(NULL, &fs_req, fd, NULL));
   uv_fs_req_cleanup(&fs_req);
 
   /* now we're going to swap them: the child process' stdout will be our
@@ -2054,18 +2042,12 @@ TEST_IMPL(spawn_fs_open) {
   ASSERT_OK(uv_write(&write_req2, (uv_stream_t*) &in, &buf, 1, write_cb));
 
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
-<<<<<<< HEAD
   ASSERT_OK(uv_fs_close(NULL, &fs_req, fd, NULL));
-||||||| 1cfa32ff5
-  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
-=======
-  ASSERT_OK(uv_fs_close(NULL, &fs_req, r, NULL));
 #ifdef _WIN32
   ASSERT_NE(0, CloseHandle(dup_fd));
 #else
   ASSERT_OK(close(dup_fd));
 #endif
->>>>>>> v1.53.0
 
   ASSERT_EQ(1, exit_cb_called);
   ASSERT_EQ(2, close_cb_called);  /* One for `in`, one for process */

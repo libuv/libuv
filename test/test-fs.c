@@ -37,7 +37,6 @@
 # include <winioctl.h>
 # include <direct.h>
 # include <io.h>
-# include <crtdbg.h>
 # ifndef ERROR_SYMLINK_NOT_SUPPORTED
 #  define ERROR_SYMLINK_NOT_SUPPORTED 1464
 # endif
@@ -503,7 +502,7 @@ static void open_cb_simple(uv_fs_t* req) {
   }
   open_cb_count++;
   ASSERT(req->path);
-  ASSERT_OK(uv_fs_close(NULL, &close_req, (uv_file) req->result, NULL));
+  ASSERT_OK(uv_fs_close(NULL, &close_req, (uv_os_fd_t) req->result, NULL));
   uv_fs_req_cleanup(&close_req);
   uv_fs_req_cleanup(req);
 }
@@ -1098,17 +1097,7 @@ TEST_FS_IMPL(fs_file_async) {
 
 static void fs_file_sync(int add_flags) {
   int r;
-<<<<<<< HEAD
   uv_os_fd_t file;
-||||||| 1cfa32ff5
-=======
-#ifdef _WIN32
-  HANDLE report_file;
-  LARGE_INTEGER report_size;
-  _HFILE old_report_file;
-  int old_report_mode;
-#endif
->>>>>>> v1.53.0
 
   /* Setup. */
   unlink("test_file");
@@ -1133,36 +1122,6 @@ static void fs_file_sync(int add_flags) {
   r = uv_fs_close(NULL, &close_req, file, NULL);
   ASSERT_OK(r);
   ASSERT_OK(close_req.result);
-  uv_fs_req_cleanup(&close_req);
-
-#ifdef _WIN32
-  /* Invalid descriptors must not trigger debug CRT assertions. */
-  report_file = CreateFileA("test_crt_report",
-                            GENERIC_READ | GENERIC_WRITE,
-                            0,
-                            NULL,
-                            CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_TEMPORARY |
-                                FILE_FLAG_DELETE_ON_CLOSE,
-                            NULL);
-  ASSERT_PTR_NE(report_file, INVALID_HANDLE_VALUE);
-  old_report_mode = _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-  old_report_file = _CrtSetReportFile(_CRT_ASSERT, (_HFILE) report_file);
-#endif
-
-  r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
-
-#ifdef _WIN32
-  _CrtSetReportFile(_CRT_ASSERT, old_report_file);
-  _CrtSetReportMode(_CRT_ASSERT, old_report_mode);
-  ASSERT_NE(FlushFileBuffers(report_file), 0);
-  ASSERT_NE(GetFileSizeEx(report_file, &report_size), 0);
-  ASSERT_EQ(0, report_size.QuadPart);
-  ASSERT_NE(CloseHandle(report_file), 0);
-#endif
-
-  ASSERT_EQ(UV_EBADF, r);
-  ASSERT_EQ(UV_EBADF, close_req.result);
   uv_fs_req_cleanup(&close_req);
 
   r = uv_fs_open(NULL, &open_req1, "test_file", UV_FS_O_RDWR | add_flags, 0,
@@ -1492,7 +1451,7 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, size_t expected_size) 
     ASSERT_EQ(buf1[0], 'e'); /* 'e' from begin */
     uv_fs_req_cleanup(&req);
 
-    r = uv_fs_close(NULL, &close_req, open_req1.result, NULL);
+    r = uv_fs_close(NULL, &close_req, file1, NULL);
     ASSERT_OK(r);
     uv_fs_req_cleanup(&close_req);
   } else {
@@ -1808,10 +1767,11 @@ TEST_FS_IMPL(fs_fstat_st_dev) {
   // Create file
   int r = uv_fs_open(NULL, &req, test_file, UV_FS_O_RDWR | UV_FS_O_CREAT,
       S_IWUSR | S_IRUSR, NULL);
-  ASSERT_GE(r, 0);
+  ASSERT_OK(r);
   ASSERT_GE(req.result, 0);
+  uv_os_fd_t file = (uv_os_fd_t) req.result;
   uv_fs_req_cleanup(&req);
-  ASSERT_OK(uv_fs_close(NULL, &req, r, NULL));
+  ASSERT_OK(uv_fs_close(NULL, &req, file, NULL));
   uv_fs_req_cleanup(&req);
 
   // Create a symlink

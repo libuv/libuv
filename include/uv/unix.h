@@ -321,7 +321,6 @@ struct uv__req_write_extra_s {
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   uv_async_cb async_cb;                                                       \
   struct uv__queue queue;                                                     \
-  int busy;                                                                   \
   int pending;                                                                \
 
 #define UV_TIMER_PRIVATE_FIELDS                                               \

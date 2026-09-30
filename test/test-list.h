@@ -1267,18 +1267,8 @@ TASK_LIST_START
   TEST_FS_ENTRY  (fs_invalid_mkdir_name)
   TEST_FS_ENTRY  (fs_wtf)
 #endif
-<<<<<<< HEAD
-  TEST_FS_ENTRY  (fs_get_system_error)
-||||||| 1cfa32ff5
-  TEST_FS_ENTRY  (fs_get_system_error)
-  TEST_ENTRY  (get_osfhandle_valid_handle)
-  TEST_ENTRY  (open_osfhandle_valid_handle)
-=======
   TEST_ENTRY     (fs_get_system_error)
-  TEST_ENTRY  (get_osfhandle_valid_handle)
-  TEST_ENTRY  (open_osfhandle_valid_handle)
   TEST_ENTRY  (io_64_safe)
->>>>>>> v1.53.0
   TEST_ENTRY  (strscpy)
   TEST_ENTRY  (strtok)
   TEST_ENTRY  (threadpool_queue_work_simple)

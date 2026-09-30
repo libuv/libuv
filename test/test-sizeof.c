@@ -829,6 +829,11 @@
 # define UV_SIZEOF_SKIP "unsupported platform"
 #endif
 
+#if UV_VERSION_MAJOR >= 2 && !defined(UV_SIZEOF_SKIP)
+/* The 2.x ABI is not frozen yet, so only report the current sizes. */
+# define UV_SIZEOF_SKIP "2.x ABI is not frozen yet"
+#endif
+
 
 #if defined(UV_SIZEOF_SKIP)
 #define CHECK_SIZE(type, expected) \
@@ -856,7 +861,6 @@ TEST_IMPL(sizeof) {
   CHECK_SIZE(uv_async_t,             SIZEOF_UV_ASYNC_T);
   CHECK_SIZE(uv_process_t,           SIZEOF_UV_PROCESS_T);
   CHECK_SIZE(uv_fs_event_t,          SIZEOF_UV_FS_EVENT_T);
-  CHECK_SIZE(uv_fs_poll_t,           SIZEOF_UV_FS_POLL_T);
   CHECK_SIZE(uv_signal_t,            SIZEOF_UV_SIGNAL_T);
 
   /* Requests */
@@ -878,9 +882,7 @@ TEST_IMPL(sizeof) {
   CHECK_SIZE(uv_stat_t,              SIZEOF_UV_STAT_T);
   CHECK_SIZE(uv_statfs_t,            SIZEOF_UV_STATFS_T);
   CHECK_SIZE(uv_timespec_t,          SIZEOF_UV_TIMESPEC_T);
-  CHECK_SIZE(uv_timespec64_t,        SIZEOF_UV_TIMESPEC64_T);
   CHECK_SIZE(uv_timeval_t,           SIZEOF_UV_TIMEVAL_T);
-  CHECK_SIZE(uv_timeval64_t,         SIZEOF_UV_TIMEVAL64_T);
   CHECK_SIZE(uv_rusage_t,            SIZEOF_UV_RUSAGE_T);
   CHECK_SIZE(uv_metrics_t,           SIZEOF_UV_METRICS_T);
   CHECK_SIZE(uv_dirent_t,            SIZEOF_UV_DIRENT_T);

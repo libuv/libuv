@@ -30,25 +30,11 @@
  * not UV_VERSION_PATCH.)
  */
 
-<<<<<<< HEAD
 #define UV_VERSION_MAJOR 2
 #define UV_VERSION_MINOR 0
 #define UV_VERSION_PATCH 0
 #define UV_VERSION_IS_RELEASE 0
 #define UV_VERSION_SUFFIX "dev"
-||||||| 1cfa32ff5
-#define UV_VERSION_MAJOR 1
-#define UV_VERSION_MINOR 52
-#define UV_VERSION_PATCH 1
-#define UV_VERSION_IS_RELEASE 1
-#define UV_VERSION_SUFFIX ""
-=======
-#define UV_VERSION_MAJOR 1
-#define UV_VERSION_MINOR 53
-#define UV_VERSION_PATCH 0
-#define UV_VERSION_IS_RELEASE 1
-#define UV_VERSION_SUFFIX ""
->>>>>>> v1.53.0
 
 #define UV_VERSION_HEX  ((UV_VERSION_MAJOR << 16) | \
                          (UV_VERSION_MINOR <<  8) | \

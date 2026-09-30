@@ -105,26 +105,8 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (includes_invalid_nul(name, namelen))
     return UV_EINVAL;
 
-<<<<<<< HEAD
-  if (namelen > sizeof(saddr.sun_path) - 1)
+  if (namelen > sizeof(saddr.up.path) - 1)
     return UV_ENAMETOOLONG;
-||||||| 1cfa32ff5
-  if (flags & UV_PIPE_NO_TRUNCATE)
-    if (namelen > sizeof(saddr.sun_path))
-      return UV_EINVAL;
-
-  /* Truncate long paths. Documented behavior. */
-  if (namelen > sizeof(saddr.sun_path))
-    namelen = sizeof(saddr.sun_path);
-=======
-  if (flags & UV_PIPE_NO_TRUNCATE)
-    if (namelen > sizeof(saddr.up.path))
-      return UV_EINVAL;
-
-  /* Truncate long paths. Documented behavior. */
-  if (namelen > sizeof(saddr.up.path))
-    namelen = sizeof(saddr.up.path);
->>>>>>> v1.53.0
 
   /* Already bound? */
   if (uv__stream_fd(handle) >= 0)
@@ -304,26 +286,8 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (includes_invalid_nul(name, namelen))
     return UV_EINVAL;
 
-<<<<<<< HEAD
-  if (namelen > sizeof(saddr.sun_path) - 1)
+  if (namelen > sizeof(saddr.up.path) - 1)
     return UV_ENAMETOOLONG;
-||||||| 1cfa32ff5
-  if (flags & UV_PIPE_NO_TRUNCATE)
-    if (namelen > sizeof(saddr.sun_path))
-      return UV_EINVAL;
-
-  /* Truncate long paths. Documented behavior. */
-  if (namelen > sizeof(saddr.sun_path))
-    namelen = sizeof(saddr.sun_path);
-=======
-  if (flags & UV_PIPE_NO_TRUNCATE)
-    if (namelen > sizeof(saddr.up.path))
-      return UV_EINVAL;
-
-  /* Truncate long paths. Documented behavior. */
-  if (namelen > sizeof(saddr.up.path))
-    namelen = sizeof(saddr.up.path);
->>>>>>> v1.53.0
 
   new_sock = (uv__stream_fd(handle) == -1);
 

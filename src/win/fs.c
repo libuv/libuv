@@ -726,37 +726,8 @@ void fs__close(uv_fs_t* req) {
     result = CloseHandle(handle);
   }
 
-<<<<<<< HEAD
   if (result == 0) {
     SET_REQ_WIN32_ERROR(req, GetLastError());
-||||||| 1cfa32ff5
-  if (fd > 2)
-    result = _close(fd);
-  else
-    result = 0;
-
-  /* _close doesn't set _doserrno on failure, but it does always set errno
-   * to EBADF on failure.
-   */
-  if (result == -1) {
-    assert(errno == EBADF);
-    SET_REQ_UV_ERROR(req, UV_EBADF, ERROR_INVALID_HANDLE);
-=======
-  if (fd > 2) {
-    UV_BEGIN_DISABLE_CRT_ASSERT();
-    result = _close(fd);
-    UV_END_DISABLE_CRT_ASSERT();
-  } else {
-    result = 0;
-  }
-
-  /* _close doesn't set _doserrno on failure, but it does always set errno
-   * to EBADF on failure.
-   */
-  if (result == -1) {
-    assert(errno == EBADF);
-    SET_REQ_UV_ERROR(req, UV_EBADF, ERROR_INVALID_HANDLE);
->>>>>>> v1.53.0
   } else {
     SET_REQ_RESULT(req, 0);
   }
@@ -3356,18 +3327,12 @@ int uv_fs_write(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
-<<<<<<< HEAD
-  req->file.hFile = handle;
-||||||| 1cfa32ff5
-  req->file.fd = fd;
-=======
   if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES) {
     SET_REQ_UV_ERROR(req, UV_EINVAL, ERROR_INVALID_PARAMETER);
     return UV_EINVAL;
   }
 
-  req->file.fd = fd;
->>>>>>> v1.53.0
+  req->file.hFile = handle;
 
   req->fs.info.nbufs = nbufs;
   req->fs.info.bufs = req->fs.info.bufsml;

@@ -443,16 +443,9 @@ can try `ncurses`_.
 ----
 
 .. [#] I was first introduced to the term baton in this context, in Konstantin
-<<<<<<< HEAD
-       Käfer's excellent slides on writing node.js bindings.
-||||||| 1cfa32ff5
-       Käfer's excellent slides on writing node.js bindings --
-       https://kkaefer.com/node-cpp-modules/#baton
-=======
        Käfer's excellent slides on writing node.js bindings --
        https://kkaefer.github.io/node-cpp-modules/#baton
        (`video <https://youtu.be/GajiVsJwSkY?list=PL37ZVnwpeshEVYiRemhMII6ORJmsJuqP7&t=1009>`_)
->>>>>>> v1.53.0
 .. [#] mfp is My Fancy Plugin
 
 .. _libev man page: http://pod.tst.eu/http://cvs.schmorp.de/libev/ev.pod#COMMON_OR_USEFUL_IDIOMS_OR_BOTH

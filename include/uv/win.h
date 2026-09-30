@@ -162,13 +162,7 @@ typedef struct {
   DWORD tls_index;
 } uv_key_t;
 
-<<<<<<< HEAD
 #define UV_ONCE_INIT { INIT_ONCE_STATIC_INIT }
-||||||| 1cfa32ff5
-#define UV_ONCE_INIT { 0, { NULL } }
-=======
-#define UV_ONCE_INIT { 0, INIT_ONCE_STATIC_INIT }
->>>>>>> v1.53.0
 
 typedef struct uv_once_s {
   INIT_ONCE init_once;
@@ -366,17 +360,8 @@ struct uv__req_write_extra_s {
   uv_pipe_accept_t* pending_accepts;
 
 #define uv_pipe_connection_fields                                             \
-<<<<<<< HEAD
-||||||| 1cfa32ff5
-  uv_timer_t* eof_timer;                                                      \
-  uv_write_t dummy; /* TODO: retained for ABI compat; remove this in v2.x. */ \
-=======
-  uv_timer_t* eof_timer;                                                      \
-  /* TODO: This is here for ABI compat - remove in 2.x. */                    \
-  uintptr_t dummy[sizeof(uv_write_t) / sizeof(uintptr_t) - 2];                \
   uv_write_t* non_overlapped_write_active;                                    \
   volatile HANDLE writefile_thread_handle;                                    \
->>>>>>> v1.53.0
   DWORD ipc_remote_pid;                                                       \
   struct {                                                                    \
     uint32_t payload_remaining;                                               \
@@ -456,14 +441,7 @@ struct uv__req_write_extra_s {
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   struct uv__queue queue;                                                     \
   uv_async_cb async_cb;                                                       \
-<<<<<<< HEAD
-  LONG volatile async_sent;
-||||||| 1cfa32ff5
-  /* char to avoid alignment issues */                                        \
-  char volatile async_sent;
-=======
   int pending;
->>>>>>> v1.53.0
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   struct uv__queue queue;                                                     \

@@ -1134,14 +1134,9 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
 
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
-<<<<<<< HEAD
   uv__queue_remove(&req->queue);
-||||||| 1cfa32ff5
-
-=======
   req->write_extra.nwritten += req->u.io.overlapped.InternalHigh;
 
->>>>>>> v1.53.0
   UNREGISTER_HANDLE_REQ(loop, handle);
 
   if (handle->flags & UV_HANDLE_EMULATE_IOCP) {

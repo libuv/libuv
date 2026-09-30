@@ -595,27 +595,7 @@ Helper functions
 
     .. versionadded:: 1.12.0
 
-<<<<<<< HEAD
     .. versionadded:: 2.0.0 replace uv_file with uv_os_fd_t and remove ``uv_open_osfhandle``
-||||||| 1cfa32ff5
-.. c:function:: int uv_open_osfhandle(uv_os_fd_t os_fd)
-
-   For a OS-dependent handle, get the file descriptor in the C runtime.
-   On UNIX, returns the ``os_fd`` intact. On Windows, this calls `_open_osfhandle <https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/open-osfhandle?view=vs-2019>`_.
-   Note that this consumes the argument, any attempts to close it or to use it
-   after closing the return value may lead to malfunction.
-
-    .. versionadded:: 1.23.0
-=======
-.. c:function:: int uv_open_osfhandle(uv_os_fd_t os_fd)
-
-   For a OS-dependent handle, get the file descriptor in the C runtime.
-   On UNIX, returns the ``os_fd`` intact. On Windows, this calls `_open_osfhandle <https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/open-osfhandle?view=vs-2019>`_.
-   Note that this consumes the argument, any attempts to close it or to use it
-   after closing the return value may lead to malfunction.
-
-    .. versionadded:: 1.23.0
->>>>>>> v1.53.0
 
 File open constants
 -------------------
