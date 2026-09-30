@@ -372,16 +372,12 @@ static void fs_event_cb_file_immediate(uv_fs_event_t* handle,
   ASSERT_PTR_EQ(handle, &fs_event);
   ASSERT_OK(status);
   ASSERT_EQ(events, UV_CHANGE);
+  #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
   ASSERT_OK(strcmp(filename, "watch_immediate"));
+  #else
+  ASSERT(filename == NULL || strcmp(filename, "watch_immediate") == 0);
+  #endif
   ASSERT_OK(uv_fs_event_stop(handle));
-  uv_timer_stop(&timer);
-  uv_close((uv_handle_t*) &timer, close_cb);
-  uv_close((uv_handle_t*) handle, close_cb);
-}
-
-static void fs_event_immediate_timeout(uv_timer_t* handle) {
-  ASSERT_OK(uv_fs_event_stop(&fs_event));
-  uv_close((uv_handle_t*) &fs_event, close_cb);
   uv_close((uv_handle_t*) handle, close_cb);
 }
 
@@ -814,10 +810,10 @@ TEST_IMPL(fs_event_watch_file) {
 }
 
 TEST_IMPL(fs_event_watch_file_immediate) {
-#if !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__NetBSD__) && \
-    !defined(__OpenBSD__) && !defined(__DragonFly__)
-  RETURN_SKIP("Test requires the kqueue backend.");
-#else
+#if defined(NO_FS_EVENTS)
+  RETURN_SKIP(NO_FS_EVENTS);
+#endif
+
   uv_loop_t* loop = uv_default_loop();
   int r;
 
@@ -835,10 +831,6 @@ TEST_IMPL(fs_event_watch_file_immediate) {
                         "watch_dir/watch_immediate",
                         0);
   ASSERT_OK(r);
-  r = uv_timer_init(loop, &timer);
-  ASSERT_OK(r);
-  r = uv_timer_start(&timer, fs_event_immediate_timeout, 100, 0);
-  ASSERT_OK(r);
 
   /* The event must not depend on a later event-loop tick to install
    * the watch. */
@@ -853,7 +845,6 @@ TEST_IMPL(fs_event_watch_file_immediate) {
 
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
-#endif
 }
 
 TEST_IMPL(fs_event_watch_file_exact_path) {
