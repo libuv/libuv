@@ -344,6 +344,115 @@ TEST_IMPL(tty_raw_cancel) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+static int tty_ctrl_z_read_cb_calls;
+static HANDLE tty_ctrl_z_conin;
+
+static void tty_ctrl_z_write_key(WORD virtual_key_code,
+                                 WCHAR unicode_char,
+                                 DWORD control_key_state) {
+  INPUT_RECORD record;
+  DWORD written;
+
+  record.EventType = KEY_EVENT;
+  record.Event.KeyEvent.bKeyDown = TRUE;
+  record.Event.KeyEvent.wRepeatCount = 1;
+  record.Event.KeyEvent.wVirtualKeyCode = virtual_key_code;
+  record.Event.KeyEvent.wVirtualScanCode =
+      MapVirtualKeyW(virtual_key_code, MAPVK_VK_TO_VSC);
+  record.Event.KeyEvent.uChar.UnicodeChar = unicode_char;
+  record.Event.KeyEvent.dwControlKeyState = control_key_state;
+
+  ASSERT(WriteConsoleInputW(tty_ctrl_z_conin, &record, 1, &written));
+  ASSERT_EQ(1, written);
+}
+
+static void tty_ctrl_z_read(uv_stream_t* tty_in,
+                            ssize_t nread,
+                            const uv_buf_t* buf) {
+  free(buf->base);
+
+  switch (++tty_ctrl_z_read_cb_calls) {
+  case 1:
+    ASSERT_EQ(UV_EOF, nread);
+    ASSERT(!uv_is_active((uv_handle_t*) tty_in));
+
+    ASSERT_OK(uv_read_start(tty_in, tty_raw_alloc, tty_ctrl_z_read));
+    ASSERT(uv_is_active((uv_handle_t*) tty_in));
+
+    tty_ctrl_z_write_key('X', L'x', 0);
+    tty_ctrl_z_write_key(VK_RETURN, L'\r', 0);
+    break;
+
+  case 2:
+    ASSERT_GT(nread, 0);
+    uv_close((uv_handle_t*) tty_in, NULL);
+    break;
+
+  default:
+    ASSERT(0 && "unexpected read callback");
+  }
+}
+
+TEST_IMPL(tty_ctrl_z_eof) {
+  int r;
+  int ttyin_fd;
+  uv_tty_t tty_in;
+  uv_loop_t* loop = uv_default_loop();
+  HANDLE handle;
+
+  /* Make sure we have an FD that refers to a tty */
+  handle = CreateFileA("conin$",
+                       GENERIC_READ | GENERIC_WRITE,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       NULL);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
+  ttyin_fd = _open_osfhandle((intptr_t) handle, 0);
+  ASSERT_GE(ttyin_fd, 0);
+  ASSERT_EQ(UV_TTY, uv_guess_handle(ttyin_fd));
+  tty_ctrl_z_conin = handle;
+
+  r = uv_tty_init(loop, &tty_in, ttyin_fd, 1);  /* Readable. */
+  ASSERT_OK(r);
+
+  /* Line-buffered mode, i.e. the ReadConsoleW() code path. */
+  r = uv_tty_set_mode(&tty_in, UV_TTY_MODE_NORMAL);
+  ASSERT_OK(r);
+
+  r = uv_read_start((uv_stream_t*) &tty_in, tty_raw_alloc, tty_ctrl_z_read);
+  ASSERT_OK(r);
+
+  /* Give uv_tty_line_read_thread time to block on ReadConsoleW */
+  Sleep(100);
+
+  tty_ctrl_z_write_key('Z', 0x1a, LEFT_CTRL_PRESSED);
+
+  /* ReadConsoleW() only returns once the line is committed. */
+  tty_ctrl_z_write_key(VK_RETURN, L'\r', 0);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(2, tty_ctrl_z_read_cb_calls);
+
+  /* uv_close() shut the tty fd, so reopen to clean up. Other tests share this
+   * console and must not see input this test left behind. */
+  handle = CreateFileA("conin$",
+                       GENERIC_READ | GENERIC_WRITE,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       NULL);
+  ASSERT_PTR_NE(handle, INVALID_HANDLE_VALUE);
+  ASSERT(FlushConsoleInputBuffer(handle));
+  ASSERT(CloseHandle(handle));
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
 #endif
 
 
