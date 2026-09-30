@@ -462,66 +462,24 @@ int WSAAPI uv__wsarecvfrom_workaround(SOCKET socket, WSABUF* buffers,
 
 int WSAAPI uv__msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
     AFD_POLL_INFO* info_out, OVERLAPPED* overlapped) {
-  IO_STATUS_BLOCK iosb;
   IO_STATUS_BLOCK* iosb_ptr;
-  HANDLE event = NULL;
-  void* apc_context;
   NTSTATUS status;
   DWORD error;
 
-  if (overlapped != NULL) {
-    /* Overlapped operation. */
-    iosb_ptr = (IO_STATUS_BLOCK*) &overlapped->Internal;
-    event = overlapped->hEvent;
-
-    /* Do not report iocp completion if hEvent is tagged. */
-    if ((uintptr_t) event & 1) {
-      event = (HANDLE)((uintptr_t) event & ~(uintptr_t) 1);
-      apc_context = NULL;
-    } else {
-      apc_context = overlapped;
-    }
-
-  } else {
-    /* Blocking operation. */
-    iosb_ptr = &iosb;
-    event = CreateEvent(NULL, FALSE, FALSE, NULL);
-    if (event == NULL) {
-      return SOCKET_ERROR;
-    }
-    apc_context = NULL;
-  }
-
+  assert(overlapped != NULL);
+  iosb_ptr = (IO_STATUS_BLOCK*) &overlapped->Internal;
   iosb_ptr->Status = STATUS_PENDING;
+
   status = pNtDeviceIoControlFile((HANDLE) socket,
-                                  event,
+                                  overlapped->hEvent,
                                   NULL,
-                                  apc_context,
+                                  overlapped,
                                   iosb_ptr,
                                   IOCTL_AFD_POLL,
                                   info_in,
                                   sizeof *info_in,
                                   info_out,
                                   sizeof *info_out);
-
-  if (overlapped == NULL) {
-    /* If this is a blocking operation, wait for the event to become signaled,
-     * and then grab the real status from the io status block. */
-    if (status == STATUS_PENDING) {
-      DWORD r = WaitForSingleObject(event, INFINITE);
-
-      if (r == WAIT_FAILED) {
-        DWORD saved_error = GetLastError();
-        CloseHandle(event);
-        WSASetLastError(saved_error);
-        return SOCKET_ERROR;
-      }
-
-      status = iosb.Status;
-    }
-
-    CloseHandle(event);
-  }
 
   switch (status) {
     case STATUS_SUCCESS:
