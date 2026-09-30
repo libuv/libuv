@@ -48,8 +48,10 @@
 #define EV_OOBAND  EV_FLAG1
 #endif
 
-/* EVFILT_VNODE watchers are one-shot to stop the event from firing repeatedly;
- * uv__fs_event() re-arms them after each callback.
+/* EVFILT_VNODE watchers use EV_CLEAR so the kernel resets the accumulated
+ * fflags once they're retrieved but keeps the knote attached. Changes made
+ * while the callback runs are then reported on the next loop iteration,
+ * instead of being lost between the event and a one-shot re-arm.
  */
 #define UV__VNODE_FFLAGS (NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME             \
                           | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE)
@@ -219,7 +221,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (UV__FS_EVENT == uv__io_cb_get(w)) {
         filter = EVFILT_VNODE;
         fflags = UV__VNODE_FFLAGS;
-        op = EV_ADD | EV_ONESHOT;
+        op = EV_ADD | EV_CLEAR;
       }
 
       EV_SET(events + nevents, w->fd, filter, op, fflags, 0, 0);
@@ -502,7 +504,7 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 static int uv__fs_event_arm(uv_loop_t* loop, uv__io_t* w) {
   struct kevent ev;
 
-  EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, UV__VNODE_FFLAGS, 0, 0);
+  EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, UV__VNODE_FFLAGS, 0, 0);
 
   if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
     return UV__ERR(errno);
@@ -557,13 +559,6 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   }
 #endif
   handle->cb(handle, path, events, 0);
-
-  if (handle->event_watcher.fd == -1)
-    return;
-
-  /* Watcher operates in one-shot mode, re-arm it. */
-  if (uv__fs_event_arm(loop, w))
-    abort();
 }
 
 
