@@ -1214,7 +1214,7 @@ TEST_FS_IMPL(fs_posix_delete) {
   uv_fs_req_cleanup(&rmdir_req);
 
   r = uv_fs_rmdir(NULL, &rmdir_req, "test_dir/file", NULL);
-  ASSERT((r == UV_ENOTDIR) || (r == UV_ENOENT));
+  ASSERT_EQ(r, UV_ENOTDIR);
   ASSERT_EQ(r, rmdir_req.result);
   uv_fs_req_cleanup(&rmdir_req);
 

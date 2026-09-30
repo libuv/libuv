@@ -273,6 +273,9 @@ API
 
     Equivalent to :man:`rmdir(2)`.
 
+    .. versionchanged:: 2.0.0 on Windows, returns ``UV_ENOTDIR`` instead of
+                        ``UV_ENOENT`` when `path` is not a directory.
+
 .. c:function:: int uv_fs_opendir(uv_loop_t* loop, uv_fs_t* req, const char* path, uv_fs_cb cb)
 
     Opens `path` as a directory stream. On success, a `uv_dir_t` is allocated

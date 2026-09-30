@@ -1155,9 +1155,8 @@ static void fs__unlink_rmdir(uv_fs_t* req, BOOL isrmdir) {
   }
 
   if (isrmdir && !(info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-    /* Error if we're in rmdir mode but it is not a dir.
-     * TODO: change it to UV_NOTDIR in v2. */
-    SET_REQ_UV_ERROR(req, UV_ENOENT, ERROR_DIRECTORY);
+    /* Error if we're in rmdir mode but it is not a dir. */
+    SET_REQ_UV_ERROR(req, UV_ENOTDIR, ERROR_DIRECTORY);
     CloseHandle(handle);
     return;
   }
