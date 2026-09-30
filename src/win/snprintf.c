@@ -41,7 +41,4 @@ int snprintf(char* buf, size_t len, const char* fmt, ...) {
 
 #endif
 
-/* Workaround for "ISO C forbids an empty translation unit" when compiled with
- * -pedantic. This is flagged as a significant warning by R CMD check.
- */
-typedef int make_iso_compilers_happy;
+typedef int file_has_no_tests; /* ISO C forbids an empty translation unit. */
