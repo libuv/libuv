@@ -23,6 +23,10 @@
 #include "task.h"
 #include <string.h>
 
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#endif
+
 
 static void set_title(const char* title) {
   char buffer[512];
@@ -132,4 +136,112 @@ void process_title_big_argv(void) {
   /* Return value deliberately ignored. */
   uv_get_process_title(buf, sizeof(buf));
   ASSERT_NE(0, strcmp(buf, "fail"));
+}
+
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+#include <dlfcn.h>
+#include "../src/unix/darwin-stub.h"
+
+static CFStringRef (*cf_string_create)(CFAllocatorRef,
+                                      const char*,
+                                      CFStringEncoding);
+static void (*cf_release)(CFTypeRef);
+static CFStringRef cf_strings[7];
+static unsigned int cf_create_calls;
+static unsigned int cf_string_count;
+static unsigned int cf_release_count;
+static unsigned int cf_fail_at;
+
+
+static CFStringRef tracked_cf_string_create(CFAllocatorRef allocator,
+                                            const char* string,
+                                            CFStringEncoding encoding) {
+  CFStringRef result;
+
+  if (++cf_create_calls == cf_fail_at)
+    return NULL;
+
+  result = cf_string_create(allocator, string, encoding);
+  ASSERT_NOT_NULL(result);
+  ASSERT_LT(cf_string_count, ARRAY_SIZE(cf_strings));
+  cf_strings[cf_string_count++] = result;
+  return result;
+}
+
+
+static void tracked_cf_release(CFTypeRef object) {
+  unsigned int i;
+
+  ASSERT_NOT_NULL(object);
+  for (i = 0; i < cf_string_count; i++)
+    if (cf_strings[i] == object)
+      break;
+  ASSERT_LT(i, cf_string_count);
+  cf_strings[i] = NULL;
+  cf_release_count++;
+  cf_release(object);
+}
+
+
+static void* tracked_dlsym(void* handle, const char* symbol) {
+  void* result;
+
+  result = dlsym(handle, symbol);
+  if (result == NULL)
+    return NULL;
+  if (strcmp(symbol, "CFStringCreateWithCString") == 0) {
+    *(void**) &cf_string_create = result;
+    return (void*) tracked_cf_string_create;
+  }
+  if (strcmp(symbol, "CFRelease") == 0) {
+    *(void**) &cf_release = result;
+    return (void*) tracked_cf_release;
+  }
+  return result;
+}
+
+
+/* Track the helper's owned references, excluding framework-internal memory. */
+#define dlsym tracked_dlsym
+#define uv__set_process_title test_darwin_set_process_title
+#define uv__thread_setname uv_thread_setname
+#include "../src/unix/darwin-proctitle.c"
+#undef uv__thread_setname
+#undef uv__set_process_title
+#undef dlsym
+#endif
+
+
+TEST_IMPL(process_title_cf_strings) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  unsigned int create_calls;
+  unsigned int i;
+  int err;
+
+  create_calls = ARRAY_SIZE(cf_strings);
+  for (cf_fail_at = 0; cf_fail_at <= create_calls; cf_fail_at++) {
+    cf_create_calls = 0;
+    cf_string_count = 0;
+    cf_release_count = 0;
+    err = test_darwin_set_process_title("process title leak test");
+    if (cf_fail_at != 0) {
+      ASSERT_EQ(err, UV_ENOMEM);
+      ASSERT_EQ(cf_create_calls, cf_fail_at);
+    } else {
+      /* LaunchServices can be unavailable or reject the display-name update. */
+      ASSERT(err == 0 || err == UV_EINVAL ||
+             err == UV_ENOENT || err == UV_EBUSY);
+      create_calls = cf_create_calls;
+    }
+    ASSERT_EQ(cf_string_count, cf_release_count);
+    for (i = 0; i < cf_string_count; i++)
+      ASSERT_NULL(cf_strings[i]);
+  }
+  if (create_calls == 0)
+    RETURN_SKIP("Core Foundation process-title functions are unavailable.");
+  return 0;
+#else
+  RETURN_SKIP("Core Foundation is only used for process titles on macOS.");
+#endif
 }
