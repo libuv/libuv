@@ -2192,7 +2192,7 @@ int uv__tty_write(uv_loop_t* loop,
   UV_REQ_INIT(loop, req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
-  req->write_extra.nwritten = 0;
+  req->nwritten = 0;
 
   handle->reqs_pending++;
   uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
@@ -2202,7 +2202,7 @@ int uv__tty_write(uv_loop_t* loop,
 
   if (!uv__tty_write_bufs(handle, bufs, nbufs, &error)) {
     SET_REQ_SUCCESS(req);
-    req->write_extra.nwritten = uv__count_bufs(bufs, nbufs);
+    req->nwritten = uv__count_bufs(bufs, nbufs);
   } else {
     SET_REQ_ERROR(req, error);
   }

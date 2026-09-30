@@ -90,6 +90,9 @@ Data types
             int32_t tv_nsec;
         } uv_timespec_t;
 
+    .. versionchanged:: 2.0.0 `tv_sec` and `tv_nsec` are fixed-width (Y2K38-safe),
+                        replacing ``uv_timespec64_t``.
+
 .. c:enum:: uv_clock_id
 
     Clock source for :c:func:`uv_clock_gettime`.

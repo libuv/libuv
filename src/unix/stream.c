@@ -690,7 +690,7 @@ static int uv__write_req_update(uv_stream_t* stream,
 
   assert(n <= stream->write_queue_size);
   stream->write_queue_size -= n;
-  req->write_extra.nwritten += n;
+  req->nwritten += n;
 
   buf = req->bufs + req->write_index;
 
@@ -1391,7 +1391,7 @@ int uv_write2(uv_write_t* req,
   req->handle = stream;
   req->error = 0;
   req->send_handle = send_handle;
-  req->write_extra.nwritten = 0;
+  req->nwritten = 0;
   uv__queue_init(&req->queue);
 
   req->bufs = req->bufsml;
@@ -1435,7 +1435,7 @@ int uv_write2(uv_write_t* req,
 
 
 size_t uv_write_nwritten(const uv_write_t* req) {
-  return req->write_extra.nwritten;
+  return req->nwritten;
 }
 
 

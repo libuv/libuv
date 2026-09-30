@@ -943,7 +943,7 @@ int uv__tcp_write(uv_loop_t* loop,
   UV_REQ_INIT(loop, req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
-  req->write_extra.nwritten = 0;
+  req->nwritten = 0;
 
   /* Prepare the overlapped structure. */
   memset(&(req->u.io.overlapped), 0, sizeof(req->u.io.overlapped));
@@ -1135,7 +1135,7 @@ void uv__process_tcp_write_req(uv_loop_t* loop, uv_tcp_t* handle,
   assert(handle->write_queue_size >= req->u.io.queued_bytes);
   handle->write_queue_size -= req->u.io.queued_bytes;
   uv__queue_remove(&req->queue);
-  req->write_extra.nwritten += req->u.io.overlapped.InternalHigh;
+  req->nwritten += req->u.io.overlapped.InternalHigh;
 
   UNREGISTER_HANDLE_REQ(loop, handle);
 

@@ -1103,8 +1103,7 @@ typedef enum {
    * if the child is not designed to handle to encounter this mode,
    * but can also be significantly more efficient.
    */
-  UV_NONBLOCK_PIPE  = 0x40,
-  UV_OVERLAPPED_PIPE = 0x40 /* old name, for compatibility */
+  UV_NONBLOCK_PIPE  = 0x40
 } uv_stdio_flags;
 
 typedef struct uv_stdio_container_s {

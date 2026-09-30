@@ -285,7 +285,7 @@ int uv_stream_set_blocking(uv_stream_t* handle, int blocking) {
 
 
 size_t uv_write_nwritten(const uv_write_t* req) {
-  return req->write_extra.nwritten;
+  return req->nwritten;
 }
 
 

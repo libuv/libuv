@@ -31,18 +31,6 @@ Data types
 
     File system request type.
 
-.. c:type:: uv_timespec_t
-
-    Y2K38-unsafe data type for storing times with nanosecond resolution.
-    Will be replaced with :c:type:`uv_timespec64_t` in libuv v2.0.
-
-    ::
-
-        typedef struct {
-            long tv_sec;
-            long tv_nsec;
-        } uv_timespec_t;
-
 .. c:type:: uv_stat_t
 
     Portable equivalent of ``struct stat``.

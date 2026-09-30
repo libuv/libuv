@@ -242,10 +242,6 @@ typedef struct {
   UV_WAKEUP,                                                                  \
   UV_SIGNAL_REQ,
 
-struct uv__req_write_extra_s {
-  size_t nwritten;
-};
-
 #define UV_REQ_PRIVATE_FIELDS                                                 \
   union {                                                                     \
     /* Used by I/O operations */                                              \
@@ -263,18 +259,15 @@ struct uv__req_write_extra_s {
   } u;                                                                        \
   /* Singly linked list of pending reqs. For non-overlapped pipes, also used  \
    * to keep track of reqs no yet submitted to the thread pool */             \
-  struct uv_req_s* next_req;                                                  \
-  union {                                                                     \
-    void* reserved2[1];                                                       \
-    struct uv__req_write_extra_s write_extra;                                 \
-  };
+  struct uv_req_s* next_req;
 
 #define UV_WRITE_PRIVATE_FIELDS \
   struct uv__queue queue;       \
   int coalesced;                \
   uv_buf_t write_buffer;        \
   HANDLE event_handle;          \
-  HANDLE wait_handle;
+  HANDLE wait_handle;           \
+  size_t nwritten;
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
   /* empty */
@@ -485,7 +478,6 @@ struct uv__req_write_extra_s {
   struct uv_process_exit_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
-  void* unused; /* TODO: retained for ABI compat; remove this in v2.x. */     \
   int exit_signal;                                                            \
   HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \

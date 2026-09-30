@@ -1658,7 +1658,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
   req->handle = (uv_stream_t*) handle;
   req->send_handle = NULL;
   req->cb = cb;
-  req->write_extra.nwritten = 0;
+  req->nwritten = 0;
   /* Private fields. */
   req->coalesced = 0;
   req->event_handle = NULL;
@@ -2288,7 +2288,7 @@ void uv__process_pipe_write_req(uv_loop_t* loop, uv_pipe_t* handle,
     req->write_buffer = uv_null_buf_;
   }
 
-  req->write_extra.nwritten += bytes_written;
+  req->nwritten += bytes_written;
 
   if (req->cb) {
     handle->flags |= UV_HANDLE_IN_WRITE_CB;
