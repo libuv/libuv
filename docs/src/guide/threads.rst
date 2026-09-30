@@ -183,7 +183,7 @@ After all threads are done, ``i == 1``.
 libuv v0.11.11 onwards also added a ``uv_key_t`` struct and api_ for
 thread-local storage.
 
-.. _api: http://docs.libuv.org/en/v1.x/threading.html#thread-local-storage
+.. _api: https://docs.libuv.org/en/v1.x/threading.html#thread-local-storage
 
 libuv work queue
 ----------------

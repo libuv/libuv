@@ -30,7 +30,10 @@
 uv_handle_type uv_guess_handle(uv_os_fd_t handle) {
   DWORD mode;
 
-  if (handle == INVALID_HANDLE_VALUE) {
+  if (handle == UV_STDIN_FD || handle == UV_STDOUT_FD || handle == UV_STDERR_FD)
+    handle = GetStdHandle((DWORD)(uintptr_t) handle);
+
+  if (handle == NULL || handle == INVALID_HANDLE_VALUE) {
     return UV_UNKNOWN_HANDLE;
   }
 

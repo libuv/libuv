@@ -150,11 +150,10 @@ typedef CONDITION_VARIABLE uv_cond_t;
 typedef SRWLOCK uv_rwlock_t;
 
 typedef struct {
+  uv_mutex_t mutex;
+  uv_cond_t cond;
   unsigned threshold;
   unsigned in;
-  uv_mutex_t mutex;
-  /* TODO: in v2 make this a uv_cond_t, without unused_ */
-  CONDITION_VARIABLE cond;
   unsigned out;
 } uv_barrier_t;
 
@@ -254,9 +253,11 @@ typedef struct {
       ULONG_PTR result; /* overlapped.Internal is reused to hold the result */\
       HANDLE pipeHandle;                                                      \
       DWORD duplex_flags;                                                     \
-      WCHAR* name;                                                             \
+      WCHAR* name;                                                            \
     } connect;                                                                \
   } u;                                                                        \
+  /* Singly linked list of pending reqs. For non-overlapped pipes, also used  \
+   * to keep track of reqs no yet submitted to the thread pool */             \
   struct uv_req_s* next_req;
 
 #define UV_WRITE_PRIVATE_FIELDS \
@@ -264,7 +265,8 @@ typedef struct {
   int coalesced;                \
   uv_buf_t write_buffer;        \
   HANDLE event_handle;          \
-  HANDLE wait_handle;
+  HANDLE wait_handle;           \
+  size_t nwritten;
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
   /* empty */
@@ -350,6 +352,8 @@ typedef struct {
   uv_pipe_accept_t* pending_accepts;
 
 #define uv_pipe_connection_fields                                             \
+  uv_write_t* non_overlapped_write_active;                                    \
+  volatile HANDLE writefile_thread_handle;                                    \
   DWORD ipc_remote_pid;                                                       \
   struct {                                                                    \
     uint32_t payload_remaining;                                               \
@@ -357,7 +361,7 @@ typedef struct {
   struct uv__queue ipc_xfer_queue;                                            \
   int ipc_xfer_queue_length;                                                  \
   uv_write_t* non_overlapped_writes_tail;                                     \
-  CRITICAL_SECTION readfile_thread_lock;                                      \
+  CRITICAL_SECTION thread_lock;                                               \
   volatile HANDLE readfile_thread_handle;
 
 #define UV_PIPE_PRIVATE_FIELDS                                                \
@@ -429,7 +433,7 @@ typedef struct {
 #define UV_ASYNC_PRIVATE_FIELDS                                               \
   struct uv__queue queue;                                                     \
   uv_async_cb async_cb;                                                       \
-  LONG volatile async_sent;
+  int pending;
 
 #define UV_PREPARE_PRIVATE_FIELDS                                             \
   struct uv__queue queue;                                                     \
@@ -473,7 +477,6 @@ typedef struct {
   struct uv_process_exit_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
-  void* unused; /* TODO: retained for ABI compat; remove this in v2.x. */     \
   int exit_signal;                                                            \
   HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \

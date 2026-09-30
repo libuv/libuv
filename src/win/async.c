@@ -26,25 +26,6 @@
 #include "handle-inl.h"
 #include "req-inl.h"
 
-#ifdef _MSC_VER /* MSVC */
-
-/* _InterlockedOr8 is supported by MSVC on x32 and x64. It is slightly less
- * efficient than InterlockedExchange, but InterlockedExchange8 does not exist,
- * and interlocked operations on larger targets might require the target to be
- * aligned. */
-#pragma intrinsic(_InterlockedOr8)
-
-static char uv__atomic_exchange_set(char volatile* target) {
-  return _InterlockedOr8(target, 1);
-}
-
-#else /* GCC, Clang in mingw mode */
-
-static char uv__atomic_exchange_set(char volatile* target) {
-  return __sync_fetch_and_or(target, 1);
-}
-
-#endif  /* _MSC_VER */
 
 void uv__async_endgame(uv_loop_t* loop, uv_async_t* handle) {
   assert(handle->flags & UV_HANDLE_CLOSING);
@@ -55,7 +36,7 @@ void uv__async_endgame(uv_loop_t* loop, uv_async_t* handle) {
 
 int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
   uv__handle_init(loop, (uv_handle_t*) handle, UV_ASYNC);
-  handle->async_sent = 0;
+  handle->pending = 0;
   handle->async_cb = async_cb;
 
   uv__queue_insert_tail(&loop->async_handles, &handle->queue);
@@ -66,23 +47,38 @@ int uv_async_init(uv_loop_t* loop, uv_async_t* handle, uv_async_cb async_cb) {
 
 
 void uv__async_close(uv_loop_t* loop, uv_async_t* handle) {
+  /* Block new senders and wait for any in-flight send to finish. The wakeup
+   * req is shared by the loop, so any IOCP notification still in flight does
+   * not reference this handle and we can schedule the endgame immediately. */
+  uv__async_spin(handle);
   uv__queue_remove(&handle->queue);
   uv__want_endgame(loop, (uv_handle_t*) handle);
   uv__handle_closing(handle);
 }
 
 
-int uv_async_send(uv_async_t* handle) {
-  /* First do a cheap read. */
-  if (handle->async_sent != 0)
-    return 0;
+void uv__async_notify(uv_async_t* handle) {
+  uv_loop_t* loop = handle->loop;
+  POST_COMPLETION_FOR_REQ(loop, &loop->async_req);
+}
 
-  if (InterlockedExchange(&handle->async_sent, 1) == 0) {
-    uv_loop_t* loop = handle->loop;
-    POST_COMPLETION_FOR_REQ(loop, &loop->async_req);
+
+void uv__async_stop(uv_loop_t* loop) {
+  struct uv__queue* q;
+  uv_async_t* h;
+
+  /* Spin all UV_ASYNC handles that are still open. */
+  uv__queue_foreach(q, &loop->async_handles) {
+    h = uv__queue_data(q, uv_async_t, queue);
+    uv__async_spin(h);
   }
 
-  return 0;
+  /* Close the internal wq_async handle directly, bypassing the normal endgame:
+   * any pending IOCP message will be discarded with loop->iocp. */
+  uv__queue_remove(&loop->wq_async.queue);
+  loop->wq_async.close_cb = NULL;
+  uv__handle_closing(&loop->wq_async);
+  uv__handle_close(&loop->wq_async);
 }
 
 
@@ -102,7 +98,11 @@ void uv__process_async_wakeup_req(uv_loop_t* loop,
     uv__queue_remove(q);
     uv__queue_insert_tail(&loop->async_handles, q);
 
-    if (InterlockedExchange(&h->async_sent, 0) == 0)
+    /* Clear pending flag, retain busy counter. The InterlockedAnd is seq_cst
+     * (a full barrier), and synchronizing with the seq_cst
+     * InterlockedCompareExchange in uv_async_send. This makes all accesses
+     * before that call visible here (and vice versa). */
+    if (!(InterlockedAnd((LONG volatile*) &h->pending, ~1) & 1))
       continue;
 
     if (h->async_cb != NULL)

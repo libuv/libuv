@@ -66,11 +66,6 @@ static int uv__udp_set_socket(uv_loop_t* loop, uv_udp_t* handle, SOCKET socket,
     return WSAGetLastError();
   }
 
-  /* Make the socket non-inheritable */
-  if (!SetHandleInformation((HANDLE)socket, HANDLE_FLAG_INHERIT, 0)) {
-    return GetLastError();
-  }
-
   /* Associate it with the I/O completion port. Use uv_handle_t pointer as
    * completion key. */
   if (CreateIoCompletionPort((HANDLE)socket,
@@ -142,7 +137,8 @@ int uv__udp_init_ex(uv_loop_t* loop,
     SOCKET sock;
     DWORD err;
 
-    sock = socket(domain, SOCK_DGRAM, 0);
+    sock = WSASocketW(domain, SOCK_DGRAM, 0, NULL, 0,
+                      WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
     if (sock == INVALID_SOCKET) {
       err = WSAGetLastError();
       uv__queue_remove(&handle->handle_queue);
@@ -211,7 +207,8 @@ static int uv__udp_maybe_bind(uv_udp_t* handle,
   }
 
   if (handle->socket == INVALID_SOCKET) {
-    SOCKET sock = socket(addr->sa_family, SOCK_DGRAM, 0);
+    SOCKET sock = WSASocketW(addr->sa_family, SOCK_DGRAM, 0, NULL, 0,
+                             WSA_FLAG_OVERLAPPED | WSA_FLAG_NO_HANDLE_INHERIT);
     if (sock == INVALID_SOCKET) {
       return WSAGetLastError();
     }
@@ -1109,9 +1106,6 @@ int uv__udp_try_send(uv_udp_t* handle,
   const struct sockaddr* bind_addr;
   struct sockaddr_storage converted;
   int err;
-
-  if (nbufs < 1)
-    return UV_EINVAL;
 
   if (addr != NULL) {
     err = uv__convert_to_localhost_if_unspecified(addr, &converted);

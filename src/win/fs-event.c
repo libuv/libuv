@@ -61,13 +61,17 @@ static void uv__fs_event_queue_readdirchanges(uv_loop_t* loop,
   handle->req_pending = 1;
 }
 
-static void uv__relative_path(const WCHAR* filename,
-                              const WCHAR* dir,
-                              WCHAR** relpath) {
+/* Compute the path of `filename` relative to the watched directory `dir`.
+ * Returns 0 on success, -1 if `filename` is not actually prefixed by `dir`,
+ * which can happen if the directory is a short path. */
+static int uv__relative_path(const WCHAR* filename,
+                             const WCHAR* dir,
+                             WCHAR** relpath) {
   size_t relpathlen;
   size_t filenamelen = wcslen(filename);
   size_t dirlen = wcslen(dir);
-  assert(!_wcsnicmp(filename, dir, dirlen));
+  if (filenamelen <= dirlen || _wcsnicmp(filename, dir, dirlen) != 0)
+    return -1;
   if (dirlen > 0 && dir[dirlen - 1] == '\\')
     dirlen--;
   relpathlen = filenamelen - dirlen - 1;
@@ -76,6 +80,7 @@ static void uv__relative_path(const WCHAR* filename,
     uv_fatal_error(ERROR_OUTOFMEMORY, "uv__malloc");
   wcsncpy(*relpath, filename + dirlen + 1, relpathlen);
   (*relpath)[relpathlen] = L'\0';
+  return 0;
 }
 
 static int uv__split_path(const WCHAR* filename, WCHAR** dir,
@@ -431,6 +436,7 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
   WCHAR* filenamew = NULL;
   WCHAR* long_filenamew = NULL;
   DWORD offset = 0;
+  int dir_event_detected = 0;
 
   assert(req->type == UV_FS_EVENT_REQ);
   assert(handle->req_pending);
@@ -456,6 +462,10 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
         assert(!filename);
         assert(!filenamew);
         assert(!long_filenamew);
+
+        if (file_info->FileNameLength == 0) {
+          dir_event_detected = 1;
+        }
 
         /*
          * Fire the event only if we were asked to watch a directory,
@@ -515,12 +525,21 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
 
               if (long_filenamew) {
                 /* Get the file name out of the long path. */
-                uv__relative_path(long_filenamew,
-                                  handle->dirw,
-                                  &filenamew);
-                uv__free(long_filenamew);
-                long_filenamew = filenamew;
-                sizew = -1;
+                if (uv__relative_path(long_filenamew,
+                                      handle->dirw,
+                                      &filenamew) == 0) {
+                  uv__free(long_filenamew);
+                  long_filenamew = filenamew;
+                  sizew = -1;
+                } else {
+                  /* The resolved long path was not prefixed by the watched
+                   * directory (e.g. short name vs long name mismatch),
+                   * fall back to the name given by ReadDirectoryChangesW. */
+                  uv__free(long_filenamew);
+                  long_filenamew = NULL;
+                  filenamew = file_info->FileName;
+                  sizew = file_info->FileNameLength / sizeof(WCHAR);
+                }
               } else {
                 /* We couldn't get the long filename, use the one reported. */
                 filenamew = file_info->FileName;
@@ -585,6 +604,7 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
                                      sizeof(info)) &&
         info.Directory &&
         info.DeletePending) {
+      dir_event_detected = 1;
       uv__convert_utf16_to_utf8(handle->dirw, -1, &filename);
       handle->cb(handle, filename, UV_RENAME, 0);
       uv__free(filename);
@@ -597,6 +617,26 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
   if (handle->flags & UV_HANDLE_CLOSING) {
     uv__want_endgame(loop, (uv_handle_t*)handle);
   } else if (uv__is_active(handle)) {
+    /*
+     * Check if the handle has become a zombie pointing to \$Extend\$Deleted\.
+     * Only perform the check if we detected an event on the directory, which
+     * may indicate deletion.
+     */
+    if (dir_event_detected) {
+      WCHAR path_buf[MAX_PATH];
+      DWORD path_len = GetFinalPathNameByHandleW(handle->dir_handle,
+                                                 path_buf,
+                                                 ARRAY_SIZE(path_buf),
+                                                 FILE_NAME_NORMALIZED | VOLUME_NAME_NONE);
+
+      if (path_len > 0 && path_len < ARRAY_SIZE(path_buf)) {
+        if (wcsstr(path_buf, L"\\$Extend\\$Deleted\\") != NULL) {
+          handle->cb(handle, NULL, 0, UV_ENOENT);
+          return;
+        }
+      }
+    }
+
     uv__fs_event_queue_readdirchanges(loop, handle);
   }
 }
