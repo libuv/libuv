@@ -164,12 +164,11 @@ int uv_fs_event_start(uv_fs_event_t* handle,
                       unsigned int flags) {
   int is_path_dir;
   DWORD last_error;
-  WCHAR* dir = NULL, *pathw = NULL;
+  WCHAR* dir, *pathw = NULL;
   DWORD short_path_buffer_len;
   WCHAR *short_path_buffer;
   WCHAR* short_path = NULL;
   HANDLE file_handle = INVALID_HANDLE_VALUE;
-  HANDLE dir_handle = INVALID_HANDLE_VALUE;
   BY_HANDLE_FILE_INFORMATION info;
 
   if (uv__is_active(handle))
@@ -187,15 +186,12 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (last_error)
     goto error_uv;
 
-  /* Asking for FILE_LIST_DIRECTORY here would be FILE_READ_DATA on a file
-   * and fail against a process that has it open without FILE_SHARE_READ.
-   */
   file_handle = CreateFileW(pathw,
-                            FILE_READ_ATTRIBUTES,
+                            FILE_LIST_DIRECTORY,
                             FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
                             NULL,
                             OPEN_EXISTING,
-                            FILE_FLAG_BACKUP_SEMANTICS,
+                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
                             NULL);
   if (file_handle == INVALID_HANDLE_VALUE) {
     last_error = GetLastError();
@@ -209,20 +205,7 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   is_path_dir = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
 
-  if (is_path_dir) {
-    /* Reopen the same file object with the access we actually need instead
-     * of resolving the path a second time, so a concurrent rename cannot
-     * swap the directory out from under us between the two opens.
-     */
-    dir_handle = ReOpenFile(file_handle,
-                            FILE_LIST_DIRECTORY,
-                            FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
-                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED);
-    if (dir_handle == INVALID_HANDLE_VALUE) {
-      last_error = GetLastError();
-      goto error;
-    }
-  } else {
+  if (!is_path_dir) {
     /*
      * path is a file.  So we split path into dir & file parts, and
      * watch the dir directory.
@@ -266,21 +249,22 @@ short_path_done:
      * other files are filtered out in uv__process_fs_event_req().
      * Not super efficient but c'est ça.
      */
-    dir_handle = CreateFileW(dir,
-                             FILE_LIST_DIRECTORY,
-                             FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
-                             NULL,
-                             OPEN_EXISTING,
-                             FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
-                             NULL);
+    CloseHandle(file_handle);
+    file_handle = CreateFileW(dir,
+                              FILE_LIST_DIRECTORY,
+                              FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
+                              NULL,
+                              OPEN_EXISTING,
+                              FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
+                              NULL);
     uv__free(dir);
     dir = NULL;
-    if (dir_handle == INVALID_HANDLE_VALUE) {
+    if (file_handle == INVALID_HANDLE_VALUE) {
       last_error = GetLastError();
       goto error;
     }
 
-    if (!GetFileInformationByHandle(dir_handle, &info)) {
+    if (!GetFileInformationByHandle(file_handle, &info)) {
       last_error = GetLastError();
       goto error;
     }
@@ -297,11 +281,13 @@ short_path_done:
     }
   }
 
-  CloseHandle(file_handle);
+  handle->dir_handle = file_handle;
   file_handle = INVALID_HANDLE_VALUE;
 
-  handle->dir_handle = dir_handle;
-  dir_handle = INVALID_HANDLE_VALUE;
+  if (handle->dir_handle == INVALID_HANDLE_VALUE) {
+    last_error = GetLastError();
+    goto error;
+  }
 
   if (CreateIoCompletionPort(handle->dir_handle,
                              handle->loop->iocp,
@@ -352,11 +338,6 @@ error_uv:
   if (file_handle != INVALID_HANDLE_VALUE) {
     CloseHandle(file_handle);
     file_handle = INVALID_HANDLE_VALUE;
-  }
-
-  if (dir_handle != INVALID_HANDLE_VALUE) {
-    CloseHandle(dir_handle);
-    dir_handle = INVALID_HANDLE_VALUE;
   }
 
   if (handle->path) {
