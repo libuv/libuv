@@ -4666,6 +4666,7 @@ typedef NTSTATUS (NTAPI *sNtQueryInformationProcess)
 
 #if !defined(_OBJECT_ATTRIBUTES_DEFINED) && defined(__MINGW32__)
 # define _OBJECT_ATTRIBUTES_DEFINED
+#endif
 typedef struct _OBJECT_ATTRIBUTES {
   ULONG Length;
   HANDLE RootDirectory;
@@ -4674,7 +4675,6 @@ typedef struct _OBJECT_ATTRIBUTES {
   PVOID SecurityDescriptor;
   PVOID SecurityQualityOfService;
 } OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
-#endif
 
 #ifndef FILE_OPEN
 # define FILE_OPEN 0x00000001
