@@ -1526,6 +1526,11 @@ UV_EXTERN int uv_fs_write(uv_loop_t* loop,
 /*
  * This flag can be used with uv_fs_copyfile() to attempt to create a reflink.
  * If copy-on-write is not supported, an error is returned.
+ *
+ * On macOS, if the destination already exists, UV_EEXIST is returned even
+ * though the underlying reflink mechanism (clonefile) is supported, because
+ * clonefile() refuses to overwrite an existing file. This differs from
+ * Linux, where the FICLONE ioctl can overwrite an existing destination.
  */
 #define UV_FS_COPYFILE_FICLONE_FORCE 0x0004
 
