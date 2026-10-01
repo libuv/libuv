@@ -493,6 +493,8 @@ static void open_cb(uv_fs_t* req) {
 
 
 static void open_cb_simple(uv_fs_t* req) {
+  uv_fs_t close_req;
+
   ASSERT_EQ(req->fs_type, UV_FS_OPEN);
   if (req->result < 0) {
     fprintf(stderr, "async open error: %d\n", (int) req->result);
@@ -500,6 +502,8 @@ static void open_cb_simple(uv_fs_t* req) {
   }
   open_cb_count++;
   ASSERT(req->path);
+  ASSERT_OK(uv_fs_close(NULL, &close_req, (uv_os_fd_t) req->result, NULL));
+  uv_fs_req_cleanup(&close_req);
   uv_fs_req_cleanup(req);
 }
 
@@ -1446,6 +1450,10 @@ static int test_sendfile(void (*setup)(int), uv_fs_cb cb, size_t expected_size) 
     ASSERT_GE(req.result, 0);
     ASSERT_EQ(buf1[0], 'e'); /* 'e' from begin */
     uv_fs_req_cleanup(&req);
+
+    r = uv_fs_close(NULL, &close_req, file1, NULL);
+    ASSERT_OK(r);
+    uv_fs_req_cleanup(&close_req);
   } else {
     ASSERT_UINT64_EQ(s1.st_size, s2.st_size);
   }
@@ -1751,14 +1759,19 @@ TEST_FS_IMPL(fs_fstat_st_dev) {
   char* test_file = "tmp_st_dev";
   char* symlink_file = "tmp_st_dev_link";
 
+  RETURN_SKIP_IN_APPCONTAINER("symlink creation requires elevated privilege");
+
   unlink(test_file);
   unlink(symlink_file);
 
   // Create file
   int r = uv_fs_open(NULL, &req, test_file, UV_FS_O_RDWR | UV_FS_O_CREAT,
       S_IWUSR | S_IRUSR, NULL);
-  ASSERT_GE(r, 0);
+  ASSERT_OK(r);
   ASSERT_GE(req.result, 0);
+  uv_os_fd_t file = (uv_os_fd_t) req.result;
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_fs_close(NULL, &req, file, NULL));
   uv_fs_req_cleanup(&req);
 
   // Create a symlink
@@ -2726,6 +2739,7 @@ TEST_FS_IMPL(fs_symlink_dir) {
 }
 
 TEST_FS_IMPL(fs_symlink_junction) {
+  RETURN_SKIP_IN_APPCONTAINER("junction lstat not supported");
   return test_symlink_dir_impl(UV_FS_SYMLINK_JUNCTION);
 }
 
@@ -3288,6 +3302,8 @@ TEST_FS_IMPL(fs_futime) {
   ASSERT_EQ(1, futime_cb_count);
 
   /* Cleanup. */
+  ASSERT_OK(uv_fs_close(NULL, &req, file, NULL));
+  uv_fs_req_cleanup(&req);
   unlink(path);
 
   MAKE_VALGRIND_HAPPY(loop);
@@ -4749,7 +4765,7 @@ TEST_FS_IMPL(fs_file_pos_append) {
 }
 #endif
 
-TEST_FS_IMPL(fs_null_req) {
+TEST_IMPL(fs_null_req) {
   /* Verify that all fs functions return UV_EINVAL when the request is NULL. */
   int r;
 
@@ -4975,6 +4991,8 @@ TEST_FS_IMPL(fs_open_readonly_acl) {
     uv_fs_t req;
     int r;
     uv_os_fd_t file;
+
+    RETURN_SKIP_IN_APPCONTAINER("cannot modify file ACLs");
 
     /*
         Based on Node.js test from
@@ -5208,7 +5226,7 @@ TEST_FS_IMPL(fs_statfs) {
   return 0;
 }
 
-TEST_FS_IMPL(fs_get_system_error) {
+TEST_IMPL(fs_get_system_error) {
   uv_fs_t req;
   int r;
   int system_error;

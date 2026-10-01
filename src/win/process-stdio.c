@@ -202,7 +202,8 @@ int uv__stdio_create(uv_loop_t* loop,
          * handles in the stdio buffer are initialized with.
          * INVALID_HANDLE_VALUE, which should be okay. */
         if (i <= 2) {
-          HANDLE nul;
+          /* Redundantly initialize to make the compiler happy. */
+          HANDLE nul = INVALID_HANDLE_VALUE;
           DWORD access = (i == 0) ? FILE_GENERIC_READ :
                                     FILE_GENERIC_WRITE | FILE_READ_ATTRIBUTES;
 
@@ -210,7 +211,7 @@ int uv__stdio_create(uv_loop_t* loop,
           if (err)
             goto error;
 
-		  memcpy(CHILD_STDIO_HANDLE(buffer, i), &nul, sizeof(HANDLE));
+          memcpy(CHILD_STDIO_HANDLE(buffer, i), &nul, sizeof(HANDLE));
           CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FDEV;
         }
         break;
@@ -235,7 +236,7 @@ int uv__stdio_create(uv_loop_t* loop,
         if (err)
           goto error;
 
-		memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_pipe, sizeof(HANDLE));
+        memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_pipe, sizeof(HANDLE));
         CHILD_STDIO_CRT_FLAGS(buffer, i) = FOPEN | FPIPE;
         break;
       }
@@ -289,7 +290,7 @@ int uv__stdio_create(uv_loop_t* loop,
             return -1;
         }
 
-		memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
+        memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
         break;
       }
 
@@ -325,7 +326,7 @@ int uv__stdio_create(uv_loop_t* loop,
         if (err)
           goto error;
 
-		memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
+        memcpy(CHILD_STDIO_HANDLE(buffer, i), &child_handle, sizeof(HANDLE));
         CHILD_STDIO_CRT_FLAGS(buffer, i) = crt_flags;
         break;
       }

@@ -68,21 +68,21 @@ int uv_barrier_wait(uv_barrier_t* barrier) {
   uv_mutex_lock(&b->mutex);
 
   while (b->out != 0)
-    uv_cond_wait((uv_cond_t*) &b->cond, &b->mutex);
+    uv_cond_wait(&b->cond, &b->mutex);
 
   if (++b->in == b->threshold) {
     b->in = 0;
     b->out = b->threshold;
-    uv_cond_broadcast((uv_cond_t*) &b->cond);
+    uv_cond_broadcast(&b->cond);
   } else {
     do
-      uv_cond_wait((uv_cond_t*) &b->cond, &b->mutex);
+      uv_cond_wait(&b->cond, &b->mutex);
     while (b->in != 0);
   }
 
   last = (--b->out == 0);
   if (last)
-    uv_cond_broadcast((uv_cond_t*) &b->cond);
+    uv_cond_broadcast(&b->cond);
 
   uv_mutex_unlock(&b->mutex);
   return last;
@@ -97,14 +97,14 @@ void uv_barrier_destroy(uv_barrier_t* barrier) {
 
   assert(b->in == 0);
   while (b->out != 0)
-    uv_cond_wait((uv_cond_t*) &b->cond, &b->mutex);
+    uv_cond_wait(&b->cond, &b->mutex);
 
   if (b->in != 0)
     abort();
 
   uv_mutex_unlock(&b->mutex);
   uv_mutex_destroy(&b->mutex);
-  uv_cond_destroy((uv_cond_t*) &b->cond);
+  uv_cond_destroy(&b->cond);
 }
 
 #else

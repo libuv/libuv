@@ -130,10 +130,10 @@ static void test_stdio_over_pipes(int overlapped) {
 
   options.stdio = stdio;
   options.stdio[0].flags = UV_CREATE_PIPE | UV_READABLE_PIPE |
-      (overlapped ?  UV_OVERLAPPED_PIPE : 0);
+      (overlapped ?  UV_NONBLOCK_PIPE : 0);
   options.stdio[0].data.stream = (uv_stream_t*) &in;
   options.stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE |
-      (overlapped ? UV_OVERLAPPED_PIPE : 0);
+      (overlapped ? UV_NONBLOCK_PIPE : 0);
   options.stdio[1].data.stream = (uv_stream_t*) &out;
   options.stdio[2].flags = UV_INHERIT_FD;
   options.stdio[2].data.file = uv_get_osfhandle(2);

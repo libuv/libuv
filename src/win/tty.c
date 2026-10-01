@@ -538,7 +538,8 @@ static DWORD CALLBACK uv_tty_line_read_thread(void* data) {
                                       NULL);
 
   if (read_console_success) {
-    read_bytes = bytes;
+    assert(bytes > 0);
+    read_bytes = bytes - 1;
     uv_utf16_to_wtf8(utf16,
                      read_chars,
                      &handle->tty.rd.read_line_buffer.base,
@@ -980,13 +981,13 @@ void uv_process_tty_read_line_req(uv_loop_t* loop, uv_tty_t* handle,
                       &buf);
     }
   } else {
-    if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING) &&
+    if (!(handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING) &&
         req->u.io.overlapped.InternalHigh != 0) {
       /* Read successful. TODO: read unicode, convert to utf-8 */
       DWORD bytes = req->u.io.overlapped.InternalHigh;
       handle->read_cb((uv_stream_t*) handle, bytes, &buf);
     }
-    handle->flags &= ~UV_HANDLE_CANCELLATION_PENDING;
+    handle->flags &= ~UV_HANDLE_READ_CANCELLATION_PENDING;
   }
 
   /* Wait for more input events. */
@@ -1069,13 +1070,13 @@ int uv__tty_read_stop(uv_tty_t* handle) {
     if (!WriteConsoleInputW(handle->handle, &record, 1, &written)) {
       return GetLastError();
     }
-  } else if (!(handle->flags & UV_HANDLE_CANCELLATION_PENDING)) {
+  } else if (!(handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING)) {
     /* Cancel line-buffered read if not already pending */
     err = uv__cancel_read_console(handle);
     if (err)
       return err;
 
-    handle->flags |= UV_HANDLE_CANCELLATION_PENDING;
+    handle->flags |= UV_HANDLE_READ_CANCELLATION_PENDING;
   }
 
   return 0;
@@ -1088,7 +1089,7 @@ static int uv__cancel_read_console(uv_tty_t* handle) {
   DWORD err = 0;
   LONG status;
 
-  assert(!(handle->flags & UV_HANDLE_CANCELLATION_PENDING));
+  assert(!(handle->flags & UV_HANDLE_READ_CANCELLATION_PENDING));
 
   /* Hold the output lock during the cancellation, to ensure that further
      writes don't interfere with the screen state. It will be the ReadConsole
@@ -2191,6 +2192,7 @@ int uv__tty_write(uv_loop_t* loop,
   UV_REQ_INIT(loop, req, UV_WRITE);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
+  req->nwritten = 0;
 
   handle->reqs_pending++;
   uv__queue_insert_tail(&handle->stream.conn.write_queue, &req->queue);
@@ -2200,6 +2202,7 @@ int uv__tty_write(uv_loop_t* loop,
 
   if (!uv__tty_write_bufs(handle, bufs, nbufs, &error)) {
     SET_REQ_SUCCESS(req);
+    req->nwritten = uv__count_bufs(bufs, nbufs);
   } else {
     SET_REQ_ERROR(req, error);
   }
