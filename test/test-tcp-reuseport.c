@@ -54,7 +54,7 @@ TEST_IMPL(tcp_reuseport) {
 #else
 
 #define NUM_LISTENING_THREADS 2
-#define MAX_TCP_CLIENTS 10
+#define MAX_TCP_CLIENTS 100
 
 static uv_tcp_t tcp_connect_handles[MAX_TCP_CLIENTS];
 static uv_connect_t tcp_connect_requests[MAX_TCP_CLIENTS];
