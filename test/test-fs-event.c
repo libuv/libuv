@@ -950,6 +950,44 @@ TEST_IMPL(fs_event_watch_file_root_dir) {
 }
 #endif
 
+#ifdef _WIN32
+/* Another process holds the file open without FILE_SHARE_READ. The parent
+ * directory is what gets watched, so that should not matter.
+ */
+TEST_IMPL(fs_event_watch_file_exclusively_locked) {
+  uv_loop_t* loop;
+  HANDLE lock;
+  int r;
+
+  loop = uv_default_loop();
+
+  create_file("watch_file");
+
+  lock = CreateFileA("watch_file",
+                     GENERIC_READ | GENERIC_WRITE,
+                     0,  /* No sharing at all. */
+                     NULL,
+                     OPEN_EXISTING,
+                     FILE_ATTRIBUTE_NORMAL,
+                     NULL);
+  ASSERT_PTR_NE(lock, INVALID_HANDLE_VALUE);
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event, fail_cb, "watch_file", 0);
+  ASSERT_OK(r);
+
+  uv_close((uv_handle_t*) &fs_event, NULL);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  ASSERT(CloseHandle(lock));
+  delete_file("watch_file");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+#endif  /* _WIN32 */
+
 TEST_IMPL(fs_event_no_callback_after_close) {
 #if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);
