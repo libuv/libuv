@@ -1215,52 +1215,6 @@ TEST_IMPL(fs_event_start_and_close) {
 }
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(NO_FS_EVENTS)
-static uv_mutex_t fs_event_alloc_mutex;
-static unsigned int fs_event_allocations;
-
-static void fs_event_count_allocation(void* ptr) {
-  if (ptr == NULL)
-    return;
-  uv_mutex_lock(&fs_event_alloc_mutex);
-  fs_event_allocations++;
-  uv_mutex_unlock(&fs_event_alloc_mutex);
-}
-
-static void* fs_event_malloc(size_t size) {
-  void* ptr;
-
-  ptr = malloc(size);
-  fs_event_count_allocation(ptr);
-  return ptr;
-}
-
-static void* fs_event_calloc(size_t count, size_t size) {
-  void* ptr;
-
-  ptr = calloc(count, size);
-  fs_event_count_allocation(ptr);
-  return ptr;
-}
-
-static void* fs_event_realloc(void* ptr, size_t size) {
-  int is_new;
-
-  is_new = ptr == NULL;
-  ptr = realloc(ptr, size);
-  if (is_new)
-    fs_event_count_allocation(ptr);
-  return ptr;
-}
-
-static void fs_event_free(void* ptr) {
-  if (ptr != NULL) {
-    uv_mutex_lock(&fs_event_alloc_mutex);
-    fs_event_allocations--;
-    uv_mutex_unlock(&fs_event_alloc_mutex);
-  }
-  free(ptr);
-}
-
 static void fs_event_no_leak_cb(uv_fs_event_t* handle,
                                 const char* filename,
                                 int events,
@@ -1286,12 +1240,8 @@ TEST_IMPL(fs_event_no_leak) {
   int i;
 
   create_dir("watch_no_leak");
-  ASSERT_OK(uv_mutex_init(&fs_event_alloc_mutex));
   /* Count libuv allocations, including the C path buffer, but not CF objects. */
-  ASSERT_OK(uv_replace_allocator(fs_event_malloc,
-                                 fs_event_realloc,
-                                 fs_event_calloc,
-                                 fs_event_free));
+  oom_init();
   ASSERT_OK(uv_loop_init(&loop));
   ASSERT_OK(uv_fs_event_init(&loop, &anchor));
   ASSERT_OK(uv_fs_event_init(&loop, &watcher));
@@ -1318,11 +1268,8 @@ TEST_IMPL(fs_event_no_leak) {
   ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
   ASSERT_EQ(1, fs_event_cb_called);
   ASSERT_OK(uv_loop_close(&loop));
-  ASSERT_EQ(0, fs_event_allocations);
-
-  /* The test runner allocated its arguments before replacing the allocator. */
-  ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
-  uv_mutex_destroy(&fs_event_alloc_mutex);
+  ASSERT_OK(oom_live());
+  oom_cleanup();
   ASSERT_OK(delete_file("watch_no_leak/file"));
   ASSERT_OK(delete_dir("watch_no_leak"));
   uv_library_shutdown();
