@@ -158,6 +158,48 @@ int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
 }
 
 
+/* Exact re-implementation of ReOpenFile but without the flag to fail with a
+ * misleading ERROR_ACCESS_DENIED error (STATUS_FILE_IS_A_DIRECTORY) when the
+ * target is a directory.
+ */
+static DWORD uv__reopen_file(HANDLE original,
+                             ACCESS_MASK access,
+                             ULONG share,
+                             ULONG create_options,
+                             HANDLE* out) {
+  OBJECT_ATTRIBUTES obj_attr;
+  UNICODE_STRING empty_name;
+  IO_STATUS_BLOCK io_status;
+  NTSTATUS nt_status;
+
+  empty_name.Length = 0;
+  empty_name.MaximumLength = 0;
+  empty_name.Buffer = NULL;
+
+  obj_attr.Length = sizeof(obj_attr);
+  obj_attr.RootDirectory = original;
+  obj_attr.ObjectName = &empty_name;
+  obj_attr.Attributes = 0;
+  obj_attr.SecurityDescriptor = NULL;
+  obj_attr.SecurityQualityOfService = NULL;
+
+  nt_status = pNtCreateFile(out,
+                            access,
+                            &obj_attr,
+                            &io_status,
+                            NULL,
+                            0,
+                            share,
+                            FILE_OPEN,
+                            create_options,
+                            NULL,
+                            0);
+  if (NT_ERROR(nt_status))
+    return pRtlNtStatusToDosError(nt_status);
+  return 0;
+}
+
+
 int uv_fs_event_start(uv_fs_event_t* handle,
                       uv_fs_event_cb cb,
                       const char* path,
@@ -214,14 +256,13 @@ int uv_fs_event_start(uv_fs_event_t* handle,
      * of resolving the path a second time, so a concurrent rename cannot
      * swap the directory out from under us between the two opens.
      */
-    dir_handle = ReOpenFile(file_handle,
-                            FILE_LIST_DIRECTORY,
-                            FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
-                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED);
-    if (dir_handle == INVALID_HANDLE_VALUE) {
-      last_error = GetLastError();
+    last_error = uv__reopen_file(file_handle,
+                                 FILE_LIST_DIRECTORY | SYNCHRONIZE,
+                                 FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
+                                 0,
+                                 &dir_handle);
+    if (last_error)
       goto error;
-    }
   } else {
     /*
      * path is a file.  So we split path into dir & file parts, and
