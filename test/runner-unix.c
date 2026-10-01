@@ -21,11 +21,13 @@
 
 #include "runner-unix.h"
 #include "runner.h"
+#include "task.h"
 
 #include <limits.h>
 #include <stdint.h> /* uintptr_t */
 
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h> /* usleep */
 #include <string.h> /* strdup */
 #include <stdio.h>
@@ -70,6 +72,111 @@ void notify_parent_process(void) {
 }
 
 
+/* Descriptors open when the test process started, indexed by fd number.
+ * Descriptors at or above MAX_TRACKED_FD are not checked; nothing in the test
+ * suite goes anywhere near that many.
+ */
+#define MAX_TRACKED_FD 1024
+
+static char fd_open_at_startup[MAX_TRACKED_FD];
+static int fd_not_tracked = -1;
+static int fd_check_disabled;
+
+
+void disable_open_fds_check(void) {
+  fd_check_disabled = 1;
+}
+
+
+static int fd_is_open(int fd) {
+  int r;
+
+  do
+    r = fcntl(fd, F_GETFD);
+  while (r == -1 && errno == EINTR);
+
+  return r != -1;
+}
+
+
+/* Best-effort description of what a descriptor refers to, to make the leak
+ * report actionable. Not all platforms can answer, hence "?".
+ */
+static void print_fd(int fd) {
+  char path[PATH_MAX];
+#if defined(F_GETPATH)
+  if (fcntl(fd, F_GETPATH, path) != -1) {
+    fprintf(stderr, "fd %d -> %s\n", fd, path);
+    return;
+  }
+#else
+  char link[64];
+  ssize_t n;
+
+  snprintf(link, sizeof(link), "/proc/self/fd/%d", fd);
+  n = readlink(link, path, sizeof(path) - 1);
+  if (n >= 0) {
+    path[n] = '\0';
+    fprintf(stderr, "fd %d -> %s\n", fd, path);
+    return;
+  }
+#endif
+  fprintf(stderr, "fd %d -> ?\n", fd);
+}
+
+
+static void record_open_fds(void) {
+  const char* arg;
+  int fd;
+
+  /* Helpers close this descriptor in notify_parent_process() to signal the
+   * runner that they are ready, so it is expected to go away mid-test.
+   */
+  arg = getenv("UV_TEST_RUNNER_FD");
+  if (arg != NULL)
+    fd_not_tracked = atoi(arg);
+
+  for (fd = 0; fd < MAX_TRACKED_FD; fd++)
+    fd_open_at_startup[fd] = fd_is_open(fd);
+}
+
+
+void check_open_fds(void) {
+  int is_open;
+  int leaked;
+  int closed;
+  int fd;
+
+  if (fd_check_disabled)
+    return;
+
+  leaked = 0;
+  closed = 0;
+
+  for (fd = 0; fd < MAX_TRACKED_FD; fd++) {
+    if (fd == fd_not_tracked)
+      continue;
+
+    is_open = fd_is_open(fd);
+    if (is_open == fd_open_at_startup[fd])
+      continue;
+
+    if (is_open) {
+      fprintf(stderr, "leaked ");
+      print_fd(fd);
+      leaked++;
+    } else {
+      fprintf(stderr, "closed fd %d that was open at startup\n", fd);
+      closed++;
+    }
+  }
+
+  fflush(stderr);
+  ASSERT_OK(leaked);
+  ASSERT_OK(closed);
+}
+
+
 /* Do platform-specific initialization. */
 void platform_init(int argc, char **argv) {
   /* Disable stdio output buffering. */
@@ -77,6 +184,7 @@ void platform_init(int argc, char **argv) {
   setvbuf(stderr, NULL, _IONBF, 0);
   signal(SIGPIPE, SIG_IGN);
   snprintf(executable_path, sizeof(executable_path), "%s", argv[0]);
+  record_open_fds();
 }
 
 

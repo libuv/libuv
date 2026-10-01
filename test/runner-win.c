@@ -42,6 +42,309 @@
 #endif
 
 
+/* Bits of the native API needed to enumerate the handles of this process.
+ * Declared here with private names rather than pulling in <winternl.h>, which
+ * disagrees with itself between MinGW and the Windows SDK.
+ */
+#define UV__STATUS_INFO_LENGTH_MISMATCH ((LONG) 0xC0000004L)
+#define UV__PROCESS_HANDLE_INFORMATION 51 /* ProcessHandleInformation */
+#define UV__OBJECT_TYPE_INFORMATION 2     /* ObjectTypeInformation */
+
+typedef struct {
+  HANDLE HandleValue;
+  ULONG_PTR HandleCount;
+  ULONG_PTR PointerCount;
+  ACCESS_MASK GrantedAccess;
+  ULONG ObjectTypeIndex;
+  ULONG HandleAttributes;
+  ULONG Reserved;
+} uv__process_handle_entry_t;
+
+typedef struct {
+  ULONG_PTR NumberOfHandles;
+  ULONG_PTR Reserved;
+  uv__process_handle_entry_t Handles[1];
+} uv__process_handle_snapshot_t;
+
+typedef struct {
+  USHORT Length;
+  USHORT MaximumLength;
+  WCHAR* Buffer;
+} uv__unicode_string_t;
+
+typedef struct {
+  uv__unicode_string_t TypeName;
+  ULONG Reserved[22];
+} uv__object_type_information_t;
+
+typedef LONG (WINAPI* uv__nt_query_information_process_t)(HANDLE process,
+                                                          ULONG info_class,
+                                                          void* info,
+                                                          ULONG len,
+                                                          ULONG* result_len);
+
+typedef LONG (WINAPI* uv__nt_query_object_t)(HANDLE object,
+                                             ULONG info_class,
+                                             void* info,
+                                             ULONG len,
+                                             ULONG* result_len);
+
+static uv__nt_query_information_process_t pNtQueryInformationProcess;
+static uv__nt_query_object_t pNtQueryObject;
+
+
+/* One entry per handle open in this process. The type index is carried along so
+ * that a report can name what leaked, and so that a handle value that was
+ * closed and reused for a different kind of object is not mistaken for the
+ * original.
+ */
+typedef struct {
+  HANDLE value;
+  ULONG type_index;
+} handle_entry_t;
+
+/* Handles open when the test process started, sorted by handle value. Handles
+ * are not small dense integers like descriptors are, so instead of indexing an
+ * array by handle value the way runner-unix.c does, the snapshot is a sorted
+ * vector that check_open_fds() diffs with a linear merge.
+ */
+static handle_entry_t* handle_open_at_startup;
+static size_t nhandle_open_at_startup;
+static HANDLE handle_not_tracked = INVALID_HANDLE_VALUE;
+static int handle_check_disabled;
+
+
+void disable_open_fds_check(void) {
+  handle_check_disabled = 1;
+}
+
+
+static int cmp_handle_entry(const void* a, const void* b) {
+  uintptr_t x = (uintptr_t) ((const handle_entry_t*) a)->value;
+  uintptr_t y = (uintptr_t) ((const handle_entry_t*) b)->value;
+
+  return (x > y) - (x < y);
+}
+
+
+/* Snapshot the handle table of this process into a vector sorted by handle
+ * value. Returns NULL if the query is unavailable, in which case the caller
+ * gives up on checking; there is no second way to ask.
+ */
+static handle_entry_t* snapshot_handles(size_t* count) {
+  uv__process_handle_snapshot_t* info;
+  handle_entry_t* entries;
+  ULONG len;
+  ULONG needed;
+  LONG status;
+  size_t n;
+  size_t i;
+
+  if (pNtQueryInformationProcess == NULL)
+    return NULL;
+
+  len = 16384;
+  for (;;) {
+    info = malloc(len);
+    ASSERT_NOT_NULL(info);
+    needed = 0;
+    status = pNtQueryInformationProcess(GetCurrentProcess(),
+                                        UV__PROCESS_HANDLE_INFORMATION,
+                                        info,
+                                        len,
+                                        &needed);
+    if (status != UV__STATUS_INFO_LENGTH_MISMATCH)
+      break;
+    free(info);
+    /* The table can grow between the two calls, so ask for slack. */
+    len = (needed > len ? needed : len) + 16384;
+  }
+
+  if (status < 0) { /* !NT_SUCCESS(status) */
+    fprintf(stderr,
+            "NtQueryInformationProcess(ProcessHandleInformation): 0x%08lx\n",
+            (unsigned long) status);
+    fflush(stderr);
+    free(info);
+    return NULL;
+  }
+
+  n = info->NumberOfHandles;
+  entries = malloc((n + 1) * sizeof(*entries));
+  ASSERT_NOT_NULL(entries);
+
+  for (i = 0; i < n; i++) {
+    entries[i].value = info->Handles[i].HandleValue;
+    entries[i].type_index = info->Handles[i].ObjectTypeIndex;
+  }
+
+  free(info);
+  qsort(entries, n, sizeof(*entries), cmp_handle_entry);
+  *count = n;
+
+  return entries;
+}
+
+
+/* Name of the object type a handle refers to, e.g. "File" or "IoCompletion".
+ * Falls back to the numeric type index. Querying the type is safe on any
+ * handle, unlike querying the object *name*, which can block forever on a
+ * synchronous file or pipe handle that has I/O pending.
+ */
+static void handle_type_name(const handle_entry_t* e,
+                             char* buf,
+                             size_t size) {
+  union {
+    uv__object_type_information_t info;
+    char space[1024];
+  } u;
+  ULONG len;
+  int n;
+
+  if (pNtQueryObject != NULL) {
+    memset(&u, 0, sizeof(u));
+    if (pNtQueryObject(e->value,
+                       UV__OBJECT_TYPE_INFORMATION,
+                       &u,
+                       sizeof(u),
+                       &len) >= 0 &&
+        u.info.TypeName.Buffer != NULL) {
+      n = WideCharToMultiByte(CP_UTF8,
+                              0,
+                              u.info.TypeName.Buffer,
+                              (int) (u.info.TypeName.Length / sizeof(WCHAR)),
+                              buf,
+                              (int) size - 1,
+                              NULL,
+                              NULL);
+      if (n > 0) {
+        buf[n] = '\0';
+        return;
+      }
+    }
+  }
+
+  snprintf(buf, size, "type %lu", (unsigned long) e->type_index);
+}
+
+
+/* Best-effort description of what a handle refers to, to make the leak report
+ * actionable. Not every object type can answer, hence "?".
+ */
+static void print_handle(const handle_entry_t* e) {
+  WCHAR path[MAX_PATH];
+  char type[128];
+  char utf8[MAX_PATH * 3];
+  DWORD n;
+
+  handle_type_name(e, type, sizeof(type));
+
+  if (0 == strcmp(type, "File") && GetFileType(e->value) == FILE_TYPE_DISK) {
+    n = GetFinalPathNameByHandleW(e->value,
+                                  path,
+                                  (DWORD) ARRAY_SIZE(path),
+                                  VOLUME_NAME_DOS);
+    if (n > 0 && n < ARRAY_SIZE(path) &&
+        WideCharToMultiByte(CP_UTF8, 0, path, -1, utf8, (int) sizeof(utf8),
+                            NULL, NULL) > 0) {
+      fprintf(stderr, "handle %p (%s) -> %s\n", e->value, type, utf8);
+      return;
+    }
+  }
+
+  fprintf(stderr, "handle %p (%s) -> ?\n", e->value, type);
+}
+
+
+static void record_open_handles(void) {
+  HMODULE ntdll;
+  const char* arg;
+
+  ntdll = GetModuleHandleA("ntdll.dll");
+  ASSERT_NOT_NULL(ntdll);
+  pNtQueryInformationProcess = (uv__nt_query_information_process_t)
+      GetProcAddress(ntdll, "NtQueryInformationProcess");
+  pNtQueryObject = (uv__nt_query_object_t)
+      GetProcAddress(ntdll, "NtQueryObject");
+
+  /* Helpers close this handle in notify_parent_process() to signal the runner
+   * that they are ready, so it is expected to go away mid-test.
+   */
+  arg = getenv("UV_TEST_RUNNER_FD");
+  if (arg != NULL)
+    handle_not_tracked = (HANDLE) (uintptr_t) strtoull(arg, NULL, 10);
+
+  handle_open_at_startup = snapshot_handles(&nhandle_open_at_startup);
+  if (handle_open_at_startup == NULL) {
+    fprintf(stderr, "unable to snapshot handles, skipping leak check\n");
+    fflush(stderr);
+    handle_check_disabled = 1;
+  }
+}
+
+
+void check_open_fds(void) {
+  const handle_entry_t* was;
+  const handle_entry_t* is;
+  handle_entry_t* now;
+  size_t nnow;
+  size_t i;
+  size_t j;
+  int leaked;
+  int closed;
+
+  if (handle_check_disabled)
+    return;
+
+  now = snapshot_handles(&nnow);
+  if (now == NULL)
+    return;
+
+  leaked = 0;
+  closed = 0;
+  i = 0;
+  j = 0;
+
+  while (i < nhandle_open_at_startup || j < nnow) {
+    was = i < nhandle_open_at_startup ? &handle_open_at_startup[i] : NULL;
+    is = j < nnow ? &now[j] : NULL;
+
+    if (was != NULL && is != NULL && was->value == is->value) {
+      /* Same slot. A different object type means the handle that was open at
+       * startup was closed and the slot handed out again. */
+      if (was->type_index != is->type_index) {
+        fprintf(stderr, "replaced ");
+        print_handle(is);
+        leaked++;
+        closed++;
+      }
+      i++;
+      j++;
+    } else if (is == NULL ||
+               (was != NULL && cmp_handle_entry(was, is) < 0)) {
+      if (was->value != handle_not_tracked) {
+        fprintf(stderr, "closed handle %p that was open at startup\n",
+                was->value);
+        closed++;
+      }
+      i++;
+    } else {
+      if (is->value != handle_not_tracked) {
+        fprintf(stderr, "leaked ");
+        print_handle(is);
+        leaked++;
+      }
+      j++;
+    }
+  }
+
+  free(now);
+  fflush(stderr);
+  ASSERT_OK(leaked);
+  ASSERT_OK(closed);
+}
+
+
 /* Do platform-specific initialization. */
 void platform_init(int argc, char **argv) {
   /* Disable the "application crashed" popup. */
@@ -67,6 +370,7 @@ void platform_init(int argc, char **argv) {
   setvbuf(stderr, NULL, _IONBF, 0);
 
   strcpy(executable_path, argv[0]);
+  record_open_handles();
 }
 
 
