@@ -34,19 +34,20 @@ const char* uv_handle_type_name(uv_handle_type type) {
 }
 
 uv_handle_type uv_handle_get_type(const uv_handle_t* handle) {
-  return handle->type;
+  return handle ? handle->type : UV_UNKNOWN_HANDLE;
 }
 
 void* uv_handle_get_data(const uv_handle_t* handle) {
-  return handle->data;
+  return handle ? handle->data : NULL;
 }
 
 uv_loop_t* uv_handle_get_loop(const uv_handle_t* handle) {
-  return handle->loop;
+  return handle ? handle->loop : NULL;
 }
 
 void uv_handle_set_data(uv_handle_t* handle, void* data) {
-  handle->data = data;
+  if (handle != NULL)
+    handle->data = data;
 }
 
 const char* uv_req_type_name(uv_req_type type) {
@@ -63,57 +64,59 @@ const char* uv_req_type_name(uv_req_type type) {
 }
 
 uv_req_type uv_req_get_type(const uv_req_t* req) {
-  return req->type;
+  return req ? req->type : UV_UNKNOWN_REQ;
 }
 
 void* uv_req_get_data(const uv_req_t* req) {
-  return req->data;
+  return req ? req->data : NULL;
 }
 
 void uv_req_set_data(uv_req_t* req, void* data) {
-  req->data = data;
+  if (req != NULL)
+    req->data = data;
 }
 
 size_t uv_stream_get_write_queue_size(const uv_stream_t* stream) {
-  return stream->write_queue_size;
+  return stream ? stream->write_queue_size : 0;
 }
 
 size_t uv_udp_get_send_queue_size(const uv_udp_t* handle) {
-  return handle->send_queue_size;
+  return handle ? handle->send_queue_size : 0;
 }
 
 size_t uv_udp_get_send_queue_count(const uv_udp_t* handle) {
-  return handle->send_queue_count;
+  return handle ? handle->send_queue_count : 0;
 }
 
 uv_pid_t uv_process_get_pid(const uv_process_t* proc) {
-  return proc->pid;
+  return proc ? proc->pid : 0;
 }
 
 uv_fs_type uv_fs_get_type(const uv_fs_t* req) {
-  return req->fs_type;
+  return req ? req->fs_type : UV_FS_UNKNOWN;
 }
 
 ssize_t uv_fs_get_result(const uv_fs_t* req) {
-  return req->result;
+  return req ? req->result : UV_EINVAL;
 }
 
 void* uv_fs_get_ptr(const uv_fs_t* req) {
-  return req->ptr;
+  return req ? req->ptr : NULL;
 }
 
 const char* uv_fs_get_path(const uv_fs_t* req) {
-  return req->path;
+  return req ? req->path : NULL;
 }
 
 uv_stat_t* uv_fs_get_statbuf(uv_fs_t* req) {
-  return &req->statbuf;
+  return req ? &req->statbuf : NULL;
 }
 
 void* uv_loop_get_data(const uv_loop_t* loop) {
-  return loop->data;
+  return loop ? loop->data : NULL;
 }
 
 void uv_loop_set_data(uv_loop_t* loop, void* data) {
-  loop->data = data;
+  if (loop != NULL)
+    loop->data = data;
 }

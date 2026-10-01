@@ -55,6 +55,9 @@ static int timer_less_than(const struct heap_node* ha,
 
 
 int uv_timer_init(uv_loop_t* loop, uv_timer_t* handle) {
+  if (loop == NULL || handle == NULL)
+    return UV_EINVAL;
+
   uv__handle_init(loop, (uv_handle_t*)handle, UV_TIMER);
   handle->timer_cb = NULL;
   handle->timeout = 0;
@@ -70,7 +73,7 @@ int uv_timer_start(uv_timer_t* handle,
                    uint64_t repeat) {
   uint64_t clamped_timeout;
 
-  if (uv__is_closing(handle) || cb == NULL)
+  if (handle == NULL || cb == NULL || uv__is_closing(handle))
     return UV_EINVAL;
 
   uv_timer_stop(handle);
@@ -95,6 +98,9 @@ int uv_timer_start(uv_timer_t* handle,
 
 
 int uv_timer_stop(uv_timer_t* handle) {
+  if (handle == NULL)
+    return UV_EINVAL;
+
   if (uv__is_active(handle)) {
     heap_remove(timer_heap(handle->loop),
                 (struct heap_node*) &handle->node.heap,
@@ -110,7 +116,7 @@ int uv_timer_stop(uv_timer_t* handle) {
 
 
 int uv_timer_again(uv_timer_t* handle) {
-  if (handle->timer_cb == NULL)
+  if (handle == NULL || handle->timer_cb == NULL)
     return UV_EINVAL;
 
   if (handle->repeat) {
@@ -123,16 +129,20 @@ int uv_timer_again(uv_timer_t* handle) {
 
 
 void uv_timer_set_repeat(uv_timer_t* handle, uint64_t repeat) {
-  handle->repeat = repeat;
+  if (handle != NULL)
+    handle->repeat = repeat;
 }
 
 
 uint64_t uv_timer_get_repeat(const uv_timer_t* handle) {
-  return handle->repeat;
+  return handle ? handle->repeat : 0;
 }
 
 
 uint64_t uv_timer_get_due_in(const uv_timer_t* handle) {
+  if (handle == NULL || handle->loop == NULL)
+    return 0;
+
   if (handle->loop->time >= handle->timeout)
     return 0;
 

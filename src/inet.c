@@ -33,6 +33,9 @@ static int inet_pton6(const char *src, unsigned char *dst);
 
 
 int uv_inet_ntop(int af, const void* src, char* dst, size_t size) {
+  if (src == NULL || dst == NULL || size == 0)
+    return UV_EINVAL;
+
   switch (af) {
   case AF_INET:
     return (inet_ntop4(src, dst, size));

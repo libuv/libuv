@@ -54,8 +54,14 @@ static uv__allocator_t uv__allocator = {
 };
 
 char* uv__strdup(const char* s) {
-  size_t len = strlen(s) + 1;
-  char* m = uv__malloc(len);
+  size_t len;
+  char* m;
+
+  if (s == NULL)
+    return NULL;
+
+  len = strlen(s) + 1;
+  m = uv__malloc(len);
   if (m == NULL)
     return NULL;
   return memcpy(m, s, len);
@@ -63,7 +69,12 @@ char* uv__strdup(const char* s) {
 
 char* uv__strndup(const char* s, size_t n) {
   char* m;
-  size_t len = strlen(s);
+  size_t len;
+
+  if (s == NULL)
+    return NULL;
+
+  len = strlen(s);
   if (n < len)
     len = n;
   m = uv__malloc(len + 1);
@@ -253,6 +264,9 @@ const char* uv_strerror(int err) {
 
 
 int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
+  if (ip == NULL || addr == NULL)
+    return UV_EINVAL;
+
   memset(addr, 0, sizeof(*addr));
   addr->sin_family = AF_INET;
   addr->sin_port = htons(port);
@@ -271,6 +285,9 @@ int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
   char address_part[INET6_ADDRSTRLEN];
   size_t address_part_size;
   const char* zone_index;
+
+  if (ip == NULL || addr == NULL)
+    return UV_EINVAL;
 
   memset(addr, 0, sizeof(*addr));
   addr->sin6_family = AF_INET6;
@@ -303,16 +320,25 @@ int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
 
 
 int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size) {
+  if (src == NULL || dst == NULL || size == 0)
+    return UV_EINVAL;
+
   return uv_inet_ntop(AF_INET, &src->sin_addr, dst, size);
 }
 
 
 int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size) {
+  if (src == NULL || dst == NULL || size == 0)
+    return UV_EINVAL;
+
   return uv_inet_ntop(AF_INET6, &src->sin6_addr, dst, size);
 }
 
 
 int uv_ip_name(const struct sockaddr *src, char *dst, size_t size) {
+  if (src == NULL || dst == NULL || size == 0)
+    return UV_EINVAL;
+
   switch (src->sa_family) {
   case AF_INET:
     return uv_inet_ntop(AF_INET, &((struct sockaddr_in *)src)->sin_addr,
@@ -330,6 +356,9 @@ int uv_tcp_bind(uv_tcp_t* handle,
                 const struct sockaddr* addr,
                 unsigned int flags) {
   unsigned int addrlen;
+
+  if (handle == NULL || addr == NULL)
+    return UV_EINVAL;
 
   if (handle->type != UV_TCP)
     return UV_EINVAL;
@@ -351,6 +380,9 @@ int uv_udp_init_ex(uv_loop_t* loop, uv_udp_t* handle, unsigned flags) {
   unsigned extra_flags;
   int domain;
   int rc;
+
+  if (loop == NULL || handle == NULL)
+    return UV_EINVAL;
 
   /* Use the lower 8 bits for the domain. */
   domain = flags & 0xFF;
@@ -382,6 +414,9 @@ int uv_udp_bind(uv_udp_t* handle,
                 unsigned int flags) {
   unsigned int addrlen;
 
+  if (handle == NULL || addr == NULL)
+    return UV_EINVAL;
+
   if (handle->type != UV_UDP)
     return UV_EINVAL;
 
@@ -402,6 +437,9 @@ int uv_tcp_connect(uv_connect_t* req,
                    uv_connect_cb cb) {
   unsigned int addrlen;
 
+  if (req == NULL || handle == NULL || addr == NULL)
+    return UV_EINVAL;
+
   if (handle->type != UV_TCP)
     return UV_EINVAL;
 
@@ -418,6 +456,9 @@ int uv_tcp_connect(uv_connect_t* req,
 
 int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr) {
   unsigned int addrlen;
+
+  if (handle == NULL)
+    return UV_EINVAL;
 
   if (handle->type != UV_UDP)
     return UV_EINVAL;
@@ -447,7 +488,7 @@ int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr) {
 int uv__udp_is_connected(uv_udp_t* handle) {
   struct sockaddr_storage addr;
   int addrlen;
-  if (handle->type != UV_UDP)
+  if (handle == NULL || handle->type != UV_UDP)
     return 0;
 
   addrlen = sizeof(addr);
@@ -464,7 +505,7 @@ int uv__udp_check_before_send(uv_udp_t* handle,
                               const struct sockaddr* addr) {
   unsigned int addrlen;
 
-  if (handle->type != UV_UDP)
+  if (handle == NULL || handle->type != UV_UDP)
     return UV_EINVAL;
 
   if (addr != NULL && (handle->flags & UV_HANDLE_UDP_CONNECTED))
@@ -488,7 +529,7 @@ int uv__udp_check_before_send(uv_udp_t* handle,
     addrlen = 0;
   }
 
-  if (nbufs < 1 || nbufs > 1024 * 1024)
+  if (bufs == NULL || nbufs < 1 || nbufs > 1024 * 1024)
     return UV_EINVAL;
 
   if (uv__count_bufs(bufs, nbufs) > UV__IO_MAX_BYTES)
@@ -505,6 +546,9 @@ int uv_udp_send(uv_udp_send_t* req,
                 const struct sockaddr* addr,
                 uv_udp_send_cb send_cb) {
   int addrlen;
+
+  if (req == NULL)
+    return UV_EINVAL;
 
   addrlen = uv__udp_check_before_send(handle, bufs, nbufs, addr);
   if (addrlen < 0)
@@ -537,7 +581,13 @@ int uv_udp_try_send2(uv_udp_t* handle,
   unsigned int i;
   int addrlen;
 
+  if (handle == NULL)
+    return UV_EINVAL;
+
   if (count < 1)
+    return UV_EINVAL;
+
+  if (bufs == NULL || nbufs == NULL || addrs == NULL)
     return UV_EINVAL;
 
   if (flags != 0)
@@ -559,7 +609,7 @@ int uv_udp_try_send2(uv_udp_t* handle,
 int uv_udp_recv_start(uv_udp_t* handle,
                       uv_alloc_cb alloc_cb,
                       uv_udp_recv_cb recv_cb) {
-  if (handle->type != UV_UDP || alloc_cb == NULL || recv_cb == NULL)
+  if (handle == NULL || handle->type != UV_UDP || alloc_cb == NULL || recv_cb == NULL)
     return UV_EINVAL;
   else
     return uv__udp_recv_start(handle, alloc_cb, recv_cb);
@@ -567,7 +617,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
 
 
 int uv_udp_recv_stop(uv_udp_t* handle) {
-  if (handle->type != UV_UDP)
+  if (handle == NULL || handle->type != UV_UDP)
     return UV_EINVAL;
   else
     return uv__udp_recv_stop(handle);
@@ -578,6 +628,9 @@ void uv_walk(uv_loop_t* loop, uv_walk_cb walk_cb, void* arg) {
   struct uv__queue queue;
   struct uv__queue* q;
   uv_handle_t* h;
+
+  if (loop == NULL || walk_cb == NULL)
+    return;
 
   uv__queue_move(&loop->handle_queue, &queue);
   while (!uv__queue_empty(&queue)) {
@@ -694,7 +747,7 @@ int uv_send_buffer_size(uv_handle_t* handle, int *value) {
 int uv_fs_event_getpath(uv_fs_event_t* handle, char* buffer, size_t* size) {
   size_t required_len;
 
-  if (buffer == NULL || size == NULL || *size == 0)
+  if (handle == NULL || buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
   if (!uv__is_active(handle)) {
@@ -765,6 +818,9 @@ int uv_fs_scandir_next(uv_fs_t* req, uv_dirent_t* ent) {
   uv__dirent_t** dents;
   uv__dirent_t* dent;
   unsigned int* nbufs;
+
+  if (req == NULL || ent == NULL)
+    return UV_EINVAL;
 
   /* Check to see if req passed */
   if (req->result < 0)
@@ -1029,6 +1085,9 @@ int uv_loop_close(uv_loop_t* loop) {
   void* saved_data;
 #endif
 
+  if (loop == NULL)
+    return UV_EINVAL;
+
   if (uv__has_active_reqs(loop))
     return UV_EBUSY;
 
@@ -1093,6 +1152,9 @@ int uv_read_start(uv_stream_t* stream,
 void uv_os_free_environ(uv_env_item_t* envitems, int count) {
   int i;
 
+  if (envitems == NULL)
+    return;
+
   for (i = 0; i < count; i++) {
     uv__free(envitems[i].name);
   }
@@ -1102,6 +1164,9 @@ void uv_os_free_environ(uv_env_item_t* envitems, int count) {
 
 
 void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
+  if (cpu_infos == NULL)
+    return;
+
 #ifdef __linux__
   (void) &count;
   uv__free(cpu_infos);
@@ -1191,6 +1256,9 @@ void uv__metrics_set_provider_entry_time(uv_loop_t* loop) {
 
 
 int uv_metrics_info(uv_loop_t* loop, uv_metrics_t* metrics) {
+  if (loop == NULL || metrics == NULL)
+    return UV_EINVAL;
+
   memcpy(metrics,
          &uv__get_loop_metrics(loop)->metrics,
          sizeof(*metrics));
@@ -1203,6 +1271,9 @@ uint64_t uv_metrics_idle_time(uv_loop_t* loop) {
   uv__loop_metrics_t* loop_metrics;
   uint64_t entry_time;
   uint64_t idle_time;
+
+  if (loop == NULL)
+    return 0;
 
   loop_metrics = uv__get_loop_metrics(loop);
   uv_mutex_lock(&loop_metrics->lock);

@@ -371,6 +371,9 @@ ssize_t uv_wtf8_length_as_utf16(const char* source_ptr) {
   size_t w_target_len = 0;
   int32_t code_point;
 
+  if (source_ptr == NULL)
+    return UV_EINVAL;
+
   do {
     code_point = uv__wtf8_decode1(&source_ptr);
     if (code_point < 0)
@@ -388,6 +391,9 @@ void uv_wtf8_to_utf16(const char* source_ptr,
                       uint16_t* w_target,
                       size_t w_target_len) {
   int32_t code_point;
+
+  if (source_ptr == NULL || w_target == NULL)
+    return;
 
   do {
     code_point = uv__wtf8_decode1(&source_ptr);
@@ -429,6 +435,9 @@ size_t uv_utf16_length_as_wtf8(const uint16_t* w_source_ptr,
   size_t target_len;
   int32_t code_point;
 
+  if (w_source_ptr == NULL || w_source_len == 0)
+    return 0;
+
   target_len = 0;
   while (w_source_len) {
     code_point = uv__get_surrogate_value(w_source_ptr, w_source_len);
@@ -465,6 +474,9 @@ int uv_utf16_to_wtf8(const uint16_t* w_source_ptr,
   char* target;
   char* target_end;
   int32_t code_point;
+
+  if (w_source_ptr == NULL)
+    return UV_EINVAL;
 
   /* If *target_ptr is provided, then *target_len_ptr must be its length
    * (excluding space for NUL), otherwise we will compute the target_len_ptr
