@@ -480,10 +480,20 @@ struct uv__req_write_extra_s {
   uv_pipe_accept_t* accept_reqs;                                              \
   uv_pipe_accept_t* pending_accepts;
 
+struct uv__pipe_kicker_state_s {
+  HANDLE target;
+  volatile HANDLE loop_thread;
+  DWORD target_tid;
+  volatile LONG active;
+};
+
 #define uv_pipe_connection_fields                                             \
   uv_timer_t* eof_timer;                                                      \
-  /* TODO: This is here for ABI compat - remove in 2.x. */                    \
-  uintptr_t dummy[sizeof(uv_write_t) / sizeof(uintptr_t) - 2];                \
+  struct uv__pipe_kicker_state_s kicker;                                      \
+  /* TODO: This padding is here for ABI compat - remove in 2.x. */            \
+  uintptr_t dummy[sizeof(uv_write_t) / sizeof(uintptr_t) - 2 -                \
+                  sizeof(struct uv__pipe_kicker_state_s) /                    \
+                      sizeof(uintptr_t)];                                     \
   uv_write_t* non_overlapped_write_active;                                    \
   volatile HANDLE writefile_thread_handle;                                    \
   DWORD ipc_remote_pid;                                                       \
