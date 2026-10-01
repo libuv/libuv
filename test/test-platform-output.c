@@ -99,7 +99,8 @@ TEST_IMPL(platform_output) {
   // Attempt to parse cgroup v2 to deduce parallelism constraints
   file = fopen("/sys/fs/cgroup/cpu.max", "r");
   if (file) {
-    if (fscanf(file, "%lu %lu", &quota, &period) == 2 && quota > 0) {
+    if (fscanf(file, "%" SCNu64 " %" SCNu64, &quota, &period) == 2 &&
+        quota > 0) {
       cgroup_version = 2;
       cgroup_par = (unsigned int)(quota / period);
     }
@@ -110,10 +111,11 @@ TEST_IMPL(platform_output) {
   if (cgroup_version == 0) {
     file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_quota_us", "r");
     if (file) {
-      if (fscanf(file, "%lu", &quota) == 1 && quota > 0 && quota < ~0ULL) {
+      if (fscanf(file, "%" SCNu64, &quota) == 1 &&
+          quota > 0 && quota < ~0ULL) {
         fclose(file);
         file = fopen("/sys/fs/cgroup/cpu,cpuacct/cpu.cfs_period_us", "r");
-        if (file && fscanf(file, "%lu", &period) == 1) {
+        if (file && fscanf(file, "%" SCNu64, &period) == 1) {
           cgroup_version = 1;
           cgroup_par = (unsigned int)(quota / period);
         }
