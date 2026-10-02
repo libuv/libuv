@@ -342,6 +342,9 @@ static void uv__process_child_init(const uv_process_options_t* options,
    * them internally.
    */
   for (n = 1; n < 32; n += 1) {
+    if (n == SIGHUP && options->flags & UV_PROCESS_UNIX_NOHUP)
+      continue;  /* Let child handle hangups, or ignore them. */
+
     if (n == SIGKILL || n == SIGSTOP)
       continue;  /* Can't be changed. */
 
@@ -586,7 +589,10 @@ static int uv__spawn_set_posix_spawn_attrs(
     goto error;
 
   /* Reset all signal the child to their default behavior */
+  /* Except for SIGHUP, if option to ignore hangups is enabled. */
   sigfillset(&signal_set);
+  if (options->flags & UV_PROCESS_UNIX_NOHUP)
+    sigdelset(&signal_set, SIGHUP);
   err = posix_spawnattr_setsigdefault(attrs, &signal_set);
   if (err != 0)
     goto error;
@@ -910,6 +916,8 @@ static int uv__spawn_and_init_child_fork(const uv_process_options_t* options,
   /* Start the child with most signals blocked, to avoid any issues before we
    * can reset them, but allow program failures to exit (and not hang). */
   sigfillset(&signewset);
+  if (options->flags & UV_PROCESS_UNIX_NOHUP)
+    sigdelset(&signewset, SIGHUP);
   sigdelset(&signewset, SIGKILL);
   sigdelset(&signewset, SIGSTOP);
   sigdelset(&signewset, SIGTRAP);
@@ -1055,6 +1063,7 @@ int uv_spawn(uv_loop_t* loop,
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
+                              UV_PROCESS_UNIX_NOHUP |
                               UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
