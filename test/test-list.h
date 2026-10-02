@@ -640,6 +640,7 @@ TEST_DECLARE  (metrics_info_check)
 TEST_DECLARE  (metrics_pool_events)
 TEST_DECLARE  (metrics_idle_time)
 TEST_DECLARE  (metrics_idle_time_thread)
+TEST_DECLARE  (metrics_idle_time_signal)
 TEST_DECLARE  (metrics_idle_time_zero)
 
 TASK_LIST_START
@@ -1365,6 +1366,7 @@ TASK_LIST_START
   TEST_ENTRY  (metrics_pool_events)
   TEST_ENTRY  (metrics_idle_time)
   TEST_ENTRY  (metrics_idle_time_thread)
+  TEST_ENTRY  (metrics_idle_time_signal)
   TEST_ENTRY  (metrics_idle_time_zero)
 
 #if 0
