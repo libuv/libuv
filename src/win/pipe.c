@@ -1385,6 +1385,38 @@ int uv__pipe_accept(uv_pipe_t* server, uv_stream_t* client) {
 }
 
 
+int uv_pipe_accept_raw(uv_pipe_t* server, uv_file* file) {
+  uv_pipe_accept_t* req;
+  int crt_fd;
+
+  req = server->pipe.serv.pending_accepts;
+  if (!req || req->pipeHandle == INVALID_HANDLE_VALUE)
+    return UV_EAGAIN;
+
+  /* Wrap the pipe HANDLE in a CRT file descriptor so the caller can pass it
+   * to uv_pipe_open().  uv_pipe_open will attempt CreateIoCompletionPort on
+   * the already-IOCP-associated handle; that call will fail and libuv will
+   * fall back to UV_HANDLE_EMULATE_IOCP, which is acceptable. */
+  crt_fd = _open_osfhandle((intptr_t) req->pipeHandle, 0);
+  if (crt_fd == -1) {
+    if (errno == EMFILE)
+      return UV_EMFILE;
+    return UV_UNKNOWN;
+  }
+
+  *file = crt_fd;
+  req->pipeHandle = INVALID_HANDLE_VALUE;  /* ownership transferred to crt_fd */
+
+  server->pipe.serv.pending_accepts = req->next_pending;
+  req->next_pending = NULL;
+
+  if (!(server->flags & UV_HANDLE_CLOSING))
+    uv__pipe_queue_accept(server->loop, server, req, FALSE);
+
+  return 0;
+}
+
+
 /* Starts listening for connections for the given pipe. */
 int uv__pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
   uv_loop_t* loop = handle->loop;

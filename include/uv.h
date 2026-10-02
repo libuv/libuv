@@ -654,6 +654,7 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
                              const struct sockaddr* addr,
                              uv_connect_cb cb);
+UV_EXTERN int uv_tcp_accept_raw(uv_tcp_t* server, uv_os_sock_t* sock);
 
 /* uv_connect_t is a subclass of uv_req_t. */
 struct uv_connect_s {
@@ -915,6 +916,7 @@ UV_EXTERN void uv_pipe_pending_instances(uv_pipe_t* handle, int count);
 UV_EXTERN int uv_pipe_pending_count(uv_pipe_t* handle);
 UV_EXTERN uv_handle_type uv_pipe_pending_type(uv_pipe_t* handle);
 UV_EXTERN int uv_pipe_chmod(uv_pipe_t* handle, int flags);
+UV_EXTERN int uv_pipe_accept_raw(uv_pipe_t* server, uv_file* file);
 
 
 struct uv_poll_s {
