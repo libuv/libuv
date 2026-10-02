@@ -342,6 +342,9 @@ static void uv__process_child_init(const uv_process_options_t* options,
    * them internally.
    */
   for (n = 1; n < 32; n += 1) {
+    if (n == SIGHUP && options->flags & UV_PROCESS_NOHUP)
+      continue;  /* Let child handle hangups, or ignore them. */
+
     if (n == SIGKILL || n == SIGSTOP)
       continue;  /* Can't be changed. */
 
@@ -1053,6 +1056,7 @@ int uv_spawn(uv_loop_t* loop,
 
   assert(options->file != NULL);
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
+                              UV_PROCESS_NOHUP |
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
                               UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
