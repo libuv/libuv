@@ -801,6 +801,72 @@ TEST_IMPL(spawn_stdio_high_fd) {
   return 0;
 }
 
+
+TEST_IMPL(spawn_high_fds) {
+#ifdef __APPLE__
+  int* fds;
+  int fd;
+  int i;
+  int nfds;
+  int r;
+  uv_pipe_t pipes[3];
+  uv_stdio_container_t stdio[3];
+
+  /* Fill the descriptor table past macOS's posix_spawn limit. */
+  fds = malloc(10241 * sizeof(*fds));
+  ASSERT_NOT_NULL(fds);
+  nfds = 0;
+  while (nfds < 10241) {
+    fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) {
+      while (nfds > 0)
+        close(fds[--nfds]);
+      free(fds);
+      RETURN_SKIP("Could not open enough files to test high descriptors.");
+    }
+    fds[nfds++] = fd;
+    if (fd >= 10240)
+      break;
+  }
+
+  if (fd < 10240) {
+    while (nfds > 0)
+      close(fds[--nfds]);
+    free(fds);
+    RETURN_SKIP("File descriptor limit is below 10240.");
+  }
+
+  init_process_options("spawn_helper1", exit_cb);
+  for (i = 0; i < 3; i++) {
+    ASSERT_OK(uv_pipe_init(uv_default_loop(), &pipes[i], 0));
+    stdio[i].flags = UV_CREATE_PIPE |
+                     (i == 0 ? UV_READABLE_PIPE : UV_WRITABLE_PIPE);
+    stdio[i].data.stream = (uv_stream_t*) &pipes[i];
+  }
+  options.stdio = stdio;
+  options.stdio_count = 3;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT_OK(r);
+
+  for (i = 0; i < 3; i++)
+    uv_close((uv_handle_t*) &pipes[i], close_cb);
+  while (nfds > 0)
+    close(fds[--nfds]);
+  free(fds);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT_OK(r);
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(4, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+#else
+  RETURN_SKIP("macOS only test.");
+#endif
+}
+
 static void spawn_inherit_nonblock_alloc(uv_handle_t* handle,
                                         size_t suggested_size,
                                         uv_buf_t* buf) {
