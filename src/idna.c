@@ -114,7 +114,9 @@ static unsigned uv__utf8_decode1_slow(const char** p,
     return -1;  /* Invalid continuation byte. */
   }
 
-  if (0x80 != (0xC0 & (b ^ c ^ d)))
+  if ((b & 0xC0) != 0x80 ||
+      (c & 0xC0) != 0x80 ||
+      (d & 0xC0) != 0x80)
     return -1;  /* Invalid sequence. */
 
   b &= 63;
