@@ -158,17 +158,60 @@ int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle) {
 }
 
 
+/* Exact re-implementation of ReOpenFile but without the flag to fail with a
+ * misleading ERROR_ACCESS_DENIED error (STATUS_FILE_IS_A_DIRECTORY) when the
+ * target is a directory.
+ */
+static DWORD uv__reopen_file(HANDLE original,
+                             ACCESS_MASK access,
+                             ULONG share,
+                             ULONG create_options,
+                             HANDLE* out) {
+  OBJECT_ATTRIBUTES obj_attr;
+  UNICODE_STRING empty_name;
+  IO_STATUS_BLOCK io_status;
+  NTSTATUS nt_status;
+
+  empty_name.Length = 0;
+  empty_name.MaximumLength = 0;
+  empty_name.Buffer = NULL;
+
+  obj_attr.Length = sizeof(obj_attr);
+  obj_attr.RootDirectory = original;
+  obj_attr.ObjectName = &empty_name;
+  obj_attr.Attributes = 0;
+  obj_attr.SecurityDescriptor = NULL;
+  obj_attr.SecurityQualityOfService = NULL;
+
+  nt_status = pNtCreateFile(out,
+                            access,
+                            &obj_attr,
+                            &io_status,
+                            NULL,
+                            0,
+                            share,
+                            FILE_OPEN,
+                            create_options,
+                            NULL,
+                            0);
+  if (NT_ERROR(nt_status))
+    return pRtlNtStatusToDosError(nt_status);
+  return 0;
+}
+
+
 int uv_fs_event_start(uv_fs_event_t* handle,
                       uv_fs_event_cb cb,
                       const char* path,
                       unsigned int flags) {
   int is_path_dir;
   DWORD last_error;
-  WCHAR* dir, *pathw = NULL;
+  WCHAR* dir = NULL, *pathw = NULL;
   DWORD short_path_buffer_len;
   WCHAR *short_path_buffer;
   WCHAR* short_path = NULL;
   HANDLE file_handle = INVALID_HANDLE_VALUE;
+  HANDLE dir_handle = INVALID_HANDLE_VALUE;
   BY_HANDLE_FILE_INFORMATION info;
 
   if (uv__is_active(handle))
@@ -186,12 +229,15 @@ int uv_fs_event_start(uv_fs_event_t* handle,
   if (last_error)
     goto error_uv;
 
+  /* Asking for FILE_LIST_DIRECTORY here would be FILE_READ_DATA on a file
+   * and fail against a process that has it open without FILE_SHARE_READ.
+   */
   file_handle = CreateFileW(pathw,
-                            FILE_LIST_DIRECTORY,
+                            FILE_READ_ATTRIBUTES,
                             FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
                             NULL,
                             OPEN_EXISTING,
-                            FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
+                            FILE_FLAG_BACKUP_SEMANTICS,
                             NULL);
   if (file_handle == INVALID_HANDLE_VALUE) {
     last_error = GetLastError();
@@ -205,7 +251,19 @@ int uv_fs_event_start(uv_fs_event_t* handle,
 
   is_path_dir = (info.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
 
-  if (!is_path_dir) {
+  if (is_path_dir) {
+    /* Reopen the same file object with the access we actually need instead
+     * of resolving the path a second time, so a concurrent rename cannot
+     * swap the directory out from under us between the two opens.
+     */
+    last_error = uv__reopen_file(file_handle,
+                                 FILE_LIST_DIRECTORY | SYNCHRONIZE,
+                                 FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
+                                 0,
+                                 &dir_handle);
+    if (last_error)
+      goto error;
+  } else {
     /*
      * path is a file.  So we split path into dir & file parts, and
      * watch the dir directory.
@@ -249,22 +307,21 @@ short_path_done:
      * other files are filtered out in uv__process_fs_event_req().
      * Not super efficient but c'est ça.
      */
-    CloseHandle(file_handle);
-    file_handle = CreateFileW(dir,
-                              FILE_LIST_DIRECTORY,
-                              FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
-                              NULL,
-                              OPEN_EXISTING,
-                              FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
-                              NULL);
+    dir_handle = CreateFileW(dir,
+                             FILE_LIST_DIRECTORY,
+                             FILE_SHARE_READ|FILE_SHARE_DELETE|FILE_SHARE_WRITE,
+                             NULL,
+                             OPEN_EXISTING,
+                             FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OVERLAPPED,
+                             NULL);
     uv__free(dir);
     dir = NULL;
-    if (file_handle == INVALID_HANDLE_VALUE) {
+    if (dir_handle == INVALID_HANDLE_VALUE) {
       last_error = GetLastError();
       goto error;
     }
 
-    if (!GetFileInformationByHandle(file_handle, &info)) {
+    if (!GetFileInformationByHandle(dir_handle, &info)) {
       last_error = GetLastError();
       goto error;
     }
@@ -281,13 +338,11 @@ short_path_done:
     }
   }
 
-  handle->dir_handle = file_handle;
+  CloseHandle(file_handle);
   file_handle = INVALID_HANDLE_VALUE;
 
-  if (handle->dir_handle == INVALID_HANDLE_VALUE) {
-    last_error = GetLastError();
-    goto error;
-  }
+  handle->dir_handle = dir_handle;
+  dir_handle = INVALID_HANDLE_VALUE;
 
   if (CreateIoCompletionPort(handle->dir_handle,
                              handle->loop->iocp,
@@ -338,6 +393,11 @@ error_uv:
   if (file_handle != INVALID_HANDLE_VALUE) {
     CloseHandle(file_handle);
     file_handle = INVALID_HANDLE_VALUE;
+  }
+
+  if (dir_handle != INVALID_HANDLE_VALUE) {
+    CloseHandle(dir_handle);
+    dir_handle = INVALID_HANDLE_VALUE;
   }
 
   if (handle->path) {
