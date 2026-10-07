@@ -78,6 +78,8 @@ extern char** environ;
 # include <sys/param.h>
 # if defined(__FreeBSD__)
 #  include <sys/cpuset.h>
+# endif
+# if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__OpenBSD__)
 #  define uv__accept4 accept4
 # endif
 # if defined(__NetBSD__)
