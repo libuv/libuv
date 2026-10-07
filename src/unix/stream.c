@@ -93,6 +93,7 @@ void uv__stream_init(uv_loop_t* loop,
   stream->accepted_fd = -1;
   stream->queued_fds = NULL;
   stream->delayed_error = 0;
+  stream->u.reserved[UV_ACCEPT_SOCKADDR_FIELD] = NULL;
   uv__queue_init(&stream->write_queue);
   uv__queue_init(&stream->write_completed_queue);
   stream->write_queue_size = 0;
@@ -491,7 +492,7 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
   loop->emfile_fd = -1;
 
   do {
-    err = uv__accept(accept_fd);
+    err = uv__accept(accept_fd, NULL);
     if (err >= 0)
       uv__close(err);
   } while (err >= 0 || err == UV_EINTR);
@@ -505,7 +506,10 @@ static int uv__emfile_trick(uv_loop_t* loop, int accept_fd) {
 
 
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
+  struct sockaddr_storage* pss;
+  struct sockaddr_storage ss;
   uv_stream_t* stream;
+  void** slot;
   int err;
   int fd;
 
@@ -514,8 +518,12 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   assert(stream->accepted_fd == -1);
   assert(!(stream->flags & UV_HANDLE_CLOSING));
 
+  pss = NULL;
+  if (loop->flags & UV_LOOP_ENABLE_ACCEPT_SOCKADDR)
+    pss = &ss;
+
   fd = uv__stream_fd(stream);
-  err = uv__accept(fd);
+  err = uv__accept(fd, pss);
 
   if (err == UV_EMFILE || err == UV_ENFILE)
     err = uv__emfile_trick(loop, fd);  /* Shed load. */
@@ -523,8 +531,11 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
   if (err < 0)
     return;
 
+  slot = &stream->u.reserved[UV_ACCEPT_SOCKADDR_FIELD];
+  *slot = pss;
   stream->accepted_fd = err;
   stream->connection_cb(stream, 0);
+  *slot = NULL;
 
   if (stream->accepted_fd != -1)
     /* The user hasn't yet accepted called uv_accept() */
@@ -533,7 +544,10 @@ void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
 
 int uv_accept(uv_stream_t* server, uv_stream_t* client) {
+  void** src;
+  void** dst;
   int err;
+  int len;
 
   assert(server->loop == client->loop);
 
@@ -550,6 +564,14 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client) {
         uv__close(server->accepted_fd);
         goto done;
       }
+      src = &server->u.reserved[UV_ACCEPT_SOCKADDR_FIELD];
+      dst = &client->u.reserved[UV_ACCEPT_SOCKADDR_FIELD];
+      len = sizeof(struct sockaddr_storage);
+      /* In case someone calls uv_accept twice on the same handle. */
+      uv__free(*dst);
+      *dst = NULL;
+      if (*src && (*dst = uv__malloc(len)))
+        memcpy(*dst, *src, len);
       break;
 
     case UV_UDP:
@@ -1565,8 +1587,9 @@ int uv___stream_fd(const uv_stream_t* handle) {
 
 
 void uv__stream_close(uv_stream_t* handle) {
-  unsigned int i;
   uv__stream_queued_fds_t* queued_fds;
+  unsigned int i;
+  void** slot;
 
 #if defined(__APPLE__)
   /* Terminate select loop first */
@@ -1589,6 +1612,12 @@ void uv__stream_close(uv_stream_t* handle) {
     handle->select = NULL;
   }
 #endif /* defined(__APPLE__) */
+
+  slot = &handle->u.reserved[UV_ACCEPT_SOCKADDR_FIELD];
+  if (*slot != NULL && UV__STREAM_IO == uv__io_cb_get(&handle->io_watcher)) {
+    uv__free(*slot);  /* Peer socket. Free sockaddr_storage. */
+    *slot = NULL;
+  }
 
   uv__io_close(handle->loop, &handle->io_watcher);
   uv_read_stop(handle);

@@ -327,6 +327,14 @@ static void udp_sender(void) {
 TEST_IMPL(getsockname_tcp) {
   loop = uv_default_loop();
 
+  /* Not supported on all platforms so we ignore the return code, but the
+   * supported/unsupported difference should be unobservable except when
+   * a client disconnects immediately (which is impossible to capture
+   * deterministically in a test, only stochastically.)
+   * It is however observable with `strace -e getpeername`.
+   */
+  uv_loop_configure(loop, UV_LOOP_ACCEPT_SOCKADDR);
+
   if (tcp_listener())
     return 1;
 
