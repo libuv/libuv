@@ -4664,6 +4664,40 @@ typedef NTSTATUS (NTAPI *sNtQueryInformationProcess)
                   ULONG Length,
                   PULONG ReturnLength);
 
+#if !defined(_OBJECT_ATTRIBUTES_DEFINED) && defined(__MINGW32__)
+# define _OBJECT_ATTRIBUTES_DEFINED
+#endif
+typedef struct _OBJECT_ATTRIBUTES {
+  ULONG Length;
+  HANDLE RootDirectory;
+  PUNICODE_STRING ObjectName;
+  ULONG Attributes;
+  PVOID SecurityDescriptor;
+  PVOID SecurityQualityOfService;
+} OBJECT_ATTRIBUTES, *POBJECT_ATTRIBUTES;
+
+#ifndef FILE_OPEN
+# define FILE_OPEN 0x00000001
+#endif
+
+/* NtCreateFile() is used to reopen an existing handle with a different
+ * access mask and sharing mode relative to itself (RootDirectory set to
+ * the handle, ObjectName empty), which works for directory handles where
+ * ReOpenFile() does not.
+ */
+typedef NTSTATUS (NTAPI *sNtCreateFile)
+                 (PHANDLE FileHandle,
+                  ACCESS_MASK DesiredAccess,
+                  POBJECT_ATTRIBUTES ObjectAttributes,
+                  PIO_STATUS_BLOCK IoStatusBlock,
+                  PLARGE_INTEGER AllocationSize,
+                  ULONG FileAttributes,
+                  ULONG ShareAccess,
+                  ULONG CreateDisposition,
+                  ULONG CreateOptions,
+                  PVOID EaBuffer,
+                  ULONG EaLength);
+
 /*
  * Kernel32 headers
  */
@@ -4823,6 +4857,7 @@ extern sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 extern sNtQueryDirectoryFile pNtQueryDirectoryFile;
 extern sNtQuerySystemInformation pNtQuerySystemInformation;
 extern sNtQueryInformationProcess pNtQueryInformationProcess;
+extern sNtCreateFile pNtCreateFile;
 
 /* Powrprof.dll function pointer */
 extern sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;

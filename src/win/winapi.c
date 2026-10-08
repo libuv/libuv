@@ -35,6 +35,7 @@ sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
 sNtQueryDirectoryFile pNtQueryDirectoryFile;
 sNtQuerySystemInformation pNtQuerySystemInformation;
 sNtQueryInformationProcess pNtQueryInformationProcess;
+sNtCreateFile pNtCreateFile;
 
 /* Powrprof.dll function pointer */
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
@@ -70,6 +71,7 @@ void uv__winapi_init(void) {
     sNtQueryDirectoryFile pNtQueryDirectoryFile;
     sNtQuerySystemInformation pNtQuerySystemInformation;
     sNtQueryInformationProcess pNtQueryInformationProcess;
+    sNtCreateFile pNtCreateFile;
     sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
     sProcessPrng pProcessPrng;
     sSetWinEventHook pSetWinEventHook;
@@ -130,6 +132,12 @@ void uv__winapi_init(void) {
   u.proc = GetProcAddress(ntdll_module, "NtQueryInformationProcess");
   pNtQueryInformationProcess = u.pNtQueryInformationProcess;
   if (pNtQueryInformationProcess == NULL) {
+    uv_fatal_error(GetLastError(), "GetProcAddress");
+  }
+
+  u.proc = GetProcAddress(ntdll_module, "NtCreateFile");
+  pNtCreateFile = u.pNtCreateFile;
+  if (pNtCreateFile == NULL) {
     uv_fatal_error(GetLastError(), "GetProcAddress");
   }
 

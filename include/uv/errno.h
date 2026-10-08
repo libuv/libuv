@@ -432,7 +432,16 @@
 # define UV__ENOTTY (-4029)
 #endif
 
-#if defined(EFTYPE) && !defined(_WIN32)
+/* Le sigh. Added in Linux 7.2. */
+#if defined(__linux__) && defined(__hppa__)
+# define UV__EFTYPE (-258)
+#elif defined(__linux__) && defined(__mips__)
+# define UV__EFTYPE (-169)
+#elif defined(__linux__) && defined(__sparc__)
+# define UV__EFTYPE (-136)
+#elif defined(__linux__)
+# define UV__EFTYPE (-134)
+#elif defined(EFTYPE) && !defined(_WIN32)
 # define UV__EFTYPE UV__ERR(EFTYPE)
 #else
 # define UV__EFTYPE (-4028)
