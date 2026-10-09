@@ -331,6 +331,7 @@ TEST_DECLARE   (hrtime)
 TEST_DECLARE   (clock_gettime)
 TEST_DECLARE   (getaddrinfo_fail)
 TEST_DECLARE   (getaddrinfo_fail_sync)
+TEST_DECLARE   (getaddrinfo_invalid_utf8)
 TEST_DECLARE   (getaddrinfo_basic)
 TEST_DECLARE   (getaddrinfo_basic_sync)
 TEST_DECLARE   (getaddrinfo_concurrent)
@@ -1045,6 +1046,7 @@ TASK_LIST_START
 
   TEST_ENTRY_CUSTOM (getaddrinfo_fail, 0, 0, 10000)
   TEST_ENTRY_CUSTOM (getaddrinfo_fail_sync, 0, 0, 10000)
+  TEST_ENTRY  (getaddrinfo_invalid_utf8)
 
   TEST_ENTRY  (getaddrinfo_basic)
   TEST_ENTRY  (getaddrinfo_basic_sync)

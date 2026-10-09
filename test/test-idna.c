@@ -33,8 +33,20 @@
 #include <string.h>
 
 TEST_IMPL(utf8_decode1) {
+  static const char invalid[][5] = {
+    "\xE2\x41\x42",
+    "\xE2\xC1\xC2",
+    "\xF1\x41\x42\x80",
+    "\xF1\x41\x80\x42",
+    "\xF1\x80\x41\x42",
+    "\xF1\xC1\xC2\x80",
+    "\xF1\xC1\x80\xC2",
+    "\xF1\x80\xC1\xC2",
+    "\xF1\x01\x41\xC1"
+  };
   const char* p;
   char b[32];
+  size_t j;
   int i;
 
   /* ASCII. */
@@ -102,6 +114,14 @@ TEST_IMPL(utf8_decode1) {
     ASSERT_PTR_EQ(p, b + i);
   }
 
+  /* Invalid continuation bytes must not cancel each other out. */
+  for (j = 0; j < ARRAY_SIZE(invalid); j++) {
+    p = invalid[j];
+    ASSERT_EQ((unsigned) -1,
+              uv__utf8_decode1(&p, invalid[j] + strlen(invalid[j])));
+    ASSERT_PTR_EQ(p, invalid[j] + strlen(invalid[j]));
+  }
+
   return 0;
 }
 
@@ -160,6 +180,12 @@ TEST_IMPL(idna_toascii) {
   F("\xC0\x80\xC1\x80", UV_EINVAL);  /* Overlong UTF-8 sequence. */
   F("\xC0\x80\xC1\x80.com", UV_EINVAL);  /* Overlong UTF-8 sequence. */
   F("", UV_EINVAL);
+  F("\xE2\x41\x42", UV_EINVAL);
+  F("\xE2\xC1\xC2.com", UV_EINVAL);
+  F("\xF1\x41\x42\x80", UV_EINVAL);
+  F("\xF1\x41\x80\x42.com", UV_EINVAL);
+  F("\xF1\x80\x41\x42", UV_EINVAL);
+  F("\xF1\x01\x41\xC1.com", UV_EINVAL);
   /* No conversion. */
   T(".", ".");
   T(".com", ".com");
