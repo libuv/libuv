@@ -888,6 +888,10 @@ static int uv__spawn_and_init_child_posix_spawn(
   int err;
   posix_spawnattr_t attrs;
   posix_spawn_file_actions_t actions;
+#if defined(__CYGWIN__)
+  sigset_t chld_set;
+  sigset_t chld_old;
+#endif
 
   if (!posix_spawn_works)
     return UV_ENOSYS;
@@ -911,10 +915,26 @@ static int uv__spawn_and_init_child_posix_spawn(
   uv_rwlock_wrlock(&loop->cloexec_lock);
 #endif
 
+#if defined(__CYGWIN__)
+  /* Cygwin implements posix_spawn as fork plus a semaphore wait, and the
+   * child then overlays a native image. The fork path already blocks signals
+   * across fork. Do the same here so the SIGCHLD handler does not run inside
+   * that call. posix_spawn installs an empty mask on the child. */
+  sigemptyset(&chld_set);
+  sigaddset(&chld_set, SIGCHLD);
+  if (pthread_sigmask(SIG_BLOCK, &chld_set, &chld_old) != 0)
+    abort();
+#endif
+
   /* Try to spawn options->file resolving in the provided environment
    * if any. */
   err = uv__spawn_resolve_and_spawn(options, &attrs, &actions, pid);
   assert(err != ENOSYS);
+
+#if defined(__CYGWIN__)
+  if (pthread_sigmask(SIG_SETMASK, &chld_old, NULL) != 0)
+    abort();
+#endif
 
 #ifndef __APPLE__
   /* Release lock in parent process. */
