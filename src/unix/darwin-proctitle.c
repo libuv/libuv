@@ -61,6 +61,7 @@ int uv__set_process_title(const char* title) {
                                                                 void*);
   CFTypeRef asn;
   CFStringRef string;
+  const char* process_title_opt_in;
   OSStatus status;
   int err;
 
@@ -123,6 +124,56 @@ int uv__set_process_title(const char* title) {
   if (pLSGetCurrentApplicationASN == NULL)
     goto out;
 
+  process_title_opt_in = getenv("UV_PROCESS_TITLE_USE_LAUNCH_SERVICES");
+  if (process_title_opt_in != NULL &&
+      strcmp(process_title_opt_in, "1") == 0) {
+    err = UV_ENOENT;
+    *(void **)(&pCFBundleGetInfoDictionary) = dlsym(core_foundation_handle,
+                                       "CFBundleGetInfoDictionary");
+    *(void **)(&pCFBundleGetMainBundle) = dlsym(core_foundation_handle,
+                                   "CFBundleGetMainBundle");
+    if (pCFBundleGetInfoDictionary == NULL || pCFBundleGetMainBundle == NULL)
+      goto out;
+
+    string = S("_LSApplicationCheckIn");
+    if (string == NULL) {
+      err = UV_ENOMEM;
+      goto out;
+    }
+
+    *(void **)(&pLSApplicationCheckIn) =
+        pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
+    U(string);
+
+    if (pLSApplicationCheckIn == NULL)
+      goto out;
+
+    string = S("_LSSetApplicationLaunchServicesServerConnectionStatus");
+    if (string == NULL) {
+      err = UV_ENOMEM;
+      goto out;
+    }
+
+    *(void **)(&pLSSetApplicationLaunchServicesServerConnectionStatus) =
+        pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
+    U(string);
+
+    if (pLSSetApplicationLaunchServicesServerConnectionStatus == NULL)
+      goto out;
+
+    pLSSetApplicationLaunchServicesServerConnectionStatus(0, NULL);
+
+    /* Check into process manager?! */
+    pLSApplicationCheckIn(-2,
+                          pCFBundleGetInfoDictionary(pCFBundleGetMainBundle()));
+  }
+
+  asn = pLSGetCurrentApplicationASN();
+  err = UV_EBUSY;
+  if (asn == NULL)
+    goto out;
+
+  err = UV_ENOENT;
   string = S("_LSSetApplicationInformationItem");
   if (string == NULL) {
     err = UV_ENOMEM;
@@ -149,51 +200,6 @@ int uv__set_process_title(const char* title) {
   if (display_name_key == NULL || *display_name_key == NULL)
     goto out;
 
-  *(void **)(&pCFBundleGetInfoDictionary) = dlsym(core_foundation_handle,
-                                     "CFBundleGetInfoDictionary");
-  *(void **)(&pCFBundleGetMainBundle) = dlsym(core_foundation_handle,
-                                 "CFBundleGetMainBundle");
-  if (pCFBundleGetInfoDictionary == NULL || pCFBundleGetMainBundle == NULL)
-    goto out;
-
-  string = S("_LSApplicationCheckIn");
-  if (string == NULL) {
-    err = UV_ENOMEM;
-    goto out;
-  }
-
-  *(void **)(&pLSApplicationCheckIn) =
-      pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
-  U(string);
-
-  if (pLSApplicationCheckIn == NULL)
-    goto out;
-
-  string = S("_LSSetApplicationLaunchServicesServerConnectionStatus");
-  if (string == NULL) {
-    err = UV_ENOMEM;
-    goto out;
-  }
-
-  *(void **)(&pLSSetApplicationLaunchServicesServerConnectionStatus) =
-      pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
-  U(string);
-
-  if (pLSSetApplicationLaunchServicesServerConnectionStatus == NULL)
-    goto out;
-
-  pLSSetApplicationLaunchServicesServerConnectionStatus(0, NULL);
-
-  /* Check into process manager?! */
-  pLSApplicationCheckIn(-2,
-                        pCFBundleGetInfoDictionary(pCFBundleGetMainBundle()));
-
-  asn = pLSGetCurrentApplicationASN();
-
-  err = UV_EBUSY;
-  if (asn == NULL)
-    goto out;
-
   string = S(title);
   if (string == NULL) {
     err = UV_ENOMEM;
@@ -211,7 +217,6 @@ int uv__set_process_title(const char* title) {
   if (status != noErr)
     goto out;
 
-  uv__thread_setname(title);  /* Don't care if it fails. */
   err = 0;
 
 out:
@@ -221,6 +226,7 @@ out:
   if (application_services_handle != NULL)
     dlclose(application_services_handle);
 
+  uv__thread_setname(title);  /* Don't care if it fails. */
   return err;
 #undef U
 #undef S
