@@ -948,6 +948,12 @@ static int uv__spawn_and_init_child_posix_spawn(
 error:
   /* In an error situation, the attributes and file actions are
    * already destroyed, only the happy path requires cleanup */
+#ifdef __APPLE__
+  /* macOS cannot handle some valid high-numbered file descriptors in
+   * posix_spawn file actions. Retry with fork()/exec() in that case. */
+  if (err == EBADF)
+    return UV_ENOSYS;
+#endif
   return UV__ERR(err);
 }
 
