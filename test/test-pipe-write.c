@@ -35,19 +35,16 @@ static int close_cb_called;
 
 
 #ifndef _WIN32
-static uv_mutex_t malloc_mutex;
 static int fail_malloc;
 
 
 static void* fail_once_malloc(size_t size) {
-  int fail;
+  if (fail_malloc) {
+    fail_malloc = 0;
+    return NULL;
+  }
 
-  uv_mutex_lock(&malloc_mutex);
-  fail = fail_malloc;
-  fail_malloc = 0;
-  uv_mutex_unlock(&malloc_mutex);
-
-  return fail ? NULL : malloc(size);
+  return malloc(size);
 }
 
 
@@ -118,7 +115,6 @@ TEST_IMPL(pipe_write_oom) {
   char received[10];
   unsigned int i;
 
-  ASSERT_OK(uv_mutex_init(&malloc_mutex));
   ASSERT_OK(uv_replace_allocator(fail_once_malloc, realloc, calloc, free));
   ASSERT_OK(uv_loop_init(&loop));
   ASSERT_OK(uv_pipe(fds, UV_NONBLOCK_PIPE, UV_NONBLOCK_PIPE));
@@ -129,9 +125,7 @@ TEST_IMPL(pipe_write_oom) {
   for (i = 0; i < ARRAY_SIZE(bufs); i++)
     bufs[i] = uv_buf_init("x", 1);
 
-  uv_mutex_lock(&malloc_mutex);
   fail_malloc = 1;
-  uv_mutex_unlock(&malloc_mutex);
   ASSERT_EQ(UV_ENOMEM, uv_write(&rejected_req,
                                (uv_stream_t*) &pipe_handle,
                                bufs,
@@ -152,7 +146,6 @@ TEST_IMPL(pipe_write_oom) {
   ASSERT_OK(close(fds[0]));
   ASSERT_OK(uv_loop_close(&loop));
   ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
-  uv_mutex_destroy(&malloc_mutex);
   uv_library_shutdown();
   return 0;
 #endif
