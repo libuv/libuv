@@ -42,6 +42,8 @@ static int close_cb_called;
 static int fs_event_created;
 static int fs_event_removed;
 static int fs_event_cb_called;
+static int fs_event_immediate_cb_called;
+static int fs_event_in_cb_cb_called;
 #if defined(PATH_MAX)
 static char fs_event_filename[PATH_MAX];
 #else
@@ -361,6 +363,46 @@ static void fs_event_cb_file(uv_fs_event_t* handle, const char* filename,
   #endif
   ASSERT_OK(uv_fs_event_stop(handle));
   uv_close((uv_handle_t*)handle, close_cb);
+}
+
+static void fs_event_cb_file_immediate(uv_fs_event_t* handle,
+                                       const char* filename,
+                                       int events,
+                                       int status) {
+  ++fs_event_immediate_cb_called;
+  ASSERT_PTR_EQ(handle, &fs_event);
+  ASSERT_OK(status);
+  ASSERT_EQ(events, UV_CHANGE);
+  #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+  ASSERT_OK(strcmp(filename, "watch_immediate"));
+  #else
+  ASSERT(filename == NULL || strcmp(filename, "watch_immediate") == 0);
+  #endif
+  ASSERT_OK(uv_fs_event_stop(handle));
+  uv_close((uv_handle_t*) handle, close_cb);
+}
+
+static void fs_event_cb_file_modified_in_cb(uv_fs_event_t* handle,
+                                            const char* filename,
+                                            int events,
+                                            int status) {
+  ++fs_event_in_cb_cb_called;
+  ASSERT_PTR_EQ(handle, &fs_event);
+  ASSERT_OK(status);
+  ASSERT_NE(0, events);
+  #if defined(__APPLE__) || defined(_WIN32) || defined(__linux__)
+  ASSERT_OK(strcmp(filename, "watch_in_cb"));
+  #else
+  ASSERT(filename == NULL || strcmp(filename, "watch_in_cb") == 0);
+  #endif
+  if (fs_event_in_cb_cb_called == 1) {
+    ASSERT_EQ(events, UV_CHANGE);
+    /* Must be reported even though it happens before this callback returns. */
+    touch_file("watch_dir/watch_in_cb");
+    return;
+  }
+  ASSERT_OK(uv_fs_event_stop(handle));
+  uv_close((uv_handle_t*) handle, close_cb);
 }
 
 static void fs_event_cb_file_current_dir(uv_fs_event_t* handle,
@@ -785,6 +827,77 @@ TEST_IMPL(fs_event_watch_file) {
   /* Cleanup */
   delete_file("watch_dir/file2");
   delete_file("watch_dir/file1");
+  delete_dir("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+TEST_IMPL(fs_event_watch_file_immediate) {
+#if defined(NO_FS_EVENTS)
+  RETURN_SKIP(NO_FS_EVENTS);
+#endif
+
+  uv_loop_t* loop = uv_default_loop();
+  int r;
+
+  delete_file("watch_dir/watch_immediate");
+  delete_dir("watch_dir/");
+  create_dir("watch_dir");
+  create_file("watch_dir/watch_immediate");
+
+  fs_event_immediate_cb_called = 0;
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event,
+                        fs_event_cb_file_immediate,
+                        "watch_dir/watch_immediate",
+                        0);
+  ASSERT_OK(r);
+
+  /* The event must not depend on a later event-loop tick to install
+   * the watch. */
+  touch_file("watch_dir/watch_immediate");
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(1, fs_event_immediate_cb_called);
+
+  delete_file("watch_dir/watch_immediate");
+  delete_dir("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+
+TEST_IMPL(fs_event_watch_file_modified_in_cb) {
+#if defined(NO_FS_EVENTS)
+  RETURN_SKIP(NO_FS_EVENTS);
+#endif
+
+  uv_loop_t* loop = uv_default_loop();
+
+  delete_file("watch_dir/watch_in_cb");
+  delete_dir("watch_dir/");
+  create_dir("watch_dir");
+  create_file("watch_dir/watch_in_cb");
+
+  fs_event_in_cb_cb_called = 0;
+
+  ASSERT_OK(uv_fs_event_init(loop, &fs_event));
+  ASSERT_OK(uv_fs_event_start(&fs_event,
+                              fs_event_cb_file_modified_in_cb,
+                              "watch_dir/watch_in_cb",
+                              0));
+
+  touch_file("watch_dir/watch_in_cb");
+
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  ASSERT_EQ(2, fs_event_in_cb_cb_called);
+
+  delete_file("watch_dir/watch_in_cb");
   delete_dir("watch_dir/");
 
   MAKE_VALGRIND_HAPPY(loop);
