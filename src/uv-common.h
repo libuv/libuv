@@ -134,6 +134,9 @@ enum {
   /* Only used by uv_poll_t handles. */
   UV_HANDLE_POLL_SLOW                   = 0x01000000,
 
+  /* Only used by uv_fs_event_t handles. */
+  UV_HANDLE_FS_EVENT_DIR                = 0x01000000,
+
   /* Only used by uv_process_t handles. */
   UV_HANDLE_ESRCH                       = 0x01000000,
   UV_HANDLE_REAP                        = 0x10000000
