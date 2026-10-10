@@ -234,6 +234,9 @@ static int uv__udp_maybe_bind(uv_udp_t* handle,
     }
   }
 
+  if (flags & UV_UDP_RECVERR)
+    handle->flags |= UV_HANDLE_UDP_RECVERR;
+
   if (addr->sa_family == AF_INET6)
     handle->flags |= UV_HANDLE_IPV6;
 
@@ -412,11 +415,23 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
       /* Not a real error, it just indicates that the received packet was
        * bigger than the receive buffer. */
     } else if (err == WSAECONNRESET || err == WSAENETRESET) {
-      /* A previous sendto operation failed; ignore this error. If zero-reading
-       * we need to call WSARecv/WSARecvFrom _without_ the. MSG_PEEK flag to
-       * clear out the error queue. For nonzero reads, immediately queue a new
+      /* A previous sendto operation failed. It is only reported to the user if
+       * they asked for ICMP errors with UV_UDP_RECVERR, and it does not stop
+       * the handle from reading: unlike a genuine receive error, the socket
+       * remains usable. If zero-reading we need to call WSARecv/WSARecvFrom
+       * _without_ the. MSG_PEEK flag to clear out the error queue, which
+       * reports the error below. For nonzero reads, immediately queue a new
        * receive. */
       if (!(handle->flags & UV_HANDLE_ZERO_READ)) {
+        if ((handle->flags & UV_HANDLE_UDP_RECVERR) &&
+            (handle->flags & UV_HANDLE_READING)) {
+          buf = handle->recv_buffer;
+          handle->recv_cb(handle,
+                          uv_translate_sys_error(err),
+                          &buf,
+                          NULL,
+                          UV_UDP_RECVERR);
+        }
         goto done;
       }
     } else {
@@ -490,10 +505,19 @@ void uv__process_udp_recv_req(uv_loop_t* loop, uv_udp_t* handle,
           /* Kernel buffer empty */
           handle->recv_cb(handle, 0, &buf, NULL, 0);
         } else if (err == WSAECONNRESET || err == WSAENETRESET) {
-          /* WSAECONNRESET/WSANETRESET is ignored because this just indicates
-           * that a previous sendto operation failed.
+          /* WSAECONNRESET/WSAENETRESET just indicates that a previous sendto
+           * operation failed, so it is only reported to the user if they asked
+           * for ICMP errors with UV_UDP_RECVERR. Either way the handle keeps
+           * reading, because the socket itself is still usable.
            */
-          handle->recv_cb(handle, 0, &buf, NULL, 0);
+          if (handle->flags & UV_HANDLE_UDP_RECVERR)
+            handle->recv_cb(handle,
+                            uv_translate_sys_error(err),
+                            &buf,
+                            NULL,
+                            UV_UDP_RECVERR);
+          else
+            handle->recv_cb(handle, 0, &buf, NULL, 0);
         } else {
           /* Any other error that we want to report back to the user. */
           uv_udp_recv_stop(handle);
