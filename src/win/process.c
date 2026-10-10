@@ -931,6 +931,7 @@ int uv_spawn(uv_loop_t* loop,
 
   assert(options->file != NULL);
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
+                              UV_PROCESS_NOHUP |
                               UV_PROCESS_SETGID |
                               UV_PROCESS_SETUID |
                               UV_PROCESS_WINDOWS_FILE_PATH_EXACT_NAME |
