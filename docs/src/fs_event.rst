@@ -48,6 +48,12 @@ Data types
     The `events` parameter is an ORed mask of :c:enum:`uv_fs_event` elements.
 
 .. note::
+   On Windows, `filename` is `NULL` and `events` is ``UV_CHANGE`` when the
+   system's change buffer overflowed and changes were lost. Enumerate the
+   directory to find out what changed. The buffer holds 64 KB of change
+   records for a recursive watch and 4 KB for any other watch.
+
+.. note::
    For FreeBSD path could sometimes be `NULL` due to a kernel bug.
 
     .. _Reference: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=197695
