@@ -305,6 +305,8 @@ TEST_DECLARE   (pipe_close_stdout_read_stdin)
 #endif
 TEST_DECLARE   (pipe_set_non_blocking)
 TEST_DECLARE   (pipe_set_chmod)
+TEST_DECLARE   (pipe_write_reentrant)
+TEST_DECLARE   (pipe_write_reentrant_cancel)
 TEST_DECLARE   (pipe_write_trailing_empty_buf)
 TEST_DECLARE   (pipe_write_oom)
 TEST_DECLARE   (process_ref)
@@ -927,6 +929,8 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_getsockname_long_path)
   TEST_ENTRY  (pipe_pending_instances)
   TEST_ENTRY  (pipe_sendmsg)
+  TEST_ENTRY  (pipe_write_reentrant)
+  TEST_ENTRY  (pipe_write_reentrant_cancel)
   TEST_ENTRY  (pipe_write_trailing_empty_buf)
   TEST_ENTRY  (pipe_write_oom)
 
