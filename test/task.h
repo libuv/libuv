@@ -378,6 +378,16 @@ extern int snprintf(char*, size_t, const char*, ...);
 
 extern void notify_parent_process(void);
 
+/* Abort if the set of open file descriptors differs from the set that was open
+ * when the test process started. Called from MAKE_VALGRIND_HAPPY().
+ */
+extern void check_open_fds(void);
+
+/* Opt a test out of the check above. Only for tests that provably cannot clean
+ * up after themselves; say why at the call site.
+ */
+extern void disable_open_fds_check(void);
+
 /* Fully close a loop */
 static void close_walk_cb(uv_handle_t* handle, void* arg) {
   if (!uv_is_closing(handle))

@@ -372,6 +372,11 @@ int run_test_part(const char* test, const char* part) {
     if (strcmp(test, task->task_name) == 0 &&
         strcmp(part, task->process_name) == 0) {
       r = task->main();
+      /* uv_library_shutdown() closes the global signal lock pipe; it is a
+       * no-op if the test already ran MAKE_VALGRIND_HAPPY(). */
+      uv_library_shutdown();
+      if (r == TEST_OK)
+        check_open_fds();
       return r;
     }
   }
