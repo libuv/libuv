@@ -346,6 +346,14 @@ API
     available space. Other platforms will return `UV_ENOMEM` if they cannot
     allocate enough space to duplicate the contents of `title`.
 
+    .. note::
+        On macOS, setting a process title does not register the process with
+        LaunchServices by default. Processes already registered can still
+        update their LaunchServices display name. Set
+        `UV_PROCESS_TITLE_USE_LAUNCH_SERVICES=1` to enable the previous
+        registration behavior on each title update. This may notify other
+        LaunchServices clients on the system.
+
     .. versionchanged:: 1.18.1 now thread-safe on all supported platforms.
 
     .. versionchanged:: 1.39.0 now returns an error if `uv_setup_args` is needed

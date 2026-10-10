@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "task.h"
+#include <stdlib.h>
 #include <string.h>
 
 #ifdef __APPLE__
@@ -147,11 +148,90 @@ static CFStringRef (*cf_string_create)(CFAllocatorRef,
                                       const char*,
                                       CFStringEncoding);
 static void (*cf_release)(CFTypeRef);
+static void* (*cf_bundle_get_function_pointer_for_name)(CFBundleRef,
+                                                        CFStringRef);
 static CFStringRef cf_strings[7];
+static char cf_string_names[7][128];
 static unsigned int cf_create_calls;
 static unsigned int cf_string_count;
 static unsigned int cf_release_count;
 static unsigned int cf_fail_at;
+static unsigned int ls_get_asn_count;
+static unsigned int ls_checkin_count;
+static unsigned int ls_set_info_count;
+static int ls_asn_available;
+static OSStatus ls_set_info_status;
+static char* process_title_env_value;
+static const unsigned int ls_call_get_asn = 1;
+static const unsigned int ls_call_set_connection_status = 2;
+static const unsigned int ls_call_check_in = 3;
+static const unsigned int ls_call_set_info = 4;
+static unsigned int ls_call_order[5];
+static unsigned int ls_call_order_count;
+static int ls_checkin_tag;
+static uint64_t ls_connection_status;
+static void* ls_connection;
+static int ls_set_info_tag;
+static CFTypeRef ls_set_info_asn;
+static int ls_test_asn;
+static int ls_asn_available_after_checkin;
+
+
+static void record_ls_call(unsigned int call) {
+  if (ls_call_order_count < ARRAY_SIZE(ls_call_order))
+    ls_call_order[ls_call_order_count] = call;
+  ls_call_order_count++;
+}
+
+
+static char* tracked_getenv(const char* name) {
+  if (strcmp(name, "UV_PROCESS_TITLE_USE_LAUNCH_SERVICES") == 0)
+    return process_title_env_value;
+  return getenv(name);
+}
+
+
+static CFTypeRef tracked_ls_get_current_application_asn(void) {
+  record_ls_call(ls_call_get_asn);
+  ls_get_asn_count++;
+  return ls_asn_available ? (CFTypeRef) &ls_test_asn : NULL;
+}
+
+
+static CFDictionaryRef tracked_ls_application_check_in(int asn,
+                                                        CFDictionaryRef info) {
+  record_ls_call(ls_call_check_in);
+  ls_checkin_tag = asn;
+  (void) info;
+  ls_checkin_count++;
+  ls_asn_available = ls_asn_available_after_checkin;
+  return NULL;
+}
+
+
+static OSStatus tracked_ls_set_application_information_item(
+    int tag,
+    CFTypeRef asn,
+    CFStringRef key,
+    CFStringRef value,
+    CFDictionaryRef* dict) {
+  record_ls_call(ls_call_set_info);
+  ls_set_info_tag = tag;
+  ls_set_info_asn = asn;
+  (void) key;
+  (void) value;
+  (void) dict;
+  ls_set_info_count++;
+  return ls_set_info_status;
+}
+
+
+static void tracked_ls_set_connection_status(uint64_t status,
+                                             void* connection) {
+  record_ls_call(ls_call_set_connection_status);
+  ls_connection_status = status;
+  ls_connection = connection;
+}
 
 
 static CFStringRef tracked_cf_string_create(CFAllocatorRef allocator,
@@ -165,6 +245,9 @@ static CFStringRef tracked_cf_string_create(CFAllocatorRef allocator,
   result = cf_string_create(allocator, string, encoding);
   ASSERT_NOT_NULL(result);
   ASSERT_LT(cf_string_count, ARRAY_SIZE(cf_strings));
+  strncpy(cf_string_names[cf_string_count], string,
+          sizeof(cf_string_names[cf_string_count]) - 1);
+  cf_string_names[cf_string_count][sizeof(cf_string_names[0]) - 1] = '\0';
   cf_strings[cf_string_count++] = result;
   return result;
 }
@@ -184,6 +267,29 @@ static void tracked_cf_release(CFTypeRef object) {
 }
 
 
+static void* tracked_cf_bundle_get_function_pointer_for_name(
+    CFBundleRef bundle,
+    CFStringRef name) {
+  unsigned int i;
+
+  for (i = 0; i < cf_string_count; i++) {
+    if (cf_strings[i] != name)
+      continue;
+    if (strcmp(cf_string_names[i], "_LSGetCurrentApplicationASN") == 0)
+      return (void*) tracked_ls_get_current_application_asn;
+    if (strcmp(cf_string_names[i], "_LSApplicationCheckIn") == 0)
+      return (void*) tracked_ls_application_check_in;
+    if (strcmp(cf_string_names[i], "_LSSetApplicationInformationItem") == 0)
+      return (void*) tracked_ls_set_application_information_item;
+    if (strcmp(cf_string_names[i],
+               "_LSSetApplicationLaunchServicesServerConnectionStatus") == 0)
+      return (void*) tracked_ls_set_connection_status;
+  }
+
+  return cf_bundle_get_function_pointer_for_name(bundle, name);
+}
+
+
 static void* tracked_dlsym(void* handle, const char* symbol) {
   void* result;
 
@@ -198,32 +304,152 @@ static void* tracked_dlsym(void* handle, const char* symbol) {
     *(void**) &cf_release = result;
     return (void*) tracked_cf_release;
   }
+  if (strcmp(symbol, "CFBundleGetFunctionPointerForName") == 0) {
+    *(void**) &cf_bundle_get_function_pointer_for_name = result;
+    return (void*) tracked_cf_bundle_get_function_pointer_for_name;
+  }
   return result;
 }
 
 
 /* Track the helper's owned references, excluding framework-internal memory. */
 #define dlsym tracked_dlsym
+#define getenv tracked_getenv
 #define uv__set_process_title test_darwin_set_process_title
 #define uv__thread_setname uv_thread_setname
 #include "../src/unix/darwin-proctitle.c"
 #undef uv__thread_setname
 #undef uv__set_process_title
+#undef getenv
 #undef dlsym
+
+
+static void reset_process_title_darwin_test(int asn_available, char* opt_in) {
+  cf_create_calls = 0;
+  cf_string_count = 0;
+  cf_release_count = 0;
+  cf_fail_at = 0;
+  ls_get_asn_count = 0;
+  ls_checkin_count = 0;
+  ls_set_info_count = 0;
+  ls_call_order_count = 0;
+  ls_checkin_tag = 0;
+  ls_connection_status = 0;
+  ls_connection = NULL;
+  ls_set_info_tag = 0;
+  ls_set_info_asn = NULL;
+  ls_asn_available = asn_available;
+  ls_asn_available_after_checkin = 1;
+  ls_set_info_status = noErr;
+  process_title_env_value = opt_in;
+}
 #endif
+
+
+TEST_IMPL(process_title_darwin_launch_services) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  char thread_name[64];
+  uv_thread_t thread;
+  int err;
+
+  reset_process_title_darwin_test(0, NULL);
+  err = test_darwin_set_process_title("process title test");
+  ASSERT_EQ(ls_checkin_count, 0);
+  ASSERT_EQ(ls_set_info_count, 0);
+  ASSERT_EQ(err, UV_EBUSY);
+  ASSERT_EQ(ls_get_asn_count, 1);
+  ASSERT_EQ(ls_call_order_count, 1);
+  ASSERT_EQ(ls_call_order[0], ls_call_get_asn);
+  ASSERT_EQ(cf_string_count, cf_release_count);
+  thread = uv_thread_self();
+  ASSERT_OK(uv_thread_getname(&thread, thread_name, sizeof(thread_name)));
+  ASSERT_OK(strcmp(thread_name, "process title test"));
+
+  reset_process_title_darwin_test(0, "0");
+  err = test_darwin_set_process_title("process title test");
+  ASSERT_EQ(ls_checkin_count, 0);
+  ASSERT_EQ(ls_set_info_count, 0);
+  ASSERT_EQ(err, UV_EBUSY);
+  ASSERT_EQ(cf_string_count, cf_release_count);
+
+  reset_process_title_darwin_test(1, NULL);
+  err = test_darwin_set_process_title("process title test");
+  ASSERT_OK(err);
+  ASSERT_EQ(ls_checkin_count, 0);
+  ASSERT_EQ(ls_set_info_count, 1);
+  ASSERT_EQ(ls_call_order_count, 2);
+  ASSERT_EQ(ls_call_order[0], ls_call_get_asn);
+  ASSERT_EQ(ls_call_order[1], ls_call_set_info);
+  ASSERT_EQ(ls_set_info_tag, -2);
+  ASSERT_PTR_EQ(ls_set_info_asn, (CFTypeRef) &ls_test_asn);
+  ASSERT_EQ(cf_string_count, cf_release_count);
+
+  /* An ASN can exist before the process checks in with LaunchServices. */
+  reset_process_title_darwin_test(1, "1");
+  err = test_darwin_set_process_title("process title test");
+  ASSERT_EQ(ls_checkin_count, 1);
+  ASSERT_OK(err);
+  ASSERT_EQ(ls_set_info_count, 1);
+  ASSERT_EQ(ls_get_asn_count, 1);
+  ASSERT_EQ(cf_string_count, cf_release_count);
+
+  reset_process_title_darwin_test(1, NULL);
+  ls_set_info_status = -600;
+  err = test_darwin_set_process_title("process title fallback");
+  ASSERT_EQ(err, UV_EINVAL);
+  ASSERT_EQ(ls_checkin_count, 0);
+  ASSERT_EQ(ls_set_info_count, 1);
+  ASSERT_EQ(cf_string_count, cf_release_count);
+  ASSERT_OK(uv_thread_getname(&thread, thread_name, sizeof(thread_name)));
+  ASSERT_OK(strcmp(thread_name, "process title fallback"));
+
+  reset_process_title_darwin_test(0, "1");
+  err = test_darwin_set_process_title("process title test");
+  ASSERT_OK(err);
+  ASSERT_EQ(ls_checkin_count, 1);
+  ASSERT_EQ(ls_set_info_count, 1);
+  ASSERT_EQ(ls_call_order_count, 4);
+  ASSERT_EQ(ls_call_order[0], ls_call_set_connection_status);
+  ASSERT_EQ(ls_call_order[1], ls_call_check_in);
+  ASSERT_EQ(ls_call_order[2], ls_call_get_asn);
+  ASSERT_EQ(ls_call_order[3], ls_call_set_info);
+  ASSERT_EQ(ls_checkin_tag, -2);
+  ASSERT_EQ(ls_connection_status, 0);
+  ASSERT_NULL(ls_connection);
+  ASSERT_EQ(ls_set_info_tag, -2);
+  ASSERT_PTR_EQ(ls_set_info_asn, (CFTypeRef) &ls_test_asn);
+  ASSERT_EQ(cf_string_count, cf_release_count);
+
+  reset_process_title_darwin_test(0, "1");
+  ls_asn_available_after_checkin = 0;
+  err = test_darwin_set_process_title("process title test");
+  ASSERT_EQ(err, UV_EBUSY);
+  ASSERT_EQ(ls_checkin_count, 1);
+  ASSERT_EQ(ls_set_info_count, 0);
+  ASSERT_EQ(ls_call_order_count, 3);
+  ASSERT_EQ(ls_call_order[0], ls_call_set_connection_status);
+  ASSERT_EQ(ls_call_order[1], ls_call_check_in);
+  ASSERT_EQ(ls_call_order[2], ls_call_get_asn);
+  ASSERT_EQ(cf_string_count, cf_release_count);
+
+  return 0;
+#else
+  RETURN_SKIP("LaunchServices is only used for process titles on macOS.");
+#endif
+}
 
 
 TEST_IMPL(process_title_cf_strings) {
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
   unsigned int create_calls;
+  unsigned int fail_at;
   unsigned int i;
   int err;
 
   create_calls = ARRAY_SIZE(cf_strings);
-  for (cf_fail_at = 0; cf_fail_at <= create_calls; cf_fail_at++) {
-    cf_create_calls = 0;
-    cf_string_count = 0;
-    cf_release_count = 0;
+  for (fail_at = 0; fail_at <= create_calls; fail_at++) {
+    reset_process_title_darwin_test(0, "1");
+    cf_fail_at = fail_at;
     err = test_darwin_set_process_title("process title leak test");
     if (cf_fail_at != 0) {
       ASSERT_EQ(err, UV_ENOMEM);

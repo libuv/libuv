@@ -295,7 +295,7 @@ notification. Various applications can then react when a contact comes online
 or new hardware is detected. The MySQL server also runs a domain socket on
 which clients can interact with it.
 
-.. _D-BUS: https://www.freedesktop.org/wiki/Software/dbus
+.. _D-BUS: https://dbus.freedesktop.org/doc/dbus-specification.html
 
 When using domain sockets, a client-server pattern is usually followed with the
 creator/owner of the socket acting as the server. After the initial setup,
