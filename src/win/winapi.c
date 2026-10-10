@@ -29,6 +29,7 @@
 sRtlGetVersion pRtlGetVersion;
 sRtlNtStatusToDosError pRtlNtStatusToDosError;
 sNtDeviceIoControlFile pNtDeviceIoControlFile;
+sNtCreateFile pNtCreateFile;
 sNtQueryInformationFile pNtQueryInformationFile;
 sNtSetInformationFile pNtSetInformationFile;
 sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
@@ -65,6 +66,7 @@ void uv__winapi_init(void) {
     sRtlGetVersion pRtlGetVersion;
     sRtlNtStatusToDosError pRtlNtStatusToDosError;
     sNtDeviceIoControlFile pNtDeviceIoControlFile;
+    sNtCreateFile pNtCreateFile;
     sNtQueryInformationFile pNtQueryInformationFile;
     sNtSetInformationFile pNtSetInformationFile;
     sNtQueryVolumeInformationFile pNtQueryVolumeInformationFile;
@@ -96,6 +98,12 @@ void uv__winapi_init(void) {
   u.proc = GetProcAddress(ntdll_module, "NtDeviceIoControlFile");
   pNtDeviceIoControlFile = u.pNtDeviceIoControlFile;
   if (pNtDeviceIoControlFile == NULL) {
+    uv_fatal_error(GetLastError(), "GetProcAddress");
+  }
+
+  u.proc = GetProcAddress(ntdll_module, "NtCreateFile");
+  pNtCreateFile = u.pNtCreateFile;
+  if (pNtCreateFile == NULL) {
     uv_fatal_error(GetLastError(), "GetProcAddress");
   }
 

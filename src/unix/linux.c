@@ -1020,7 +1020,7 @@ int uv__iou_fs_open(uv_loop_t* loop, uv_fs_t* req) {
     return 0;
 
   sqe->addr = (uintptr_t) req->path;
-  sqe->fd = AT_FDCWD;
+  sqe->fd = req->file;
   sqe->len = req->mode;
   sqe->opcode = UV__IORING_OP_OPENAT;
   sqe->open_flags = req->flags | O_CLOEXEC;

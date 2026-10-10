@@ -441,6 +441,126 @@ static void uv__fs_req_init(uv_loop_t* loop,
 }
 
 
+/* CreateFileW(), with a relative path resolved against the directory open at
+ * dirfd rather than the cwd. NtCreateFile() looks the name up under the
+ * RootDirectory handle without Win32 path normalization, so "." and ".."
+ * components are not interpreted. */
+static HANDLE fs__create_file(int dirfd,
+                              WCHAR* path,
+                              DWORD access,
+                              DWORD share,
+                              DWORD disposition,
+                              DWORD flags) {
+  FILE_STANDARD_INFO info;
+  OBJECT_ATTRIBUTES attr;
+  UNICODE_STRING name;
+  IO_STATUS_BLOCK iosb;
+  NTSTATUS status;
+  HANDLE handle;
+  ULONG options;
+  WCHAR* p;
+  WCHAR* q;
+
+  if (dirfd == UV_FS_AT_FDCWD)
+    return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
+
+  if (path[0] == L'\0') {
+    SetLastError(ERROR_PATH_NOT_FOUND);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  /* A path that is not relative ignores dirfd, as on UNIX. Rooted (\foo) and
+   * drive-relative (C:foo) paths are classified as Win32 does and resolve
+   * like any other. */
+  if (IS_SLASH(path[0]) || path[1] == L':')
+    return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
+
+  handle = uv__get_osfhandle(dirfd);
+  if (handle == INVALID_HANDLE_VALUE) {
+    SetLastError(ERROR_INVALID_HANDLE);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  if (!GetFileInformationByHandleEx(handle,
+                                    FileStandardInfo,
+                                    &info,
+                                    sizeof info))
+    return INVALID_HANDLE_VALUE;
+
+  if (!info.Directory) {
+    SetLastError(ERROR_DIRECTORY);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  /* NtCreateFile() takes the name literally: only backslashes separate
+   * components and a run of them is an error. */
+  for (p = q = path; *p != L'\0'; p++) {
+    if (!IS_SLASH(*p))
+      *q++ = *p;
+    else if (!IS_SLASH(p[1]))
+      *q++ = L'\\';
+  }
+  *q = L'\0';
+
+  status = uv__RtlUnicodeStringInit(&name, path, q - path);
+  if (!NT_SUCCESS(status)) {
+    SetLastError(pRtlNtStatusToDosError(status));
+    return INVALID_HANDLE_VALUE;
+  }
+
+  attr.Length = sizeof(attr);
+  attr.RootDirectory = handle;
+  attr.ObjectName = &name;
+  attr.Attributes = OBJ_CASE_INSENSITIVE;
+  attr.SecurityDescriptor = NULL;
+  attr.SecurityQualityOfService = NULL;
+
+  switch (disposition) {
+  case CREATE_NEW:        disposition = FILE_CREATE;       break;
+  case CREATE_ALWAYS:     disposition = FILE_OVERWRITE_IF; break;
+  case OPEN_EXISTING:     disposition = FILE_OPEN;         break;
+  case OPEN_ALWAYS:       disposition = FILE_OPEN_IF;      break;
+  case TRUNCATE_EXISTING: disposition = FILE_OVERWRITE;    break;
+  }
+
+  options = FILE_SYNCHRONOUS_IO_NONALERT;
+  if (flags & FILE_FLAG_BACKUP_SEMANTICS)
+    options |= FILE_OPEN_FOR_BACKUP_INTENT;
+  else
+    options |= FILE_NON_DIRECTORY_FILE;
+  if (flags & FILE_FLAG_DELETE_ON_CLOSE)
+    options |= FILE_DELETE_ON_CLOSE;
+  if (flags & FILE_FLAG_NO_BUFFERING)
+    options |= FILE_NO_INTERMEDIATE_BUFFERING;
+  if (flags & FILE_FLAG_OPEN_REPARSE_POINT)
+    options |= FILE_OPEN_REPARSE_POINT;
+  if (flags & FILE_FLAG_RANDOM_ACCESS)
+    options |= FILE_RANDOM_ACCESS;
+  if (flags & FILE_FLAG_SEQUENTIAL_SCAN)
+    options |= FILE_SEQUENTIAL_ONLY;
+  if (flags & FILE_FLAG_WRITE_THROUGH)
+    options |= FILE_WRITE_THROUGH;
+
+  status = pNtCreateFile(&handle,
+                         access | SYNCHRONIZE | FILE_READ_ATTRIBUTES,
+                         &attr,
+                         &iosb,
+                         NULL,
+                         flags & 0xFFFF, /* FILE_ATTRIBUTE_* */
+                         share,
+                         disposition,
+                         options,
+                         NULL,
+                         0);
+  if (!NT_SUCCESS(status)) {
+    SetLastError(pRtlNtStatusToDosError(status));
+    return INVALID_HANDLE_VALUE;
+  }
+
+  return handle;
+}
+
+
 void fs__open(uv_fs_t* req) {
   DWORD access;
   DWORD share;
@@ -609,13 +729,12 @@ void fs__open(uv_fs_t* req) {
   /* Setting this flag makes it possible to open a directory. */
   attributes |= FILE_FLAG_BACKUP_SEMANTICS;
 
-  file = CreateFileW(req->file.pathw,
-                     access,
-                     share,
-                     NULL,
-                     disposition,
-                     attributes,
-                     NULL);
+  file = fs__create_file(req->fs.info.fd_out,
+                         req->file.pathw,
+                         access,
+                         share,
+                         disposition,
+                         attributes);
   if (file == INVALID_HANDLE_VALUE) {
     DWORD error = GetLastError();
     if (error == ERROR_FILE_EXISTS && (flags & UV_FS_O_CREAT) &&
@@ -623,8 +742,10 @@ void fs__open(uv_fs_t* req) {
       /* Special case: when ERROR_FILE_EXISTS happens and UV_FS_O_CREAT was
        * specified, it means the path referred to a directory. */
       SET_REQ_UV_ERROR(req, UV_EISDIR, error);
+    } else if (error == ERROR_DIRECTORY) {
+      SET_REQ_UV_ERROR(req, UV_ENOTDIR, error);
     } else {
-      SET_REQ_WIN32_ERROR(req, GetLastError());
+      SET_REQ_WIN32_ERROR(req, error);
     }
     return;
   }
@@ -3267,6 +3388,12 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
 
 int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     int mode, uv_fs_cb cb) {
+  return uv_fs_openat(loop, req, UV_FS_AT_FDCWD, path, flags, mode, cb);
+}
+
+
+int uv_fs_openat(uv_loop_t* loop, uv_fs_t* req, uv_file dirfd,
+    const char* path, int flags, int mode, uv_fs_cb cb) {
   int err;
 
   INIT(UV_FS_OPEN);
@@ -3276,6 +3403,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     return req->result;
   }
 
+  req->fs.info.fd_out = dirfd;
   req->fs.info.file_flags = flags;
   req->fs.info.mode = mode;
   POST;
