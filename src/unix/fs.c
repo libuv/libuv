@@ -57,6 +57,8 @@
 
 #if defined(__APPLE__)
 # include <sys/sysctl.h>
+# include <sys/attr.h>
+# include <sys/clonefile.h>
 #elif defined(__linux__) && !defined(FICLONE)
 # include <sys/ioctl.h>
 # define FICLONE _IOW(0x94, 9, int)
@@ -1273,6 +1275,26 @@ static int uv__fs_copyfile(uv_fs_t* req) {
     err = UV__ERR(errno);
     goto out;
   }
+
+#if defined(__APPLE__)
+  /* clonefileat() clones an entire directory tree instead of failing, so
+   * skip it for directory sources and let the generic path below report
+   * the appropriate error. */
+  if (!S_ISDIR(src_statsbuf.st_mode) &&
+      (req->flags & (UV_FS_COPYFILE_FICLONE_FORCE |
+                     UV_FS_COPYFILE_FICLONE))) {
+    if (fclonefileat(srcfd, AT_FDCWD, req->new_path, 0) == 0)
+      goto out;
+
+    /* If cloning is required, return the error to the caller.
+     * Note that unlike Linux's FICLONE ioctl, fclonefileat() does not
+     * overwrite an existing destination and fails with EEXIST instead. */
+    if (req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+      err = UV__ERR(errno);
+      goto out;
+    }
+  }
+#endif
 
   dst_flags = O_WRONLY | O_CREAT;
 
