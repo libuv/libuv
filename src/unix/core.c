@@ -1594,13 +1594,19 @@ fail:
 
 
 int uv_os_getenv(const char* name, char* buffer, size_t* size) {
-  char* var;
   size_t len;
+  char* var;
+  int err;
 
   if (name == NULL || buffer == NULL || size == NULL || *size == 0)
     return UV_EINVAL;
 
+#ifdef __APPLE__
+  extern char* getenv_copy_np(const char*);
+  var = getenv_copy_np(name);
+#else
   var = getenv(name);
+#endif
 
   if (var == NULL)
     return UV_ENOENT;
@@ -1609,13 +1615,17 @@ int uv_os_getenv(const char* name, char* buffer, size_t* size) {
 
   if (len >= *size) {
     *size = len + 1;
-    return UV_ENOBUFS;
+    err = UV_ENOBUFS;
+  } else {
+    memcpy(buffer, var, len + 1);
+    *size = len;
+    err = 0;
   }
 
-  memcpy(buffer, var, len + 1);
-  *size = len;
-
-  return 0;
+#ifdef __APPLE__
+  free(var);
+#endif
+  return err;
 }
 
 
