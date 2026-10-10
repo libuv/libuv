@@ -40,3 +40,5 @@ int snprintf(char* buf, size_t len, const char* fmt, ...) {
 }
 
 #endif
+
+typedef int file_has_no_tests; /* ISO C forbids an empty translation unit. */
