@@ -438,7 +438,11 @@ struct uv__iou {
   size_t sqelen;
   int ringfd;
   uint32_t in_flight;
+  uint16_t personality;
+  unsigned personality_index;
 };
+
+void uv__credentials_changed(void);
 #endif  /* __linux__ */
 
 struct uv__loop_internal_fields_s {
