@@ -382,9 +382,25 @@ int uv_tcp_getsockname(const uv_tcp_t* handle,
 int uv_tcp_getpeername(const uv_tcp_t* handle,
                        struct sockaddr* name,
                        int* namelen) {
+  struct sockaddr_storage* pss;
+  int len;
 
   if (handle->delayed_error)
     return handle->delayed_error;
+
+  pss = handle->u.reserved[UV_ACCEPT_SOCKADDR_FIELD];
+  if (pss != NULL) {
+    len = sizeof(*pss);
+    if (pss->ss_family == AF_INET)
+      len = sizeof(struct sockaddr_in);
+    else if (pss->ss_family == AF_INET6)
+      len = sizeof(struct sockaddr_in6);
+    if (len > *namelen)
+      len = *namelen;
+    memcpy(name, pss, len);
+    *namelen = len;
+    return 0;
+  }
 
   return uv__getsockpeername((const uv_handle_t*) handle,
                              getpeername,

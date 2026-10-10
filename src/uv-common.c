@@ -82,6 +82,8 @@ void* uv__malloc(size_t size) {
 void uv__free(void* ptr) {
   int saved_errno;
 
+  if (ptr == NULL)
+    return;
   /* Libuv expects that free() does not clobber errno.  The system allocator
    * honors that assumption but custom allocators may not be so careful.
    */

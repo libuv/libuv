@@ -424,6 +424,12 @@ int uv_pipe_getsockname(const uv_pipe_t* handle, char* buffer, size_t* size) {
 
 
 int uv_pipe_getpeername(const uv_pipe_t* handle, char* buffer, size_t* size) {
+  /* TODO(bnoordhuis) handle->u.reserved[UV_ACCEPT_SOCKADDR_FIELD] contains
+   * the peer name when `loop->flags & UV_LOOP_ENABLE_ACCEPT_SOCKADDR` but
+   * we have to post-process the sockaddr_storage it points to. Tricky in
+   * the case of abstract Linux sockets because we don't store the addrlen
+   * when recording the peer address.
+   */
   return uv__pipe_getsockpeername(handle, getpeername, buffer, size);
 }
 
