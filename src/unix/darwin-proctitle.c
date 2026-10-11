@@ -31,7 +31,19 @@
 
 #if !TARGET_OS_IPHONE
 #include "darwin-stub.h"
+
+static int process_title_use_launch_services = 1;
 #endif
+
+void uv__process_title_init(void) {
+#if !TARGET_OS_IPHONE
+  const char* value;
+
+  value = getenv("UV_PROCESS_TITLE_USE_LAUNCH_SERVICES");
+  process_title_use_launch_services = value == NULL || strcmp(value, "0") != 0;
+#endif
+}
+
 
 int uv__set_process_title(const char* title) {
 #if TARGET_OS_IPHONE
@@ -61,9 +73,11 @@ int uv__set_process_title(const char* title) {
                                                                 void*);
   CFTypeRef asn;
   CFStringRef string;
-  const char* process_title_opt_in;
   OSStatus status;
   int err;
+
+  if (!process_title_use_launch_services)
+    return uv__thread_setname(title);
 
   err = UV_ENOENT;
   application_services_handle = dlopen("/System/Library/Frameworks/"
@@ -124,49 +138,44 @@ int uv__set_process_title(const char* title) {
   if (pLSGetCurrentApplicationASN == NULL)
     goto out;
 
-  process_title_opt_in = getenv("UV_PROCESS_TITLE_USE_LAUNCH_SERVICES");
-  if (process_title_opt_in != NULL &&
-      strcmp(process_title_opt_in, "1") == 0) {
-    err = UV_ENOENT;
-    *(void **)(&pCFBundleGetInfoDictionary) = dlsym(core_foundation_handle,
-                                       "CFBundleGetInfoDictionary");
-    *(void **)(&pCFBundleGetMainBundle) = dlsym(core_foundation_handle,
-                                   "CFBundleGetMainBundle");
-    if (pCFBundleGetInfoDictionary == NULL || pCFBundleGetMainBundle == NULL)
-      goto out;
+  *(void **)(&pCFBundleGetInfoDictionary) = dlsym(core_foundation_handle,
+                                     "CFBundleGetInfoDictionary");
+  *(void **)(&pCFBundleGetMainBundle) = dlsym(core_foundation_handle,
+                                 "CFBundleGetMainBundle");
+  if (pCFBundleGetInfoDictionary == NULL || pCFBundleGetMainBundle == NULL)
+    goto out;
 
-    string = S("_LSApplicationCheckIn");
-    if (string == NULL) {
-      err = UV_ENOMEM;
-      goto out;
-    }
-
-    *(void **)(&pLSApplicationCheckIn) =
-        pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
-    U(string);
-
-    if (pLSApplicationCheckIn == NULL)
-      goto out;
-
-    string = S("_LSSetApplicationLaunchServicesServerConnectionStatus");
-    if (string == NULL) {
-      err = UV_ENOMEM;
-      goto out;
-    }
-
-    *(void **)(&pLSSetApplicationLaunchServicesServerConnectionStatus) =
-        pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
-    U(string);
-
-    if (pLSSetApplicationLaunchServicesServerConnectionStatus == NULL)
-      goto out;
-
-    pLSSetApplicationLaunchServicesServerConnectionStatus(0, NULL);
-
-    /* Check into process manager?! */
-    pLSApplicationCheckIn(-2,
-                          pCFBundleGetInfoDictionary(pCFBundleGetMainBundle()));
+  string = S("_LSApplicationCheckIn");
+  if (string == NULL) {
+    err = UV_ENOMEM;
+    goto out;
   }
+
+  *(void **)(&pLSApplicationCheckIn) =
+      pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
+  U(string);
+
+  if (pLSApplicationCheckIn == NULL)
+    goto out;
+
+  string = S("_LSSetApplicationLaunchServicesServerConnectionStatus");
+  if (string == NULL) {
+    err = UV_ENOMEM;
+    goto out;
+  }
+
+  *(void **)(&pLSSetApplicationLaunchServicesServerConnectionStatus) =
+      pCFBundleGetFunctionPointerForName(launch_services_bundle, string);
+  U(string);
+
+  if (pLSSetApplicationLaunchServicesServerConnectionStatus == NULL)
+    goto out;
+
+  pLSSetApplicationLaunchServicesServerConnectionStatus(0, NULL);
+
+  /* Check into process manager?! */
+  pLSApplicationCheckIn(-2,
+                        pCFBundleGetInfoDictionary(pCFBundleGetMainBundle()));
 
   asn = pLSGetCurrentApplicationASN();
   err = UV_EBUSY;

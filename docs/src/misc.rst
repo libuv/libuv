@@ -347,12 +347,14 @@ API
     allocate enough space to duplicate the contents of `title`.
 
     .. note::
-        On macOS, setting a process title does not register the process with
-        LaunchServices by default. Processes already registered can still
-        update their LaunchServices display name. Set
-        `UV_PROCESS_TITLE_USE_LAUNCH_SERVICES=1` to enable the previous
-        registration behavior on each title update. This may notify other
-        LaunchServices clients on the system.
+        On macOS, setting a process title registers the process with
+        LaunchServices by default, which may notify other LaunchServices
+        clients. Set `UV_PROCESS_TITLE_USE_LAUNCH_SERVICES=0` before calling
+        `uv_setup_args` to stop libuv from using LaunchServices for process
+        titles; libuv then only updates its stored title and the calling
+        thread's name. Any other value, or leaving it unset, keeps the default.
+        The setting is captured by `uv_setup_args`; later environment changes
+        do not affect title updates.
 
     .. versionchanged:: 1.18.1 now thread-safe on all supported platforms.
 

@@ -162,6 +162,7 @@ static unsigned int ls_set_info_count;
 static int ls_asn_available;
 static OSStatus ls_set_info_status;
 static char* process_title_env_value;
+static unsigned int process_title_getenv_count;
 static const unsigned int ls_call_get_asn = 1;
 static const unsigned int ls_call_set_connection_status = 2;
 static const unsigned int ls_call_check_in = 3;
@@ -185,8 +186,10 @@ static void record_ls_call(unsigned int call) {
 
 
 static char* tracked_getenv(const char* name) {
-  if (strcmp(name, "UV_PROCESS_TITLE_USE_LAUNCH_SERVICES") == 0)
+  if (strcmp(name, "UV_PROCESS_TITLE_USE_LAUNCH_SERVICES") == 0) {
+    process_title_getenv_count++;
     return process_title_env_value;
+  }
   return getenv(name);
 }
 
@@ -315,16 +318,18 @@ static void* tracked_dlsym(void* handle, const char* symbol) {
 /* Track the helper's owned references, excluding framework-internal memory. */
 #define dlsym tracked_dlsym
 #define getenv tracked_getenv
+#define uv__process_title_init test_darwin_process_title_init
 #define uv__set_process_title test_darwin_set_process_title
 #define uv__thread_setname uv_thread_setname
 #include "../src/unix/darwin-proctitle.c"
 #undef uv__thread_setname
 #undef uv__set_process_title
+#undef uv__process_title_init
 #undef getenv
 #undef dlsym
 
 
-static void reset_process_title_darwin_test(int asn_available, char* opt_in) {
+static void reset_process_title_darwin_test(int asn_available, char* value) {
   cf_create_calls = 0;
   cf_string_count = 0;
   cf_release_count = 0;
@@ -341,7 +346,9 @@ static void reset_process_title_darwin_test(int asn_available, char* opt_in) {
   ls_asn_available = asn_available;
   ls_asn_available_after_checkin = 1;
   ls_set_info_status = noErr;
-  process_title_env_value = opt_in;
+  process_title_env_value = value;
+  process_title_getenv_count = 0;
+  test_darwin_process_title_init();
 }
 #endif
 
@@ -354,32 +361,54 @@ TEST_IMPL(process_title_darwin_launch_services) {
 
   reset_process_title_darwin_test(0, NULL);
   err = test_darwin_set_process_title("process title test");
-  ASSERT_EQ(ls_checkin_count, 0);
-  ASSERT_EQ(ls_set_info_count, 0);
-  ASSERT_EQ(err, UV_EBUSY);
+  ASSERT_EQ(ls_checkin_count, 1);
+  ASSERT_EQ(ls_set_info_count, 1);
+  ASSERT_OK(err);
   ASSERT_EQ(ls_get_asn_count, 1);
-  ASSERT_EQ(ls_call_order_count, 1);
-  ASSERT_EQ(ls_call_order[0], ls_call_get_asn);
+  ASSERT_EQ(ls_call_order_count, 4);
+  ASSERT_EQ(ls_call_order[0], ls_call_set_connection_status);
+  ASSERT_EQ(ls_call_order[1], ls_call_check_in);
+  ASSERT_EQ(ls_call_order[2], ls_call_get_asn);
+  ASSERT_EQ(ls_call_order[3], ls_call_set_info);
   ASSERT_EQ(cf_string_count, cf_release_count);
   thread = uv_thread_self();
   ASSERT_OK(uv_thread_getname(&thread, thread_name, sizeof(thread_name)));
   ASSERT_OK(strcmp(thread_name, "process title test"));
 
   reset_process_title_darwin_test(0, "0");
+  /* Changing the environment after initialization must not enable check-in. */
+  process_title_env_value = "1";
   err = test_darwin_set_process_title("process title test");
   ASSERT_EQ(ls_checkin_count, 0);
   ASSERT_EQ(ls_set_info_count, 0);
-  ASSERT_EQ(err, UV_EBUSY);
+  ASSERT_OK(err);
+  ASSERT_EQ(ls_get_asn_count, 0);
+  ASSERT_EQ(process_title_getenv_count, 1);
   ASSERT_EQ(cf_string_count, cf_release_count);
 
+  reset_process_title_darwin_test(1, "0");
+  err = test_darwin_set_process_title("process title opted out");
+  ASSERT_OK(err);
+  ASSERT_EQ(ls_get_asn_count, 0);
+  ASSERT_EQ(ls_checkin_count, 0);
+  ASSERT_EQ(ls_set_info_count, 0);
+  ASSERT_EQ(cf_string_count, 0);
+  ASSERT_OK(uv_thread_getname(&thread, thread_name, sizeof(thread_name)));
+  ASSERT_OK(strcmp(thread_name, "process title opted out"));
+
   reset_process_title_darwin_test(1, NULL);
+  /* Nor should a later change disable the default registration behavior. */
+  process_title_env_value = "0";
   err = test_darwin_set_process_title("process title test");
   ASSERT_OK(err);
-  ASSERT_EQ(ls_checkin_count, 0);
+  ASSERT_EQ(ls_checkin_count, 1);
+  ASSERT_EQ(process_title_getenv_count, 1);
   ASSERT_EQ(ls_set_info_count, 1);
-  ASSERT_EQ(ls_call_order_count, 2);
-  ASSERT_EQ(ls_call_order[0], ls_call_get_asn);
-  ASSERT_EQ(ls_call_order[1], ls_call_set_info);
+  ASSERT_EQ(ls_call_order_count, 4);
+  ASSERT_EQ(ls_call_order[0], ls_call_set_connection_status);
+  ASSERT_EQ(ls_call_order[1], ls_call_check_in);
+  ASSERT_EQ(ls_call_order[2], ls_call_get_asn);
+  ASSERT_EQ(ls_call_order[3], ls_call_set_info);
   ASSERT_EQ(ls_set_info_tag, -2);
   ASSERT_PTR_EQ(ls_set_info_asn, (CFTypeRef) &ls_test_asn);
   ASSERT_EQ(cf_string_count, cf_release_count);
@@ -397,7 +426,7 @@ TEST_IMPL(process_title_darwin_launch_services) {
   ls_set_info_status = -600;
   err = test_darwin_set_process_title("process title fallback");
   ASSERT_EQ(err, UV_EINVAL);
-  ASSERT_EQ(ls_checkin_count, 0);
+  ASSERT_EQ(ls_checkin_count, 1);
   ASSERT_EQ(ls_set_info_count, 1);
   ASSERT_EQ(cf_string_count, cf_release_count);
   ASSERT_OK(uv_thread_getname(&thread, thread_name, sizeof(thread_name)));

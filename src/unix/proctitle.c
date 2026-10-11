@@ -90,6 +90,10 @@ char** uv_setup_args(int argc, char** argv) {
   args_mem = new_argv;
   process_title = pt;
 
+#ifdef __APPLE__
+  uv__process_title_init();
+#endif
+
   return new_argv;
 }
 
