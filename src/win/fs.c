@@ -444,7 +444,10 @@ static void uv__fs_req_init(uv_loop_t* loop,
 /* CreateFileW(), with a relative path resolved against the directory open at
  * dirfd rather than the cwd. NtCreateFile() looks the name up under the
  * RootDirectory handle without Win32 path normalization, so "." and ".."
- * components are not interpreted. */
+ * components are not interpreted.
+ *
+ * Modifies `path` in place: slashes are rewritten to backslashes and runs of
+ * slashes collapsed, which NtCreateFile() requires. */
 static HANDLE fs__create_file(int dirfd,
                               WCHAR* path,
                               DWORD access,

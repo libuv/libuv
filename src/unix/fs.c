@@ -89,8 +89,12 @@ extern char *mkdtemp(char *template); /* See issue #740 on AIX < 7 */
 
 #if defined(__MVS__)
 /* No openat(). Only dirfd == UV_FS_AT_FDCWD is supported. */
-# define openat(d, p, f, m)                                                   \
-    ((d) == UV_FS_AT_FDCWD ? open(p, f, m) : (errno = ENOSYS, -1))
+static int openat(int dirfd, const char* path, int flags, int mode) {
+  if (dirfd == UV_FS_AT_FDCWD)
+    return open(path, flags, mode);
+  errno = ENOSYS;
+  return -1;
+}
 #endif
 
 #define INIT(subtype)                                                         \

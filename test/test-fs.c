@@ -3491,6 +3491,8 @@ static void fs_file_open_append(int add_flags) {
   /* Cleanup */
   unlink("test_file");
 }
+
+
 TEST_FS_IMPL(fs_openat) {
   char cwd[PATHMAX];
   char path[PATHMAX + 32];
