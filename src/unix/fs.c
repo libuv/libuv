@@ -2281,9 +2281,11 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
   if (req->fs_type == UV_FS_SCANDIR && req->ptr != NULL)
     uv__fs_scandir_cleanup(req);
 
-  if (req->bufs != req->bufsml)
-    uv__free(req->bufs);
-  req->bufs = NULL;
+if (req->bufs && req->bufs != req->bufsml) {
+  uv__free(req->bufs);
+}
+req->bufs = NULL;
+
 
   if (req->fs_type != UV_FS_OPENDIR &&
       req->fs_type != UV_FS_CLOSEDIR &&
