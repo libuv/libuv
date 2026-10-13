@@ -249,16 +249,23 @@ API
     With `dirfd` set to ``UV_FS_AT_FDCWD`` this function is identical to
     :c:func:`uv_fs_open`.
 
+    `dirfd` is a starting point, not a boundary: an absolute `path`, a
+    ``..`` component or a symbolic link can all resolve to a file outside
+    the directory.
+
     `dirfd` must remain open until the request completes. A `dirfd` that is
     not open fails with ``UV_EBADF``; one that is not a directory fails with
     ``UV_ENOTDIR``.
 
     .. note::
         On Windows a relative `path` is resolved by `NtCreateFile` under the
-        directory handle, without Win32 path normalization: ``.`` and ``..``
-        components are not interpreted. Forward slashes are accepted. Any
-        path that is not relative, including a rooted (``\foo``) or
-        drive-relative (``C:foo``) one, ignores `dirfd`.
+        directory handle. The path is normalized as `CreateFileW` would:
+        forward slashes are accepted, ``.`` and ``..`` components are
+        resolved textually, and trailing dots and spaces are stripped from
+        each component. A ``..`` that would climb above `dirfd`, a DOS device
+        name such as ``NUL``, a rooted path (``\foo``) or a drive-relative
+        path (``C:foo``) fails with ``UV_EINVAL``. Only a fully qualified
+        path (``C:\foo``, ``\\server\share\foo``) ignores `dirfd`.
 
     .. note::
         z/OS: only ``UV_FS_AT_FDCWD`` is supported. Any other `dirfd` fails

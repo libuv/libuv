@@ -441,13 +441,97 @@ static void uv__fs_req_init(uv_loop_t* loop,
 }
 
 
-/* CreateFileW(), with a relative path resolved against the directory open at
- * dirfd rather than the cwd. NtCreateFile() looks the name up under the
- * RootDirectory handle without Win32 path normalization, so "." and ".."
- * components are not interpreted.
+/* CON, PRN, AUX, NUL, COM1-9 and LPT1-9, ignoring an extension and trailing
+ * spaces, as Win32 classifies them. */
+static int fs__is_dos_device_name(const WCHAR* s, size_t len) {
+  size_t n;
+
+  n = 0;
+  while (n < len && s[n] != L'.')
+    n++;
+  while (n > 0 && s[n - 1] == L' ')
+    n--;
+
+  if (n == 3)
+    return _wcsnicmp(s, L"CON", 3) == 0 || _wcsnicmp(s, L"PRN", 3) == 0 ||
+           _wcsnicmp(s, L"AUX", 3) == 0 || _wcsnicmp(s, L"NUL", 3) == 0;
+
+  if (n == 4 && s[3] >= L'1' && s[3] <= L'9')
+    return _wcsnicmp(s, L"COM", 3) == 0 || _wcsnicmp(s, L"LPT", 3) == 0;
+
+  return 0;
+}
+
+
+/* NtCreateFile() looks a name up under RootDirectory literally, so the Win32
+ * normalization CreateFileW() would have applied is done here, in place:
+ * separators become single backslashes, "." and ".." components are resolved
+ * as text, and trailing dots and spaces are stripped from each component. A
+ * trailing separator is kept.
  *
- * Modifies `path` in place: slashes are rewritten to backslashes and runs of
- * slashes collapsed, which NtCreateFile() requires. */
+ * Returns the new length, or -1 with the last error set, for a ".." that
+ * would climb above the root, a component that is empty once stripped, or a
+ * DOS device name, none of which Win32 can express in a directory. */
+static int fs__normalize_at_path(WCHAR* path) {
+  WCHAR* start;
+  WCHAR* name;
+  WCHAR* end;
+  WCHAR* p;
+  WCHAR* q;
+
+  p = path;
+  q = path;
+  for (;;) {
+    while (IS_SLASH(*p))
+      p++;
+    if (*p == L'\0')
+      break;
+
+    start = q;
+    if (q > path)
+      *q++ = L'\\';
+    name = q;
+    while (*p != L'\0' && !IS_SLASH(*p))
+      *q++ = *p++;
+    end = q;
+    while (q > name && (q[-1] == L'.' || q[-1] == L' '))
+      q--;
+
+    if (q > name) {
+      if (fs__is_dos_device_name(name, q - name))
+        goto invalid;
+      continue;
+    }
+
+    /* Only dots and spaces: ".", ".." or a name Win32 would strip to
+     * nothing. */
+    q = start;
+    if (end - name == 1 && name[0] == L'.')
+      continue;
+    if (end - name != 2 || name[0] != L'.' || name[1] != L'.')
+      goto invalid;
+    if (q == path)
+      goto invalid;
+    while (q > path && q[-1] != L'\\')
+      q--;
+    if (q > path)
+      q--;
+  }
+
+  if (q > path && IS_SLASH(p[-1]))
+    *q++ = L'\\';
+  *q = L'\0';
+  return q - path;
+
+invalid:
+  SetLastError(ERROR_INVALID_PARAMETER);
+  return -1;
+}
+
+
+/* CreateFileW(), with a relative path resolved against the directory open at
+ * dirfd rather than the cwd. Modifies `path` in place, see
+ * fs__normalize_at_path(). */
 static HANDLE fs__create_file(int dirfd,
                               WCHAR* path,
                               DWORD access,
@@ -461,8 +545,7 @@ static HANDLE fs__create_file(int dirfd,
   NTSTATUS status;
   HANDLE handle;
   ULONG options;
-  WCHAR* p;
-  WCHAR* q;
+  int len;
 
   if (dirfd == UV_FS_AT_FDCWD)
     return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
@@ -472,11 +555,19 @@ static HANDLE fs__create_file(int dirfd,
     return INVALID_HANDLE_VALUE;
   }
 
-  /* A path that is not relative ignores dirfd, as on UNIX. Rooted (\foo) and
-   * drive-relative (C:foo) paths are classified as Win32 does and resolve
-   * like any other. */
-  if (IS_SLASH(path[0]) || path[1] == L':')
+  /* A fully qualified path (C:\foo, \\server\share, \\?\...) ignores dirfd,
+   * as an absolute path does on UNIX. */
+  if ((IS_SLASH(path[0]) && IS_SLASH(path[1])) ||
+      (path[1] == L':' && IS_SLASH(path[2])))
     return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
+
+  /* A rooted (\foo) or drive-relative (C:foo) path resolves against the
+   * process-wide current drive or per-drive directory, which has no meaning
+   * relative to dirfd. */
+  if (IS_SLASH(path[0]) || path[1] == L':') {
+    SetLastError(ERROR_INVALID_PARAMETER);
+    return INVALID_HANDLE_VALUE;
+  }
 
   handle = uv__get_osfhandle(dirfd);
   if (handle == INVALID_HANDLE_VALUE) {
@@ -495,17 +586,11 @@ static HANDLE fs__create_file(int dirfd,
     return INVALID_HANDLE_VALUE;
   }
 
-  /* NtCreateFile() takes the name literally: only backslashes separate
-   * components and a run of them is an error. */
-  for (p = q = path; *p != L'\0'; p++) {
-    if (!IS_SLASH(*p))
-      *q++ = *p;
-    else if (!IS_SLASH(p[1]))
-      *q++ = L'\\';
-  }
-  *q = L'\0';
+  len = fs__normalize_at_path(path);
+  if (len < 0)
+    return INVALID_HANDLE_VALUE;
 
-  status = uv__RtlUnicodeStringInit(&name, path, q - path);
+  status = uv__RtlUnicodeStringInit(&name, path, len);
   if (!NT_SUCCESS(status)) {
     SetLastError(pRtlNtStatusToDosError(status));
     return INVALID_HANDLE_VALUE;

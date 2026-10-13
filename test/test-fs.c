@@ -481,6 +481,22 @@ static void openat_cb(uv_fs_t* req) {
 }
 
 
+/* Opens and closes, returning 0 or the open error. */
+static int openat_sync(uv_file dirfd, const char* path, int flags) {
+  uv_fs_t req;
+  int r;
+
+  r = uv_fs_openat(NULL, &req, dirfd, path, flags, 0, NULL);
+  uv_fs_req_cleanup(&req);
+  if (r < 0)
+    return r;
+
+  ASSERT_OK(uv_fs_close(NULL, &req, r, NULL));
+  uv_fs_req_cleanup(&req);
+  return 0;
+}
+
+
 static void open_cb_simple(uv_fs_t* req) {
   uv_fs_t close_req;
 
@@ -3585,13 +3601,74 @@ TEST_FS_IMPL(fs_openat) {
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
 
-  r = uv_fs_openat(NULL, &req, dirfd, "sub//file", UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_OK(openat_sync(dirfd, "sub//file", UV_FS_O_RDONLY));
+
+  /* "." and ".." components. */
+  ASSERT_OK(openat_sync(dirfd, "./file", UV_FS_O_RDONLY));
+  ASSERT_OK(openat_sync(dirfd, "sub/../file", UV_FS_O_RDONLY));
+  ASSERT_OK(openat_sync(dirfd, ".", UV_FS_O_RDONLY | UV_FS_O_DIRECTORY));
+  ASSERT_OK(openat_sync(dirfd, "sub/..", UV_FS_O_RDONLY | UV_FS_O_DIRECTORY));
+
+  /* A trailing slash requires a directory. */
+  ASSERT_OK(openat_sync(dirfd, "sub/", UV_FS_O_RDONLY | UV_FS_O_DIRECTORY));
+  r = openat_sync(dirfd, "file/", UV_FS_O_RDONLY);
+#ifdef _WIN32
+  ASSERT_EQ(r, UV_ENOENT);
+#else
+  ASSERT_EQ(r, UV_ENOTDIR);
+#endif
+
+  /* ".." above dirfd escapes it on UNIX; Windows cannot express that
+   * relative to a directory handle. */
+  r = uv_fs_openat(NULL, &req, dirfd, "sub",
+                   UV_FS_O_RDONLY | UV_FS_O_DIRECTORY, 0, NULL);
   ASSERT_GE(r, 0);
+  fd = r;
   uv_fs_req_cleanup(&req);
 
-  r = uv_fs_close(NULL, &req, r, NULL);
+  r = openat_sync(fd, "../file", UV_FS_O_RDONLY);
+#ifdef _WIN32
+  ASSERT_EQ(r, UV_EINVAL);
+  ASSERT_EQ(openat_sync(fd, "..", UV_FS_O_RDONLY), UV_EINVAL);
+#else
+  ASSERT_OK(r);
+  ASSERT_OK(openat_sync(fd, "..", UV_FS_O_RDONLY | UV_FS_O_DIRECTORY));
+#endif
+
+  r = uv_fs_close(NULL, &req, fd, NULL);
   ASSERT_OK(r);
   uv_fs_req_cleanup(&req);
+
+#ifdef _WIN32
+  /* Win32 normalization that NtCreateFile() does not apply itself. */
+  ASSERT_OK(openat_sync(dirfd, "file.", UV_FS_O_RDONLY));
+  ASSERT_OK(openat_sync(dirfd, "file ", UV_FS_O_RDONLY));
+  ASSERT_OK(openat_sync(dirfd, "FILE", UV_FS_O_RDONLY));
+  ASSERT_EQ(openat_sync(dirfd, "...", UV_FS_O_RDONLY), UV_EINVAL);
+  ASSERT_EQ(openat_sync(dirfd, "NUL", UV_FS_O_RDONLY), UV_EINVAL);
+  ASSERT_EQ(openat_sync(dirfd, "nul.txt", UV_FS_O_WRONLY | UV_FS_O_CREAT),
+            UV_EINVAL);
+  ASSERT_EQ(openat_sync(dirfd, "com1", UV_FS_O_RDONLY), UV_EINVAL);
+  ASSERT_EQ(openat_sync(dirfd, "sub/NUL", UV_FS_O_RDONLY), UV_EINVAL);
+
+  /* Rooted and drive-relative paths depend on process state. */
+  ASSERT_EQ(openat_sync(dirfd, "\\file", UV_FS_O_RDONLY), UV_EINVAL);
+  ASSERT_EQ(openat_sync(dirfd, "C:file", UV_FS_O_RDONLY), UV_EINVAL);
+  ASSERT_EQ(openat_sync(dirfd, "a:b", UV_FS_O_RDONLY), UV_EINVAL);
+#else
+  r = uv_fs_symlink(NULL, &req, "file", "test_dir/link", 0, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_OK(openat_sync(dirfd, "link", UV_FS_O_RDONLY));
+  /* ELOOP on Linux and macOS, EMLINK on FreeBSD, EFTYPE on NetBSD. */
+  r = openat_sync(dirfd, "link", UV_FS_O_RDONLY | UV_FS_O_NOFOLLOW);
+  ASSERT(r == UV_ELOOP || r == UV_EMLINK || r == UV_EFTYPE);
+
+  r = uv_fs_unlink(NULL, &req, "test_dir/link", NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+#endif
 
   /* An absolute path ignores dirfd. */
   len = sizeof(cwd);
