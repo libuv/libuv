@@ -3613,7 +3613,8 @@ TEST_FS_IMPL(fs_openat) {
   ASSERT_OK(openat_sync(dirfd, "sub/", UV_FS_O_RDONLY | UV_FS_O_DIRECTORY));
   r = openat_sync(dirfd, "file/", UV_FS_O_RDONLY);
 #ifdef _WIN32
-  ASSERT_EQ(r, UV_ENOENT);
+  /* ERROR_INVALID_NAME before Windows Server 2025, ERROR_DIRECTORY since. */
+  ASSERT(r == UV_ENOENT || r == UV_ENOTDIR);
 #else
   ASSERT_EQ(r, UV_ENOTDIR);
 #endif
