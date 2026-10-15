@@ -97,7 +97,7 @@ TEST_IMPL(threadpool_idle_wait_refresh) {
   uv_sleep(31000);
   ASSERT(snapshot_waits(after));
   for (i = 0; i < ARRAY_SIZE(workers); i++) {
-    ASSERT_NE(before[i], after[i]);
+    ASSERT_NE((uint32_t) before[i], (uint32_t) after[i]);
     ASSERT_LE((uint32_t) after[i] - (uint32_t) before[i], 16 * 256U);
   }
 
