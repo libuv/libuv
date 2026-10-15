@@ -139,7 +139,7 @@ enum {
   UV_HANDLE_REAP                        = 0x10000000,
 
   /* Only used by uv_fs_event_t handles. */
-  UV_HANDLE_FS_EVENT_RECURSIVE          = 0x01000000
+  UV_HANDLE_FS_EVENT_WATCH_SUBTREE      = 0x01000000
 };
 
 static inline int uv__is_raw_tty_mode(uv_tty_mode_t m) {

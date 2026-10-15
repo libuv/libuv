@@ -36,7 +36,7 @@ static const DWORD uv__fs_event_recursive_buffer_size = 64 * 1024;
 
 
 static DWORD uv__fs_event_get_buffer_size(uv_fs_event_t* handle) {
-  if (handle->flags & UV_HANDLE_FS_EVENT_RECURSIVE)
+  if (handle->flags & UV_HANDLE_FS_EVENT_WATCH_SUBTREE)
     return uv__fs_event_recursive_buffer_size;
   return uv__fs_event_buffer_size;
 }
@@ -52,7 +52,7 @@ static void uv__fs_event_queue_readdirchanges(uv_loop_t* loop,
   if (!ReadDirectoryChangesW(handle->dir_handle,
                              handle->buffer,
                              uv__fs_event_get_buffer_size(handle),
-                             (handle->flags & UV_HANDLE_FS_EVENT_RECURSIVE) ? TRUE : FALSE,
+                             (handle->flags & UV_HANDLE_FS_EVENT_WATCH_SUBTREE) ? TRUE : FALSE,
                              FILE_NOTIFY_CHANGE_FILE_NAME      |
                                FILE_NOTIFY_CHANGE_DIR_NAME     |
                                FILE_NOTIFY_CHANGE_ATTRIBUTES   |
@@ -364,15 +364,15 @@ short_path_done:
   /* A buffer kept from an earlier start may be the wrong size. */
   if (handle->buffer &&
       !(flags & UV_FS_EVENT_RECURSIVE) !=
-          !(handle->flags & UV_HANDLE_FS_EVENT_RECURSIVE)) {
+          !(handle->flags & UV_HANDLE_FS_EVENT_WATCH_SUBTREE)) {
     uv__free(handle->buffer);
     handle->buffer = NULL;
   }
 
   if (flags & UV_FS_EVENT_RECURSIVE)
-    handle->flags |= UV_HANDLE_FS_EVENT_RECURSIVE;
+    handle->flags |= UV_HANDLE_FS_EVENT_WATCH_SUBTREE;
   else
-    handle->flags &= ~UV_HANDLE_FS_EVENT_RECURSIVE;
+    handle->flags &= ~UV_HANDLE_FS_EVENT_WATCH_SUBTREE;
 
   if (!handle->buffer) {
     handle->buffer = (char*)uv__malloc(uv__fs_event_get_buffer_size(handle));
