@@ -632,7 +632,6 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 #define BURST_FILE_COUNT 100
 static int burst_seen[BURST_FILE_COUNT];
 static int burst_seen_count;
-static int burst_overflow_count;
 
 static void fs_event_cb_burst(uv_fs_event_t* handle,
                               const char* filename,
@@ -642,10 +641,8 @@ static void fs_event_cb_burst(uv_fs_event_t* handle,
   int i;
 
   ASSERT_OK(status);
-  if (filename == NULL) {
-    burst_overflow_count++;
-    return;
-  }
+  /* NULL means the change buffer overflowed. */
+  ASSERT_NOT_NULL(filename);
   if (strncmp(filename, prefix, strlen(prefix)) != 0)
     return;
   i = atoi(filename + strlen(prefix));
@@ -656,12 +653,6 @@ static void fs_event_cb_burst(uv_fs_event_t* handle,
     if (++burst_seen_count == BURST_FILE_COUNT)
       uv_close((uv_handle_t*) handle, close_cb);
   }
-}
-
-static void burst_timer_cb(uv_timer_t* handle) {
-  uv_close((uv_handle_t*) handle, close_cb);
-  if (!uv_is_closing((uv_handle_t*) &fs_event))
-    uv_close((uv_handle_t*) &fs_event, close_cb);
 }
 
 static void burst_delete_files(void) {
@@ -705,20 +696,10 @@ TEST_IMPL(fs_event_watch_dir_recursive_burst) {
     create_file(name);
   }
 
-  r = uv_timer_init(loop, &timer);
-  ASSERT_OK(r);
-  r = uv_timer_start(&timer, burst_timer_cb, 2000, 0);
-  ASSERT_OK(r);
-  uv_unref((uv_handle_t*) &timer);
-
   uv_run(loop, UV_RUN_DEFAULT);
 
-  ASSERT_OK(burst_overflow_count);
   ASSERT_EQ(BURST_FILE_COUNT, burst_seen_count);
-
-  uv_close((uv_handle_t*) &timer, close_cb);
-  uv_run(loop, UV_RUN_DEFAULT);
-  ASSERT_EQ(2, close_cb_called);
+  ASSERT_EQ(1, close_cb_called);
 
   /* Cleanup */
   burst_delete_files();
