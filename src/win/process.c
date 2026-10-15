@@ -983,18 +983,20 @@ typedef struct {
 
   uv_thread_t stdin_pump_thread;
   HANDLE pty_stdin_write;
-  uv_sem_t stdin_sem;
+  uv_sem_t stdin_data_available_sem;
+  uv_sem_t stdin_data_processed_sem;
   ssize_t stdin_nread;
   char *stdin_buf;
-  bool stdin_closed;
+  char stdin_closed;
 
   uv_thread_t stdout_pump_thread;
   HANDLE pty_stdout_read;
-  uv_sem_t stdout_sem;
+  uv_sem_t stdout_data_processed_sem;
   DWORD stdout_nread;
   char *stdout_buf;
   uv_pipe_t *stdout_write;
-  uv_async_t *stdout_async_handle;
+  uv_async_t stdout_async_handle;
+  uv_buf_t *stdout_write_buf_to_free;
 } uv__pty_data;
 
 static void pty_stdin_read_alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
@@ -1005,12 +1007,12 @@ static void pty_stdin_read_alloc_cb(uv_handle_t* handle, size_t suggested_size, 
 void pty_stdin_read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
   uv__pty_data *data = (uv__pty_data*)stream->data;
 
-  uv_sem_wait(data->stdin_sem);
+  uv_sem_wait(&data->stdin_data_processed_sem);
 
   if (data->process->flags & UV_HANDLE_CLOSED || nread == UV_EOF) {
     uv_read_stop(stream);
     uv_close((uv_handle_t*)stream, NULL);
-    stdin_closed = 1;
+    data->stdin_closed = 1;
   }
   else if (nread > 0) {
     data->stdin_nread = nread;
@@ -1021,53 +1023,57 @@ void pty_stdin_read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) 
   if (buf->base != NULL) {
     uv__free(buf->base);
   }
+
+  uv_sem_post(&data->stdin_data_available_sem);
 }
 
 void pty_stdin_pump_thread_cb(void *void_data) {
+  int err = 0;
   uv__pty_data *data = (uv__pty_data*)void_data;
 
   while (1) {
+    uv_sem_wait(&data->stdin_data_available_sem);
     if (data->stdin_closed) {
       CloseHandle(data->pty_stdin_write);
       break;
     }
     else {
-      int err = 0;
       DWORD nwritten;
       if (!WriteFile(data->pty_stdin_write, data->stdin_buf, data->stdin_nread, &nwritten, NULL)) {
         err = GetLastError();
         // Can't do much about the error sadly.
       }
       uv__free(data->stdin_buf);
-      uv_sem_post(data->stdin_sem);
+      uv_sem_post(&data->stdin_data_processed_sem);
     }
   }
 }
 
-void pty_stdout_main_loop_after_write_cb(uv_work_t *req, int status) {
+void pty_stdout_main_loop_after_write_cb(uv_write_t *req, int status) {
   uv__pty_data *data = (uv__pty_data *)req->data;
   uv__free(req);
-  uv_sem_post(data->stdout_sem);
+  uv__free(data->stdout_write_buf_to_free->base);
+  uv__free(data->stdout_write_buf_to_free);
+  uv_sem_post(&data->stdout_data_processed_sem);
 }
 
-void pty_stdout_main_loop_cb(uv_work_t *req, int status) {
-  int err = 0;
+void pty_stdout_main_loop_cb(uv_async_t *req) {
   uv__pty_data *data = (uv__pty_data *)req->data;
   if (data->stdout_nread > 0) {
     uv_buf_t *buf = (uv_buf_t*)uv__malloc(sizeof(uv_buf_t));
     buf->base = (char*)uv__malloc(sizeof(char) * data->stdout_nread);
     buf->len = data->stdout_nread;
     memcpy(buf->base, data->stdout_buf, data->stdout_nread);
-    uv_write_t *write_req = (uv_write_t*)uv__malloc(sizeof(uv_write_t));
-    write_req->data = (void*)buf;
+    data->stdout_write_buf_to_free = buf;
 
-    uv_write(write_req, (uv_stream_t*)&(data->stdout_write), buf, 1, &pty_stdout_main_loop_after_write_cb);
+    uv_write_t *write_req = (uv_write_t*)uv__malloc(sizeof(uv_write_t));
+    write_req->data = (void*)data;
+
+    uv_write(write_req, (uv_stream_t*)data->stdout_write, buf, 1, &pty_stdout_main_loop_after_write_cb);
   }
   else if (data->stdout_nread == 0) {
-    CloseHandle(out_data->pty_out_read);
-    out_data->out_write.data = (void*)out_data;
-    uv__free(out_data->buf);
-    uv_close((uv_handle_t*)&(out_data->out_write), &pty_free_out_data);
+    uv_close((uv_handle_t*)data->stdout_write, NULL);
+    uv_close(req, NULL);
   }
   else {
     // Can't do much about the error sadly.
@@ -1075,22 +1081,28 @@ void pty_stdout_main_loop_cb(uv_work_t *req, int status) {
 }
 
 void pty_stdout_pump_thread_cb(void *void_data) {
+  int err = 0;
   uv__pty_data *data = (uv__pty_data*)void_data;
-  data->nread = 0;
+  data->stdout_nread = 0;
 
   while(1) {
-    uv_sem_wait(data->stdout_sem);
+    uv_sem_wait(&data->stdout_data_processed_sem);
 
     data->stdout_nread = 0;
-    if (!ReadFile(data->pty_stdout_read, data->stdoutbuf, out_read_buf_len, &(data->stdout_nread), NULL)) {
+    if (!ReadFile(data->pty_stdout_read, data->stdout_buf, pty_stdout_buf_len, &(data->stdout_nread), NULL)) {
       err = GetLastError();
-      // TODO: Tear down the thread once pty closes.
+
+      CloseHandle(data->pty_stdout_read);
+      uv__free(data->stdout_buf);
+      uv_async_send(&data->stdout_async_handle);
+
       if (err != ERROR_BROKEN_PIPE) {
         // TODO: What do we do here?
       }
+
       break;
     }
-    uv_async_send(&pty_stdout_main_loop_cb, data);
+    uv_async_send(&data->stdout_async_handle);
   }
 }
 
@@ -1101,7 +1113,11 @@ int pty_init(uv_loop_t *loop, uv__pty_data *data, uv_process_t *process, HANDLE 
 
   data->pty_stdin_write = pty_stdin_write;
 
-  if (err = uv_sem_init(&data->stdin_sem, 1)) {
+  if (err = uv_sem_init(&data->stdin_data_available_sem, 0)) {
+    // TODO
+    return err;
+  }
+  if (err = uv_sem_init(&data->stdin_data_processed_sem, 1)) {
     // TODO
     return err;
   }
@@ -1111,17 +1127,19 @@ int pty_init(uv_loop_t *loop, uv__pty_data *data, uv_process_t *process, HANDLE 
   data->pty_stdout_read = pty_stdout_read;
   data->stdout_write = stdout_write;
 
-  if (err = uv_sem_init(&data->stdout_sem, 1)) {
+  if (err = uv_sem_init(&data->stdout_data_processed_sem, 1)) {
     // TODO
     return err;
   }
 
   data->stdout_buf = (char*)uv__malloc(sizeof(char) * pty_stdout_buf_len);
 
-  if (err = uv_async_init(loop, data->stdout_async_handle, &pty_stdout_main_loop_cb)) {
+  if (err = uv_async_init(loop, &data->stdout_async_handle, &pty_stdout_main_loop_cb)) {
     // TODO
     return err;
   }
+  data->stdout_async_handle.data = (void *)data;
+
   return 0;
 }
 
@@ -1412,8 +1430,8 @@ int uv_spawn2(uv_loop_t* loop,
 
     /* setup pty_data and fill in references */
 
-    uv__pty_data *pty_data = (void*)uv__malloc(sizeof(uv__pty_data));
-    err = pty_init(loop, pty_data, process, pty_in_write, pty_out_read, uv_pipe_t *stdout_write);
+    uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
+    err = pty_init(loop, pty_data, process, pty_in_write, pty_out_read, out_write_pipe);
     if (err)
       goto done;
 
@@ -1423,7 +1441,7 @@ int uv_spawn2(uv_loop_t* loop,
      */
     COORD size = {options->pty_cols, options->pty_rows};
 
-    HRESULT hr = pfnCreate(size, pty_stdin_read, pty_out_write, 0, &process->pty_handle);
+    HRESULT hr = pfnCreate(size, pty_in_read, pty_out_write, 0, &process->pty_handle);
     if (FAILED(hr)) {
       // Failed to create PTY device: (error code %i)
       err = hr;
