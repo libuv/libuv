@@ -1185,6 +1185,8 @@ void uv__metrics_set_provider_entry_time(uv_loop_t* loop) {
   now = uv_hrtime();
   loop_metrics = uv__get_loop_metrics(loop);
   uv_mutex_lock(&loop_metrics->lock);
+  if (loop_metrics->provider_entry_time != 0)
+    loop_metrics->provider_idle_time += now - loop_metrics->provider_entry_time;
   loop_metrics->provider_entry_time = now;
   uv_mutex_unlock(&loop_metrics->lock);
 }
