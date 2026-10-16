@@ -34,16 +34,38 @@ static uv_cond_t cond;
 static uv_mutex_t mutex;
 static unsigned int idle_threads;
 static unsigned int slow_io_work_running;
+static unsigned int cpu_work_running;
+static int prefer_cpu_work;
 static unsigned int nthreads;
 static uv_thread_t* threads;
-static uv_thread_t default_threads[4];
+static uv_thread_t default_threads[5];
 static struct uv__queue exit_message;
 static struct uv__queue wq;
 static struct uv__queue run_slow_work_message;
 static struct uv__queue slow_io_pending_wq;
+static struct uv__queue cpu_wq;
 
+/* `nthreads` includes the extra thread reserved for I/O. */
 static unsigned int slow_work_thread_threshold(void) {
-  return (nthreads + 1) / 2;
+  return nthreads / 2;
+}
+
+static unsigned int cpu_work_thread_threshold(void) {
+  return nthreads - 1;
+}
+
+/* `wq` holds I/O work, the slow I/O marker and the exit message. */
+static int io_work_runnable(void) {
+  if (uv__queue_empty(&wq))
+    return 0;
+  return !(uv__queue_head(&wq) == &run_slow_work_message &&
+           uv__queue_next(&run_slow_work_message) == &wq &&
+           slow_io_work_running >= slow_work_thread_threshold());
+}
+
+static int cpu_work_runnable(void) {
+  return !uv__queue_empty(&cpu_wq) &&
+         cpu_work_running < cpu_work_thread_threshold();
 }
 
 static void uv__cancelled(struct uv__work* w) {
@@ -58,6 +80,7 @@ static void worker(void* arg) {
   struct uv__work* w;
   struct uv__queue* q;
   int is_slow_work;
+  int is_cpu_work;
 
   uv_thread_setname("libuv-worker");
   uv_sem_post((uv_sem_t*) arg);
@@ -67,22 +90,32 @@ static void worker(void* arg) {
   for (;;) {
     /* `mutex` should always be locked at this point. */
 
-    /* Keep waiting while either no work is present or only slow I/O
-       and we're at the threshold for that. */
-    while (uv__queue_empty(&wq) ||
-           (uv__queue_head(&wq) == &run_slow_work_message &&
-            uv__queue_next(&run_slow_work_message) == &wq &&
-            slow_io_work_running >= slow_work_thread_threshold())) {
+    /* Keep waiting while no I/O work is runnable and CPU work is either
+       absent or at its threshold. */
+    while (!io_work_runnable() && !cpu_work_runnable()) {
       idle_threads += 1;
       uv_cond_wait(&cond, &mutex);
       idle_threads -= 1;
     }
 
-    q = uv__queue_head(&wq);
-    if (q == &exit_message) {
-      uv_cond_signal(&cond);
-      uv_mutex_unlock(&mutex);
-      break;
+    /* Alternate between the queues when both have runnable work, and drain
+       CPU work before honoring the exit message. */
+    is_cpu_work = cpu_work_runnable() &&
+                  (prefer_cpu_work ||
+                   !io_work_runnable() ||
+                   uv__queue_head(&wq) == &exit_message);
+    prefer_cpu_work = !is_cpu_work;
+
+    if (is_cpu_work) {
+      q = uv__queue_head(&cpu_wq);
+      cpu_work_running++;
+    } else {
+      q = uv__queue_head(&wq);
+      if (q == &exit_message) {
+        uv_cond_signal(&cond);
+        uv_mutex_unlock(&mutex);
+        break;
+      }
     }
 
     uv__queue_remove(q);
@@ -136,6 +169,13 @@ static void worker(void* arg) {
       /* `slow_io_work_running` is protected by `mutex`. */
       slow_io_work_running--;
     }
+    if (is_cpu_work) {
+      /* `cpu_work_running` is protected by `mutex`. */
+      cpu_work_running--;
+      /* A thread may be idle only because CPU work was at its threshold. */
+      if (!uv__queue_empty(&cpu_wq) && idle_threads > 0)
+        uv_cond_signal(&cond);
+    }
   }
 }
 
@@ -152,6 +192,12 @@ static void post(struct uv__queue* q, enum uv__work_kind kind) {
       return;
     }
     q = &run_slow_work_message;
+  } else if (kind == UV__WORK_CPU) {
+    uv__queue_insert_tail(&cpu_wq, q);
+    if (idle_threads > 0 && cpu_work_running < cpu_work_thread_threshold())
+      uv_cond_signal(&cond);
+    uv_mutex_unlock(&mutex);
+    return;
   }
 
   uv__queue_insert_tail(&wq, q);
@@ -173,7 +219,7 @@ void uv__threadpool_cleanup(void) {
 
 #ifndef __MVS__
   /* TODO(gabylb) - zos: revisit when Woz compiler is available. */
-  post(&exit_message, UV__WORK_CPU);
+  post(&exit_message, UV__WORK_FAST_IO);
 #endif
 
   for (i = 0; i < nthreads; i++)
@@ -201,7 +247,7 @@ static void init_threads(void) {
 
   uv_sem_t sem;
 
-  nthreads = ARRAY_SIZE(default_threads);
+  nthreads = 4;
 
   buflen = ARRAY_SIZE(buf);
   err = uv_os_getenv("UV_THREADPOOL_SIZE", buf, &buflen);
@@ -215,6 +261,8 @@ static void init_threads(void) {
     nthreads = 1;
   if (nthreads > MAX_THREADPOOL_SIZE)
     nthreads = MAX_THREADPOOL_SIZE;
+  /* One more thread that CPU-bound work never occupies. */
+  nthreads += 1;
 
   threads = default_threads;
   if (nthreads > ARRAY_SIZE(default_threads)) {
@@ -233,6 +281,7 @@ static void init_threads(void) {
 
   uv__queue_init(&wq);
   uv__queue_init(&slow_io_pending_wq);
+  uv__queue_init(&cpu_wq);
   uv__queue_init(&run_slow_work_message);
 
   if (uv_sem_init(&sem, 0))
