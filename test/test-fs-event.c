@@ -627,6 +627,89 @@ TEST_IMPL(fs_event_watch_dir_recursive) {
 }
 
 #ifdef _WIN32
+#define BURST_DIR "watch_dir_burst"
+#define BURST_SUBDIR "a_subdirectory_with_a_longish_name"
+#define BURST_FILE_COUNT 100
+static int burst_seen[BURST_FILE_COUNT];
+static int burst_seen_count;
+
+static void fs_event_cb_burst(uv_fs_event_t* handle,
+                              const char* filename,
+                              int events,
+                              int status) {
+  const char* prefix = BURST_SUBDIR "\\burst-";
+  int i;
+
+  ASSERT_OK(status);
+  /* NULL means the change buffer overflowed. */
+  ASSERT_NOT_NULL(filename);
+  if (strncmp(filename, prefix, strlen(prefix)) != 0)
+    return;
+  i = atoi(filename + strlen(prefix));
+  ASSERT_GE(i, 0);
+  ASSERT_LT(i, BURST_FILE_COUNT);
+  if (!burst_seen[i]) {
+    burst_seen[i] = 1;
+    if (++burst_seen_count == BURST_FILE_COUNT)
+      uv_close((uv_handle_t*) handle, close_cb);
+  }
+}
+
+static void burst_delete_files(void) {
+  char name[128];
+  int i;
+
+  for (i = 0; i < BURST_FILE_COUNT; i++) {
+    snprintf(name, sizeof(name), BURST_DIR "/" BURST_SUBDIR "/burst-%03d", i);
+    delete_file(name);
+  }
+  delete_dir(BURST_DIR "/" BURST_SUBDIR);
+  delete_dir(BURST_DIR);
+}
+#endif
+
+TEST_IMPL(fs_event_watch_dir_recursive_burst) {
+#ifndef _WIN32
+  RETURN_SKIP("Tests the Windows ReadDirectoryChangesW buffer size.");
+#else
+  uv_loop_t* loop;
+  char name[128];
+  int i;
+  int r;
+
+  /* 100 file creations overflow a 4 KB change buffer but fit in 64 KB. */
+  loop = uv_default_loop();
+  burst_delete_files();
+  create_dir(BURST_DIR);
+  create_dir(BURST_DIR "/" BURST_SUBDIR);
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event,
+                        fs_event_cb_burst,
+                        BURST_DIR,
+                        UV_FS_EVENT_RECURSIVE);
+  ASSERT_OK(r);
+
+  for (i = 0; i < BURST_FILE_COUNT; i++) {
+    snprintf(name, sizeof(name), BURST_DIR "/" BURST_SUBDIR "/burst-%03d", i);
+    create_file(name);
+  }
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(BURST_FILE_COUNT, burst_seen_count);
+  ASSERT_EQ(1, close_cb_called);
+
+  /* Cleanup */
+  burst_delete_files();
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+#endif
+}
+
+#ifdef _WIN32
 static char short_path_file[MAX_PATH];
 
 static void short_path_timer_cb(uv_timer_t* handle) {

@@ -48,6 +48,10 @@ Data types
     The `events` parameter is an ORed mask of :c:enum:`uv_fs_event` elements.
 
 .. note::
+   If the system change buffer overflows, `filename` may be `NULL`. A full
+   enumeration of the directory is necessary to find out what is now there.
+
+.. note::
    For FreeBSD path could sometimes be `NULL` due to a kernel bug.
 
     .. _Reference: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=197695
