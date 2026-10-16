@@ -2448,6 +2448,204 @@ static void fs__ftruncate(uv_fs_t* req) {
 }
 
 
+typedef struct {
+  HANDLE file_handle;
+  LARGE_INTEGER source_offset;
+  LARGE_INTEGER target_offset;
+  LARGE_INTEGER byte_count;
+} uv__duplicate_extents_data;
+
+
+static DWORD fs__copyfile_clone(const WCHAR* src,
+                                const WCHAR* dst,
+                                int* modified) {
+  uv__duplicate_extents_data extents;
+  FILE_FS_SIZE_INFORMATION fs_size;
+  struct {
+    FILE_FS_ATTRIBUTE_INFORMATION info;
+    WCHAR name[MAX_PATH];
+  } fs_attributes;
+  IO_STATUS_BLOCK iosb;
+  LARGE_INTEGER file_size;
+  LARGE_INTEGER position;
+  HANDLE src_handle;
+  HANDLE dst_handle;
+  NTSTATUS status;
+  DWORD dst_attributes;
+  int restore_attributes;
+  uint64_t cluster_size;
+  uint64_t clone_size;
+  uint64_t max_chunk;
+  uint64_t offset;
+  uint64_t chunk;
+  DWORD bytes_returned;
+  DWORD error;
+
+  src_handle = INVALID_HANDLE_VALUE;
+  dst_handle = INVALID_HANDLE_VALUE;
+  error = ERROR_SUCCESS;
+  restore_attributes = 0;
+  *modified = 0;
+
+  src_handle = CreateFileW(src,
+                           GENERIC_READ,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE |
+                             FILE_SHARE_DELETE,
+                           NULL,
+                           OPEN_EXISTING,
+                           FILE_FLAG_SEQUENTIAL_SCAN,
+                           NULL);
+  if (src_handle == INVALID_HANDLE_VALUE)
+    return GetLastError();
+
+  status = pNtQueryVolumeInformationFile(src_handle,
+                                         &iosb,
+                                         &fs_attributes,
+                                         sizeof fs_attributes,
+                                         FileFsAttributeInformation);
+  if (!NT_SUCCESS(status)) {
+    error = pRtlNtStatusToDosError(status);
+    goto out;
+  }
+
+  if (!(fs_attributes.info.FileSystemAttributes &
+        FILE_SUPPORTS_BLOCK_REFCOUNTING)) {
+    error = ERROR_NOT_SUPPORTED;
+    goto out;
+  }
+
+  dst_attributes = GetFileAttributesW(dst);
+  if (dst_attributes == INVALID_FILE_ATTRIBUTES) {
+    error = GetLastError();
+    goto out;
+  }
+
+  if (dst_attributes & FILE_ATTRIBUTE_READONLY) {
+    if (!SetFileAttributesW(dst, dst_attributes & ~FILE_ATTRIBUTE_READONLY)) {
+      error = GetLastError();
+      goto out;
+    }
+    *modified = 1;
+    restore_attributes = 1;
+  }
+
+  dst_handle = CreateFileW(dst,
+                           GENERIC_WRITE,
+                           FILE_SHARE_READ | FILE_SHARE_WRITE |
+                             FILE_SHARE_DELETE,
+                           NULL,
+                           OPEN_EXISTING,
+                           0,
+                           NULL);
+  if (dst_handle == INVALID_HANDLE_VALUE) {
+    error = GetLastError();
+    goto out;
+  }
+
+  if (!GetFileSizeEx(src_handle, &file_size)) {
+    error = GetLastError();
+    goto out;
+  }
+
+  status = pNtQueryVolumeInformationFile(src_handle,
+                                         &iosb,
+                                         &fs_size,
+                                         sizeof fs_size,
+                                         FileFsSizeInformation);
+  if (!NT_SUCCESS(status)) {
+    error = pRtlNtStatusToDosError(status);
+    goto out;
+  }
+
+  if (file_size.QuadPart == 0)
+    goto out;
+
+  cluster_size = (uint64_t) fs_size.SectorsPerAllocationUnit *
+                 fs_size.BytesPerSector;
+  if (cluster_size == 0 ||
+      (uint64_t) file_size.QuadPart > UINT64_MAX - cluster_size + 1) {
+    error = ERROR_ARITHMETIC_OVERFLOW;
+    goto out;
+  }
+
+  clone_size = ((uint64_t) file_size.QuadPart + cluster_size - 1) /
+               cluster_size * cluster_size;
+
+  position.QuadPart = clone_size;
+  *modified = 1;
+  if (!SetFilePointerEx(dst_handle, position, NULL, FILE_BEGIN) ||
+      !SetEndOfFile(dst_handle)) {
+    error = GetLastError();
+    goto out;
+  }
+
+  max_chunk = UINT32_MAX / cluster_size * cluster_size;
+  if (max_chunk == 0) {
+    error = ERROR_ARITHMETIC_OVERFLOW;
+    goto restore_size;
+  }
+
+  extents.file_handle = src_handle;
+  offset = 0;
+
+  while (offset < clone_size) {
+    chunk = clone_size - offset;
+    if (chunk > max_chunk)
+      chunk = max_chunk;
+
+    extents.source_offset.QuadPart = offset;
+    extents.target_offset.QuadPart = offset;
+    extents.byte_count.QuadPart = chunk;
+
+    if (!DeviceIoControl(dst_handle,
+                         FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+                         &extents,
+                         sizeof extents,
+                         NULL,
+                         0,
+                         &bytes_returned,
+                         NULL)) {
+      error = GetLastError();
+      break;
+    }
+
+    offset += chunk;
+  }
+
+restore_size:
+  position = file_size;
+  if (!SetFilePointerEx(dst_handle, position, NULL, FILE_BEGIN) ||
+      !SetEndOfFile(dst_handle)) {
+    if (error == ERROR_SUCCESS)
+      error = GetLastError();
+  }
+
+out:
+  if (dst_handle != INVALID_HANDLE_VALUE)
+    if (!CloseHandle(dst_handle) && error == ERROR_SUCCESS)
+      error = GetLastError();
+
+  if (restore_attributes && error == ERROR_SUCCESS &&
+      !SetFileAttributesW(dst, dst_attributes))
+    error = GetLastError();
+
+  CloseHandle(src_handle);
+  return error;
+}
+
+
+static void fs__copyfile_remove(const WCHAR* path) {
+  DWORD attributes;
+
+  attributes = GetFileAttributesW(path);
+  if (attributes != INVALID_FILE_ATTRIBUTES &&
+      attributes & FILE_ATTRIBUTE_READONLY)
+    SetFileAttributesW(path, attributes & ~FILE_ATTRIBUTE_READONLY);
+
+  DeleteFileW(path);
+}
+
+
 static void fs__copyfile(uv_fs_t* req) {
   int flags;
   int overwrite;
@@ -2456,14 +2654,30 @@ static void fs__copyfile(uv_fs_t* req) {
 
   flags = req->fs.info.file_flags;
 
-  if (flags & UV_FS_COPYFILE_FICLONE_FORCE) {
-    SET_REQ_UV_ERROR(req, UV_ENOSYS, ERROR_NOT_SUPPORTED);
-    return;
-  }
-
   overwrite = flags & UV_FS_COPYFILE_EXCL;
 
   if (CopyFileW(req->file.pathw, req->fs.info.new_pathw, overwrite) != 0) {
+    if (flags & (UV_FS_COPYFILE_FICLONE | UV_FS_COPYFILE_FICLONE_FORCE)) {
+      DWORD error;
+      int modified;
+
+      error = fs__copyfile_clone(req->file.pathw, req->fs.info.new_pathw,
+                                 &modified);
+      if (error != ERROR_SUCCESS) {
+        if (flags & UV_FS_COPYFILE_FICLONE_FORCE) {
+          fs__copyfile_remove(req->fs.info.new_pathw);
+          SET_REQ_WIN32_ERROR(req, error);
+          return;
+        }
+
+        if (modified &&
+            !CopyFileW(req->file.pathw, req->fs.info.new_pathw, FALSE)) {
+          SET_REQ_WIN32_ERROR(req, GetLastError());
+          return;
+        }
+      }
+    }
+
     SET_REQ_RESULT(req, 0);
     return;
   }
