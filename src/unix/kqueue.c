@@ -48,6 +48,14 @@
 #define EV_OOBAND  EV_FLAG1
 #endif
 
+/* EVFILT_VNODE watchers use EV_CLEAR so the kernel resets the accumulated
+ * fflags once they're retrieved but keeps the knote attached. Changes made
+ * while the callback runs are then reported on the next loop iteration,
+ * instead of being lost between the event and a one-shot re-arm.
+ */
+#define UV__VNODE_FFLAGS (NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME             \
+                          | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE)
+
 
 int uv__kqueue_init(uv_loop_t* loop) {
   int fd;
@@ -212,9 +220,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
       if (UV__FS_EVENT == uv__io_cb_get(w)) {
         filter = EVFILT_VNODE;
-        fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
-               | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE;
-        op = EV_ADD | EV_ONESHOT; /* Stop the event from firing repeatedly. */
+        fflags = UV__VNODE_FFLAGS;
+        op = EV_ADD | EV_CLEAR;
       }
 
       EV_SET(events + nevents, w->fd, filter, op, fflags, 0, 0);
@@ -494,9 +501,20 @@ void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
 }
 
 
+static int uv__fs_event_arm(uv_loop_t* loop, uv__io_t* w) {
+  struct kevent ev;
+
+  EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_CLEAR, UV__VNODE_FFLAGS, 0, 0);
+
+  if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
+    return UV__ERR(errno);
+
+  return 0;
+}
+
+
 void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   uv_fs_event_t* handle;
-  struct kevent ev;
   int events;
   const char* path;
 #if defined(F_GETPATH)
@@ -541,18 +559,6 @@ void uv__fs_event(uv_loop_t* loop, uv__io_t* w, unsigned int fflags) {
   }
 #endif
   handle->cb(handle, path, events, 0);
-
-  if (handle->event_watcher.fd == -1)
-    return;
-
-  /* Watcher operates in one-shot mode, re-arm it. */
-  fflags = NOTE_ATTRIB | NOTE_WRITE  | NOTE_RENAME
-         | NOTE_DELETE | NOTE_EXTEND | NOTE_REVOKE;
-
-  EV_SET(&ev, w->fd, EVFILT_VNODE, EV_ADD | EV_ONESHOT, fflags, 0, 0);
-
-  if (kevent(loop->backend_fd, &ev, 1, NULL, 0, NULL))
-    abort();
 }
 
 
@@ -624,9 +630,24 @@ fallback:
                         fd,
                         POLLIN);
 
-  if (!r)
-    uv__handle_start(handle);
+  if (r == 0) {
+    /* Unlike EVFILT_READ, EVFILT_VNODE only reports changes made after the
+     * knote is attached, so arm it now instead of waiting for uv__io_poll()
+     * to do it; otherwise a change made before the next loop iteration is lost.
+     */
+    r = uv__fs_event_arm(handle->loop, &handle->event_watcher);
+    if (r == 0) {
+      handle->event_watcher.events = handle->event_watcher.pevents;
+      uv__handle_start(handle);
+      return 0;
+    }
+    uv__io_close(handle->loop, &handle->event_watcher);
+    uv__io_init(&handle->event_watcher, UV__NO_IO_CB, -1);
+  }
 
+  uv__close(fd);
+  uv__free(handle->path);
+  handle->path = NULL;
   return r;
 }
 
