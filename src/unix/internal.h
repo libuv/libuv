@@ -170,7 +170,12 @@ typedef struct uv__stream_queued_fds_s uv__stream_queued_fds_t;
 enum {
   UV_LOOP_BLOCK_SIGPROF = 0x1,
   UV_LOOP_REAP_CHILDREN = 0x2,
-  UV_LOOP_ENABLE_IO_URING_SQPOLL = 0x4
+  UV_LOOP_ENABLE_IO_URING_SQPOLL = 0x4,
+  UV_LOOP_ENABLE_ACCEPT_SOCKADDR = 0x8
+};
+
+enum {
+  UV_ACCEPT_SOCKADDR_FIELD = 3
 };
 
 /* flags of excluding ifaddr */
@@ -351,7 +356,7 @@ void uv__stream_destroy(uv_stream_t* stream);
 int uv__stream_try_select(uv_stream_t* stream, int* fd);
 #endif /* defined(__APPLE__) */
 void uv__server_io(uv_loop_t* loop, uv__io_t* w, unsigned int events);
-int uv__accept(int sockfd);
+int uv__accept(int sockfd, struct sockaddr_storage* pss);
 int uv__dup2_cloexec(int oldfd, int newfd);
 int uv__open_cloexec(const char* path, int flags);
 int uv__slurp(const char* filename, char* buf, size_t len);

@@ -26,7 +26,8 @@ Data types
         typedef enum {
             UV_LOOP_BLOCK_SIGNAL = 0,
             UV_METRICS_IDLE_TIME,
-            UV_LOOP_USE_IO_URING_SQPOLL
+            UV_LOOP_USE_IO_URING_SQPOLL,
+            UV_LOOP_ACCEPT_SOCKADDR,
         } uv_loop_option;
 
 .. c:enum:: uv_run_mode
@@ -89,9 +90,18 @@ API
     - UV_LOOP_USE_IO_URING_SQPOLL: Enable SQPOLL io_uring instance to handle
       asynchronous file system operations.
 
+    - UV_LOOP_ACCEPT_SOCKADDR: Capture the network peer address at accept time.
+      The peer address can then be retrieved with :c:func:`uv_tcp_getpeername`;
+      no :man:`getpeername(2)` system call is made.
+      This option is currently supported only on UNIX platforms and only
+      for TCP sockets. It is disabled by default because it adds small
+      but non-zero overhead.
+
     .. versionchanged:: 1.39.0 added the UV_METRICS_IDLE_TIME option.
 
     .. versionchanged:: 1.49.0 added the UV_LOOP_USE_IO_URING_SQPOLL option.
+
+    .. versionchanged:: TBD added the UV_LOOP_ACCEPT_SOCKADDR option.
 
 .. c:function:: int uv_loop_close(uv_loop_t* loop)
 
