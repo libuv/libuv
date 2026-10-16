@@ -350,6 +350,7 @@ TEST_DECLARE   (socket_buffer_size)
 TEST_DECLARE   (spawn_fails)
 #ifndef _WIN32
 TEST_DECLARE   (spawn_fails_check_for_waitpid_cleanup)
+TEST_DECLARE   (spawn_fails_stdio_close)
 #endif
 TEST_DECLARE   (spawn_empty_env)
 TEST_DECLARE   (spawn_exit_code)
@@ -1088,6 +1089,7 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_fails)
 #ifndef _WIN32
   TEST_ENTRY  (spawn_fails_check_for_waitpid_cleanup)
+  TEST_ENTRY  (spawn_fails_stdio_close)
 #endif
   TEST_ENTRY  (spawn_empty_env)
   TEST_ENTRY  (spawn_exit_code)
