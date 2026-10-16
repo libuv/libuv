@@ -72,6 +72,10 @@ TEST_IMPL(loop_instant_close) {
                           &req,
                           loop_instant_close_work_cb,
                           loop_instant_close_after_work_cb));
+  /* `loop` is deliberately never closed, so its backend descriptors (epoll or
+   * kqueue fd, async pipe, ...) stay open. See the comment above.
+   */
+  disable_open_fds_check();
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
