@@ -36,8 +36,6 @@
 #define MAX_EPOLL_INSTANCES       256
 #define MAX_ITEMS_PER_EPOLL       1024
 
-#define UV__O_CLOEXEC             0x80000
-
 struct epoll_event {
   int events;
   int fd;

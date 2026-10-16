@@ -512,15 +512,18 @@ int uv_pipe_chmod(uv_pipe_t* handle, int mode) {
 int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
   uv_os_fd_t temp[2];
   int err;
-#if defined(__linux__) || \
-    defined(__FreeBSD__) || \
-    defined(__OpenBSD__) || \
-    defined(__DragonFly__) || \
-    defined(__NetBSD__) || \
-    defined(__illumos__) || \
-    (defined(UV__SOLARIS_11_4) && UV__SOLARIS_11_4)
-  int flags = O_CLOEXEC;
 
+#ifdef __APPLE__
+  if (pipe(temp))
+    return UV__ERR(errno);
+
+  if ((err = uv__cloexec(temp[0], 1)))
+    goto fail;
+
+  if ((err = uv__cloexec(temp[1], 1)))
+    goto fail;
+#else
+  int flags = O_CLOEXEC;
   if ((read_flags & UV_NONBLOCK_PIPE) && (write_flags & UV_NONBLOCK_PIPE))
     flags |= UV_FS_O_NONBLOCK;
 
@@ -532,15 +535,6 @@ int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
     fds[1] = temp[1];
     return 0;
   }
-#else
-  if (pipe(temp))
-    return UV__ERR(errno);
-
-  if ((err = uv__cloexec(temp[0], 1)))
-    goto fail;
-
-  if ((err = uv__cloexec(temp[1], 1)))
-    goto fail;
 #endif
 
   if (read_flags & UV_NONBLOCK_PIPE)
