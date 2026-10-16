@@ -1033,6 +1033,7 @@ void pty_stdin_pump_thread_cb(void *void_data) {
     }
   }
 
+  uv__free(buf);
   CloseHandle(data->stdin_read);
   CloseHandle(data->pty_stdin_write);
 }
