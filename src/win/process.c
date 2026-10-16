@@ -978,167 +978,117 @@ int uv_pty_resize(uv_process_t* process,
 /*****************************************************************************/
 
 const int pty_stdout_buf_len = 128 * 1024;
+const int pty_stdin_buf_len = 128 * 1024;
 typedef struct {
   uv_process_t *process;
 
   uv_thread_t stdin_pump_thread;
   HANDLE pty_stdin_write;
-  uv_sem_t stdin_data_available_sem;
-  uv_sem_t stdin_data_processed_sem;
-  ssize_t stdin_nread;
-  char *stdin_buf;
-  char stdin_closed;
+  HANDLE stdin_read;
 
   uv_thread_t stdout_pump_thread;
   HANDLE pty_stdout_read;
-  uv_sem_t stdout_data_processed_sem;
-  DWORD stdout_nread;
-  char *stdout_buf;
-  uv_pipe_t *stdout_write;
-  uv_async_t stdout_async_handle;
-  uv_buf_t *stdout_write_buf_to_free;
+  HANDLE stdout_write;
 } uv__pty_data;
 
-static void pty_stdin_read_alloc_cb(uv_handle_t* handle, size_t suggested_size, uv_buf_t* buf) {
-  buf->base = (char*)uv__malloc(suggested_size);
-  buf->len = suggested_size;
-}
-
-void pty_stdin_read_cb(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf) {
-  uv__pty_data *data = (uv__pty_data*)stream->data;
-
-  uv_sem_wait(&data->stdin_data_processed_sem);
-
-  if (data->process->flags & UV_HANDLE_CLOSED || nread == UV_EOF) {
-    uv_read_stop(stream);
-    uv_close((uv_handle_t*)stream, NULL);
-    data->stdin_closed = 1;
-  }
-  else if (nread > 0) {
-    data->stdin_nread = nread;
-    data->stdin_buf = (char*)uv__malloc(sizeof(char) * nread);
-    memcpy(data->stdin_buf, buf->base, nread);
-  }
-
-  if (buf->base != NULL) {
-    uv__free(buf->base);
-  }
-
-  uv_sem_post(&data->stdin_data_available_sem);
-}
-
 void pty_stdin_pump_thread_cb(void *void_data) {
-  int err = 0;
   uv__pty_data *data = (uv__pty_data*)void_data;
 
+  int err = 0;
+  DWORD nread = 0;
+  OVERLAPPED overlapped = { 0 };
+  char *buf = (char*)uv__malloc(sizeof(char) * pty_stdin_buf_len);
+
   while (1) {
-    uv_sem_wait(&data->stdin_data_available_sem);
-    if (data->stdin_closed) {
-      CloseHandle(data->pty_stdin_write);
+    // Read from the overlapped stdin pipe
+    BOOL success = ReadFile(data->stdin_read, buf, pty_stdin_buf_len, &nread, &overlapped);
+    if (!success && GetLastError() == ERROR_IO_PENDING) {
+      success = GetOverlappedResult(data->stdin_read, &overlapped, &nread, TRUE);
+    }
+
+    if (!success) {
+      // Can't do much about the error sadly.
       break;
     }
-    else {
+
+    // Write to the synchronous PTY stdin pipe
+    DWORD off = 0;
+    while (off < nread) {
       DWORD nwritten;
-      if (!WriteFile(data->pty_stdin_write, data->stdin_buf, data->stdin_nread, &nwritten, NULL)) {
+      if (!WriteFile(data->pty_stdin_write, buf + off, nread - off, &nwritten, NULL)) {
         err = GetLastError();
         // Can't do much about the error sadly.
+        break;
       }
-      uv__free(data->stdin_buf);
-      uv_sem_post(&data->stdin_data_processed_sem);
+      off += nwritten;
+    }
+    if (off != nread) {
+      break;
     }
   }
-}
 
-void pty_stdout_main_loop_after_write_cb(uv_write_t *req, int status) {
-  uv__pty_data *data = (uv__pty_data *)req->data;
-  uv__free(req);
-  uv__free(data->stdout_write_buf_to_free->base);
-  uv__free(data->stdout_write_buf_to_free);
-  uv_sem_post(&data->stdout_data_processed_sem);
-}
-
-void pty_stdout_main_loop_cb(uv_async_t *req) {
-  uv__pty_data *data = (uv__pty_data *)req->data;
-  if (data->stdout_nread > 0) {
-    uv_buf_t *buf = (uv_buf_t*)uv__malloc(sizeof(uv_buf_t));
-    buf->base = (char*)uv__malloc(sizeof(char) * data->stdout_nread);
-    buf->len = data->stdout_nread;
-    memcpy(buf->base, data->stdout_buf, data->stdout_nread);
-    data->stdout_write_buf_to_free = buf;
-
-    uv_write_t *write_req = (uv_write_t*)uv__malloc(sizeof(uv_write_t));
-    write_req->data = (void*)data;
-
-    uv_write(write_req, (uv_stream_t*)data->stdout_write, buf, 1, &pty_stdout_main_loop_after_write_cb);
-  }
-  else if (data->stdout_nread == 0) {
-    uv_close((uv_handle_t*)data->stdout_write, NULL);
-    uv_close(req, NULL);
-  }
-  else {
-    // Can't do much about the error sadly.
-  }
+  CloseHandle(data->stdin_read);
+  CloseHandle(data->pty_stdin_write);
 }
 
 void pty_stdout_pump_thread_cb(void *void_data) {
   int err = 0;
   uv__pty_data *data = (uv__pty_data*)void_data;
-  data->stdout_nread = 0;
+
+  DWORD nread = 0;
+  DWORD nwritten = 0;
+  OVERLAPPED overlapped = { 0 };
+  char *buf = (char*)uv__malloc(sizeof(char) * pty_stdout_buf_len);
 
   while(1) {
-    uv_sem_wait(&data->stdout_data_processed_sem);
-
-    data->stdout_nread = 0;
-    if (!ReadFile(data->pty_stdout_read, data->stdout_buf, pty_stdout_buf_len, &(data->stdout_nread), NULL)) {
+    // Read from the synchronous PTY stdout pipe
+    nread = 0;
+    if (!ReadFile(data->pty_stdout_read, buf, pty_stdout_buf_len, &nread, NULL)) {
       err = GetLastError();
-
-      CloseHandle(data->pty_stdout_read);
-      uv__free(data->stdout_buf);
-      uv_async_send(&data->stdout_async_handle);
-
       if (err != ERROR_BROKEN_PIPE) {
         // TODO: What do we do here?
       }
-
       break;
     }
-    uv_async_send(&data->stdout_async_handle);
+
+    // Write to the overlapped stdout pipe
+    DWORD off = 0;
+    while (off < nread) {
+      DWORD nwritten;
+      BOOL success = WriteFile(data->stdout_write, buf + off, nread - off, &nwritten, &overlapped);
+      if (!success && GetLastError() == ERROR_IO_PENDING) {
+        success = GetOverlappedResult(data->stdout_write, &overlapped, &nwritten, TRUE);
+      }
+      if (!success) {
+        break;
+      }
+      off += nwritten;
+    }
+    if (off != nread) {
+      break;
+    }
+
+    BOOL success = WriteFile(data->stdout_write, buf, nread, &nwritten, &overlapped);
+    if (!success && GetLastError() == ERROR_IO_PENDING) {
+      success = GetOverlappedResult(data->stdout_write, &overlapped, &nwritten, TRUE);
+    }
+    if (!success) {
+      // What do we do here?
+    }
   }
+
+  CloseHandle(data->pty_stdout_read);
+  uv__free(buf);
+  CloseHandle(data->stdout_write);
 }
 
-int pty_init(uv_loop_t *loop, uv__pty_data *data, uv_process_t *process, HANDLE pty_stdin_write, HANDLE pty_stdout_read, uv_pipe_t *stdout_write) {
-  int err = 0;
-
+int pty_init(uv_loop_t *loop, uv__pty_data *data, uv_process_t *process, HANDLE pty_stdin_write, HANDLE pty_stdout_read, HANDLE stdout_write, HANDLE stdin_read) {
   data->process = process;
 
   data->pty_stdin_write = pty_stdin_write;
-
-  if (err = uv_sem_init(&data->stdin_data_available_sem, 0)) {
-    // TODO
-    return err;
-  }
-  if (err = uv_sem_init(&data->stdin_data_processed_sem, 1)) {
-    // TODO
-    return err;
-  }
-
-  data->stdin_closed = 0;
-
   data->pty_stdout_read = pty_stdout_read;
   data->stdout_write = stdout_write;
-
-  if (err = uv_sem_init(&data->stdout_data_processed_sem, 1)) {
-    // TODO
-    return err;
-  }
-
-  data->stdout_buf = (char*)uv__malloc(sizeof(char) * pty_stdout_buf_len);
-
-  if (err = uv_async_init(loop, &data->stdout_async_handle, &pty_stdout_main_loop_cb)) {
-    // TODO
-    return err;
-  }
-  data->stdout_async_handle.data = (void *)data;
+  data->stdin_read = stdin_read;
 
   return 0;
 }
@@ -1394,11 +1344,6 @@ int uv_spawn2(uv_loop_t* loop,
     if (err)
       goto done;
 
-    int in_read_fd = uv_open_osfhandle(in_read);
-    uv_pipe_t* in_read_pipe = (uv_pipe_t*)uv__malloc(sizeof(uv_pipe_t));
-    uv_pipe_init(loop, in_read_pipe, 0);
-    uv_pipe_open(in_read_pipe, in_read_fd);
-
     HANDLE pty_in_read = INVALID_HANDLE_VALUE;
     HANDLE pty_in_write = INVALID_HANDLE_VALUE;
     if (!CreatePipe(&pty_in_read, &pty_in_write, NULL, 0)) {
@@ -1416,10 +1361,6 @@ int uv_spawn2(uv_loop_t* loop,
                                      options->stdio[1].flags);
     if (err)
       goto done;
-    int out_write_fd = uv_open_osfhandle(out_write);
-    uv_pipe_t* out_write_pipe = (uv_pipe_t*)uv__malloc(sizeof(uv_pipe_t));
-    uv_pipe_init(loop, out_write_pipe, 0);
-    uv_pipe_open(out_write_pipe, out_write_fd);
 
     HANDLE pty_out_write = INVALID_HANDLE_VALUE;
     HANDLE pty_out_read = INVALID_HANDLE_VALUE;
@@ -1431,11 +1372,9 @@ int uv_spawn2(uv_loop_t* loop,
     /* setup pty_data and fill in references */
 
     uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
-    err = pty_init(loop, pty_data, process, pty_in_write, pty_out_read, out_write_pipe);
+    err = pty_init(loop, pty_data, process, pty_in_write, pty_out_read, out_write, in_read);
     if (err)
       goto done;
-
-    in_read_pipe->data = (void*)pty_data;
 
     /* Now setup the PTY object
      */
@@ -1456,8 +1395,6 @@ int uv_spawn2(uv_loop_t* loop,
     err = pty_start_pipe_pumps(loop, pty_data);
     if (err)
         goto done;
-
-    uv_read_start((uv_stream_t*)in_read_pipe, pty_stdin_read_alloc_cb, pty_stdin_read_cb);
 
     startup.StartupInfo.hStdInput = NULL;
     startup.StartupInfo.hStdOutput = NULL;
