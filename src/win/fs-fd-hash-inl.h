@@ -88,6 +88,11 @@ static void uv__fd_hash_init(void) {
   }
 }
 
+
+static void uv__fd_hash_cleanup(void) {
+  uv_mutex_destroy(&uv__fd_hash_mutex);
+}
+
 #define FIND_COMMON_VARIABLES                                                \
   unsigned i;                                                                \
   unsigned bucket = fd % ARRAY_SIZE(uv__fd_hash);                            \
