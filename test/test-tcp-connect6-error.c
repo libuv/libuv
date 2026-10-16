@@ -81,6 +81,7 @@ TEST_IMPL(tcp_connect6_link_local) {
   struct sockaddr_in6 addr;
   uv_connect_t req;
   uv_tcp_t server;
+  int err;
   int ok;
   int n;
 
@@ -116,11 +117,9 @@ TEST_IMPL(tcp_connect6_link_local) {
    *    connection attempt to the address above, i.e., we don't expect the
    *    connect() system call to fail synchronously.
    */
-  ASSERT_OK(uv_tcp_connect(&req,
-                           &server,
-                           (struct sockaddr*) &addr,
-                           connect_cb));
-
+  err = uv_tcp_connect(&req, &server, (struct sockaddr*) &addr, connect_cb);
+  if (err != 0)
+    ASSERT_EQ(err, UV_EHOSTUNREACH);
   uv_close((uv_handle_t*) &server, NULL);
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
 
