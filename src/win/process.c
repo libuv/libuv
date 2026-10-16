@@ -43,6 +43,18 @@
   ProcThreadAttributeValue(22, FALSE, TRUE, FALSE)
 #endif
 
+typedef struct {
+  HANDLE pty;
+
+  uv_thread_t stdin_pump_thread;
+  HANDLE pty_stdin_write;
+  HANDLE stdin_read;
+
+  uv_thread_t stdout_pump_thread;
+  HANDLE pty_stdout_read;
+  HANDLE stdout_write;
+} uv__pty_data;
+void pty_teardown(uv__pty_data *data);
 typedef VOID* HPCON;
 typedef HRESULT (__stdcall *PFNCREATEPSEUDOCONSOLE)(COORD c, HANDLE hIn, HANDLE hOut, DWORD dwFlags, HPCON* phpcon);
 typedef HRESULT (__stdcall *PFNRESIZEPSEUDOCONSOLE)(HPCON hpc, COORD newSize);
@@ -146,7 +158,7 @@ static void uv__process_init(uv_loop_t* loop, uv_process_t* handle) {
   handle->wait_handle = INVALID_HANDLE_VALUE;
   handle->process_handle = INVALID_HANDLE_VALUE;
   handle->exit_cb_pending = 0;
-  handle->pty_handle = NULL;
+  handle->pty_data = NULL;
 
   UV_REQ_INIT(&handle->exit_req, UV_PROCESS_EXIT);
   handle->exit_req.data = handle;
@@ -829,36 +841,6 @@ static void CALLBACK exit_wait_callback(void* data, BOOLEAN didTimeout) {
   POST_COMPLETION_FOR_REQ(loop, &process->exit_req);
 }
 
-typedef struct {
-  uv_work_t req;
-  HANDLE pty_handle;
-} uv__pty_close_pty_work;
-
-void pty_close_pty_cb(uv_work_t *req) {
-  HANDLE hLibrary = LoadLibraryExW(L"kernel32.dll", 0, 0);
-  // Error loading kernel32.dll: (error code %i)
-  if (!hLibrary)
-    return;
-  //  return uv_translate_sys_error(GetLastError());
-
-  PFNCLOSEPSEUDOCONSOLE pfnClose = (PFNCLOSEPSEUDOCONSOLE)GetProcAddress((HMODULE)hLibrary,"ClosePseudoConsole");
-  if (!pfnClose)
-    return;
-//    int err = GetLastError();
-//    if (err == ERROR_PROC_NOT_FOUND)
-//      return UV_ENOTSUP;
-//    else
-//      return uv_translate_sys_error(err);
-
-  uv__pty_close_pty_work *close_req = (uv__pty_close_pty_work *)req->data;
-  pfnClose(close_req->pty_handle);
-  FreeLibrary(hLibrary);
-}
-
-void pty_close_pty_cleanup_cb(uv_work_t *req, int status) {
-  uv__free(req);
-}
-
 /* Called on main thread after a child process has exited. */
 void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
   int64_t exit_code;
@@ -896,11 +878,8 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
    * callback. */
   uv__handle_stop(handle);
 
-  if (handle->pty_handle != NULL) {
-    uv__pty_close_pty_work *close_pty_work = (uv__pty_close_pty_work*)uv__malloc(sizeof(uv__pty_close_pty_work));
-    close_pty_work->req.data = (void*)close_pty_work;
-    close_pty_work->pty_handle = handle->pty_handle;
-    uv_queue_work(loop, &(close_pty_work->req), &pty_close_pty_cb, &pty_close_pty_cleanup_cb);
+  if (handle->pty_data != NULL) {
+    pty_teardown((uv__pty_data*)handle->pty_data);
   }
 
   /* Fire the exit callback. */
@@ -946,7 +925,7 @@ int uv_pty_resize(uv_process_t* process,
                   unsigned short rows) {
   static PFNRESIZEPSEUDOCONSOLE pfnResize = NULL;
 
-  if (process->pty_handle == NULL)
+  if (process->pty_data == NULL)
     return UV_EINVAL;
 
   if (pfnResize == NULL) {
@@ -965,7 +944,7 @@ int uv_pty_resize(uv_process_t* process,
   }
 
   COORD size = {cols, rows};
-  HRESULT hr = pfnResize(process->pty_handle, size);
+  HRESULT hr = pfnResize(((uv__pty_data*)process->pty_data)->pty, size);
     // Failed to resize PTY device: (error code %i)
   if (FAILED(hr))
     return uv_translate_sys_error(GetLastError());
@@ -979,17 +958,44 @@ int uv_pty_resize(uv_process_t* process,
 
 const int pty_stdout_buf_len = 128 * 1024;
 const int pty_stdin_buf_len = 128 * 1024;
-typedef struct {
-  uv_process_t *process;
 
-  uv_thread_t stdin_pump_thread;
-  HANDLE pty_stdin_write;
-  HANDLE stdin_read;
+void pty_init(uv__pty_data *data, HANDLE pty, HANDLE pty_stdin_write, HANDLE pty_stdout_read, HANDLE stdout_write, HANDLE stdin_read) {
+  data->pty = pty;
+  data->pty_stdin_write = pty_stdin_write;
+  data->pty_stdout_read = pty_stdout_read;
+  data->stdout_write = stdout_write;
+  data->stdin_read = stdin_read;
+}
 
-  uv_thread_t stdout_pump_thread;
-  HANDLE pty_stdout_read;
-  HANDLE stdout_write;
-} uv__pty_data;
+void pty_teardown(uv__pty_data *data) {
+  HANDLE hLibrary = LoadLibraryExW(L"kernel32.dll", 0, 0);
+  // Error loading kernel32.dll: (error code %i)
+  if (!hLibrary)
+    return;
+  //  return uv_translate_sys_error(GetLastError());
+
+  PFNCLOSEPSEUDOCONSOLE pfnClose = (PFNCLOSEPSEUDOCONSOLE)GetProcAddress((HMODULE)hLibrary,"ClosePseudoConsole");
+  if (!pfnClose)
+    return;
+//    int err = GetLastError();
+//    if (err == ERROR_PROC_NOT_FOUND)
+//      return UV_ENOTSUP;
+//    else
+//      return uv_translate_sys_error(err);
+
+  pfnClose(data->pty);
+  FreeLibrary(hLibrary);
+
+  /* We do not want to wait for the threads to finish. Doing so makes it very
+   * easy to deadlock. A process would then only call it's exit_cb once the
+   * pump threads have finished and the stdin pump thread typically only
+   * finishes when the stdin pipe is closed. That in turn is typically only
+   * done by users after the process has closed. So we just don't wait for them
+   * to finish.
+   */
+  //uv_thread_join(&data->stdin_pump_thread);
+  //uv_thread_join(&data->stdout_pump_thread);
+}
 
 void pty_stdin_pump_thread_cb(void *void_data) {
   uv__pty_data *data = (uv__pty_data*)void_data;
@@ -1077,20 +1083,9 @@ void pty_stdout_pump_thread_cb(void *void_data) {
     }
   }
 
-  CloseHandle(data->pty_stdout_read);
   uv__free(buf);
+  CloseHandle(data->pty_stdout_read);
   CloseHandle(data->stdout_write);
-}
-
-int pty_init(uv_loop_t *loop, uv__pty_data *data, uv_process_t *process, HANDLE pty_stdin_write, HANDLE pty_stdout_read, HANDLE stdout_write, HANDLE stdin_read) {
-  data->process = process;
-
-  data->pty_stdin_write = pty_stdin_write;
-  data->pty_stdout_read = pty_stdout_read;
-  data->stdout_write = stdout_write;
-  data->stdin_read = stdin_read;
-
-  return 0;
 }
 
 int pty_start_pipe_pumps(uv_loop_t *loop, uv__pty_data *data) {
@@ -1369,18 +1364,11 @@ int uv_spawn2(uv_loop_t* loop,
       goto done;
     }
 
-    /* setup pty_data and fill in references */
-
-    uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
-    err = pty_init(loop, pty_data, process, pty_in_write, pty_out_read, out_write, in_read);
-    if (err)
-      goto done;
-
     /* Now setup the PTY object
      */
     COORD size = {options->pty_cols, options->pty_rows};
-
-    HRESULT hr = pfnCreate(size, pty_in_read, pty_out_write, 0, &process->pty_handle);
+    HANDLE pty;
+    HRESULT hr = pfnCreate(size, pty_in_read, pty_out_write, 0, &pty);
     if (FAILED(hr)) {
       // Failed to create PTY device: (error code %i)
       err = hr;
@@ -1390,6 +1378,11 @@ int uv_spawn2(uv_loop_t* loop,
     FreeLibrary(hLibrary);
     CloseHandle(pty_in_read);
     CloseHandle(pty_out_write);
+
+    /* setup pty_data and fill in references */
+    uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
+    pty_init(pty_data, pty, pty_in_write, pty_out_read, out_write, in_read);
+    process->pty_data = pty_data;
 
     /* Start up the pump threads and STDIN reader. */
     err = pty_start_pipe_pumps(loop, pty_data);
@@ -1512,8 +1505,8 @@ int uv_spawn2(uv_loop_t* loop,
     if (!UpdateProcThreadAttribute(startup.lpAttributeList,
                                    0,
                                    PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
-                                   process->pty_handle,
-                                   sizeof(process->pty_handle),
+                                   ((uv__pty_data*)process->pty_data)->pty,
+                                   sizeof(((uv__pty_data*)process->pty_data)->pty),
                                    NULL,
                                    NULL)) {
       // Failed to update proc thread attribute list. (error code %i)
@@ -1580,14 +1573,14 @@ int uv_spawn2(uv_loop_t* loop,
       err = GetLastError();
       if (err == ERROR_PROC_NOT_FOUND) {
         err = 0;
-        uv__release_pseudo_console(process->pty_handle);
+        uv__release_pseudo_console(((uv__pty_data*)process->pty_data)->pty);
       }
       else {
         goto done;
       }
     }
     else {
-      pfnRelease(process->pty_handle);
+      pfnRelease(((uv__pty_data*)process->pty_data)->pty);
     }
   }
 

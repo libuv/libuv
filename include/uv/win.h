@@ -622,7 +622,7 @@ struct uv__req_write_extra_s {
   int exit_signal;                                                            \
   HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \
-  HANDLE pty_handle;                                                          \
+  void* pty_data;                                                             \
   volatile char exit_cb_pending;
 
 #define UV_FS_PRIVATE_FIELDS                                                  \
