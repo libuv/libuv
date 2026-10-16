@@ -505,6 +505,12 @@ struct uv__req_write_extra_s {
 # define UV_FS_O_WRONLY       0
 #endif
 
+#if defined(AT_FDCWD)
+# define UV_FS_AT_FDCWD       AT_FDCWD
+#else
+# define UV_FS_AT_FDCWD       (-100)
+#endif
+
 /* fs open() flags supported on other platforms: */
 #define UV_FS_O_FILEMAP       0
 #define UV_FS_O_RANDOM        0

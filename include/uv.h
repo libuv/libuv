@@ -1493,6 +1493,13 @@ UV_EXTERN int uv_fs_open(uv_loop_t* loop,
                          int flags,
                          int mode,
                          uv_fs_cb cb);
+UV_EXTERN int uv_fs_openat(uv_loop_t* loop,
+                           uv_fs_t* req,
+                           uv_file dirfd,
+                           const char* path,
+                           int flags,
+                           int mode,
+                           uv_fs_cb cb);
 UV_EXTERN int uv_fs_read(uv_loop_t* loop,
                          uv_fs_t* req,
                          uv_file file,
