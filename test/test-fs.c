@@ -1555,6 +1555,9 @@ TEST_FS_IMPL(fs_fstat) {
   uv_fs_t req;
   uv_file file;
   uv_stat_t* s;
+#ifdef __linux__
+  uv_fs_t stat_req;
+#endif
 #ifndef _WIN32
   struct stat t;
 #endif
@@ -1588,13 +1591,16 @@ TEST_FS_IMPL(fs_fstat) {
   ASSERT_EQ(s->st_birthtim.tv_sec, t.st_birthtimespec.tv_sec);
   ASSERT_EQ(s->st_birthtim.tv_nsec, t.st_birthtimespec.tv_nsec);
 # elif defined(__linux__)
-  /* If statx() is supported, the birth time should be equal to the change time
-   * because we just created the file. On older kernels, it's set to zero.
+  /* Linux struct stat does not expose birth time, so compare with the path
+   * API instead of ctime. This works around a kernel quirk: while creating
+   * the file, ext4, f2fs and xfs record the birth time and then update ctime
+   * again when they write the initial xattrs (e.g. the SELinux label on
+   * Android), so ctime can end up slightly ahead of the birth time.
    */
-  ASSERT(s->st_birthtim.tv_sec == 0 ||
-         s->st_birthtim.tv_sec == t.st_ctim.tv_sec);
-  ASSERT(s->st_birthtim.tv_nsec == 0 ||
-         s->st_birthtim.tv_nsec == t.st_ctim.tv_nsec);
+  ASSERT_OK(uv_fs_stat(NULL, &stat_req, "test_file", NULL));
+  ASSERT_EQ(s->st_birthtim.tv_sec, stat_req.statbuf.st_birthtim.tv_sec);
+  ASSERT_EQ(s->st_birthtim.tv_nsec, stat_req.statbuf.st_birthtim.tv_nsec);
+  uv_fs_req_cleanup(&stat_req);
 # endif
 #endif
 
