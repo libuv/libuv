@@ -302,8 +302,8 @@ int WSAAPI uv__wsarecv_workaround(SOCKET socket, WSABUF* buffers,
     apc_context = NULL;
   }
 
-  iosb->Status = STATUS_PENDING;
-  iosb->Pointer = 0;
+  iosb->u.Status = STATUS_PENDING;
+  iosb->u.Pointer = 0;
 
   status = pNtDeviceIoControlFile((HANDLE) socket,
                                   overlapped->hEvent,
@@ -400,8 +400,8 @@ int WSAAPI uv__wsarecvfrom_workaround(SOCKET socket, WSABUF* buffers,
     apc_context = NULL;
   }
 
-  iosb->Status = STATUS_PENDING;
-  iosb->Pointer = 0;
+  iosb->u.Status = STATUS_PENDING;
+  iosb->u.Pointer = 0;
 
   status = pNtDeviceIoControlFile((HANDLE) socket,
                                   overlapped->hEvent,
@@ -468,7 +468,7 @@ int WSAAPI uv__msafd_poll(SOCKET socket, AFD_POLL_INFO* info_in,
 
   assert(overlapped != NULL);
   iosb_ptr = (IO_STATUS_BLOCK*) &overlapped->Internal;
-  iosb_ptr->Status = STATUS_PENDING;
+  iosb_ptr->u.Status = STATUS_PENDING;
 
   status = pNtDeviceIoControlFile((HANDLE) socket,
                                   overlapped->hEvent,
