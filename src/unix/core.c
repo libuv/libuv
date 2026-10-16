@@ -1197,7 +1197,6 @@ int uv_getrusage_thread(uv_rusage_t* rusage) {
 
 
 int uv__open_cloexec(const char* path, int flags) {
-#if defined(O_CLOEXEC)
   int fd;
 
   fd = open(path, flags | O_CLOEXEC);
@@ -1205,22 +1204,6 @@ int uv__open_cloexec(const char* path, int flags) {
     return UV__ERR(errno);
 
   return fd;
-#else  /* O_CLOEXEC */
-  int err;
-  int fd;
-
-  fd = open(path, flags);
-  if (fd == -1)
-    return UV__ERR(errno);
-
-  err = uv__cloexec(fd, 1);
-  if (err) {
-    uv__close(fd);
-    return err;
-  }
-
-  return fd;
-#endif  /* O_CLOEXEC */
 }
 
 
@@ -1250,28 +1233,29 @@ int uv__slurp(const char* filename, char* buf, size_t len) {
 }
 
 
+/* TODO(bnoordhuis) dup3() exists on macOS 27 but not on older versions. */
 int uv__dup2_cloexec(int oldfd, int newfd) {
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__linux__)
+#if defined(__APPLE__)
+ int err;
+ int r;
+
+ r = dup2(oldfd, newfd);  /* Never retry. */
+ if (r == -1)
+   return UV__ERR(errno);
+
+ err = uv__cloexec(newfd, 1);
+ if (err != 0) {
+   uv__close(newfd);
+   return err;
+ }
+
+ return r;
+#else
   int r;
 
   r = dup3(oldfd, newfd, O_CLOEXEC);
   if (r == -1)
     return UV__ERR(errno);
-
-  return r;
-#else
-  int err;
-  int r;
-
-  r = dup2(oldfd, newfd);  /* Never retry. */
-  if (r == -1)
-    return UV__ERR(errno);
-
-  err = uv__cloexec(newfd, 1);
-  if (err != 0) {
-    uv__close(newfd);
-    return err;
-  }
 
   return r;
 #endif

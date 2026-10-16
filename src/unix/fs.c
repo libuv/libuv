@@ -272,9 +272,6 @@ static int (*uv__mkostemp)(char*, int);
 
 
 static void uv__mkostemp_initonce(void) {
-  /* z/os doesn't have RTLD_DEFAULT but that's okay
-   * because it doesn't have mkostemp(O_CLOEXEC) either.
-   */
 #ifdef RTLD_DEFAULT
   uv__mkostemp = (int (*)(char*, int)) dlsym(RTLD_DEFAULT, "mkostemp");
 
@@ -290,9 +287,6 @@ static void uv__mkostemp_initonce(void) {
 static int uv__fs_mkstemp(uv_fs_t* req) {
   static uv_once_t once = UV_ONCE_INIT;
   int r;
-#ifdef O_CLOEXEC
-  static _Atomic int no_cloexec_support;
-#endif
   static const char pattern[] = "XXXXXX";
   static const size_t pattern_size = sizeof(pattern) - 1;
   char* path;
@@ -301,38 +295,21 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   path = (char*) req->path;
   path_length = strlen(path);
 
-  /* EINVAL can be returned for 2 reasons:
-      1. The template's last 6 characters were not XXXXXX
-      2. open() didn't support O_CLOEXEC
-     We want to avoid going to the fallback path in case
-     of 1, so it's manually checked before. */
+  /* EINVAL can be returned for if he template's last 6 characters
+     were not XXXXXX. We want to avoid going to the fallback path
+     in that case, so it's manually checked before. */
   if (path_length < pattern_size ||
       strcmp(path + path_length - pattern_size, pattern)) {
     errno = EINVAL;
     r = -1;
-    goto clobber;
+    goto out;
   }
 
   uv_once(&once, uv__mkostemp_initonce);
-
-#ifdef O_CLOEXEC
-  if (atomic_load_explicit(&no_cloexec_support, memory_order_relaxed) == 0 &&
-      uv__mkostemp != NULL) {
+  if (uv__mkostemp != NULL) {
     r = uv__mkostemp(path, O_CLOEXEC);
-
-    if (r >= 0)
-      return r;
-
-    /* If mkostemp() returns EINVAL, it means the kernel doesn't
-       support O_CLOEXEC, so we just fallback to mkstemp() below. */
-    if (errno != EINVAL)
-      goto clobber;
-
-    /* We set the static variable so that next calls don't even
-       try to use mkostemp. */
-    atomic_store_explicit(&no_cloexec_support, 1, memory_order_relaxed);
+    goto out;
   }
-#endif  /* O_CLOEXEC */
 
   if (req->cb != NULL)
     uv_rwlock_rdlock(&req->loop->cloexec_lock);
@@ -352,7 +329,7 @@ static int uv__fs_mkstemp(uv_fs_t* req) {
   if (req->cb != NULL)
     uv_rwlock_rdunlock(&req->loop->cloexec_lock);
 
-clobber:
+out:
   if (r < 0)
     path[0] = '\0';
   return r;

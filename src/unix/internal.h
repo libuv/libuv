@@ -156,12 +156,16 @@ union uv__sockaddr {
 # define UV__POLLPRI 0
 #endif
 
-#if !defined(O_CLOEXEC) && defined(__FreeBSD__)
 /*
  * It may be that we are just missing `__POSIX_VISIBLE >= 200809`.
  * Try using fixed value const and give up, if it doesn't work
  */
-# define O_CLOEXEC 0x00100000
+#if !defined(O_CLOEXEC)
+# if defined(__FreeBSD__)
+#  define O_CLOEXEC 0x100000
+# elif defined(__MVS__)
+#  define O_CLOEXEC 0x080000
+# endif
 #endif
 
 typedef struct uv__stream_queued_fds_s uv__stream_queued_fds_t;
