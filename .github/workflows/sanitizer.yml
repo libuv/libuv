@@ -69,10 +69,13 @@ jobs:
             flags: -DUBSAN=ON -DCMAKE_BUILD_TYPE=Debug
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - name: Envinfo
         run: npx envinfo
-
+      - name: Disable Firewall
+        run: |
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
+          sudo defaults write /Library/Preferences/com.apple.alf globalstate -int 0
+          /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate
       - name: Build ${{ matrix.config.name }}
         run: |
           cmake -B build -DBUILD_TESTING=ON ${{ matrix.config.flags }}
