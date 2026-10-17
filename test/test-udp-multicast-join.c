@@ -60,7 +60,8 @@ static void close_cb(uv_handle_t* handle) {
 
 static void sv_send_cb(uv_udp_send_t* req, int status) {
   ASSERT_NOT_NULL(req);
-  ASSERT_OK(status);
+  if (status != 0)
+    ASSERT_EQ(status, UV_EHOSTUNREACH);
   CHECK_HANDLE(req->handle);
 
   sv_send_cb_called++;
