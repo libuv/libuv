@@ -2196,26 +2196,30 @@ static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
   int n;
   uint64_t cgroup1_max;
 
+  /* cgroup v1 has no equivalent of cgroup v2's memory.high. Its
+   * memory.soft_limit_in_bytes is not a constraint on the cgroup: the kernel
+   * only uses it as a reclaim target when the whole host is under memory
+   * pressure and never throttles or OOM-kills the cgroup for exceeding it.
+   * It is also deprecated as of Linux 6.12. Only memory.limit_in_bytes is
+   * enforced, so that is the only limit we report.
+   */
+  *high = UINT64_MAX;
+
   /* Find out where the controller is mounted. */
   p = uv__cgroup1_find_memory_controller(buf, &n);
   if (p != NULL) {
     snprintf(filename, sizeof(filename),
-             "/sys/fs/cgroup/memory/%.*s/memory.soft_limit_in_bytes", n, p);
-    *high = uv__read_uint64(filename);
-
-    snprintf(filename, sizeof(filename),
              "/sys/fs/cgroup/memory/%.*s/memory.limit_in_bytes", n, p);
     *max = uv__read_uint64(filename);
 
-    /* If the controller wasn't mounted, the reads above will have failed,
+    /* If the controller wasn't mounted, the read above will have failed,
      * as indicated by uv__read_uint64 returning 0.
      */
-     if (*high != 0 && *max != 0)
-       goto update_limits;
+    if (*max != 0)
+      goto update_limits;
   }
 
-  /* Fall back to the limits of the global memory controller. */
-  *high = uv__read_uint64("/sys/fs/cgroup/memory/memory.soft_limit_in_bytes");
+  /* Fall back to the limit of the global memory controller. */
   *max = uv__read_uint64("/sys/fs/cgroup/memory/memory.limit_in_bytes");
 
   /* uv__read_uint64 detects cgroup2's "max", so we need to separately detect
@@ -2223,8 +2227,6 @@ static void uv__get_cgroup1_memory_limits(char buf[static 1024], uint64_t* high,
    */
 update_limits:
   cgroup1_max = LONG_MAX & ~(sysconf(_SC_PAGESIZE) - 1);
-  if (*high == cgroup1_max)
-    *high = UINT64_MAX;
   if (*max == cgroup1_max)
     *max = UINT64_MAX;
 }
