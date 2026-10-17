@@ -169,8 +169,11 @@ static int can_ipv6_external(void) {
 
 
 TEST_IMPL(udp_multicast_join6) {
-#if defined(QNX_IOPKT)
-  RETURN_SKIP("Test does not currently work in QNX");
+  /* On the macos-15 CI runners, the test hangs, presumably because
+   * there is something blocking UDP traffic to or from ff02::1.
+   */
+#if defined(__APPLE__) || defined(QNX_IOPKT)
+  RETURN_SKIP("Test does not currently work on this platform");
 #endif
   int r;
   struct sockaddr_in6 addr;

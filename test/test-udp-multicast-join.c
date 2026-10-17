@@ -145,8 +145,11 @@ static void cl_recv_cb(uv_udp_t* handle,
 
 
 TEST_IMPL(udp_multicast_join) {
-#if defined(__OpenBSD__) || defined(QNX_IOPKT)
-  RETURN_SKIP("Test does not currently work in OpenBSD or QNX");
+  /* On the macos-15 CI runners, the test hangs, presumably because
+   * there is something blocking UDP traffic to or from 239.255.0.1.
+   */
+#if defined(__APPLE__) || defined(__OpenBSD__) || defined(QNX_IOPKT)
+  RETURN_SKIP("Test does not currently work on this platform");
 #endif
   int r;
   struct sockaddr_in addr;
