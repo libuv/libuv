@@ -107,6 +107,11 @@ API
 
     Set the TTY using the specified terminal mode.
 
+    ``UV_TTY_MODE_NORMAL`` restores the terminal settings that were saved when
+    the handle was initialized; it does not force cooked mode. If the terminal
+    was not in cooked mode when the handle was created, switching to
+    ``UV_TTY_MODE_NORMAL`` leaves it in its original (non-cooked) mode.
+
 .. c:function:: int uv_tty_reset_mode(void)
 
     To be called when the program exits. Resets TTY settings to default
