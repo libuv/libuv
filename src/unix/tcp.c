@@ -328,6 +328,8 @@ int uv__tcp_connect(uv_connect_t* req,
      * immediately -- other unixes want to wait.
      */
       handle->delayed_error = UV__ERR(ECONNREFUSED);
+    else if (errno == EHOSTUNREACH || errno == ENETUNREACH)
+      handle->delayed_error = UV__ERR(errno);
     else
       return UV__ERR(errno);
   }
