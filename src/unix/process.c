@@ -948,6 +948,10 @@ static int uv__spawn_and_init_child_posix_spawn(
                                                pipes);
   if (err != 0) {
     (void) posix_spawnattr_destroy(&attrs);
+#if defined(__APPLE__)
+    if (err == EBADF)
+      return UV_ENOSYS;
+#endif
     goto error;
   }
 
@@ -986,6 +990,11 @@ static int uv__spawn_and_init_child_posix_spawn(
   /* Destroy the actions/attributes. */
   (void) posix_spawn_file_actions_destroy(&actions);
   (void) posix_spawnattr_destroy(&attrs);
+
+#if defined(__APPLE__)
+  if (err == EBADF)
+    return UV_ENOSYS;
+#endif
 
 error:
   /* In an error situation, the attributes and file actions are
