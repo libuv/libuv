@@ -1484,5 +1484,7 @@ int uv_pty_resize(uv_process_t* process,
                   unsigned short rows) {
   if (process->u.fd == -1)
     return UV_EINVAL;
+  if (process->flags & UV_HANDLE_CLOSED)
+    return UV_EINVAL;
   return uv__pty_resize_fd(process->u.fd, cols, rows);
 }
