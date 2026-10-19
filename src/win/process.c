@@ -952,7 +952,7 @@ int uv_pty_resize(uv_process_t* process,
   HRESULT hr = pfnResize(proc_to_pty_data(process)->pty, size);
     // Failed to resize PTY device: (error code %i)
   if (FAILED(hr))
-    return uv_translate_sys_error(GetLastError());
+    return uv_translate_sys_error(hr);
   return 0;
 }
 
