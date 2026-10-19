@@ -472,6 +472,7 @@ struct uv_shutdown_s {
   union {                                                                     \
     int fd;                                                                   \
     void* reserved[4];                                                        \
+    /* uv_process_t.u.reserved[0] is used for uv__pty_data */                 \
   } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \
 

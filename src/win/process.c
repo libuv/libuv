@@ -54,6 +54,10 @@ typedef struct {
   HANDLE pty_stdout_read;
   HANDLE stdout_write;
 } uv__pty_data;
+
+inline uv__pty_data *proc_to_pty_data(uv_process_t *process) {
+  return (uv__pty_data*)process->u.reserved[0];
+}
 void pty_teardown(uv__pty_data *data);
 typedef VOID* HPCON;
 typedef HRESULT (__stdcall *PFNCREATEPSEUDOCONSOLE)(COORD c, HANDLE hIn, HANDLE hOut, DWORD dwFlags, HPCON* phpcon);
@@ -158,7 +162,8 @@ static void uv__process_init(uv_loop_t* loop, uv_process_t* handle) {
   handle->wait_handle = INVALID_HANDLE_VALUE;
   handle->process_handle = INVALID_HANDLE_VALUE;
   handle->exit_cb_pending = 0;
-  handle->pty_data = NULL;
+  /* pty_data */
+  handle->u.reserved[0] = NULL;
 
   UV_REQ_INIT(&handle->exit_req, UV_PROCESS_EXIT);
   handle->exit_req.data = handle;
@@ -878,8 +883,8 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
    * callback. */
   uv__handle_stop(handle);
 
-  if (handle->pty_data != NULL) {
-    pty_teardown((uv__pty_data*)handle->pty_data);
+  if (proc_to_pty_data(handle) != NULL) {
+    pty_teardown(proc_to_pty_data(handle));
   }
 
   /* Fire the exit callback. */
@@ -925,7 +930,7 @@ int uv_pty_resize(uv_process_t* process,
                   unsigned short rows) {
   static PFNRESIZEPSEUDOCONSOLE pfnResize = NULL;
 
-  if (process->pty_data == NULL)
+  if (proc_to_pty_data(process) == NULL)
     return UV_EINVAL;
 
   if (pfnResize == NULL) {
@@ -944,7 +949,7 @@ int uv_pty_resize(uv_process_t* process,
   }
 
   COORD size = {cols, rows};
-  HRESULT hr = pfnResize(((uv__pty_data*)process->pty_data)->pty, size);
+  HRESULT hr = pfnResize(proc_to_pty_data(process)->pty, size);
     // Failed to resize PTY device: (error code %i)
   if (FAILED(hr))
     return uv_translate_sys_error(GetLastError());
@@ -1383,7 +1388,7 @@ int uv_spawn2(uv_loop_t* loop,
     /* setup pty_data and fill in references */
     uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
     pty_init(pty_data, pty, pty_in_write, pty_out_read, out_write, in_read);
-    process->pty_data = pty_data;
+    process->u.reserved[0] = pty_data;
 
     /* Start up the pump threads and STDIN reader. */
     err = pty_start_pipe_pumps(loop, pty_data);
@@ -1506,8 +1511,8 @@ int uv_spawn2(uv_loop_t* loop,
     if (!UpdateProcThreadAttribute(startup.lpAttributeList,
                                    0,
                                    PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
-                                   ((uv__pty_data*)process->pty_data)->pty,
-                                   sizeof(((uv__pty_data*)process->pty_data)->pty),
+                                   proc_to_pty_data(process)->pty,
+                                   sizeof(proc_to_pty_data(process)->pty),
                                    NULL,
                                    NULL)) {
       // Failed to update proc thread attribute list. (error code %i)
@@ -1574,14 +1579,14 @@ int uv_spawn2(uv_loop_t* loop,
       err = GetLastError();
       if (err == ERROR_PROC_NOT_FOUND) {
         err = 0;
-        uv__release_pseudo_console(((uv__pty_data*)process->pty_data)->pty);
+        uv__release_pseudo_console(proc_to_pty_data(process)->pty);
       }
       else {
         goto done;
       }
     }
     else {
-      pfnRelease(((uv__pty_data*)process->pty_data)->pty);
+      pfnRelease(proc_to_pty_data(process)->pty);
     }
   }
 
