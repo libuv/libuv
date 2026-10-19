@@ -1191,6 +1191,12 @@ int uv__spawn_make_pty(int* fd_pty, int* fd_tty, int cols, int rows) {
   if (*fd_pty < 0)
     return UV__ERR(errno);
 
+  my_errno = uv__cloexec(*fd_pty, 1);
+  if (my_errno) {
+    close(*fd_pty);
+    return my_errno;
+  }
+
   if (grantpt(*fd_pty) < 0) {
     SAVE_ERRNO(close(*fd_pty));
     return UV__ERR(errno);
@@ -1208,7 +1214,7 @@ int uv__spawn_make_pty(int* fd_pty, int* fd_tty, int cols, int rows) {
     return UV__ERR(errno);
   }
 
-  *fd_tty = open(path_tty, O_RDWR | O_NOCTTY);
+  *fd_tty = open(path_tty, O_RDWR | O_NOCTTY | O_CLOEXEC);
   if (*fd_tty < 0) {
     my_errno = UV__ERR(errno);
     close(*fd_pty);
