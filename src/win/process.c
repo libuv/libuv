@@ -1187,7 +1187,8 @@ int uv_spawn2(uv_loop_t* loop,
   if (options->flags & UV_PROCESS_PTY) {
     if (options->version < UV_PROCESS_OPTIONS_VERSION_V1)
       return UV_EINVAL;
-    if (options->stdio[0].flags != (UV_CREATE_PIPE | UV_READABLE_PIPE) ||
+    if (options->stdio_count < 3 ||
+        options->stdio[0].flags != (UV_CREATE_PIPE | UV_READABLE_PIPE) ||
         options->stdio[0].data.stream->type != UV_NAMED_PIPE ||
         options->stdio[1].flags != (UV_CREATE_PIPE | UV_WRITABLE_PIPE) ||
         options->stdio[1].data.stream->type != UV_NAMED_PIPE ||
