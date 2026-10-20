@@ -264,6 +264,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "AIX")
        _THREAD_SAFE
        _XOPEN_SOURCE=500
        HAVE_SYS_AHAFS_EVPRODS_H)
+  list(APPEND uv_ldflags "-Wl,-bbigtoc")
   list(APPEND uv_libraries perfstat)
   list(APPEND uv_sources
        src/unix/aix.c
@@ -463,6 +464,7 @@ if(LIBUV_BUILD_SHARED)
       BUILDING_UV_SHARED=1
       ${uv_defines})
   target_compile_options(uv PRIVATE ${uv_cflags})
+  target_link_options(uv PRIVATE ${uv_ldflags})
   target_include_directories(uv
     PUBLIC
       $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -480,6 +482,7 @@ endif()
 add_library(uv_a STATIC ${uv_sources})
 target_compile_definitions(uv_a PRIVATE ${uv_defines})
 target_compile_options(uv_a PRIVATE ${uv_cflags})
+target_link_options(uv_a PRIVATE ${uv_ldflags})
 target_include_directories(uv_a
   PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
@@ -526,6 +529,7 @@ if(LIBUV_BUILD_TESTS)
     test/runner.c)
   target_compile_definitions(uv_run_benchmarks_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_benchmarks_a PRIVATE ${uv_cflags})
+  target_link_options(uv_run_benchmarks_a PRIVATE ${uv_ldflags})
   target_link_libraries(uv_run_benchmarks_a uv_a ${uv_test_libraries})
 
   list(APPEND uv_test_sources
@@ -723,6 +727,7 @@ if(LIBUV_BUILD_TESTS)
   target_compile_definitions(uv_run_tests
                              PRIVATE ${uv_defines} USING_UV_SHARED=1)
   target_compile_options(uv_run_tests PRIVATE ${uv_cflags})
+  target_link_options(uv_run_tests PRIVATE ${uv_ldflags})
   target_include_directories(uv_run_tests PRIVATE src)
   target_link_libraries(uv_run_tests uv ${uv_test_libraries})
   add_test(NAME uv_test
@@ -741,6 +746,7 @@ if(LIBUV_BUILD_TESTS)
   add_executable(uv_run_tests_a ${uv_test_sources} uv_win_longpath.manifest)
   target_compile_definitions(uv_run_tests_a PRIVATE ${uv_defines})
   target_compile_options(uv_run_tests_a PRIVATE ${uv_cflags})
+  target_link_options(uv_run_tests_a PRIVATE ${uv_ldflags})
   target_include_directories(uv_run_tests_a PRIVATE src)
   if(QEMU)
     target_link_libraries(uv_run_tests_a uv_a ${uv_test_libraries} -static)
