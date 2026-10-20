@@ -1235,7 +1235,7 @@ int uv__slurp(const char* filename, char* buf, size_t len) {
 
 /* TODO(bnoordhuis) dup3() exists on macOS 27 but not on older versions. */
 int uv__dup2_cloexec(int oldfd, int newfd) {
-#if defined(__APPLE__)
+#if defined(_AIX) || defined(__APPLE__) || defined(__PASE__) || defined(__MVS__)
  int err;
  int r;
 

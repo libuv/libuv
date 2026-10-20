@@ -513,7 +513,7 @@ int uv_pipe(uv_os_fd_t fds[2], int read_flags, int write_flags) {
   uv_os_fd_t temp[2];
   int err;
 
-#ifdef __APPLE__
+#if defined(_AIX) || defined(__APPLE__) || defined(__PASE__) || defined(__MVS__)
   if (pipe(temp))
     return UV__ERR(errno);
 
