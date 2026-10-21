@@ -928,6 +928,14 @@ static int uv__spawn_and_init_child_posix_spawn(
 error:
   /* In an error situation, the attributes and file actions are
    * already destroyed, only the happy path requires cleanup */
+#ifdef __APPLE__
+  /* Apple's userland posix_spawn_file_actions_add* functions in
+   * libsystem_kernel reject valid file descriptors >= OPEN_MAX (10240)
+   * with EBADF before reaching the kernel, even when RLIMIT_NOFILE is
+   * raised higher. Fall back to fork()/exec() in that case. */
+  if (err == EBADF)
+    return UV_ENOSYS;
+#endif
   return UV__ERR(err);
 }
 

@@ -801,6 +801,58 @@ TEST_IMPL(spawn_stdio_high_fd) {
   return 0;
 }
 
+
+TEST_IMPL(spawn_high_fds) {
+#ifdef __APPLE__
+  struct rlimit rl;
+  int dev_null_fd;
+  int high_fd;
+  int r;
+  uv_stdio_container_t stdio[1];
+
+  /* Apple's userland posix_spawn_file_actions_add* functions reject valid
+   * file descriptors >= OPEN_MAX (10240) with EBADF before reaching the
+   * kernel, regardless of RLIMIT_NOFILE. Use dup2 to acquire a high file
+   * descriptor >= 10240 without allocating thousands of descriptors. */
+  if (getrlimit(RLIMIT_NOFILE, &rl) != 0)
+    RETURN_SKIP("Failed to get RLIMIT_NOFILE");
+
+  if (rl.rlim_cur < 10241) {
+    rl.rlim_cur = 10241;
+    if (setrlimit(RLIMIT_NOFILE, &rl) != 0)
+      RETURN_SKIP("RLIMIT_NOFILE limit is below 10240 and cannot be raised.");
+  }
+
+  dev_null_fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
+  ASSERT_GE(dev_null_fd, 0);
+
+  high_fd = dup2(dev_null_fd, 10240);
+  close(dev_null_fd);
+  if (high_fd < 0)
+    RETURN_SKIP("Failed to dup2 descriptor to 10240.");
+
+  init_process_options("spawn_helper1", exit_cb);
+  stdio[0].flags = UV_INHERIT_FD;
+  stdio[0].data.fd = high_fd;
+  options.stdio = stdio;
+  options.stdio_count = 1;
+
+  r = uv_spawn(uv_default_loop(), &process, &options);
+  ASSERT_OK(r);
+  close(high_fd);
+
+  r = uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+  ASSERT_OK(r);
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+#else
+  RETURN_SKIP("macOS only test.");
+#endif
+}
+
 static void spawn_inherit_nonblock_alloc(uv_handle_t* handle,
                                         size_t suggested_size,
                                         uv_buf_t* buf) {
