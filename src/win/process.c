@@ -972,6 +972,22 @@ void pty_init(uv__pty_data *data, HANDLE pty, HANDLE pty_stdin_write, HANDLE pty
   data->stdin_read = stdin_read;
 }
 
+// Windows 10.0.29533 and later support overlapped IO with ConPTY.
+static BOOL pty_supports_overlapped_io() {
+    OSVERSIONINFOEXW version = {0};
+    version.dwOSVersionInfoSize = sizeof(version);
+    version.dwMajorVersion = 10;
+    version.dwMinorVersion = 0;
+    version.dwBuildNumber = 29533;
+
+    DWORDLONG condition = 0;
+    VER_SET_CONDITION(condition, VER_MAJORVERSION, VER_GREATER_EQUAL);
+    VER_SET_CONDITION(condition, VER_MINORVERSION, VER_GREATER_EQUAL);
+    VER_SET_CONDITION(condition, VER_BUILDNUMBER, VER_GREATER_EQUAL);
+
+    return VerifyVersionInfoW(&version,VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, condition);
+}
+
 void pty_teardown(uv__pty_data *data) {
   HANDLE hLibrary = LoadLibraryExW(L"kernel32.dll", 0, 0);
   // Error loading kernel32.dll: (error code %i)
@@ -1005,7 +1021,6 @@ void pty_teardown(uv__pty_data *data) {
 void pty_stdin_pump_thread_cb(void *void_data) {
   uv__pty_data *data = (uv__pty_data*)void_data;
 
-  int err = 0;
   DWORD nread = 0;
   OVERLAPPED overlapped = { 0 };
   char *buf = (char*)uv__malloc(sizeof(char) * pty_stdin_buf_len);
@@ -1047,7 +1062,6 @@ void pty_stdout_pump_thread_cb(void *void_data) {
   uv__pty_data *data = (uv__pty_data*)void_data;
 
   DWORD nread = 0;
-  DWORD nwritten = 0;
   OVERLAPPED overlapped = { 0 };
   char *buf = (char*)uv__malloc(sizeof(char) * pty_stdout_buf_len);
 
@@ -1323,11 +1337,7 @@ int uv_spawn2(uv_loop_t* loop,
       }
     }
 
-    /* Forwarding PTY STDIN.
-     * We read an asynchronous pipe and in a separate thread write to a
-     * synchronous pipe. We need to do this, because older versions of ConPTY
-     * do not support async pipes.
-     */
+    /* STDIN pipe setup */
     uv_pipe_t* in_write_pipe = (uv_pipe_t*) options->stdio[0].data.stream;
     HANDLE in_read = INVALID_HANDLE_VALUE;
     err = uv__create_stdio_pipe_pair(loop,
@@ -1337,15 +1347,7 @@ int uv_spawn2(uv_loop_t* loop,
     if (err)
       goto done;
 
-    HANDLE pty_in_read = INVALID_HANDLE_VALUE;
-    HANDLE pty_in_write = INVALID_HANDLE_VALUE;
-    if (!CreatePipe(&pty_in_read, &pty_in_write, NULL, 0)) {
-      err = GetLastError();
-      goto done;
-    }
-
-    /* Forwarding PTY STDOUT
-     */
+    /* STDOUT pipe setup */
     uv_pipe_t* out_read_pipe = (uv_pipe_t*) options->stdio[1].data.stream;
     HANDLE out_write = INVALID_HANDLE_VALUE;
     err = uv__create_stdio_pipe_pair(loop,
@@ -1355,37 +1357,91 @@ int uv_spawn2(uv_loop_t* loop,
     if (err)
       goto done;
 
-    HANDLE pty_out_write = INVALID_HANDLE_VALUE;
-    HANDLE pty_out_read = INVALID_HANDLE_VALUE;
-    if (!CreatePipe(&pty_out_read, &pty_out_write, NULL, 0)) {
-      err = GetLastError();
-      goto done;
-    }
-
-    /* Now setup the PTY object
-     */
+    /* Setup the PTY object */
     COORD size = {options->pty_cols, options->pty_rows};
-    HANDLE pty;
-    HRESULT hr = pfnCreate(size, pty_in_read, pty_out_write, 0, &pty);
-    if (FAILED(hr)) {
-      // Failed to create PTY device: (error code %i)
-      err = hr;
-      goto done;
+    uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
+    process->u.reserved[0] = pty_data;
+
+    if (pty_supports_overlapped_io()) {
+      HANDLE pty;
+      HRESULT hr = pfnCreate(size, in_read, out_write, 0, &pty);
+      if (FAILED(hr)) {
+        // Failed to create PTY device: (error code %i)
+        err = hr;
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        goto done;
+      }
+
+      CloseHandle(in_read);
+      CloseHandle(out_write);
+
+      /* setup pty_data and fill in references */
+      pty_init(pty_data, pty, NULL, NULL, NULL, NULL);
+    }
+    else {
+      /* We are on an older version of Windows where ConPTY doesn't support
+       * overlapped IO / async pipes.
+       */
+
+      /* Forwarding PTY STDIN.
+       * We read an asynchronous pipe and in a separate thread write to a
+       * synchronous pipe. We need to do this, because older versions of ConPTY
+       * do not support async pipes.
+       */
+      HANDLE pty_in_read = INVALID_HANDLE_VALUE;
+      HANDLE pty_in_write = INVALID_HANDLE_VALUE;
+      if (!CreatePipe(&pty_in_read, &pty_in_write, NULL, 0)) {
+        err = GetLastError();
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        goto done;
+      }
+
+      /* Forwarding PTY STDOUT */
+      HANDLE pty_out_write = INVALID_HANDLE_VALUE;
+      HANDLE pty_out_read = INVALID_HANDLE_VALUE;
+      if (!CreatePipe(&pty_out_read, &pty_out_write, NULL, 0)) {
+        err = GetLastError();
+
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        CloseHandle(pty_in_read);
+        CloseHandle(pty_in_write);
+        FreeLibrary(hLibrary);
+        goto done;
+      }
+
+      /* Now setup the PTY object */
+      HANDLE pty;
+      HRESULT hr = pfnCreate(size, pty_in_read, pty_out_write, 0, &pty);
+      if (FAILED(hr)) {
+        // Failed to create PTY device: (error code %i)
+        err = hr;
+
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        CloseHandle(pty_in_read);
+        CloseHandle(pty_in_write);
+        CloseHandle(pty_out_read);
+        CloseHandle(pty_out_write);
+        FreeLibrary(hLibrary);
+        goto done;
+      }
+
+      CloseHandle(pty_in_read);
+      CloseHandle(pty_out_write);
+
+      /* setup pty_data and fill in references */
+      pty_init(pty_data, pty, pty_in_write, pty_out_read, out_write, in_read);
+
+      /* Start up the pump threads and STDIN reader. */
+      err = pty_start_pipe_pumps(loop, pty_data);
+      if (err)
+          goto done;
     }
 
     FreeLibrary(hLibrary);
-    CloseHandle(pty_in_read);
-    CloseHandle(pty_out_write);
-
-    /* setup pty_data and fill in references */
-    uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
-    pty_init(pty_data, pty, pty_in_write, pty_out_read, out_write, in_read);
-    process->u.reserved[0] = pty_data;
-
-    /* Start up the pump threads and STDIN reader. */
-    err = pty_start_pipe_pumps(loop, pty_data);
-    if (err)
-        goto done;
 
     startup.StartupInfo.hStdInput = NULL;
     startup.StartupInfo.hStdOutput = NULL;
