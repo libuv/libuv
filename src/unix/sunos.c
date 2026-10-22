@@ -173,7 +173,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   while (!uv__queue_empty(&loop->watcher_queue)) {
     q = uv__queue_head(&loop->watcher_queue);
     uv__queue_remove(q);
-    uv__queue_init(q);
 
     w = uv__queue_data(q, uv__io_t, watcher_queue);
     assert(w->pevents != 0);

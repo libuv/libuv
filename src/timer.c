@@ -185,7 +185,6 @@ void uv__run_timers(uv_loop_t* loop) {
   while (!uv__queue_empty(&ready_queue)) {
     queue_node = uv__queue_head(&ready_queue);
     uv__queue_remove(queue_node);
-    uv__queue_init(queue_node);
     handle = container_of(queue_node, uv_timer_t, node.queue);
 
     uv_timer_again(handle);

@@ -189,7 +189,6 @@ void uv__wait_children(uv_loop_t* loop) {
     q = uv__queue_next(q);
 
     uv__queue_remove(&process->queue);
-    uv__queue_init(&process->queue);
     uv__handle_stop(process);
 
     if (process->exit_cb == NULL)
