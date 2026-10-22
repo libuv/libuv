@@ -1018,7 +1018,7 @@ void pty_stdin_pump_thread_cb(void *void_data) {
     }
 
     if (!success) {
-      // Can't do much about the error sadly.
+      // TODO: Where would I report an error in the pipe pump thread?
       break;
     }
 
@@ -1027,8 +1027,7 @@ void pty_stdin_pump_thread_cb(void *void_data) {
     while (off < nread) {
       DWORD nwritten;
       if (!WriteFile(data->pty_stdin_write, buf + off, nread - off, &nwritten, NULL)) {
-        err = GetLastError();
-        // Can't do much about the error sadly.
+        // TODO: Where would I report an error in the pipe pump thread?
         break;
       }
       off += nwritten;
@@ -1058,7 +1057,7 @@ void pty_stdout_pump_thread_cb(void *void_data) {
     if (!ReadFile(data->pty_stdout_read, buf, pty_stdout_buf_len, &nread, NULL)) {
       err = GetLastError();
       if (err != ERROR_BROKEN_PIPE) {
-        // TODO: What do we do here?
+        // TODO: Where would I report an error in the pipe pump thread?
       }
       break;
     }
@@ -1072,20 +1071,14 @@ void pty_stdout_pump_thread_cb(void *void_data) {
         success = GetOverlappedResult(data->stdout_write, &overlapped, &nwritten, TRUE);
       }
       if (!success) {
+        // TODO: Where would I report an error in the pipe pump thread?
         break;
       }
       off += nwritten;
     }
+
     if (off != nread) {
       break;
-    }
-
-    BOOL success = WriteFile(data->stdout_write, buf, nread, &nwritten, &overlapped);
-    if (!success && GetLastError() == ERROR_IO_PENDING) {
-      success = GetOverlappedResult(data->stdout_write, &overlapped, &nwritten, TRUE);
-    }
-    if (!success) {
-      // What do we do here?
     }
   }
 
@@ -1098,12 +1091,10 @@ int pty_start_pipe_pumps(uv_loop_t *loop, uv__pty_data *data) {
   int err = 0;
 
   if (err = uv_thread_create(&data->stdin_pump_thread, &pty_stdin_pump_thread_cb, (void*)data)) {
-    // TODO
     return err;
   }
 
   if (err = uv_thread_create(&data->stdout_pump_thread, &pty_stdout_pump_thread_cb, (void*)data)) {
-    // TODO
     return err;
   }
 
