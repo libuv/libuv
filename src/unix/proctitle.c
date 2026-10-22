@@ -54,6 +54,10 @@ char** uv_setup_args(int argc, char** argv) {
   if (argc <= 0)
     return argv;
 
+#ifdef __APPLE__
+  uv__process_title_init();
+#endif
+
   pt.str = argv[0];
   pt.len = strlen(argv[0]);
   pt.cap = pt.len + 1;
