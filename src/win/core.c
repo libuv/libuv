@@ -382,6 +382,10 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
     return 0;
   }
 
+  if (option == UV_LOOP_ACCEPT_SOCKADDR) {
+    /* TODO(bnoordhuis) address is in req->accept_buffer for TCP sockets */
+  }
+
   return UV_ENOSYS;
 }
 
