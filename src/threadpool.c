@@ -26,6 +26,9 @@
 #endif
 
 #include <stdlib.h>
+#if defined(__APPLE__) && defined(__MACH__)
+# include <errno.h>
+#endif
 
 #define MAX_THREADPOOL_SIZE 1024
 
@@ -48,6 +51,24 @@ static unsigned int slow_work_thread_threshold(void) {
 
 static void uv__cancelled(struct uv__work* w) {
   abort();
+}
+
+
+static void wait_for_work(void) {
+#if defined(__APPLE__) && defined(__MACH__)
+  /* Bound idle waits so Darwin psynch lost wakeups can recover. */
+  const struct timespec timeout = { 30, 0 };
+  int r;
+
+  errno = 0;
+  r = pthread_cond_timedwait_relative_np(&cond, &mutex, &timeout);
+  /* Preserve uv_cond_wait's EINVAL/EBUSY workaround for Darwin. */
+  if (r == 0 || r == ETIMEDOUT || (r == EINVAL && errno == EBUSY))
+    return;
+  abort();
+#else
+  uv_cond_wait(&cond, &mutex);
+#endif
 }
 
 
@@ -74,7 +95,7 @@ static void worker(void* arg) {
             uv__queue_next(&run_slow_work_message) == &wq &&
             slow_io_work_running >= slow_work_thread_threshold())) {
       idle_threads += 1;
-      uv_cond_wait(&cond, &mutex);
+      wait_for_work();
       idle_threads -= 1;
     }
 

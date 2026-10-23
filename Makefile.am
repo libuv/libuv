@@ -118,7 +118,9 @@ libuv_la_SOURCES += src/unix/async.c \
 
 endif  # WINNT
 
-EXTRA_DIST = test/fixtures/empty_file \
+EXTRA_DIST = test/threadpool-darwin-wait.h \
+             test/threadpool-psynch-witness.c \
+             test/fixtures/empty_file \
              test/fixtures/load_error.node \
              test/fixtures/lorem_ipsum.txt \
              test/fixtures/one_file/one_file \
@@ -305,6 +307,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-thread-name.c \
                          test/test-thread-priority.c \
                          test/test-threadpool-cancel.c \
+                         test/test-threadpool-idle-wait.c \
                          test/test-threadpool.c \
                          test/test-timer-again.c \
                          test/test-timer-from-check.c \
