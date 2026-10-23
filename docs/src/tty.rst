@@ -121,6 +121,10 @@ API
     code ``UV_EBUSY`` if you call it when execution is inside
     :c:func:`uv_tty_set_mode`.
 
+    Note that the original settings are only remembered while the TTY handle
+    they were saved from is still open. Closing the handle restores the saved
+    settings itself, after which this function does nothing.
+
 .. c:function:: int uv_tty_get_winsize(uv_tty_t* handle, int* width, int* height)
 
     Gets the current Window size. On success it returns 0.
