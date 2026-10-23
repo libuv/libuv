@@ -2452,14 +2452,13 @@ static void uv__tty_console_signal_resize(void) {
   height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
 
   uv_mutex_lock(&uv__tty_console_resize_mutex);
-  if (width != uv__tty_console_width || height != uv__tty_console_height) {
-    uv__tty_console_width = width;
-    uv__tty_console_height = height;
-    uv_mutex_unlock(&uv__tty_console_resize_mutex);
-    uv__signal_dispatch(SIGWINCH);
-  } else {
-    uv_mutex_unlock(&uv__tty_console_resize_mutex);
-  }
+  uv__tty_console_width = width;
+  uv__tty_console_height = height;
+  uv_mutex_unlock(&uv__tty_console_resize_mutex);
+
+  /* A resize can reflow the visible buffer even when the size ends up where it
+   * started, so every notification is reported without comparing sizes. */
+  uv__signal_dispatch(SIGWINCH);
 }
 
 void uv_tty_set_vterm_state(uv_tty_vtermstate_t state) {
