@@ -531,6 +531,7 @@ if(LIBUV_BUILD_TESTS)
   list(APPEND uv_test_sources
        test/blackhole-server.c
        test/echo-server.c
+       test/oom.c
        test/run-tests.c
        test/runner.c
        test/test-active.c
