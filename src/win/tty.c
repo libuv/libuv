@@ -117,19 +117,11 @@ static int uv_tty_virtual_offset = -1;
 static int uv_tty_virtual_height = -1;
 static int uv_tty_virtual_width = -1;
 
-/* The console window size
- * We keep this separate from uv_tty_virtual_*. We use those values to only
- * handle signalling SIGWINCH
- */
-
 static HANDLE uv__tty_console_handle_out = INVALID_HANDLE_VALUE;
 static HANDLE uv__tty_console_handle_in = INVALID_HANDLE_VALUE;
 static DWORD uv__tty_console_in_original_mode = (DWORD)-1;
 static volatile LONG uv__tty_console_in_need_mode_reset = 0;
-static int uv__tty_console_height = -1;
-static int uv__tty_console_width = -1;
 static HANDLE uv__tty_console_resized = INVALID_HANDLE_VALUE;
-static uv_mutex_t uv__tty_console_resize_mutex;
 
 static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param);
 static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
@@ -177,12 +169,6 @@ void uv__console_init(void) {
                                            0,
                                            0);
   if (uv__tty_console_handle_out != INVALID_HANDLE_VALUE) {
-    CONSOLE_SCREEN_BUFFER_INFO sb_info;
-    uv_mutex_init(&uv__tty_console_resize_mutex);
-    if (GetConsoleScreenBufferInfo(uv__tty_console_handle_out, &sb_info)) {
-      uv__tty_console_width = sb_info.dwSize.X;
-      uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
-    }
     QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
                       NULL,
                       WT_EXECUTELONGFUNCTION);
@@ -2442,24 +2428,9 @@ static DWORD WINAPI uv__tty_console_resize_watcher_thread(void* param) {
 }
 
 static void uv__tty_console_signal_resize(void) {
-  CONSOLE_SCREEN_BUFFER_INFO sb_info;
-  int width, height;
-
-  if (!GetConsoleScreenBufferInfo(uv__tty_console_handle_out, &sb_info))
-    return;
-
-  width = sb_info.dwSize.X;
-  height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
-
-  uv_mutex_lock(&uv__tty_console_resize_mutex);
-  if (width != uv__tty_console_width || height != uv__tty_console_height) {
-    uv__tty_console_width = width;
-    uv__tty_console_height = height;
-    uv_mutex_unlock(&uv__tty_console_resize_mutex);
-    uv__signal_dispatch(SIGWINCH);
-  } else {
-    uv_mutex_unlock(&uv__tty_console_resize_mutex);
-  }
+  /* A resize can reflow the visible buffer even when the size ends up where it
+   * started, so every notification is reported. */
+  uv__signal_dispatch(SIGWINCH);
 }
 
 void uv_tty_set_vterm_state(uv_tty_vtermstate_t state) {
