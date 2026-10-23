@@ -173,6 +173,11 @@ static void fs__stat_assign_statbuf(uv_stat_t* statbuf,
                                     int do_lstat);
 
 
+void uv__fs_cleanup(void) {
+  uv__fd_hash_cleanup();
+}
+
+
 void uv__fs_init(void) {
   SYSTEM_INFO system_info;
 
