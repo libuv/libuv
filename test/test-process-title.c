@@ -152,6 +152,16 @@ static unsigned int cf_create_calls;
 static unsigned int cf_string_count;
 static unsigned int cf_release_count;
 static unsigned int cf_fail_at;
+static unsigned int dlopen_calls;
+static int block_dlopen;
+
+
+static void* tracked_dlopen(const char* path, int mode) {
+  dlopen_calls++;
+  if (block_dlopen)
+    return NULL;
+  return dlopen(path, mode);
+}
 
 
 static CFStringRef tracked_cf_string_create(CFAllocatorRef allocator,
@@ -202,15 +212,65 @@ static void* tracked_dlsym(void* handle, const char* symbol) {
 }
 
 
-/* Track the helper's owned references, excluding framework-internal memory. */
+/* Track framework loads and references, excluding framework-internal memory. */
+#define dlopen tracked_dlopen
 #define dlsym tracked_dlsym
+#define uv__process_title_init test_darwin_process_title_init
 #define uv__set_process_title test_darwin_set_process_title
 #define uv__thread_setname uv_thread_setname
 #include "../src/unix/darwin-proctitle.c"
 #undef uv__thread_setname
 #undef uv__set_process_title
+#undef uv__process_title_init
 #undef dlsym
+#undef dlopen
 #endif
+
+
+TEST_IMPL(process_title_launch_services) {
+#if defined(__APPLE__) && !TARGET_OS_IPHONE
+  const char* values[] = { NULL, "", "0", "1", "00", "false" };
+  const char* titles[] = { "first title", "second title" };
+  uv_thread_t self;
+  char name[64];
+  unsigned int i;
+  unsigned int j;
+  int enabled;
+  int err;
+
+  self = uv_thread_self();
+  block_dlopen = 1;
+  for (i = 0; i < ARRAY_SIZE(values); i++) {
+    if (values[i] == NULL)
+      ASSERT_OK(uv_os_unsetenv("UV_PROCESS_TITLE_USE_LAUNCH_SERVICES"));
+    else
+      ASSERT_OK(uv_os_setenv("UV_PROCESS_TITLE_USE_LAUNCH_SERVICES",
+                            values[i]));
+    enabled = values[i] == NULL || strcmp(values[i], "0") != 0;
+    test_darwin_process_title_init();
+
+    /* Changes after initialization must not affect subsequent title updates. */
+    ASSERT_OK(uv_os_setenv("UV_PROCESS_TITLE_USE_LAUNCH_SERVICES",
+                          enabled ? "0" : "1"));
+    for (j = 0; j < ARRAY_SIZE(titles); j++) {
+      dlopen_calls = 0;
+      err = test_darwin_set_process_title(titles[j]);
+      if (enabled) {
+        ASSERT_EQ(err, UV_ENOENT);
+        ASSERT_EQ(dlopen_calls, 2);
+      } else {
+        ASSERT_OK(err);
+        ASSERT_EQ(dlopen_calls, 0);
+        ASSERT_OK(uv_thread_getname(&self, name, sizeof(name)));
+        ASSERT_STR_EQ(name, titles[j]);
+      }
+    }
+  }
+  return 0;
+#else
+  RETURN_SKIP("LaunchServices is only used for process titles on macOS.");
+#endif
+}
 
 
 TEST_IMPL(process_title_cf_strings) {

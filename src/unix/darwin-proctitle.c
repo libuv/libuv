@@ -31,7 +31,21 @@
 
 #if !TARGET_OS_IPHONE
 #include "darwin-stub.h"
+
+static int use_launch_services = 1;
 #endif
+
+
+void uv__process_title_init(void) {
+#if !TARGET_OS_IPHONE
+  const char* val;
+
+  /* Read the environment at startup, not during concurrent title updates. */
+  val = getenv("UV_PROCESS_TITLE_USE_LAUNCH_SERVICES");
+  use_launch_services = val == NULL || strcmp(val, "0") != 0;
+#endif
+}
+
 
 int uv__set_process_title(const char* title) {
 #if TARGET_OS_IPHONE
@@ -63,6 +77,9 @@ int uv__set_process_title(const char* title) {
   CFStringRef string;
   OSStatus status;
   int err;
+
+  if (!use_launch_services)
+    return uv__thread_setname(title);
 
   err = UV_ENOENT;
   application_services_handle = dlopen("/System/Library/Frameworks/"

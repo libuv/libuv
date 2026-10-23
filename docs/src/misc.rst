@@ -346,6 +346,17 @@ API
     available space. Other platforms will return `UV_ENOMEM` if they cannot
     allocate enough space to duplicate the contents of `title`.
 
+    .. note::
+        On macOS, this function registers the process with LaunchServices to
+        update its display name in Activity Monitor. Applications that start
+        many short-lived processes can avoid this overhead by setting
+        ``UV_PROCESS_TITLE_USE_LAUNCH_SERVICES=0`` in the environment before
+        calling :c:func:`uv_setup_args`. The setting is captured by
+        :c:func:`uv_setup_args`; later environment changes have no effect.
+        Only the exact value ``0`` disables LaunchServices updates. Process
+        title readback, the title reported by ``ps``, and thread naming are
+        unaffected, but the Activity Monitor display name is no longer updated.
+
     .. versionchanged:: 1.18.1 now thread-safe on all supported platforms.
 
     .. versionchanged:: 1.39.0 now returns an error if `uv_setup_args` is needed

@@ -462,6 +462,7 @@ int uv__make_pipe(int fds[2], int flags);
 
 #if defined(__APPLE__)
 
+void uv__process_title_init(void);
 int uv__fsevents_init(uv_fs_event_t* handle);
 int uv__fsevents_close(uv_fs_event_t* handle);
 void uv__fsevents_loop_delete(uv_loop_t* loop);
