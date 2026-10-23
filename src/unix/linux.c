@@ -1475,7 +1475,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     q = uv__queue_head(&loop->watcher_queue);
     w = uv__queue_data(q, uv__io_t, watcher_queue);
     uv__queue_remove(q);
-    uv__queue_init(q);
 
     op = EPOLL_CTL_MOD;
     if (w->events == 0)

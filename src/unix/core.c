@@ -851,7 +851,6 @@ static void uv__run_pending(uv_loop_t* loop) {
   while (!uv__queue_empty(&pq)) {
     q = uv__queue_head(&pq);
     uv__queue_remove(q);
-    uv__queue_init(q);
     w = uv__queue_data(q, uv__io_t, pending_queue);
     uv__io_cb(loop, w, POLLOUT);
   }
@@ -1021,7 +1020,6 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   if (w->pevents == 0) {
     uv__queue_remove(&w->watcher_queue);
-    uv__queue_init(&w->watcher_queue);
     w->events = 0;
 
     if (w == loop->watchers[w->fd]) {

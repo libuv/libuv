@@ -85,6 +85,8 @@ static inline void uv__queue_insert_tail(struct uv__queue* h,
 static inline void uv__queue_remove(struct uv__queue* q) {
   q->prev->next = q->next;
   q->next->prev = q->prev;
+  q->next = q;
+  q->prev = q;
 }
 
 #endif /* QUEUE_H_ */

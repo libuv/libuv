@@ -85,8 +85,7 @@ static void worker(void* arg) {
       break;
     }
 
-    uv__queue_remove(q);
-    uv__queue_init(q);  /* Signal uv_cancel() that the work req is executing. */
+    uv__queue_remove(q);  /* Signal uv_cancel() the work req is executing. */
 
     is_slow_work = 0;
     if (q == &run_slow_work_message) {
