@@ -23,6 +23,25 @@
 #include "task.h"
 #include <string.h>
 
+#ifdef __linux__
+# include <fcntl.h>
+# include <sched.h>
+# include <sys/mount.h>
+# include <unistd.h>
+
+static int write_file(const char* path, const char* s) {
+  ssize_t n;
+  int fd;
+
+  fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+  if (fd == -1)
+    return -1;
+  n = write(fd, s, strlen(s));
+  close(fd);
+  return n == (ssize_t) strlen(s) ? 0 : -1;
+}
+#endif
+
 
 TEST_IMPL(platform_output) {
   char buffer[512];
@@ -258,4 +277,48 @@ TEST_IMPL(platform_output) {
   }
 
   return 0;
+}
+
+
+TEST_IMPL(platform_cgroup2_cpu_max) {
+#ifndef __linux__
+  RETURN_SKIP("Linux only test");
+#else
+  char uid_map[32];
+  char gid_map[32];
+  char buf[8];
+  FILE* fp;
+
+  if (uv_available_parallelism() < 16)
+    RETURN_SKIP("Test needs at least 16 CPUs");
+
+  snprintf(uid_map, sizeof(uid_map), "%d %d 1", (int) getuid(), (int) getuid());
+  snprintf(gid_map, sizeof(gid_map), "%d %d 1", (int) getgid(), (int) getgid());
+
+  /* Fake a cgroup v2 hierarchy in new user, mount and cgroup namespaces. */
+  if (unshare(CLONE_NEWUSER | CLONE_NEWNS | CLONE_NEWCGROUP) ||
+      write_file("/proc/self/uid_map", uid_map) ||
+      write_file("/proc/self/setgroups", "deny") ||
+      write_file("/proc/self/gid_map", gid_map) ||
+      mount("none", "/sys/fs/cgroup", "tmpfs", 0, NULL) ||
+      write_file("/sys/fs/cgroup/cgroup.controllers", "cpu\n"))
+    RETURN_SKIP("Cannot create a fake cgroup v2 hierarchy");
+
+  fp = fopen("/proc/self/cgroup", "r");
+  ASSERT_NOT_NULL(fp);
+  if (fgets(buf, sizeof(buf), fp) == NULL || strcmp(buf, "0::/\n") != 0) {
+    fclose(fp);
+    RETURN_SKIP("Not a cgroup v2 system");
+  }
+  fclose(fp);
+
+  ASSERT_OK(write_file("/sys/fs/cgroup/cpu.max", "9000000 1000000\n"));
+  ASSERT_EQ(9, uv_available_parallelism());
+
+  /* 16+ characters, used to be truncated to "15840000 100000". */
+  ASSERT_OK(write_file("/sys/fs/cgroup/cpu.max", "15840000 1000000\n"));
+  ASSERT_EQ(15, uv_available_parallelism());
+
+  return 0;
+#endif
 }
