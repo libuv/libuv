@@ -183,9 +183,6 @@ void uv__console_init(void) {
       uv__tty_console_width = sb_info.dwSize.X;
       uv__tty_console_height = sb_info.srWindow.Bottom - sb_info.srWindow.Top + 1;
     }
-    QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
-                      NULL,
-                      WT_EXECUTELONGFUNCTION);
   }
   uv__tty_console_handle_in = CreateFileW(L"CONIN$",
                                           GENERIC_READ | GENERIC_WRITE,
@@ -235,6 +232,10 @@ int uv_tty_init(uv_loop_t* loop, uv_tty_t* tty, uv_file fd, int unused) {
 
   readable = GetNumberOfConsoleInputEvents(handle, &NumberOfEvents);
   if (!readable) {
+    /* Console resizes are only of interest once there is a console output
+     * handle to report them for. */
+    uv__tty_console_resize_watcher_start();
+
     /* Obtain the screen buffer info with the output handle. */
     if (!GetConsoleScreenBufferInfo(handle, &screen_buffer_info)) {
       return uv_translate_sys_error(GetLastError());
@@ -2377,6 +2378,17 @@ static DWORD WINAPI uv__tty_console_resize_message_loop_thread(void* param) {
   ULONG_PTR conhost_pid;
   MSG msg;
 
+  if (pSetWinEventHook == NULL) {
+    /* user32.dll was not loaded when libuv was initialized, for example
+     * because the executable delay-loads it. */
+    HMODULE user32_module = LoadLibraryExW(L"user32.dll",
+                                           NULL,
+                                           LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (user32_module != NULL)
+      pSetWinEventHook = (sSetWinEventHook) GetProcAddress(user32_module,
+                                                           "SetWinEventHook");
+  }
+
   if (pSetWinEventHook == NULL || pNtQueryInformationProcess == NULL)
     return 0;
 
@@ -2428,6 +2440,21 @@ static void CALLBACK uv__tty_console_resize_event(HWINEVENTHOOK hWinEventHook,
                                                   DWORD dwEventThread,
                                                   DWORD dwmsEventTime) {
   SetEvent(uv__tty_console_resized);
+}
+
+static void uv__tty_console_resize_watcher_init(void) {
+  if (uv__tty_console_handle_out != INVALID_HANDLE_VALUE)
+    QueueUserWorkItem(uv__tty_console_resize_message_loop_thread,
+                      NULL,
+                      WT_EXECUTELONGFUNCTION);
+}
+
+/* Starts watching for console resizes, which are reported as SIGWINCH. This
+ * is done on first use rather than in uv__console_init(), because the watcher
+ * needs user32.dll and a thread, which most processes never use. */
+void uv__tty_console_resize_watcher_start(void) {
+  static uv_once_t once = UV_ONCE_INIT;
+  uv_once(&once, uv__tty_console_resize_watcher_init);
 }
 
 static DWORD WINAPI uv__tty_console_resize_watcher_thread(void* param) {

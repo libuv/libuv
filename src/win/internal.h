@@ -155,6 +155,7 @@ void uv__pipe_endgame(uv_loop_t* loop, uv_pipe_t* handle);
  * TTY
  */
 void uv__console_init(void);
+void uv__tty_console_resize_watcher_start(void);
 
 int uv__tty_read_start(uv_tty_t* handle, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb);

@@ -198,6 +198,9 @@ int uv__signal_start(uv_signal_t* handle,
   if (signum <= 0 || signum >= NSIG)
     return UV_EINVAL;
 
+  if (signum == SIGWINCH)
+    uv__tty_console_resize_watcher_start();
+
   /* Short circuit: if the signal watcher is already watching {signum} don't go
    * through the process of deregistering and registering the handler.
    * Additionally, this avoids pending signals getting lost in the (small) time
