@@ -55,6 +55,7 @@ TEST_DECLARE   (semaphore_3)
 TEST_DECLARE   (tty)
 #ifdef _WIN32
 TEST_DECLARE   (tty_raw)
+TEST_DECLARE   (tty_sigwinch_same_size)
 TEST_DECLARE   (tty_empty_write)
 TEST_DECLARE   (tty_large_write)
 TEST_DECLARE   (tty_raw_cancel)
@@ -697,6 +698,7 @@ TASK_LIST_START
   TEST_ENTRY  (tty)
 #ifdef _WIN32
   TEST_ENTRY  (tty_raw)
+  TEST_ENTRY  (tty_sigwinch_same_size)
   TEST_ENTRY  (tty_empty_write)
   TEST_ENTRY  (tty_large_write)
   TEST_ENTRY  (tty_raw_cancel)
