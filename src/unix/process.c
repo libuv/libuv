@@ -57,11 +57,12 @@
 #define NAME_MAX 255
 #endif
 
-#if defined(__DragonFly__) || \
-    defined(__FreeBSD__) || \
-    defined(__NetBSD__) || \
+#if defined(__NetBSD__) || \
     defined(__OpenBSD__)
 #include <util.h>
+#elif defined(__DragonFly__) || \
+      defined(__FreeBSD__)
+#include <libutil.h>
 #endif
 
 #if defined(__APPLE__)
