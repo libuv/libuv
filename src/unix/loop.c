@@ -227,6 +227,10 @@ int uv__loop_configure(uv_loop_t* loop, uv_loop_option option, va_list ap) {
   }
 #endif
 
+  if (option == UV_LOOP_ACCEPT_SOCKADDR) {
+    loop->flags |= UV_LOOP_ENABLE_ACCEPT_SOCKADDR;
+    return 0;
+  }
 
   if (option != UV_LOOP_BLOCK_SIGNAL)
     return UV_ENOSYS;

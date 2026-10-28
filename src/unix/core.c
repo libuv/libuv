@@ -558,18 +558,24 @@ FILE* uv__open_file(const char* path) {
 }
 
 
-int uv__accept(int sockfd) {
+int uv__accept(int sockfd, struct sockaddr_storage* pss) {
+  struct sockaddr* psa;
+  socklen_t* plen;
+  socklen_t len;
   int peerfd;
   int err;
 
   (void) &err;
   assert(sockfd >= 0);
 
+  psa = (struct sockaddr*) pss;
+  len = sizeof(*pss);
+  plen = pss ? &len : NULL;
   do
 #ifdef uv__accept4
-    peerfd = uv__accept4(sockfd, NULL, NULL, SOCK_NONBLOCK|SOCK_CLOEXEC);
+    peerfd = uv__accept4(sockfd, psa, plen, SOCK_NONBLOCK|SOCK_CLOEXEC);
 #else
-    peerfd = accept(sockfd, NULL, NULL);
+    peerfd = accept(sockfd, psa, plen);
 #endif
   while (peerfd == -1 && errno == EINTR);
 
