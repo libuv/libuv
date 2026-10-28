@@ -58,16 +58,46 @@ extern "C" {
 #include <stdint.h>
 #include <math.h>
 
+/* Fail-safe, not infallible but hopefully helps with miscompilations:
+ * If a source file includes both <FreeRTOS.h> and <uv.h> but UV_FREERTOS
+ * is undefined, there's almost certainly something wrong with the build.
+ */
+#if defined(INC_FREERTOS_H) && !defined(UV_FREERTOS)
+#error "FreeRTOS detected but UV_FREERTOS not set"
+#endif
+
+#if defined(UV_FREERTOS)
+typedef struct uv_addrinfo_s uv_addrinfo_t;
+typedef struct uv_sockaddr_s uv_sockaddr_t;
+typedef struct uv_sockaddr_in_s uv_sockaddr_in_t;
+typedef struct uv_sockaddr_in6_s uv_sockaddr_in6_t;
+#else
+typedef struct addrinfo uv_addrinfo_t;
+typedef struct sockaddr uv_sockaddr_t;
+typedef struct sockaddr_in uv_sockaddr_in_t;
+typedef struct sockaddr_in6 uv_sockaddr_in6_t;
+#endif  /* UV_FREERTOS */
+
 /* Internal type, do not use. */
 struct uv__queue {
   struct uv__queue* next;
   struct uv__queue* prev;
 };
 
-#if defined(_WIN32)
+/* FreeRTOS has no defines we can rely on; it's a library, not a platform. */
+#if defined(UV_FREERTOS)
+# include "uv/freertos.h"
+#elif defined(_WIN32)
 # include "uv/win.h"
-#else
+#elif defined(__APPLE__) ||                                                   \
+      defined(_AIX) ||                                                        \
+      defined(__HAIKU__) ||                                                   \
+      defined(__MVS__) ||                                                     \
+      defined(__sun) ||                                                       \
+      defined(__unix__)
 # include "uv/unix.h"
+#else
+# error "Unknown platform. Define UV_FREERTOS if targeting FreeRTOS."
 #endif
 
 /* Expand this list if necessary. */
@@ -344,7 +374,7 @@ typedef void (*uv_work_cb)(uv_work_t* req);
 typedef void (*uv_after_work_cb)(uv_work_t* req, int status);
 typedef void (*uv_getaddrinfo_cb)(uv_getaddrinfo_t* req,
                                   int status,
-                                  struct addrinfo* res);
+                                  uv_addrinfo_t* res);
 typedef void (*uv_getnameinfo_cb)(uv_getnameinfo_t* req,
                                   int status,
                                   const char* hostname,
@@ -641,18 +671,18 @@ enum uv_tcp_flags {
 };
 
 UV_EXTERN int uv_tcp_bind(uv_tcp_t* handle,
-                          const struct sockaddr* addr,
+                          const uv_sockaddr_t* addr,
                           unsigned int flags);
 UV_EXTERN int uv_tcp_getsockname(const uv_tcp_t* handle,
-                                 struct sockaddr* name,
+                                 uv_sockaddr_t* name,
                                  int* namelen);
 UV_EXTERN int uv_tcp_getpeername(const uv_tcp_t* handle,
-                                 struct sockaddr* name,
+                                 uv_sockaddr_t* name,
                                  int* namelen);
 UV_EXTERN int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb);
 UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
-                             const struct sockaddr* addr,
+                             const uv_sockaddr_t* addr,
                              uv_connect_cb cb);
 
 /* uv_connect_t is a subclass of uv_req_t. */
@@ -730,7 +760,7 @@ typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
 typedef void (*uv_udp_recv_cb)(uv_udp_t* handle,
                                ssize_t nread,
                                const uv_buf_t* buf,
-                               const struct sockaddr* addr,
+                               const uv_sockaddr_t* addr,
                                unsigned flags);
 
 /* uv_udp_t is a subclass of uv_handle_t. */
@@ -764,15 +794,15 @@ UV_EXTERN int uv_udp_open_ex(uv_udp_t* handle,
                              uv_os_sock_t sock,
                              unsigned int flags);
 UV_EXTERN int uv_udp_bind(uv_udp_t* handle,
-                          const struct sockaddr* addr,
+                          const uv_sockaddr_t* addr,
                           unsigned int flags);
-UV_EXTERN int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr);
+UV_EXTERN int uv_udp_connect(uv_udp_t* handle, const uv_sockaddr_t* addr);
 
 UV_EXTERN int uv_udp_getpeername(const uv_udp_t* handle,
-                                 struct sockaddr* name,
+                                 uv_sockaddr_t* name,
                                  int* namelen);
 UV_EXTERN int uv_udp_getsockname(const uv_udp_t* handle,
-                                 struct sockaddr* name,
+                                 uv_sockaddr_t* name,
                                  int* namelen);
 UV_EXTERN int uv_udp_set_membership(uv_udp_t* handle,
                                     const char* multicast_addr,
@@ -793,17 +823,17 @@ UV_EXTERN int uv_udp_send(uv_udp_send_t* req,
                           uv_udp_t* handle,
                           const uv_buf_t bufs[],
                           unsigned int nbufs,
-                          const struct sockaddr* addr,
+                          const uv_sockaddr_t* addr,
                           uv_udp_send_cb send_cb);
 UV_EXTERN int uv_udp_try_send(uv_udp_t* handle,
                               const uv_buf_t bufs[],
                               unsigned int nbufs,
-                              const struct sockaddr* addr);
+                              const uv_sockaddr_t* addr);
 UV_EXTERN int uv_udp_try_send2(uv_udp_t* handle,
                                unsigned int count,
                                uv_buf_t* bufs[/*count*/],
                                unsigned int nbufs[/*count*/],
-                               struct sockaddr* addrs[/*count*/],
+                               uv_sockaddr_t* addrs[/*count*/],
                                unsigned int flags);
 UV_EXTERN int uv_udp_recv_start(uv_udp_t* handle,
                                 uv_alloc_cb alloc_cb,
@@ -1020,8 +1050,8 @@ UV_EXTERN int uv_getaddrinfo(uv_loop_t* loop,
                              uv_getaddrinfo_cb getaddrinfo_cb,
                              const char* node,
                              const char* service,
-                             const struct addrinfo* hints);
-UV_EXTERN void uv_freeaddrinfo(struct addrinfo* ai);
+                             const uv_addrinfo_t* hints);
+UV_EXTERN void uv_freeaddrinfo(uv_addrinfo_t* ai);
 
 
 /*
@@ -1040,7 +1070,7 @@ struct uv_getnameinfo_s {
 UV_EXTERN int uv_getnameinfo(uv_loop_t* loop,
                              uv_getnameinfo_t* req,
                              uv_getnameinfo_cb getnameinfo_cb,
-                             const struct sockaddr* addr,
+                             const uv_sockaddr_t* addr,
                              int flags);
 
 
@@ -1235,12 +1265,12 @@ struct uv_interface_address_s {
   char phys_addr[6];
   int is_internal;
   union {
-    struct sockaddr_in address4;
-    struct sockaddr_in6 address6;
+    uv_sockaddr_in_t address4;
+    uv_sockaddr_in6_t address6;
   } address;
   union {
-    struct sockaddr_in netmask4;
-    struct sockaddr_in6 netmask6;
+    uv_sockaddr_in_t netmask4;
+    uv_sockaddr_in6_t netmask6;
   } netmask;
 };
 
@@ -1793,12 +1823,12 @@ UV_EXTERN int uv_fs_event_getpath(uv_fs_event_t* handle,
                                   char* buffer,
                                   size_t* size);
 
-UV_EXTERN int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr);
-UV_EXTERN int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr);
+UV_EXTERN int uv_ip4_addr(const char* ip, int port, uv_sockaddr_in_t* addr);
+UV_EXTERN int uv_ip6_addr(const char* ip, int port, uv_sockaddr_in6_t* addr);
 
-UV_EXTERN int uv_ip4_name(const struct sockaddr_in* src, char* dst, size_t size);
-UV_EXTERN int uv_ip6_name(const struct sockaddr_in6* src, char* dst, size_t size);
-UV_EXTERN int uv_ip_name(const struct sockaddr* src, char* dst, size_t size);
+UV_EXTERN int uv_ip4_name(const uv_sockaddr_in_t* src, char* dst, size_t size);
+UV_EXTERN int uv_ip6_name(const uv_sockaddr_in6_t* src, char* dst, size_t size);
+UV_EXTERN int uv_ip_name(const uv_sockaddr_t* src, char* dst, size_t size);
 
 UV_EXTERN int uv_inet_ntop(int af, const void* src, char* dst, size_t size);
 UV_EXTERN int uv_inet_pton(int af, const char* src, void* dst);

@@ -27,6 +27,20 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(LIBUV_BUILD_SHARED "Build shared lib" ON)
 
+# Only works if the downstream project's CMakeLists.txt includes the kernel
+# before libuv. Seems like a safe assumption and worth a shot.
+if(TARGET freertos_kernel)
+  set(uv__freertos_default ON)
+else()
+  set(uv__freertos_default OFF)
+endif()
+
+option(LIBUV_BUILD_FOR_FREERTOS "Build for FreeRTOS" ${uv__freertos_default})
+if(LIBUV_BUILD_FOR_FREERTOS)
+  # Normal variable, shadows the cache entry. Also turns off LIBUV_BUILD_TESTS.
+  set(LIBUV_BUILD_SHARED OFF)
+endif()
+
 cmake_dependent_option(LIBUV_BUILD_TESTS
   "Build the unit tests when BUILD_TESTING is enabled and we are the root project" ON
   "BUILD_TESTING;LIBUV_BUILD_SHARED;CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR" OFF)
@@ -173,9 +187,12 @@ if (MSVC)
 endif()
 
 set(uv_sources
+    src/alloc.c
+    src/fs-common.c
     src/fs-poll.c
     src/idna.c
     src/inet.c
+    src/net-common.c
     src/random.c
     src/strscpy.c
     src/strtok.c
@@ -454,6 +471,21 @@ if(CYGWIN OR MSYS)
        src/unix/sysinfo-memory.c)
 endif()
 
+if(LIBUV_BUILD_FOR_FREERTOS)
+  set(uv_sources
+      src/alloc.c
+      src/idna.c
+      src/rtos/freertos.c
+      src/rtos/freertos-stubs.c
+      src/strscpy.c
+      src/timer.c
+      src/uv-common.c
+      src/uv-data-getter-setters.c
+      src/version.c)
+  set(uv_defines)  # drop _GNU_SOURCE, _FILE_OFFSET_BITS etc.
+  set(uv_libraries freertos_kernel)
+endif()
+
 if(LIBUV_BUILD_SHARED)
   add_library(uv SHARED ${uv_sources})
   target_compile_definitions(uv
@@ -494,6 +526,9 @@ target_link_libraries(uv_a ${uv_libraries})
 set_target_properties(uv_a PROPERTIES OUTPUT_NAME "uv")
 if(WIN32)
   set_target_properties(uv_a PROPERTIES PREFIX "lib")
+endif()
+if(LIBUV_BUILD_FOR_FREERTOS)
+  target_compile_definitions(uv_a PUBLIC UV_FREERTOS)
 endif()
 
 if(LIBUV_BUILD_TESTS)
@@ -791,18 +826,24 @@ configure_file(libuv-static.pc.in libuv-static.pc @ONLY)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
 install(FILES LICENSE-extra DESTINATION ${CMAKE_INSTALL_DOCDIR})
-install(FILES ${PROJECT_BINARY_DIR}/libuv-static.pc
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
-install(TARGETS uv_a EXPORT libuvConfig
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(EXPORT libuvConfig
-	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv
-	NAMESPACE libuv::)
-write_basic_package_version_file(libuvConfigVersion.cmake
-                                 VERSION ${PACKAGE_VERSION}
-                                 COMPATIBILITY SameMajorVersion)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuvConfigVersion.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
+if(LIBUV_BUILD_FOR_FREERTOS)
+  # freertos_kernel is not ours to export, and -lfreertos_kernel in a .pc
+  # file is meaningless. Install only the headers and the static library.
+  install(TARGETS uv_a ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+else()
+  install(FILES ${PROJECT_BINARY_DIR}/libuv-static.pc
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+  install(TARGETS uv_a EXPORT libuvConfig
+          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  install(EXPORT libuvConfig
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv
+          NAMESPACE libuv::)
+  write_basic_package_version_file(libuvConfigVersion.cmake
+                                   VERSION ${PACKAGE_VERSION}
+                                   COMPATIBILITY SameMajorVersion)
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuvConfigVersion.cmake
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
+endif()
 
 if(LIBUV_BUILD_SHARED)
   # The version in the filename is mirroring the behaviour of autotools.
