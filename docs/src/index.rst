@@ -46,7 +46,6 @@ Documentation
    design
    api
    guide
-   upgrading
 
 
 Downloads
