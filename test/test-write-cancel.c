@@ -167,7 +167,7 @@ static int pipe_cancel_connected;
 static int pipe_cancel_accepted;
 static uv_write_t pipe_cancel_write_reqs[REQ_COUNT];
 static char pipe_cancel_buf_data[64 * 1024];
-static char pipe_cancel_after_close_buf_data[1024 * 1024];
+static char pipe_cancel_after_close_buf_data[2 * 1024 * 1024];
 static int cancel_target;
 static uv_write_cb pipe_cancel_cb;
 
