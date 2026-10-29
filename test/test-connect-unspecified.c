@@ -27,6 +27,9 @@ static void connect_cb(uv_connect_t* req, int status) {
 }
 
 TEST_IMPL(connect_unspecified) {
+#if defined(__FreeBSD__) && __FreeBSD_version >= 1500043
+  RETURN_SKIP("FreeBSD >= 15.0 disables connect() to INADDR_ANY by default");
+#endif
   uv_loop_t* loop;
   uv_tcp_t socket4;
   struct sockaddr_in addr4;
