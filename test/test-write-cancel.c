@@ -188,6 +188,9 @@ static void pipe_cancel_setup(uv_loop_t* loop, int pipe_flags, int ipc) {
   uv_file fds[2];
   int r;
   int i;
+#if defined(__linux__)
+  int buffer_size;
+#endif
 
   close_cb_called = 0;
   write_cb_called = 0;
@@ -214,6 +217,12 @@ static void pipe_cancel_setup(uv_loop_t* loop, int pipe_flags, int ipc) {
     while (!pipe_cancel_connected || !pipe_cancel_accepted)
       uv_run(loop, UV_RUN_ONCE);
     uv_close((uv_handle_t*) &pipe_cancel_listener, NULL);
+#if defined(__linux__)
+    /* Keep writes queued when the default socket buffer is large. */
+    buffer_size = sizeof(pipe_cancel_buf_data);
+    ASSERT_OK(uv_send_buffer_size((uv_handle_t*) &pipe_cancel_writer,
+                                  &buffer_size));
+#endif
   } else {
     ASSERT_OK(uv_pipe(fds, pipe_flags, pipe_flags));
 
