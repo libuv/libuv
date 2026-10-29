@@ -55,7 +55,7 @@ typedef struct {
   HANDLE stdout_write;
 } uv__pty_data;
 
-inline uv__pty_data *proc_to_pty_data(uv_process_t *process) {
+static inline uv__pty_data *proc_to_pty_data(uv_process_t *process) {
   return (uv__pty_data*)process->u.reserved[0];
 }
 void pty_teardown(uv__pty_data *data);
@@ -973,7 +973,7 @@ void pty_init(uv__pty_data *data, HANDLE pty, HANDLE pty_stdin_write, HANDLE pty
 }
 
 // Windows 10.0.29533 and later support overlapped IO with ConPTY.
-static BOOL pty_supports_overlapped_io() {
+static BOOL pty_supports_overlapped_io(void) {
     OSVERSIONINFOEXW version = {0};
     version.dwOSVersionInfoSize = sizeof(version);
     version.dwMajorVersion = 10;
