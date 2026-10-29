@@ -1167,13 +1167,13 @@ int uv__pty_resize_fd(int pty_fd,
   return 0;
 }
 
-/* The BSDs don't have ptsname_r. They do have ptsname, but that's not
- * reentrant. The obvious alternative is openpty.
+/* The BSDs and Oracle Solaris don't have ptsname_r. They do have ptsname, but
+ * that's not reentrant. The obvious alternative is openpty.
  */
 #if defined(__DragonFly__) || \
-    defined(__FreeBSD__) || \
     defined(__NetBSD__) || \
-    defined(__OpenBSD__)
+    defined(__OpenBSD__) || \
+    defined(__sun) && !defined(__illumos__)
 int uv__spawn_make_pty(int* fd_pty, int* fd_tty, int cols, int rows) {
   struct winsize winp;
   memset(&winp, 0, sizeof(winp));
