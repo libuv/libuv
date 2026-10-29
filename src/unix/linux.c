@@ -2432,6 +2432,9 @@ next:
     *last_slash = '\0';
   }
 
+  if (min_quota != LLONG_MAX)
+    *quota = min_quota;
+
   return 0;
 }
 
