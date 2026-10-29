@@ -2419,6 +2419,127 @@ TEST_IMPL(spawn_relative_path) {
   return 0;
 }
 
+#if !defined(_WIN32) && !defined(__CYGWIN__) && !defined(__MSYS__)
+/* Builds an environment that only has PATH and the dynamic linker path, see
+ * spawn_reads_child_path. */
+static void init_path_env(char* path, char** env) {
+#if defined(__APPLE__)
+  static const char dyld_path_var[] = "DYLD_LIBRARY_PATH";
+#elif defined(__MVS__) || defined(__PASE__)
+  static const char dyld_path_var[] = "LIBPATH";
+#else
+  static const char dyld_path_var[] = "LD_LIBRARY_PATH";
+#endif
+  static char buf[1024 + sizeof(dyld_path_var)];
+
+  env[0] = path;
+  env[1] = getenv(dyld_path_var);
+  env[2] = NULL;
+
+  if (env[1] != NULL) {
+    snprintf(buf, sizeof(buf), "%s=%s", dyld_path_var, env[1]);
+    env[1] = buf;
+  }
+}
+#endif
+
+TEST_IMPL(spawn_path_skips_missing_entries) {
+#if defined(_WIN32) || defined(__CYGWIN__) || defined(__MSYS__)
+  RETURN_SKIP("Unix only test");
+#else
+  char dir[1024];
+  char path[3200];
+  char* env[3];
+  char* sep;
+
+  init_process_options("spawn_helper1", exit_cb);
+
+  /* Split exepath into its directory and file name. */
+  snprintf(dir, sizeof(dir), "%s", exepath);
+  sep = strrchr(dir, '/');
+  ASSERT_NOT_NULL(sep);
+  *sep = '\0';
+
+  /* The first entry does not exist and the second one is a file, so looking
+   * up the file name in them fails with ENOENT and ENOTDIR. */
+  snprintf(path,
+           sizeof(path),
+           "PATH=/nonexistent-uv-spawn-dir:%s:%s",
+           exepath,
+           dir);
+  init_path_env(path, env);
+
+  options.file = sep + 1;
+  options.args[0] = sep + 1;
+  options.env = env;
+
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+#endif
+}
+
+TEST_IMPL(spawn_relative_path_entry_uses_cwd) {
+#if defined(_WIN32) || defined(__CYGWIN__) || defined(__MSYS__)
+  RETURN_SKIP("Unix only test");
+#else
+  char cwd[1024];
+  char dir[1024];
+  char parent[1024];
+  char path[1100];
+  char* env[3];
+  char* file;
+  char* sep;
+  size_t cwd_size;
+
+  init_process_options("spawn_helper1", exit_cb);
+
+  /* Split exepath into its directory and file name. */
+  snprintf(dir, sizeof(dir), "%s", exepath);
+  sep = strrchr(dir, '/');
+  ASSERT_NOT_NULL(sep);
+  *sep = '\0';
+  file = sep + 1;
+
+  cwd_size = sizeof(cwd);
+  ASSERT_OK(uv_cwd(cwd, &cwd_size));
+
+  /* A relative PATH entry is resolved against options.cwd in the child. Pick
+   * an entry that does not resolve from the working directory of this
+   * process, so that a lookup relative to the parent would miss the file. */
+  if (strcmp(cwd, dir) != 0) {
+    options.cwd = dir;
+    snprintf(path, sizeof(path), "PATH=.");
+  } else {
+    snprintf(parent, sizeof(parent), "%s", dir);
+    sep = strrchr(parent, '/');
+    ASSERT_NOT_NULL(sep);
+    *sep = '\0';
+    options.cwd = parent[0] == '\0' ? "/" : parent;
+    snprintf(path, sizeof(path), "PATH=%s", sep + 1);
+  }
+  init_path_env(path, env);
+
+  options.file = file;
+  options.args[0] = file;
+  options.env = env;
+
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+#endif
+}
+
 TEST_IMPL(spawn_empty_command_line) {
   init_process_options("spawn_empty_command_line", exit_cb);
   options.args[1] = NULL;
