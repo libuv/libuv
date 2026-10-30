@@ -2230,21 +2230,67 @@ update_limits:
     *max = UINT64_MAX;
 }
 
+/* A memory limit on any ancestor cgroup also applies to this process, so walk
+ * from the process cgroup up to the mount point, like
+ * uv__get_cgroupv2_constrained_cpu() does for cpu.max. *high and *max get the
+ * smallest value found, or 0 when no level could be read. If headroom is not
+ * NULL, it gets the smallest limit minus usage of all limited levels, or
+ * UINT64_MAX when no level is limited.
+ */
 static void uv__get_cgroup2_memory_limits(char buf[static 1024], uint64_t* high,
-                                          uint64_t* max) {
-  char filename[4097];
+                                          uint64_t* max, uint64_t* headroom) {
+  static const char cgroup_mount[] = "/sys/fs/cgroup";
+  char path[4097];
+  char filename[sizeof(path) + sizeof("/memory.current")];
+  char* last_slash;
+  uint64_t level_high;
+  uint64_t level_max;
+  uint64_t limit;
+  uint64_t room;
   char* p;
   int n;
 
   /* Find out where the controller is mounted. */
   p = buf + strlen("0::/");
   n = (int) strcspn(p, "\n");
+  snprintf(path, sizeof(path), "%s%s%.*s",
+           cgroup_mount, n > 0 ? "/" : "", n, p);
 
-  /* Read the memory limits of the controller. */
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%.*s/memory.max", n, p);
-  *max = uv__read_uint64(filename);
-  snprintf(filename, sizeof(filename), "/sys/fs/cgroup/%.*s/memory.high", n, p);
-  *high = uv__read_uint64(filename);
+  *high = 0;
+  *max = 0;
+  if (headroom != NULL)
+    *headroom = UINT64_MAX;
+
+  for (;;) {
+    snprintf(filename, sizeof(filename), "%s/memory.max", path);
+    level_max = uv__read_uint64(filename);
+    snprintf(filename, sizeof(filename), "%s/memory.high", path);
+    level_high = uv__read_uint64(filename);
+
+    if (level_max != 0 && (*max == 0 || level_max < *max))
+      *max = level_max;
+    if (level_high != 0 && (*high == 0 || level_high < *high))
+      *high = level_high;
+
+    limit = level_max;
+    if (level_high != 0 && (limit == 0 || level_high < limit))
+      limit = level_high;
+
+    if (headroom != NULL && limit != 0 && limit != UINT64_MAX) {
+      snprintf(filename, sizeof(filename), "%s/memory.current", path);
+      room = uv__read_uint64(filename);
+      /* memory usage can be higher than the limit (for short bursts of time) */
+      room = room < limit ? limit - room : 0;
+      if (room < *headroom)
+        *headroom = room;
+    }
+
+    /* Move up one level, until the mount point has been read. */
+    last_slash = strrchr(path, '/');
+    if (last_slash == NULL || strcmp(path, cgroup_mount) == 0)
+      break;
+    *last_slash = '\0';
+  }
 }
 
 static uint64_t uv__get_cgroup_constrained_memory(char buf[static 1024]) {
@@ -2255,7 +2301,7 @@ static uint64_t uv__get_cgroup_constrained_memory(char buf[static 1024]) {
   if (strncmp(buf, "0::/", 4))
     uv__get_cgroup1_memory_limits(buf, &high, &max);
   else
-    uv__get_cgroup2_memory_limits(buf, &high, &max);
+    uv__get_cgroup2_memory_limits(buf, &high, &max, NULL);
 
   if (high == 0 || max == 0)
     return 0;
@@ -2306,25 +2352,14 @@ static uint64_t uv__get_cgroup1_current_memory(char buf[static 1024]) {
   return uv__read_uint64("/sys/fs/cgroup/memory/memory.usage_in_bytes");
 }
 
-static uint64_t uv__get_cgroup2_current_memory(char buf[static 1024]) {
-  char filename[4097];
-  char* p;
-  int n;
-
-  /* Find out where the controller is mounted. */
-  p = buf + strlen("0::/");
-  n = (int) strcspn(p, "\n");
-
-  snprintf(filename, sizeof(filename),
-           "/sys/fs/cgroup/%.*s/memory.current", n, p);
-  return uv__read_uint64(filename);
-}
-
 uint64_t uv_get_available_memory(void) {
   char buf[1024];
   uint64_t constrained;
   uint64_t current;
+  uint64_t headroom;
   uint64_t total;
+  uint64_t high;
+  uint64_t max;
 
   if (uv__slurp("/proc/self/cgroup", buf, sizeof(buf)))
     return 0;
@@ -2338,10 +2373,12 @@ uint64_t uv_get_available_memory(void) {
     return uv_get_free_memory();
 
   /* In the case of cgroupv2, we'll only have a single entry. */
-  if (strncmp(buf, "0::/", 4))
-    current = uv__get_cgroup1_current_memory(buf);
-  else
-    current = uv__get_cgroup2_current_memory(buf);
+  if (strncmp(buf, "0::/", 4) == 0) {
+    uv__get_cgroup2_memory_limits(buf, &high, &max, &headroom);
+    return headroom;
+  }
+
+  current = uv__get_cgroup1_current_memory(buf);
 
   /* memory usage can be higher than the limit (for short bursts of time) */
   if (constrained < current)
