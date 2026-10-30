@@ -29,24 +29,27 @@ CLEANFILES =
 lib_LTLIBRARIES = libuv.la
 libuv_la_CFLAGS = $(AM_CFLAGS)
 libuv_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined -version-info 1:0:0
-libuv_la_SOURCES = src/fs-poll.c \
+libuv_la_SOURCES = src/alloc.c \
+                   src/fs-common.c \
+                   src/fs-poll.c \
                    src/heap-inl.h \
                    src/idna.c \
                    src/idna.h \
                    src/inet.c \
+                   src/net-common.c \
                    src/queue.h \
                    src/random.c \
                    src/strscpy.c \
                    src/strscpy.h \
+                   src/strtok.c \
+                   src/strtok.h \
                    src/thread-common.c \
                    src/threadpool.c \
                    src/timer.c \
-                   src/uv-data-getter-setters.c \
                    src/uv-common.c \
                    src/uv-common.h \
-                   src/version.c \
-                   src/strtok.c \
-                   src/strtok.h
+                   src/uv-data-getter-setters.c \
+                   src/version.c
 
 if SUNOS
 # Can't be turned into a CC_CHECK_CFLAGS in configure.ac, it makes compilers

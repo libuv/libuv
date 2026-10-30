@@ -46,6 +46,7 @@ Documentation
    design
    api
    guide
+   freertos
 
 
 Downloads

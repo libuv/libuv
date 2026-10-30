@@ -164,13 +164,13 @@ int uv__read_start(uv_stream_t* stream,
                    uv_read_cb read_cb);
 
 int uv__tcp_bind(uv_tcp_t* tcp,
-                 const struct sockaddr* addr,
+                 const uv_sockaddr_t* addr,
                  unsigned int addrlen,
                  unsigned int flags);
 
 int uv__tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
-                   const struct sockaddr* addr,
+                   const uv_sockaddr_t* addr,
                    unsigned int addrlen,
                    uv_connect_cb cb);
 
@@ -180,12 +180,12 @@ int uv__udp_init_ex(uv_loop_t* loop,
                     int domain);
 
 int uv__udp_bind(uv_udp_t* handle,
-                 const struct sockaddr* addr,
+                 const uv_sockaddr_t* addr,
                  unsigned int  addrlen,
                  unsigned int flags);
 
 int uv__udp_connect(uv_udp_t* handle,
-                    const struct sockaddr* addr,
+                    const uv_sockaddr_t* addr,
                     unsigned int addrlen);
 
 int uv__udp_disconnect(uv_udp_t* handle);
@@ -196,21 +196,21 @@ int uv__udp_send(uv_udp_send_t* req,
                  uv_udp_t* handle,
                  const uv_buf_t bufs[],
                  unsigned int nbufs,
-                 const struct sockaddr* addr,
+                 const uv_sockaddr_t* addr,
                  unsigned int addrlen,
                  uv_udp_send_cb send_cb);
 
 int uv__udp_try_send(uv_udp_t* handle,
                      const uv_buf_t bufs[],
                      unsigned int nbufs,
-                     const struct sockaddr* addr,
+                     const uv_sockaddr_t* addr,
                      unsigned int addrlen);
 
 int uv__udp_try_send2(uv_udp_t* handle,
                       unsigned int count,
                       uv_buf_t* bufs[/*count*/],
                       unsigned int nbufs[/*count*/],
-                      struct sockaddr* addrs[/*count*/]);
+                      uv_sockaddr_t* addrs[/*count*/]);
 
 int uv__udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloccb,
                        uv_udp_recv_cb recv_cb);

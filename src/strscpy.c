@@ -21,6 +21,12 @@
 
 #include "strscpy.h"
 #include <limits.h>  /* SSIZE_MAX */
+#include <stdint.h>  /* SIZE_MAX */
+
+/* Newlib doesn't define SSIZE_MAX. */
+#ifndef SSIZE_MAX
+#define SSIZE_MAX ((ssize_t) (SIZE_MAX >> 1))
+#endif
 
 ssize_t uv__strscpy(char* d, const char* s, size_t n) {
   size_t i;
