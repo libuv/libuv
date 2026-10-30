@@ -1,0 +1,128 @@
+name: CI-freertos
+
+on:
+  pull_request:
+    paths:
+      - '**'
+      - '!docs/**'
+      - '!src/win/**'
+      - '!.**'
+      - '.github/workflows/CI-freertos.yml'
+  push:
+    branches:
+      - v[0-9].*
+      - master
+
+permissions: read-all
+
+env:
+  # V11.3.1
+  FREERTOS_KERNEL_REF: 3a22924e0a9ddbbc8b0758881c33b3422a5cc20d
+
+jobs:
+  qemu:
+    runs-on: ubuntu-24.04
+    name: qemu-cortex-m3${{ matrix.config.suffix }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {suffix: '',           cflags: ''}
+          - {suffix: '-333hz',     cflags: '-DconfigTICK_RATE_HZ=333'}
+          - {suffix: '-static',    cflags: '-DconfigSUPPORT_STATIC_ALLOCATION=1'}
+          - {suffix: '-no-tls',    cflags: '-DconfigNUM_THREAD_LOCAL_STORAGE_POINTERS=0'}
+    env:
+      CFLAGS: ${{ matrix.config.cflags }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: FreeRTOS/FreeRTOS-Kernel
+          ref: ${{ env.FREERTOS_KERNEL_REF }}
+          path: freertos-kernel
+      - name: Install toolchain and qemu
+        run: |
+          sudo apt update
+          sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi qemu-system-arm -y
+      - name: Configure
+        run: |
+          cmake -S test/freertos -B build \
+            -DFREERTOS_KERNEL_PATH=$PWD/freertos-kernel \
+            -DCMAKE_TOOLCHAIN_FILE=$PWD/test/freertos/mps2/arm-none-eabi.cmake
+      - name: Build
+        run: |
+          cmake --build build
+      - name: Test
+        run: |
+          timeout 60 qemu-system-arm -M mps2-an385 -cpu cortex-m3 \
+            -display none -monitor none -serial stdio \
+            -semihosting-config enable=on,target=native \
+            -kernel build/app.elf
+      - name: Check public API
+        if: matrix.config.suffix == ''
+        run: |
+          cmake -B build-host -DBUILD_TESTING=OFF -DLIBUV_BUILD_SHARED=OFF
+          cmake --build build-host
+          sh test/freertos/check-api.sh arm-none-eabi-nm build/libuv/libuv.a build-host/libuv.a
+      - name: Check install
+        if: matrix.config.suffix == ''
+        run: |
+          cmake --install build/libuv --prefix install
+          test -f install/lib/libuv.a
+          test -f install/include/uv.h
+          test ! -e install/lib/pkgconfig
+
+  posix-asan:
+    runs-on: ubuntu-24.04
+    env:
+      CFLAGS: -fno-omit-frame-pointer -fsanitize=address
+      LDFLAGS: -fsanitize=address
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: FreeRTOS/FreeRTOS-Kernel
+          ref: ${{ env.FREERTOS_KERNEL_REF }}
+          path: freertos-kernel
+      - name: Configure
+        run: |
+          cmake -S test/freertos -B build -DFREERTOS_KERNEL_PATH=$PWD/freertos-kernel
+      - name: Build
+        run: |
+          cmake --build build
+      - name: Test
+        run: |
+          timeout 60 build/app
+
+  build-only:
+    runs-on: ubuntu-24.04
+    name: build-${{ matrix.config.port }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {port: GCC_ARM_CM0,  cpu: -mcpu=cortex-m0 -mthumb}
+          - {port: GCC_ARM_CM4F, cpu: -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard}
+          - {port: GCC_ARM_CM7,  cpu: -mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard}
+    env:
+      UV_FREERTOS_CPU_FLAGS: ${{ matrix.config.cpu }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: FreeRTOS/FreeRTOS-Kernel
+          ref: ${{ env.FREERTOS_KERNEL_REF }}
+          path: freertos-kernel
+      - name: Install toolchain
+        run: |
+          sudo apt update
+          sudo apt install gcc-arm-none-eabi libnewlib-arm-none-eabi -y
+      - name: Configure
+        run: |
+          cmake -S test/freertos -B build \
+            -DFREERTOS_KERNEL_PATH=$PWD/freertos-kernel \
+            -DFREERTOS_PORT=${{ matrix.config.port }} \
+            -DCMAKE_TOOLCHAIN_FILE=$PWD/test/freertos/mps2/arm-none-eabi.cmake
+      - name: Build
+        run: |
+          cmake --build build --target uv_a
