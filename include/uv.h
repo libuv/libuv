@@ -84,7 +84,6 @@ struct uv__queue {
   struct uv__queue* prev;
 };
 
-/* FreeRTOS has no defines we can rely on; it's a library, not a platform. */
 #if defined(UV_FREERTOS)
 # include "uv/freertos.h"
 #elif defined(_WIN32)

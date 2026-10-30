@@ -90,4 +90,5 @@ Supported but not required:
 
 In your ``CMakeLists.txt``, include FreeRTOS before libuv. Libuv's build scripts
 will then auto-detect FreeRTOS and do the right thing. If that's not an option,
-set ``LIBUV_BUILD_FOR_FREERTOS=ON`` explicitly.
+set ``LIBUV_BUILD_FOR_FREERTOS=ON`` explicitly. Building with autotools is not
+supported.
