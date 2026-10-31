@@ -69,6 +69,7 @@ extern BOOLEAN NTAPI SystemFunction036(PVOID Buffer, ULONG BufferLength);
 /* Cached copy of the process title, plus a mutex guarding it. */
 static char *process_title;
 static CRITICAL_SECTION process_title_lock;
+static int process_title_lock_initialized;
 
 /* Frequency of the high-resolution clock. */
 static uint64_t hrtime_frequency_ = 0;
@@ -82,6 +83,7 @@ void uv__util_init(void) {
 
   /* Initialize process title access mutex. */
   InitializeCriticalSection(&process_title_lock);
+  process_title_lock_initialized = 1;
 
   /* Retrieve high-resolution timer frequency
    * and precompute its reciprocal.
@@ -338,6 +340,11 @@ char** uv_setup_args(int argc, char** argv) {
 
 
 void uv__process_title_cleanup(void) {
+  uv__free(process_title);
+  process_title = NULL;
+
+  if (process_title_lock_initialized)
+    DeleteCriticalSection(&process_title_lock);
 }
 
 
