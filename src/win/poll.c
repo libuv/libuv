@@ -411,10 +411,6 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
     socket = base_socket;
   }
 
-  uv__handle_init(loop, (uv_handle_t*) handle, UV_POLL);
-  handle->socket = socket;
-  handle->events = 0;
-
   /* Obtain protocol information about the socket. */
   len = sizeof protocol_info;
   if (getsockopt(socket,
@@ -424,6 +420,10 @@ int uv_poll_init_socket(uv_loop_t* loop, uv_poll_t* handle,
                  &len) != 0) {
     return uv_translate_sys_error(WSAGetLastError());
   }
+
+  uv__handle_init(loop, (uv_handle_t*) handle, UV_POLL);
+  handle->socket = socket;
+  handle->events = 0;
 
   /* Get the peer socket that is needed to enable fast poll. If the returned
    * value is NULL, the protocol is not implemented by MSAFD and we'll have to
