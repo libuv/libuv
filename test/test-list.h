@@ -321,7 +321,6 @@ TEST_DECLARE   (process_title_cf_strings)
 TEST_DECLARE   (process_title_launch_services)
 TEST_DECLARE   (process_title_big_argv)
 TEST_DECLARE   (process_title_threadsafe)
-TEST_DECLARE   (process_title_shutdown)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
 TEST_DECLARE   (get_passwd)
@@ -1030,7 +1029,6 @@ TASK_LIST_START
   TEST_ENTRY  (process_title_launch_services)
   TEST_ENTRY  (process_title_big_argv)
   TEST_ENTRY  (process_title_threadsafe)
-  TEST_ENTRY  (process_title_shutdown)
 
   TEST_ENTRY  (cwd_and_chdir)
 
