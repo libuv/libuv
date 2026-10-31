@@ -667,15 +667,17 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
   flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST |
     GAA_FLAG_SKIP_DNS_SERVER;
 
-  /* Fetch the size of the adapters reported by windows, and then get the list
-   * itself. */
-  win_address_buf_size = 0;
-  win_address_buf = NULL;
+  /* Use Microsoft's recommended ~15 KB buffer to avoid a size query. */
+  win_address_buf_size = 15 * 1024;
+  win_address_buf = uv__malloc(win_address_buf_size);
+  /* Fall back to a size query if the initial allocation fails. */
+  if (win_address_buf == NULL)
+    win_address_buf_size = 0;
 
   for (;;) {
     ULONG r;
 
-    /* If win_address_buf is 0, then GetAdaptersAddresses will fail with.
+    /* If win_address_buf is 0 or too small, GetAdaptersAddresses will fail with
      * ERROR_BUFFER_OVERFLOW, and the required buffer size will be stored in
      * win_address_buf_size. */
     r = GetAdaptersAddresses(AF_UNSPEC,
