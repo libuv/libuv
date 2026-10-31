@@ -22,6 +22,7 @@
 #include "uv.h"
 
 TEST_DECLARE   (platform_output)
+TEST_DECLARE   (platform_cgroup2_cpu_max)
 TEST_DECLARE   (sizeof)
 TEST_DECLARE   (close_order)
 TEST_DECLARE   (run_once)
@@ -650,6 +651,7 @@ TEST_DECLARE  (metrics_idle_time_zero)
 
 TASK_LIST_START
   TEST_ENTRY_CUSTOM (platform_output, 0, 1, 5000)
+  TEST_ENTRY  (platform_cgroup2_cpu_max)
 
   TEST_ENTRY  (sizeof)
   TEST_ENTRY  (test_macros)
