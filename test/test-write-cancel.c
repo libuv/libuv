@@ -23,6 +23,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __linux__
+# include <fcntl.h>
+#endif
+
 #include "uv.h"
 #include "task.h"
 
@@ -361,6 +365,9 @@ TEST_IMPL(pipe_write_cancel_after_close) {
   uv_pipe_t reader;
   uv_pipe_t writer;
   uv_write_t req;
+#if defined(__linux__) && defined(F_SETPIPE_SZ)
+  int pipe_size;
+#endif
 
   loop = uv_default_loop();
   close_cb_called = 0;
@@ -371,6 +378,17 @@ TEST_IMPL(pipe_write_cancel_after_close) {
          sizeof(pipe_cancel_after_close_buf_data));
 
   ASSERT_OK(uv_pipe(fds, 0, 0));
+
+#if defined(__linux__) && defined(F_SETPIPE_SZ)
+  /* Keep the pipe smaller than the 1 MiB write below. The default pipe
+   * capacity can be as large as the write buffer, in which case uv_write()
+   * completes synchronously and there is nothing left to cancel.
+   */
+  pipe_size = fcntl(fds[1], F_SETPIPE_SZ, 4096);
+  ASSERT_GT(pipe_size, 0);
+  ASSERT_LT((size_t) pipe_size, sizeof(pipe_cancel_after_close_buf_data));
+#endif
+
   ASSERT_OK(uv_pipe_init(loop, &writer, 0));
   ASSERT_OK(uv_pipe_init(loop, &reader, 0));
   ASSERT_OK(uv_pipe_open(&writer, fds[1]));
