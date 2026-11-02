@@ -2358,7 +2358,6 @@ static int uv__get_cgroupv2_constrained_cpu(const char* cgroup,
   char buf[1024];
   char path[256];
   char full_path[sizeof(path) + sizeof("/cpu.max")];
-  char quota_buf[16];
   char* last_slash;
   int cgroup_size;
   long long limit;
@@ -2401,15 +2400,15 @@ static int uv__get_cgroupv2_constrained_cpu(const char* cgroup,
     snprintf(full_path, sizeof(full_path), "%s/cpu.max", path);
 
     /* Silently ignore and continue if the file does not exist */
-    if (uv__slurp(full_path, quota_buf, sizeof(quota_buf)) < 0)
+    if (uv__slurp(full_path, buf, sizeof(buf)) < 0)
       goto next;
 
     /* No limit, move on */
-    if (strncmp(quota_buf, "max", 3) == 0)
+    if (strncmp(buf, "max", 3) == 0)
       goto next;
 
     /* Read cpu.max */
-    if (sscanf(quota_buf, "%lld %lld", &limit, &period) != 2)
+    if (sscanf(buf, "%lld %lld", &limit, &period) != 2)
       goto next;
 
     /* Can't divide by 0 */
