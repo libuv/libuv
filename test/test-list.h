@@ -245,6 +245,7 @@ TEST_DECLARE   (pipe_getsockname_long_path)
 TEST_DECLARE   (pipe_pending_instances)
 TEST_DECLARE   (pipe_sendmsg)
 TEST_DECLARE   (pipe_server_close)
+TEST_DECLARE   (pipe_unlink_after_chdir)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
 TEST_DECLARE   (shutdown_close_tcp)
@@ -691,6 +692,7 @@ TASK_LIST_START
 #ifndef _WIN32
   TEST_ENTRY  (pipe_close_stdout_read_stdin)
 #endif
+  TEST_ENTRY  (pipe_unlink_after_chdir)
   /* Seems to be either about 0.5s or 5s, depending on the OS. */
   TEST_ENTRY_CUSTOM (pipe_set_non_blocking, 0, 0, 20000)
   TEST_ENTRY  (pipe_set_chmod)
