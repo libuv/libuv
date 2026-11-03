@@ -643,6 +643,7 @@ UV_EXTERN int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
 UV_EXTERN int uv_tcp_init_ex(uv_loop_t*, uv_tcp_t* handle, unsigned int flags);
 UV_EXTERN int uv_tcp_open(uv_tcp_t* handle, uv_os_sock_t sock);
 UV_EXTERN int uv_tcp_nodelay(uv_tcp_t* handle, int enable);
+UV_EXTERN int uv_tcp_fastopen(uv_tcp_t *handle, int flags, int backlog);
 UV_EXTERN int uv_tcp_keepalive(uv_tcp_t* handle,
                                int enable,
                                unsigned int delay);
@@ -667,6 +668,12 @@ enum uv_tcp_flags {
    * FreeBSD 12.0+, Solaris 11.4, and AIX 7.2.5+ for now.
    */
   UV_TCP_REUSEPORT = 2,
+  
+  /* Enable TCP fast open for outbound connections. */
+  UV_TCP_FASTOPEN_CONNECT = 4,
+
+  /* Enable TCP fast open for inbound connections. */
+  UV_TCP_FASTOPEN_ACCEPT = 8,
 };
 
 UV_EXTERN int uv_tcp_bind(uv_tcp_t* handle,
@@ -683,12 +690,18 @@ UV_EXTERN int uv_tcp_connect(uv_connect_t* req,
                              uv_tcp_t* handle,
                              const uv_sockaddr_t* addr,
                              uv_connect_cb cb);
+UV_EXTERN int uv_tcp_connect_ex(uv_connect_t* req,
+                             uv_tcp_t* handle,
+                             const uv_sockaddr_t* addr,
+                             const uv_buf_t* buf,
+                             uv_connect_cb cb);
 
 /* uv_connect_t is a subclass of uv_req_t. */
 struct uv_connect_s {
   UV_REQ_FIELDS
   uv_connect_cb cb;
   uv_stream_t* handle;
+  size_t sent;
   UV_CONNECT_PRIVATE_FIELDS
 };
 

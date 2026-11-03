@@ -206,14 +206,14 @@ static int uv__tcp_set_socket(uv_loop_t* loop,
     handle->flags |= UV_HANDLE_SYNC_BYPASS_IOCP;
   }
 
-  if (handle->flags & UV_HANDLE_TCP_NODELAY) {
+  if (handle->tcp_flags & UV_TCP_HANDLE_NODELAY) {
     err = uv__tcp_nodelay(handle, socket, 1);
     if (err)
       return err;
   }
 
   /* TODO: Use stored delay. */
-  if (handle->flags & UV_HANDLE_TCP_KEEPALIVE) {
+  if (handle->tcp_flags & UV_TCP_HANDLE_KEEPALIVE) {
     err = uv__tcp_keepalive(handle, socket, 1, 60, 1, 10);
     if (err)
       return err;
@@ -251,6 +251,7 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* handle, unsigned int flags) {
   handle->tcp.conn.func_connectex = NULL;
   handle->tcp.serv.processed_accepts = 0;
   handle->delayed_error = 0;
+  handle->tcp_flags = 0;
 
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init in uv__stream_init.
@@ -621,6 +622,26 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
   return 0;
 }
 
+#ifdef TCP_FASTOPEN
+static int uv__tcp_fastopen(uv_tcp_t* tcp, int on) {
+  int prev = !!(tcp->tcp_flags & (UV_TCP_HANDLE_FASTOPEN_CONNECT | UV_TCP_HANDLE_FASTOPEN_ACCEPT));
+  if (prev != on) {
+    DWORD opt = on;
+    if (!setsockopt(tcp->socket, IPPROTO_TCP, TCP_FASTOPEN, 
+                                            (char*)&opt, (int)sizeof(opt))) {
+      if (opt)
+        tcp->tcp_flags |= (UV_TCP_HANDLE_FASTOPEN_CONNECT | UV_TCP_HANDLE_FASTOPEN_ACCEPT);
+      else
+        tcp->tcp_flags &= ~(UV_TCP_HANDLE_FASTOPEN_CONNECT | UV_TCP_HANDLE_FASTOPEN_ACCEPT);
+    }
+    else {
+      return WSAGetLastError();
+    }
+  }
+
+  return 0;
+}
+#endif
 
 int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   unsigned int i, simultaneous_accepts;
@@ -641,6 +662,13 @@ int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
     return handle->delayed_error;
   }
 
+#ifdef TCP_FASTOPEN
+  err = uv__tcp_fastopen(handle,
+                          !!(handle->tcp_flags & UV_TCP_HANDLE_WANTS_FASTOPEN_ACCEPT));
+  if (err)
+    return err;
+#endif
+
   if (!(handle->flags & UV_HANDLE_BOUND)) {
     err = uv__tcp_try_bind(handle,
                            (const struct sockaddr*) &uv_addr_ip4_any_,
@@ -659,7 +687,7 @@ int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   }
 
   /* If this flag is set, we already made this listen call in xfer. */
-  if (!(handle->flags & UV_HANDLE_SHARED_TCP_SOCKET) &&
+  if (!(handle->tcp_flags & UV_TCP_HANDLE_SHARED_TCP_SOCKET) &&
       listen(handle->socket, backlog) == SOCKET_ERROR) {
     return WSAGetLastError();
   }
@@ -668,7 +696,7 @@ int uv__tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   handle->stream.serv.connection_cb = cb;
   INCREASE_ACTIVE_COUNT(loop, handle);
 
-  simultaneous_accepts = handle->flags & UV_HANDLE_TCP_SINGLE_ACCEPT ? 1
+  simultaneous_accepts = handle->tcp_flags & UV_TCP_HANDLE_SINGLE_ACCEPT ? 1
     : uv_simultaneous_server_accepts;
 
   if (handle->tcp.serv.accept_reqs == NULL) {
@@ -755,11 +783,11 @@ int uv__tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
 
   if (!(server->flags & UV_HANDLE_CLOSING)) {
     /* Check if we're in a middle of changing the number of pending accepts. */
-    if (!(server->flags & UV_HANDLE_TCP_ACCEPT_STATE_CHANGING)) {
+    if (!(server->tcp_flags & UV_TCP_HANDLE_ACCEPT_STATE_CHANGING)) {
       uv__tcp_queue_accept(server, req);
     } else {
       /* We better be switching to a single pending accept. */
-      assert(server->flags & UV_HANDLE_TCP_SINGLE_ACCEPT);
+      assert(server->tcp_flags & UV_TCP_HANDLE_SINGLE_ACCEPT);
 
       server->tcp.serv.processed_accepts++;
 
@@ -770,8 +798,8 @@ int uv__tcp_accept(uv_tcp_t* server, uv_tcp_t* client) {
          * We now switch to queueing just a single accept.
          */
         uv__tcp_queue_accept(server, &server->tcp.serv.accept_reqs[0]);
-        server->flags &= ~UV_HANDLE_TCP_ACCEPT_STATE_CHANGING;
-        server->flags |= UV_HANDLE_TCP_SINGLE_ACCEPT;
+        server->tcp_flags &= ~UV_TCP_HANDLE_ACCEPT_STATE_CHANGING;
+        server->tcp_flags |= UV_TCP_HANDLE_SINGLE_ACCEPT;
       }
     }
   }
@@ -825,11 +853,11 @@ static int uv__is_loopback(const struct sockaddr_storage* storage) {
   return 0;
 }
 
-
 static int uv__tcp_try_connect(uv_connect_t* req,
                               uv_tcp_t* handle,
                               const struct sockaddr* addr,
                               unsigned int addrlen,
+                              const uv_buf_t* send_buf,
                               uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   TCP_INITIAL_RTO_PARAMETERS retransmit_ioctl;
@@ -891,6 +919,7 @@ out:
   UV_REQ_INIT(req, UV_CONNECT);
   req->handle = (uv_stream_t*) handle;
   req->cb = cb;
+  req->sent = 0;
   memset(&req->u.io.overlapped, 0, sizeof(req->u.io.overlapped));
 
   if (handle->delayed_error != 0) {
@@ -901,11 +930,18 @@ out:
     return 0;
   }
 
+#ifdef TCP_FASTOPEN
+  err = uv__tcp_fastopen(handle,
+                                 !!(handle->tcp_flags & UV_TCP_HANDLE_WANTS_FASTOPEN_CONNECT));
+  if (err)
+    return err;
+#endif
+
   success = handle->tcp.conn.func_connectex(handle->socket,
                                             (const struct sockaddr*) &converted,
                                             addrlen,
-                                            NULL,
-                                            0,
+                                            send_buf ? send_buf->base : NULL,
+                                            send_buf ? send_buf->len : 0,
                                             &bytes,
                                             &req->u.io.overlapped);
 
@@ -914,6 +950,7 @@ out:
     handle->reqs_pending++;
     REGISTER_HANDLE_REQ(loop, handle);
     uv__insert_pending_req(loop, (uv_req_t*)req);
+    req->sent = bytes;
   } else if (UV_SUCCEEDED_WITH_IOCP(success)) {
     /* The req will be processed with IOCP. */
     handle->reqs_pending++;
@@ -1306,6 +1343,7 @@ void uv__process_tcp_connect_req(uv_loop_t* loop, uv_tcp_t* handle,
                           0) == 0) {
       uv__connection_init((uv_stream_t*)handle);
       handle->flags |= UV_HANDLE_READABLE | UV_HANDLE_WRITABLE;
+      req->sent = req->u.io.overlapped.InternalHigh;
     } else {
       err = WSAGetLastError();
     }
@@ -1347,7 +1385,7 @@ int uv__tcp_xfer_export(uv_tcp_t* handle,
 
   /* Mark the local copy of the handle as 'shared' so we behave in a way that's
    * friendly to the process(es) that we share the socket with. */
-  handle->flags |= UV_HANDLE_SHARED_TCP_SOCKET;
+  handle->tcp_flags |= UV_TCP_HANDLE_SHARED_TCP_SOCKET;
 
   return 0;
 }
@@ -1381,7 +1419,8 @@ int uv__tcp_xfer_import(uv_tcp_t* tcp,
   }
 
   tcp->delayed_error = xfer_info->delayed_error;
-  tcp->flags |= UV_HANDLE_BOUND | UV_HANDLE_SHARED_TCP_SOCKET;
+  tcp->flags |= UV_HANDLE_BOUND;
+  tcp->tcp_flags |= UV_TCP_HANDLE_SHARED_TCP_SOCKET;
 
   if (xfer_type == UV__IPC_SOCKET_XFER_TCP_CONNECTION) {
     uv__connection_init((uv_stream_t*)tcp);
@@ -1402,12 +1441,37 @@ int uv_tcp_nodelay(uv_tcp_t* handle, int enable) {
   }
 
   if (enable) {
-    handle->flags |= UV_HANDLE_TCP_NODELAY;
+    handle->tcp_flags |= UV_TCP_HANDLE_NODELAY;
   } else {
-    handle->flags &= ~UV_HANDLE_TCP_NODELAY;
+    handle->tcp_flags &= ~UV_TCP_HANDLE_NODELAY;
   }
 
   return 0;
+}
+
+
+int uv_tcp_fastopen(uv_tcp_t *handle, int flags, int backlog) {
+#ifdef TCP_FASTOPEN
+  (void)backlog;
+
+  if (!uv__windows10_version1709())
+    return UV_ENOTSUP;
+
+  if (flags & UV_TCP_FASTOPEN_CONNECT)
+    handle->tcp_flags |= UV_TCP_HANDLE_WANTS_FASTOPEN_CONNECT;
+  else
+    handle->tcp_flags &= ~UV_TCP_HANDLE_WANTS_FASTOPEN_CONNECT;
+
+  if (flags & UV_TCP_FASTOPEN_ACCEPT) {
+    handle->tcp_flags |= UV_TCP_HANDLE_WANTS_FASTOPEN_ACCEPT;
+  }
+  else
+    handle->tcp_flags &= ~UV_TCP_HANDLE_WANTS_FASTOPEN_ACCEPT;
+
+  return 0;
+#else
+  return UV_ENOTSUP;
+#endif
 }
 
 
@@ -1429,9 +1493,9 @@ int uv_tcp_keepalive_ex(uv_tcp_t* handle,
   }
 
   if (on) {
-    handle->flags |= UV_HANDLE_TCP_KEEPALIVE;
+    handle->tcp_flags |= UV_TCP_HANDLE_KEEPALIVE;
   } else {
-    handle->flags &= ~UV_HANDLE_TCP_KEEPALIVE;
+    handle->tcp_flags &= ~UV_TCP_HANDLE_KEEPALIVE;
   }
 
   /* TODO: Store idle if handle->socket isn't created yet. */
@@ -1446,8 +1510,8 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
   }
 
   /* Check if we're already in the desired mode. */
-  if ((enable && !(handle->flags & UV_HANDLE_TCP_SINGLE_ACCEPT)) ||
-      (!enable && handle->flags & UV_HANDLE_TCP_SINGLE_ACCEPT)) {
+  if ((enable && !(handle->tcp_flags & UV_TCP_HANDLE_SINGLE_ACCEPT)) ||
+      (!enable && handle->tcp_flags & UV_TCP_HANDLE_SINGLE_ACCEPT)) {
     return 0;
   }
 
@@ -1457,15 +1521,15 @@ int uv_tcp_simultaneous_accepts(uv_tcp_t* handle, int enable) {
   }
 
   /* Check if we're in a middle of changing the number of pending accepts. */
-  if (handle->flags & UV_HANDLE_TCP_ACCEPT_STATE_CHANGING) {
+  if (handle->tcp_flags & UV_TCP_HANDLE_ACCEPT_STATE_CHANGING) {
     return 0;
   }
 
-  handle->flags |= UV_HANDLE_TCP_SINGLE_ACCEPT;
+  handle->tcp_flags |= UV_TCP_HANDLE_SINGLE_ACCEPT;
 
   /* Flip the changing flag if we have already queued multiple accepts. */
   if (handle->flags & UV_HANDLE_LISTENING) {
-    handle->flags |= UV_HANDLE_TCP_ACCEPT_STATE_CHANGING;
+    handle->tcp_flags |= UV_TCP_HANDLE_ACCEPT_STATE_CHANGING;
   }
 
   return 0;
@@ -1637,10 +1701,11 @@ int uv__tcp_connect(uv_connect_t* req,
                     uv_tcp_t* handle,
                     const struct sockaddr* addr,
                     unsigned int addrlen,
+                    const uv_buf_t* send_buf,
                     uv_connect_cb cb) {
   int err;
 
-  err = uv__tcp_try_connect(req, handle, addr, addrlen, cb);
+  err = uv__tcp_try_connect(req, handle, addr, addrlen, send_buf, cb);
   if (err)
     return uv_translate_sys_error(err);
 

@@ -248,7 +248,7 @@ static void on_recv(uv_udp_t* handle,
   ASSERT_LE(0, uv_udp_send(req, handle, &sndbuf, 1, addr, on_send));
 }
 
-static int tcp4_echo_start(int port) {
+static int tcp4_echo_start(int port, int tfo) {
   struct sockaddr_in addr;
   int r;
 
@@ -262,6 +262,14 @@ static int tcp4_echo_start(int port) {
     /* TODO: Error codes */
     fprintf(stderr, "Socket creation error\n");
     return 1;
+  }
+
+  if (tfo) {
+    r = uv_tcp_fastopen(&tcpServer, UV_TCP_FASTOPEN_ACCEPT, 0);
+    if (r) { 
+      fprintf(stderr, "uv_tcp_fastopen error %s\n", uv_err_name(r));
+      return 1;
+    }
   }
 
   r = uv_tcp_bind(&tcpServer, (const struct sockaddr*) &addr, 0);
@@ -386,7 +394,19 @@ static int pipe_echo_start(char* pipeName) {
 HELPER_IMPL(tcp4_echo_server) {
   loop = uv_default_loop();
 
-  if (tcp4_echo_start(TEST_PORT))
+  if (tcp4_echo_start(TEST_PORT, 0))
+    return 1;
+
+  notify_parent_process();
+  uv_run(loop, UV_RUN_DEFAULT);
+  return 0;
+}
+
+
+HELPER_IMPL(tcp4_echo_server_tfo) {
+  loop = uv_default_loop();
+
+  if (tcp4_echo_start(TEST_PORT, 1))
     return 1;
 
   notify_parent_process();
