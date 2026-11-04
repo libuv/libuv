@@ -300,7 +300,9 @@ static void fs_random_cb(uv_random_t* req, int status, void* buf, size_t len) {
 static void fs_addrinfo_cb(uv_getaddrinfo_t* req,
                            int status,
                            struct addrinfo* res) {
-  uv_freeaddrinfo(req->addrinfo);
+  ASSERT_OK(status);
+  ASSERT_NOT_NULL(res);
+  uv_freeaddrinfo(res);
   pool_events_counter++;
 }
 
@@ -313,6 +315,7 @@ TEST_IMPL(metrics_pool_events) {
   uv_fs_t stat2_req;
   uv_fs_t unlink_req;
   uv_fs_t write_req;
+  struct addrinfo hints;
   uv_getaddrinfo_t addrinfo_req;
   uv_metrics_t metrics;
   uv_prepare_t prepare;
@@ -358,12 +361,17 @@ TEST_IMPL(metrics_pool_events) {
                       1,
                       0,
                       fs_random_cb));
+  /* Exercise the resolver worker without waiting for external name services. */
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_NUMERICHOST;
   ASSERT_OK(uv_getaddrinfo(uv_default_loop(),
                            &addrinfo_req,
                            fs_addrinfo_cb,
-                           "example.invalid",
+                           "127.0.0.1",
                            NULL,
-                           NULL));
+                           &hints));
 
   /* Sleep for a moment to hopefully force the events to complete before
    * entering the event loop. */
