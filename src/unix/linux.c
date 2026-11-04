@@ -2230,11 +2230,23 @@ update_limits:
     *max = UINT64_MAX;
 }
 
+/* Reads memory.max or memory.high in the cgroup at path. A missing file means
+ * no limit at this level, the same as "max".
+ */
+static uint64_t uv__cgroup2_read_limit(const char* path, const char* name) {
+  char filename[4097 + sizeof("/memory.high")];
+  uint64_t rc;
+
+  snprintf(filename, sizeof(filename), "%s/%s", path, name);
+  rc = uv__read_uint64(filename);
+  return rc != 0 ? rc : UINT64_MAX;
+}
+
 /* A memory limit on any ancestor cgroup also applies to this process, so walk
  * from the process cgroup up to the mount point, like
  * uv__get_cgroupv2_constrained_cpu() does for cpu.max. *high and *max get the
- * smallest value found, or 0 when no level could be read. If headroom is not
- * NULL, it gets the smallest limit minus usage of all limited levels, or
+ * smallest value found, or UINT64_MAX when no level is limited. If headroom is
+ * not NULL, it gets the smallest limit minus usage of all limited levels, or
  * UINT64_MAX when no level is limited.
  */
 static void uv__get_cgroup2_memory_limits(char buf[static 1024], uint64_t* high,
@@ -2254,29 +2266,26 @@ static void uv__get_cgroup2_memory_limits(char buf[static 1024], uint64_t* high,
   p = buf + strlen("0::/");
   n = (int) strcspn(p, "\n");
   snprintf(path, sizeof(path), "%s%s%.*s",
-           cgroup_mount, n > 0 ? "/" : "", n, p);
+           cgroup_mount, &"/"[n < 1], n, p);
 
-  *high = 0;
-  *max = 0;
+  *high = UINT64_MAX;
+  *max = UINT64_MAX;
   if (headroom != NULL)
     *headroom = UINT64_MAX;
 
   for (;;) {
-    snprintf(filename, sizeof(filename), "%s/memory.max", path);
-    level_max = uv__read_uint64(filename);
-    snprintf(filename, sizeof(filename), "%s/memory.high", path);
-    level_high = uv__read_uint64(filename);
-
-    if (level_max != 0 && (*max == 0 || level_max < *max))
+    level_max = uv__cgroup2_read_limit(path, "memory.max");
+    level_high = uv__cgroup2_read_limit(path, "memory.high");
+    if (level_max < *max)
       *max = level_max;
-    if (level_high != 0 && (*high == 0 || level_high < *high))
+    if (level_high < *high)
       *high = level_high;
 
-    limit = level_max;
-    if (level_high != 0 && (limit == 0 || level_high < limit))
-      limit = level_high;
-
-    if (headroom != NULL && limit != 0 && limit != UINT64_MAX) {
+    /* The limit of this level, not the running minimum: the headroom of a
+     * level is its own limit minus its own usage, which includes siblings.
+     */
+    limit = level_max < level_high ? level_max : level_high;
+    if (headroom != NULL && limit != UINT64_MAX) {
       snprintf(filename, sizeof(filename), "%s/memory.current", path);
       room = uv__read_uint64(filename);
       /* memory usage can be higher than the limit (for short bursts of time) */
