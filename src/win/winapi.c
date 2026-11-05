@@ -39,12 +39,14 @@ sNtCreateFile pNtCreateFile;
 
 /* Powrprof.dll function pointer */
 sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+sPowerUnregisterSuspendResumeNotification pPowerUnregisterSuspendResumeNotification;
 
 /* bcryptprimitives.dll function pointer */
 sProcessPrng pProcessPrng;
 
 /* User32.dll function pointer */
 sSetWinEventHook pSetWinEventHook;
+sUnhookWinEvent pUnhookWinEvent;
 
 /* ws2_32.dll function pointer */
 uv_sGetHostNameW pGetHostNameW;
@@ -73,8 +75,10 @@ void uv__winapi_init(void) {
     sNtQueryInformationProcess pNtQueryInformationProcess;
     sNtCreateFile pNtCreateFile;
     sPowerRegisterSuspendResumeNotification pPowerRegisterSuspendResumeNotification;
+    sPowerUnregisterSuspendResumeNotification pPowerUnregisterSuspendResumeNotification;
     sProcessPrng pProcessPrng;
     sSetWinEventHook pSetWinEventHook;
+    sUnhookWinEvent pUnhookWinEvent;
     uv_sGetHostNameW pGetHostNameW;
     sGetFileInformationByName pGetFileInformationByName;
   } u;
@@ -149,6 +153,11 @@ void uv__winapi_init(void) {
                             "PowerRegisterSuspendResumeNotification");
     pPowerRegisterSuspendResumeNotification =
         u.pPowerRegisterSuspendResumeNotification;
+
+    u.proc = GetProcAddress(powrprof_module,
+                            "PowerUnregisterSuspendResumeNotification");
+    pPowerUnregisterSuspendResumeNotification =
+        u.pPowerUnregisterSuspendResumeNotification;
   }
 
   bcryptprimitives_module = LoadLibraryExA("bcryptprimitives.dll",
@@ -163,6 +172,9 @@ void uv__winapi_init(void) {
   if (user32_module != NULL) {
     u.proc = GetProcAddress(user32_module, "SetWinEventHook");
     pSetWinEventHook = u.pSetWinEventHook;
+
+    u.proc = GetProcAddress(user32_module, "UnhookWinEvent");
+    pUnhookWinEvent = u.pUnhookWinEvent;
   }
 
   ws2_32_module = GetModuleHandleW(L"ws2_32.dll");
