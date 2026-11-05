@@ -155,6 +155,7 @@ endif
 test_run_tests_LDFLAGS = $(AM_LDFLAGS)
 test_run_tests_SOURCES = test/blackhole-server.c \
                          test/echo-server.c \
+                         test/tcp-tfo-info.c \
                          test/run-tests.c \
                          test/runner.c \
                          test/runner.h \

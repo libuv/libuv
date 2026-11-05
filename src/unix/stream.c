@@ -403,6 +403,7 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
 #if defined(__APPLE__)
   int enable;
 #endif
+  uv_tcp_t* tcp;
 
   if (!(stream->io_watcher.fd == -1 || stream->io_watcher.fd == fd))
     return UV_EBUSY;
@@ -411,11 +412,12 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
   stream->flags |= flags;
 
   if (stream->type == UV_TCP) {
-    if ((stream->flags & UV_HANDLE_TCP_NODELAY) && uv__tcp_nodelay(fd, 1))
+    tcp = (uv_tcp_t*)stream;
+    if ((tcp->tcp_flags & UV_TCP_HANDLE_NODELAY) && uv__tcp_nodelay(fd, 1))
       return UV__ERR(errno);
 
     /* TODO Use delay the user passed in. */
-    if ((stream->flags & UV_HANDLE_TCP_KEEPALIVE) &&
+    if ((tcp->tcp_flags & UV_TCP_HANDLE_KEEPALIVE) &&
         uv__tcp_keepalive(fd, 1, 60, 1, 10)) {
       return UV__ERR(errno);
     }
