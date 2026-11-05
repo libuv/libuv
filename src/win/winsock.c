@@ -91,12 +91,14 @@ void uv__winsock_init(void) {
     abort();
   }
 
-  /* Skip initialization in safe mode without network support */
-  if (1 == GetSystemMetrics(SM_CLEANBOOT)) return;
-
   /* Initialize winsock */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
   if (errorno != 0) {
+    /* Skip initialization in safe mode without network support. Check this
+     * only after a failure, so that initializing libuv does not load
+     * user32.dll. */
+    if (1 == GetSystemMetrics(SM_CLEANBOOT))
+      return;
     uv_fatal_error(errorno, "WSAStartup");
   }
 
