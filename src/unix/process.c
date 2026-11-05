@@ -894,6 +894,21 @@ static int uv__spawn_resolve_and_spawn(const uv_process_options_t* options,
     b[z - p] = '/';
     memcpy(b + (z - p) + (z > p), options->file, k + 1);
 
+    /* Skip the PATH entry when it does not contain the file. A failed
+     * posix_spawn() is not free: the kernel creates a child process for every
+     * attempt and tears it down again, and on macOS each of those attempts is
+     * also inspected by the system policy daemon, which delays the next
+     * successful spawn by several milliseconds. A relative entry is resolved
+     * against options->cwd by the child, so it can only be checked here when
+     * the child does not change its working directory. */
+    if (b[0] == '/' || options->cwd == NULL) {
+      if (access(b, F_OK) == -1 && (errno == ENOENT || errno == ENOTDIR)) {
+        err = errno;
+        p = z + 1;
+        continue;
+      }
+    }
+
     /* Try to spawn the new process file. If it fails with ENOENT, the
      * new process file is not in this PATH entry, continue with the next
      * PATH entry. */
