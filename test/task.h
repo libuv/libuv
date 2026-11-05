@@ -378,6 +378,19 @@ extern int snprintf(char*, size_t, const char*, ...);
 
 extern void notify_parent_process(void);
 
+/* Allocation failure injection, see oom.c. Call oom_init() to replace the
+ * libuv allocator and oom_cleanup() to restore the default one. After
+ * oom_fail(skip, count), the calling thread's next `skip` allocations succeed
+ * and the following `count` fail (all of them if `count` is negative).
+ * oom_failures() is the number of allocations failed since oom_fail(), and
+ * oom_live() is the number of allocations made but not yet freed.
+ */
+void oom_init(void);
+void oom_fail(int skip, int count);
+int oom_failures(void);
+int oom_live(void);
+void oom_cleanup(void);
+
 /* Fully close a loop */
 static void close_walk_cb(uv_handle_t* handle, void* arg) {
   if (!uv_is_closing(handle))
