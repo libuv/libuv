@@ -441,6 +441,214 @@ static void uv__fs_req_init(uv_loop_t* loop,
 }
 
 
+/* CON, PRN, AUX, NUL, COM1-9 and LPT1-9, ignoring an extension and trailing
+ * spaces, as Win32 classifies them. */
+static int fs__is_dos_device_name(const WCHAR* s, size_t len) {
+  size_t n;
+
+  n = 0;
+  while (n < len && s[n] != L'.')
+    n++;
+  while (n > 0 && s[n - 1] == L' ')
+    n--;
+
+  if (n == 3)
+    return _wcsnicmp(s, L"CON", 3) == 0 || _wcsnicmp(s, L"PRN", 3) == 0 ||
+           _wcsnicmp(s, L"AUX", 3) == 0 || _wcsnicmp(s, L"NUL", 3) == 0;
+
+  if (n == 4 && s[3] >= L'1' && s[3] <= L'9')
+    return _wcsnicmp(s, L"COM", 3) == 0 || _wcsnicmp(s, L"LPT", 3) == 0;
+
+  return 0;
+}
+
+
+/* NtCreateFile() looks a name up under RootDirectory literally, so the Win32
+ * normalization CreateFileW() would have applied is done here, in place:
+ * separators become single backslashes, "." and ".." components are resolved
+ * as text, and trailing dots and spaces are stripped from each component. A
+ * trailing separator is kept.
+ *
+ * Returns the new length, or -1 with the last error set, for a ".." that
+ * would climb above the root, a component that is empty once stripped, or a
+ * DOS device name, none of which Win32 can express in a directory. */
+static int fs__normalize_at_path(WCHAR* path) {
+  WCHAR* start;
+  WCHAR* name;
+  WCHAR* end;
+  WCHAR* p;
+  WCHAR* q;
+
+  p = path;
+  q = path;
+  for (;;) {
+    while (IS_SLASH(*p))
+      p++;
+    if (*p == L'\0')
+      break;
+
+    start = q;
+    if (q > path)
+      *q++ = L'\\';
+    name = q;
+    while (*p != L'\0' && !IS_SLASH(*p))
+      *q++ = *p++;
+    end = q;
+    while (q > name && (q[-1] == L'.' || q[-1] == L' '))
+      q--;
+
+    if (q > name) {
+      if (fs__is_dos_device_name(name, q - name))
+        goto invalid;
+      continue;
+    }
+
+    /* Only dots and spaces: ".", ".." or a name Win32 would strip to
+     * nothing. */
+    q = start;
+    if (end - name == 1 && name[0] == L'.')
+      continue;
+    if (end - name != 2 || name[0] != L'.' || name[1] != L'.')
+      goto invalid;
+    if (q == path)
+      goto invalid;
+    while (q > path && q[-1] != L'\\')
+      q--;
+    if (q > path)
+      q--;
+  }
+
+  if (q > path && IS_SLASH(p[-1]))
+    *q++ = L'\\';
+  *q = L'\0';
+  return q - path;
+
+invalid:
+  SetLastError(ERROR_INVALID_PARAMETER);
+  return -1;
+}
+
+
+/* CreateFileW(), with a relative path resolved against the directory open at
+ * dirfd rather than the cwd. Modifies `path` in place, see
+ * fs__normalize_at_path(). */
+static HANDLE fs__create_file(int dirfd,
+                              WCHAR* path,
+                              DWORD access,
+                              DWORD share,
+                              DWORD disposition,
+                              DWORD flags) {
+  FILE_STANDARD_INFO info;
+  OBJECT_ATTRIBUTES attr;
+  UNICODE_STRING name;
+  IO_STATUS_BLOCK iosb;
+  NTSTATUS status;
+  HANDLE handle;
+  ULONG options;
+  int len;
+
+  if (dirfd == UV_FS_AT_FDCWD)
+    return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
+
+  if (path[0] == L'\0') {
+    SetLastError(ERROR_PATH_NOT_FOUND);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  /* A fully qualified path (C:\foo, \\server\share, \\?\...) ignores dirfd,
+   * as an absolute path does on UNIX. */
+  if ((IS_SLASH(path[0]) && IS_SLASH(path[1])) ||
+      (path[1] == L':' && IS_SLASH(path[2])))
+    return CreateFileW(path, access, share, NULL, disposition, flags, NULL);
+
+  /* A rooted (\foo) or drive-relative (C:foo) path resolves against the
+   * process-wide current drive or per-drive directory, which has no meaning
+   * relative to dirfd. */
+  if (IS_SLASH(path[0]) || path[1] == L':') {
+    SetLastError(ERROR_INVALID_PARAMETER);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  handle = uv__get_osfhandle(dirfd);
+  if (handle == INVALID_HANDLE_VALUE) {
+    SetLastError(ERROR_INVALID_HANDLE);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  if (!GetFileInformationByHandleEx(handle,
+                                    FileStandardInfo,
+                                    &info,
+                                    sizeof info))
+    return INVALID_HANDLE_VALUE;
+
+  if (!info.Directory) {
+    SetLastError(ERROR_DIRECTORY);
+    return INVALID_HANDLE_VALUE;
+  }
+
+  len = fs__normalize_at_path(path);
+  if (len < 0)
+    return INVALID_HANDLE_VALUE;
+
+  status = uv__RtlUnicodeStringInit(&name, path, len);
+  if (!NT_SUCCESS(status)) {
+    SetLastError(pRtlNtStatusToDosError(status));
+    return INVALID_HANDLE_VALUE;
+  }
+
+  attr.Length = sizeof(attr);
+  attr.RootDirectory = handle;
+  attr.ObjectName = &name;
+  attr.Attributes = OBJ_CASE_INSENSITIVE;
+  attr.SecurityDescriptor = NULL;
+  attr.SecurityQualityOfService = NULL;
+
+  switch (disposition) {
+  case CREATE_NEW:        disposition = FILE_CREATE;       break;
+  case CREATE_ALWAYS:     disposition = FILE_OVERWRITE_IF; break;
+  case OPEN_EXISTING:     disposition = FILE_OPEN;         break;
+  case OPEN_ALWAYS:       disposition = FILE_OPEN_IF;      break;
+  case TRUNCATE_EXISTING: disposition = FILE_OVERWRITE;    break;
+  }
+
+  options = FILE_SYNCHRONOUS_IO_NONALERT;
+  if (flags & FILE_FLAG_BACKUP_SEMANTICS)
+    options |= FILE_OPEN_FOR_BACKUP_INTENT;
+  else
+    options |= FILE_NON_DIRECTORY_FILE;
+  if (flags & FILE_FLAG_DELETE_ON_CLOSE)
+    options |= FILE_DELETE_ON_CLOSE;
+  if (flags & FILE_FLAG_NO_BUFFERING)
+    options |= FILE_NO_INTERMEDIATE_BUFFERING;
+  if (flags & FILE_FLAG_OPEN_REPARSE_POINT)
+    options |= FILE_OPEN_REPARSE_POINT;
+  if (flags & FILE_FLAG_RANDOM_ACCESS)
+    options |= FILE_RANDOM_ACCESS;
+  if (flags & FILE_FLAG_SEQUENTIAL_SCAN)
+    options |= FILE_SEQUENTIAL_ONLY;
+  if (flags & FILE_FLAG_WRITE_THROUGH)
+    options |= FILE_WRITE_THROUGH;
+
+  status = pNtCreateFile(&handle,
+                         access | SYNCHRONIZE | FILE_READ_ATTRIBUTES,
+                         &attr,
+                         &iosb,
+                         NULL,
+                         flags & 0xFFFF, /* FILE_ATTRIBUTE_* */
+                         share,
+                         disposition,
+                         options,
+                         NULL,
+                         0);
+  if (!NT_SUCCESS(status)) {
+    SetLastError(pRtlNtStatusToDosError(status));
+    return INVALID_HANDLE_VALUE;
+  }
+
+  return handle;
+}
+
+
 void fs__open(uv_fs_t* req) {
   DWORD access;
   DWORD share;
@@ -609,13 +817,12 @@ void fs__open(uv_fs_t* req) {
   /* Setting this flag makes it possible to open a directory. */
   attributes |= FILE_FLAG_BACKUP_SEMANTICS;
 
-  file = CreateFileW(req->file.pathw,
-                     access,
-                     share,
-                     NULL,
-                     disposition,
-                     attributes,
-                     NULL);
+  file = fs__create_file(req->fs.info.fd_out,
+                         req->file.pathw,
+                         access,
+                         share,
+                         disposition,
+                         attributes);
   if (file == INVALID_HANDLE_VALUE) {
     DWORD error = GetLastError();
     if (error == ERROR_FILE_EXISTS && (flags & UV_FS_O_CREAT) &&
@@ -623,8 +830,10 @@ void fs__open(uv_fs_t* req) {
       /* Special case: when ERROR_FILE_EXISTS happens and UV_FS_O_CREAT was
        * specified, it means the path referred to a directory. */
       SET_REQ_UV_ERROR(req, UV_EISDIR, error);
+    } else if (error == ERROR_DIRECTORY) {
+      SET_REQ_UV_ERROR(req, UV_ENOTDIR, error);
     } else {
-      SET_REQ_WIN32_ERROR(req, GetLastError());
+      SET_REQ_WIN32_ERROR(req, error);
     }
     return;
   }
@@ -3267,6 +3476,12 @@ void uv_fs_req_cleanup(uv_fs_t* req) {
 
 int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     int mode, uv_fs_cb cb) {
+  return uv_fs_openat(loop, req, UV_FS_AT_FDCWD, path, flags, mode, cb);
+}
+
+
+int uv_fs_openat(uv_loop_t* loop, uv_fs_t* req, uv_file dirfd,
+    const char* path, int flags, int mode, uv_fs_cb cb) {
   int err;
 
   INIT(UV_FS_OPEN);
@@ -3276,6 +3491,7 @@ int uv_fs_open(uv_loop_t* loop, uv_fs_t* req, const char* path, int flags,
     return req->result;
   }
 
+  req->fs.info.fd_out = dirfd;
   req->fs.info.file_flags = flags;
   req->fs.info.mode = mode;
   POST;
