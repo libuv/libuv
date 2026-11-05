@@ -1830,8 +1830,11 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     return UV__ERR(errno);
   }
 
+  /* An empty or short /proc/stat is not fatal; it just means no CPU
+   * lines get parsed. Containers (LXCFS et al.) can present such files.
+   */
   if (NULL == fgets(buf, sizeof(buf), fp))
-    abort();
+    buf[0] = '\0';
 
   for (;;) {
     memset(&t, 0, sizeof(t));
@@ -1842,18 +1845,18 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
     if (n != 7)
       break;
 
+    if (cpu < ARRAY_SIZE(*cpus)) {
+      (*cpus)[cpu] = t;
+
+      bitmap[cpu >> 3] |= 1 << (cpu & 7);
+
+      if (cpu >= maxcpu)
+        maxcpu = cpu + 1;
+    }
+
+    /* EOF right after the last field of the final line is fine too. */
     if (NULL == fgets(buf, sizeof(buf), fp))
-      abort();
-
-    if (cpu >= ARRAY_SIZE(*cpus))
-      continue;
-
-    (*cpus)[cpu] = t;
-
-    bitmap[cpu >> 3] |= 1 << (cpu & 7);
-
-    if (cpu >= maxcpu)
-      maxcpu = cpu + 1;
+      break;
   }
 
   fclose(fp);
@@ -1920,6 +1923,8 @@ nocpuinfo:
 
   n = 0;
   for (cpu = 0; cpu < maxcpu; cpu++) {
+    unsigned long long freq;
+
     if (!(bitmap[cpu >> 3] & (1 << (cpu & 7))))
       continue;
 
@@ -1936,8 +1941,9 @@ nocpuinfo:
     if (fp == NULL)
       continue;
 
-    if (1 != fscanf(fp, "%llu", &(*cpus)[cpu].freq))
-      abort();
+    /* Best effort: a CPU with an unreadable frequency gets speed 0. */
+    if (1 == fscanf(fp, "%llu", &freq))
+      (*cpus)[cpu].freq = freq;
     fclose(fp);
     fp = NULL;
   }
