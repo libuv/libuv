@@ -23,12 +23,12 @@
 #include "task.h"
 #include <string.h>
 
-#ifdef __linux__
-# include <unistd.h>
-#endif
-
 #ifdef _WIN32
+# include <fcntl.h>
+# include <io.h>
 # define putenv _putenv
+#else
+# include <unistd.h>
 #endif
 
 #define INIT_CANCEL_INFO(ci, what)                                            \
@@ -57,6 +57,13 @@ static unsigned done2_cb_called;
 static unsigned timer_cb_called;
 static uv_work_t pause_reqs[4];
 static uv_sem_t pause_sems[ARRAY_SIZE(pause_reqs)];
+static uv_sem_t pause_started_sem;
+static uv_fs_t pause_io_req;
+static uv_file pause_io_fds[2];
+/* More buffers than IOV_MAX keep the write off io_uring, more bytes than the
+ * pipe buffer holds make it block. */
+static uv_buf_t pause_io_bufs[2048];
+static char pause_io_data[128];
 
 #ifdef __linux__
 static uv_fs_t iouring_fs_req;
@@ -66,12 +73,48 @@ static int iouring_cancel_result;
 
 
 static void work_cb(uv_work_t* req) {
+  uv_sem_post(&pause_started_sem);
   uv_sem_wait(pause_sems + (req - pause_reqs));
 }
 
 
 static void done_cb(uv_work_t* req, int status) {
   uv_sem_destroy(pause_sems + (req - pause_reqs));
+}
+
+
+static int pause_io_pipe(uv_file fds[2]) {
+#ifdef _WIN32
+  return _pipe(fds, 4096, _O_BINARY);
+#else
+  return pipe(fds);
+#endif
+}
+
+
+static int pause_io_read(uv_file fd, char* buf, unsigned int len) {
+#ifdef _WIN32
+  return _read(fd, buf, len);
+#else
+  return read(fd, buf, len);
+#endif
+}
+
+
+static int pause_io_close(uv_file fd) {
+#ifdef _WIN32
+  return _close(fd);
+#else
+  return close(fd);
+#endif
+}
+
+
+static void pause_io_cb(uv_fs_t* req) {
+  ASSERT_EQ(sizeof(pause_io_data) * ARRAY_SIZE(pause_io_bufs), req->result);
+  uv_fs_req_cleanup(req);
+  ASSERT_OK(pause_io_close(pause_io_fds[0]));
+  ASSERT_OK(pause_io_close(pause_io_fds[1]));
 }
 
 
@@ -87,18 +130,45 @@ static void saturate_threadpool(void) {
   putenv(buf);
 
   loop = uv_default_loop();
+  ASSERT_OK(uv_sem_init(&pause_started_sem, 0));
   for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1) {
     ASSERT_OK(uv_sem_init(pause_sems + i, 0));
     ASSERT_OK(uv_queue_work(loop, pause_reqs + i, work_cb, done_cb));
   }
+
+  /* CPU work never runs on the extra I/O thread, block that one too. */
+  for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1)
+    uv_sem_wait(&pause_started_sem);
+  uv_sem_destroy(&pause_started_sem);
+
+  ASSERT_OK(pause_io_pipe(pause_io_fds));
+  for (i = 0; i < ARRAY_SIZE(pause_io_bufs); i += 1)
+    pause_io_bufs[i] = uv_buf_init(pause_io_data, sizeof(pause_io_data));
+  ASSERT_OK(uv_fs_write(loop,
+                        &pause_io_req,
+                        pause_io_fds[1],
+                        pause_io_bufs,
+                        ARRAY_SIZE(pause_io_bufs),
+                        -1,
+                        pause_io_cb));
 }
 
 
 static void unblock_threadpool(void) {
+  char buf[4096];
+  size_t n;
+  int r;
   size_t i;
 
   for (i = 0; i < ARRAY_SIZE(pause_reqs); i += 1)
     uv_sem_post(pause_sems + i);
+
+  n = sizeof(pause_io_data) * ARRAY_SIZE(pause_io_bufs);
+  while (n > 0) {
+    r = pause_io_read(pause_io_fds[0], buf, n < sizeof(buf) ? n : sizeof(buf));
+    ASSERT_GT(r, 0);
+    n -= r;
+  }
 }
 
 
