@@ -1798,6 +1798,7 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
   FILE* fp;
   const char* p;
   int found;
+  int err;
   int n;
   unsigned i;
   unsigned cpu;
@@ -1826,12 +1827,16 @@ int uv_cpu_info(uv_cpu_info_t** ci, int* count) {
 
   fp = uv__open_file("/proc/stat");
   if (fp == NULL) {
-    uv__free(cpus);
-    return UV__ERR(errno);
+    err = UV__ERR(errno);
+    goto out;
   }
 
-  if (NULL == fgets(buf, sizeof(buf), fp))
-    abort();
+  /* It's been reported some containers map an empty file at /proc/stat... */
+  if (NULL == fgets(buf, sizeof(buf), fp)) {
+    err = UV_ENOENT;
+    fclose(fp);
+    goto out;
+  }
 
   for (;;) {
     memset(&t, 0, sizeof(t));
@@ -1946,10 +1951,9 @@ nocpuinfo:
   *ci = uv__malloc(size);
   *count = 0;
 
-  if (*ci == NULL) {
-    uv__free(cpus);
-    return UV_ENOMEM;
-  }
+  err = UV_ENOMEM;
+  if (*ci == NULL)
+    goto out;
 
   *count = n;
   p = memcpy(*ci + n, models, sizeof(models));
@@ -1977,9 +1981,10 @@ nocpuinfo:
     };
   }
 
+  err = 0;
+out:
   uv__free(cpus);
-
-  return 0;
+  return err;
 }
 
 
