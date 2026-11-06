@@ -138,7 +138,8 @@ TEST_IMPL(getaddrinfo_invalid_utf8) {
 #else
   static const char* names[] = {
     "\xE2\x41\x42",
-    "\xF1\x41\x42\x80"
+    "\xF1\x41\x42\x80",
+    "\xE2\x80"
   };
   struct addrinfo hints;
   uv_getaddrinfo_t req;

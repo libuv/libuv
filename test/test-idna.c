@@ -44,6 +44,11 @@ TEST_IMPL(utf8_decode1) {
     "\xF1\x80\xC1\xC2",
     "\xF1\x01\x41\xC1"
   };
+  static const char truncated[][4] = {
+    "\xE2\x80",
+    "\xF0\x90",
+    "\xF4\x8F\xBF"
+  };
   const char* p;
   char b[32];
   size_t j;
@@ -122,6 +127,14 @@ TEST_IMPL(utf8_decode1) {
     ASSERT_PTR_EQ(p, invalid[j] + strlen(invalid[j]));
   }
 
+  /* A sequence cut short by the end of the input is not a shorter one. */
+  for (j = 0; j < ARRAY_SIZE(truncated); j++) {
+    p = truncated[j];
+    ASSERT_EQ((unsigned) -1,
+              uv__utf8_decode1(&p, truncated[j] + strlen(truncated[j])));
+    ASSERT_PTR_EQ(p, truncated[j] + 1);
+  }
+
   return 0;
 }
 
@@ -186,6 +199,9 @@ TEST_IMPL(idna_toascii) {
   F("\xF1\x41\x80\x42.com", UV_EINVAL);
   F("\xF1\x80\x41\x42", UV_EINVAL);
   F("\xF1\x01\x41\xC1.com", UV_EINVAL);
+  F("\xE2\x80", UV_EINVAL);  /* Truncated UTF-8 sequence. */
+  F("example.\xF0\x90", UV_EINVAL);  /* Truncated UTF-8 sequence. */
+  F("\xF4\x8F\xBF", UV_EINVAL);  /* Truncated UTF-8 sequence. */
   /* No conversion. */
   T(".", ".");
   T(".com", ".com");
