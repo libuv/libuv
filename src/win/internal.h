@@ -334,4 +334,18 @@ void uv__init_detect_system_wakeup(void);
 
 int uv_translate_write_sys_error(int sys_errno);
 
+/* Converts a CPU time from GetProcessTimes() or GetThreadTimes() to seconds
+ * and microseconds. A FILETIME holds 100 ns ticks. Don't use
+ * FileTimeToSystemTime() for this: it treats the value as a calendar date, so
+ * anything over 24 hours moves into wDay.
+ */
+INLINE static void uv__filetime_to_timeval(const FILETIME* ft,
+                                           uv_timeval_t* tv) {
+  uint64_t ticks;
+
+  ticks = (uint64_t) ft->dwHighDateTime << 32 | ft->dwLowDateTime;
+  tv->tv_sec = (long) (ticks / 10000000);
+  tv->tv_usec = (long) (ticks % 10000000 / 10);
+}
+
 #endif /* UV_WIN_INTERNAL_H_ */

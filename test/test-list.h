@@ -324,6 +324,9 @@ TEST_DECLARE   (process_title_threadsafe)
 TEST_DECLARE   (cwd_and_chdir)
 TEST_DECLARE   (get_memory)
 TEST_DECLARE   (get_passwd)
+#ifdef _WIN32
+TEST_DECLARE   (getrusage_filetime_win32)
+#endif
 TEST_DECLARE   (get_passwd2)
 TEST_DECLARE   (get_group)
 TEST_DECLARE   (handle_fileno)
@@ -1035,6 +1038,9 @@ TASK_LIST_START
   TEST_ENTRY  (get_memory)
 
   TEST_ENTRY  (get_passwd)
+#ifdef _WIN32
+  TEST_ENTRY  (getrusage_filetime_win32)
+#endif
   TEST_ENTRY  (get_passwd2)
   TEST_ENTRY  (get_group)
 
