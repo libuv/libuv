@@ -500,6 +500,11 @@ struct uv_shutdown_s {
   struct uv__queue handle_queue;                                              \
   union {                                                                     \
     int fd;                                                                   \
+    struct {                                                                  \
+      unsigned int idle;                                                      \
+      unsigned int interval;                                                  \
+      unsigned int count;                                                     \
+    } tcp;                                                                    \
     void* reserved[4];                                                        \
   } u;                                                                        \
   UV_HANDLE_PRIVATE_FIELDS                                                    \

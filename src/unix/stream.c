@@ -400,6 +400,7 @@ failed_malloc:
 
 
 int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
+  int err;
 #if defined(__APPLE__)
   int enable;
 #endif
@@ -414,10 +415,10 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
     if ((stream->flags & UV_HANDLE_TCP_NODELAY) && uv__tcp_nodelay(fd, 1))
       return UV__ERR(errno);
 
-    /* TODO Use delay the user passed in. */
-    if ((stream->flags & UV_HANDLE_TCP_KEEPALIVE) &&
-        uv__tcp_keepalive(fd, 1, 60, 1, 10)) {
-      return UV__ERR(errno);
+    if (stream->flags & UV_HANDLE_TCP_KEEPALIVE) {
+      err = uv__tcp_keepalive_replay((uv_tcp_t*) stream, fd);
+      if (err)
+        return err;
     }
   }
 
