@@ -603,6 +603,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-getaddrinfo.c
        test/test-gethostname.c
        test/test-getnameinfo.c
+       test/test-getrusage.c
        test/test-getsockname.c
        test/test-getters-setters.c
        test/test-gettimeofday.c

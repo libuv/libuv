@@ -195,6 +195,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-getaddrinfo.c \
                          test/test-gethostname.c \
                          test/test-getnameinfo.c \
+                         test/test-getrusage.c \
                          test/test-getsockname.c \
                          test/test-gettimeofday.c \
                          test/test-handle-fileno.c \
