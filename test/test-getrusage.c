@@ -26,8 +26,6 @@
 
 #include "../src/win/internal.h"
 
-#define TICKS_PER_SEC ((uint64_t) 10000000)
-
 static void check_ticks(uint64_t ticks, long sec, long usec) {
   FILETIME ft;
   uv_timeval_t tv;
