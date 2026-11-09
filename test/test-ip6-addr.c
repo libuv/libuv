@@ -173,3 +173,30 @@ TEST_IMPL(ip6_sin6_len) {
 #endif
   return 0;
 }
+
+
+TEST_IMPL(ip6_addr_numeric_scope) {
+  struct sockaddr_in6 addr;
+
+  ASSERT_OK(uv_ip6_addr("fe80::1%0", TEST_PORT, &addr));
+  ASSERT_EQ(0, addr.sin6_scope_id);
+  ASSERT_OK(uv_ip6_addr("fe80::1%42", TEST_PORT, &addr));
+  ASSERT_EQ(42, addr.sin6_scope_id);
+  ASSERT_EQ(TEST_PORT, ntohs(addr.sin6_port));
+  ASSERT_OK(uv_ip6_addr("fe80::1%00042", TEST_PORT, &addr));
+  ASSERT_EQ(42, addr.sin6_scope_id);
+  ASSERT_OK(uv_ip6_addr("fe80::1%2147483647", TEST_PORT, &addr));
+  ASSERT_EQ(2147483647, addr.sin6_scope_id);
+#ifndef _WIN32
+  ASSERT_OK(uv_ip6_addr("fe80::1%4294967295", TEST_PORT, &addr));
+  ASSERT_EQ(UINT32_MAX, addr.sin6_scope_id);
+  ASSERT_OK(uv_ip6_addr("fe80::1%4294967296", TEST_PORT, &addr));
+  ASSERT_EQ(0, addr.sin6_scope_id);
+  ASSERT_OK(uv_ip6_addr("fe80::1%184467440737095516160", TEST_PORT, &addr));
+  ASSERT_EQ(0, addr.sin6_scope_id);
+  ASSERT_OK(uv_ip6_addr("fe80::1%42invalid", TEST_PORT, &addr));
+  ASSERT_EQ(0, addr.sin6_scope_id);
+#endif
+
+  return 0;
+}
