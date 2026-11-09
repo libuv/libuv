@@ -874,7 +874,6 @@ int uv_interface_addresses(uv_interface_address_t** addresses_ptr,
 
 int uv_getrusage(uv_rusage_t *uv_rusage) {
   FILETIME create_time, exit_time, kernel_time, user_time;
-  SYSTEMTIME kernel_system_time, user_system_time;
   PROCESS_MEMORY_COUNTERS mem_counters;
   IO_COUNTERS io_counters;
   int ret;
@@ -884,16 +883,6 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
                         &exit_time,
                         &kernel_time,
                         &user_time);
-  if (ret == 0) {
-    return uv_translate_sys_error(GetLastError());
-  }
-
-  ret = FileTimeToSystemTime(&kernel_time, &kernel_system_time);
-  if (ret == 0) {
-    return uv_translate_sys_error(GetLastError());
-  }
-
-  ret = FileTimeToSystemTime(&user_time, &user_system_time);
   if (ret == 0) {
     return uv_translate_sys_error(GetLastError());
   }
@@ -912,15 +901,8 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
   memset(uv_rusage, 0, sizeof(*uv_rusage));
 
-  uv_rusage->ru_utime.tv_sec = user_system_time.wHour * 3600 +
-                               user_system_time.wMinute * 60 +
-                               user_system_time.wSecond;
-  uv_rusage->ru_utime.tv_usec = user_system_time.wMilliseconds * 1000;
-
-  uv_rusage->ru_stime.tv_sec = kernel_system_time.wHour * 3600 +
-                               kernel_system_time.wMinute * 60 +
-                               kernel_system_time.wSecond;
-  uv_rusage->ru_stime.tv_usec = kernel_system_time.wMilliseconds * 1000;
+  uv__filetime_to_timeval(&user_time, &uv_rusage->ru_utime);
+  uv__filetime_to_timeval(&kernel_time, &uv_rusage->ru_stime);
 
   uv_rusage->ru_majflt = (uint64_t) mem_counters.PageFaultCount;
   uv_rusage->ru_maxrss = (uint64_t) mem_counters.PeakWorkingSetSize / 1024;
@@ -934,7 +916,6 @@ int uv_getrusage(uv_rusage_t *uv_rusage) {
 
 int uv_getrusage_thread(uv_rusage_t* uv_rusage) {
   FILETIME create_time, exit_time, kernel_time, user_time;
-  SYSTEMTIME kernel_system_time, user_system_time;
   int ret;
 
   ret = GetThreadTimes(GetCurrentThread(),
@@ -946,27 +927,10 @@ int uv_getrusage_thread(uv_rusage_t* uv_rusage) {
     return uv_translate_sys_error(GetLastError());
   }
 
-  ret = FileTimeToSystemTime(&kernel_time, &kernel_system_time);
-  if (ret == 0) {
-    return uv_translate_sys_error(GetLastError());
-  }
-
-  ret = FileTimeToSystemTime(&user_time, &user_system_time);
-  if (ret == 0) {
-    return uv_translate_sys_error(GetLastError());
-  }
-
   memset(uv_rusage, 0, sizeof(*uv_rusage));
 
-  uv_rusage->ru_utime.tv_sec = user_system_time.wHour * 3600 +
-                               user_system_time.wMinute * 60 +
-                               user_system_time.wSecond;
-  uv_rusage->ru_utime.tv_usec = user_system_time.wMilliseconds * 1000;
-
-  uv_rusage->ru_stime.tv_sec = kernel_system_time.wHour * 3600 +
-                               kernel_system_time.wMinute * 60 +
-                               kernel_system_time.wSecond;
-  uv_rusage->ru_stime.tv_usec = kernel_system_time.wMilliseconds * 1000;
+  uv__filetime_to_timeval(&user_time, &uv_rusage->ru_utime);
+  uv__filetime_to_timeval(&kernel_time, &uv_rusage->ru_stime);
 
   return 0;
 }
