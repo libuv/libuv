@@ -685,7 +685,7 @@ static int uv__fs_statfs(uv_fs_t* req) {
 #endif /* defined(__sun) */
     return -1;
 
-  stat_fs = uv__malloc(sizeof(*stat_fs));
+  stat_fs = uv__calloc(1, sizeof(*stat_fs));
   if (stat_fs == NULL) {
     errno = ENOMEM;
     return -1;

@@ -23,6 +23,7 @@
 #include "task.h"
 
 #include <errno.h>
+#include <stdlib.h>
 #include <stddef.h> /* offsetof */
 #include <string.h> /* memset */
 #include <fcntl.h>
@@ -368,6 +369,16 @@ static void fstat_cb(uv_fs_t* req) {
 }
 
 
+static void* statfs_poison_malloc(size_t size) {
+  void* ptr;
+
+  ptr = malloc(size);
+  if (ptr != NULL)
+    memset(ptr, 0xa5, size);
+  return ptr;
+}
+
+
 static void statfs_cb(uv_fs_t* req) {
   uv_statfs_t* stats;
 
@@ -388,6 +399,9 @@ static void statfs_cb(uv_fs_t* req) {
   ASSERT_GT(stats->f_blocks, 0);
   ASSERT_LE(stats->f_bfree, stats->f_blocks);
   ASSERT_LE(stats->f_bavail, stats->f_bfree);
+  ASSERT_OK(stats->f_spare[0]);
+  ASSERT_OK(stats->f_spare[1]);
+  ASSERT_OK(stats->f_spare[2]);
 
 #ifdef _WIN32
   ASSERT_OK(stats->f_files);
@@ -4985,6 +4999,10 @@ TEST_FS_IMPL(fs_statfs) {
   loop = uv_default_loop();
 
   /* Test the synchronous version for both a directory and a file. */
+  ASSERT_OK(uv_replace_allocator(statfs_poison_malloc,
+                                 realloc,
+                                 calloc,
+                                 free));
   r = uv_fs_statfs(NULL, &req, ".", NULL);
   ASSERT_OK(r);
   statfs_cb(&req);
@@ -4992,6 +5010,7 @@ TEST_FS_IMPL(fs_statfs) {
   ASSERT_OK(r);
   statfs_cb(&req);
   ASSERT_EQ(2, statfs_cb_count);
+  ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
 
   /* Test the asynchronous version too. */
   r = uv_fs_statfs(loop, &req, ".", statfs_cb);

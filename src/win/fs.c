@@ -3145,7 +3145,7 @@ static void fs__statfs(uv_fs_t* req) {
     return;
   }
 
-  stat_fs = uv__malloc(sizeof(*stat_fs));
+  stat_fs = uv__calloc(1, sizeof(*stat_fs));
   if (stat_fs == NULL) {
     SET_REQ_UV_ERROR(req, UV_ENOMEM, ERROR_OUTOFMEMORY);
     return;
