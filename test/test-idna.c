@@ -299,6 +299,7 @@ TEST_IMPL(utf16_to_wtf8_exact_fill) {
     char* target;
     size_t target_len;
     size_t j;
+    int r;
 
     ASSERT_NOT_NULL(mem);
     ASSERT_NOT_NULL(utf16);
@@ -311,7 +312,9 @@ TEST_IMPL(utf16_to_wtf8_exact_fill) {
     /* Correct usage: target_len = buf_size - 1 reserves space for NUL. */
     target = mem;
     target_len = buf_size - 1;
-    uv_utf16_to_wtf8(utf16, num_chars, &target, &target_len);
+    r = uv_utf16_to_wtf8(utf16, num_chars, &target, &target_len);
+    ASSERT_EQ(UV_ENOBUFS, r);
+    ASSERT_EQ(buf_size, target_len);
 
     /* NUL must land inside the buffer; canary byte must be untouched. */
     ASSERT_EQ((unsigned char) mem[buf_size], 0xAA);
