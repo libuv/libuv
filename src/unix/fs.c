@@ -976,6 +976,7 @@ static int uv__is_cifs_or_smb(int fd) {
 static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
                                           int out_fd, size_t len) {
   static _Atomic int no_copy_file_range_support;
+  int err;
   ssize_t r;
 
   if (atomic_load_explicit(&no_copy_file_range_support, memory_order_relaxed)) {
@@ -988,13 +989,14 @@ static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
   if (r != -1)
     return r;
 
-  switch (errno) {
+  err = errno;
+  switch (err) {
   case EACCES:
     /* Pre-4.20 kernels have a bug where CephFS uses the RADOS
      * copy-from command when it shouldn't.
      */
     if (uv__is_buggy_cephfs(in_fd))
-      errno = ENOSYS;  /* Use fallback. */
+      err = ENOSYS;  /* Use fallback. */
     break;
   case ENOSYS:
     atomic_store_explicit(&no_copy_file_range_support, 1, memory_order_relaxed);
@@ -1004,7 +1006,7 @@ static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
      * Consider it a transient error.
      */
     if (uv__is_cifs_or_smb(out_fd))
-      errno = ENOSYS;  /* Use fallback. */
+      err = ENOSYS;  /* Use fallback. */
     break;
   case ENOTSUP:
   case EXDEV:
@@ -1012,10 +1014,11 @@ static ssize_t uv__fs_try_copy_file_range(int in_fd, off_t* off,
      * EXDEV - it will not work when in_fd and out_fd are not on the same
      *         mounted filesystem (pre Linux 5.3)
      */
-    errno = ENOSYS;  /* Use fallback. */
+    err = ENOSYS;  /* Use fallback. */
     break;
   }
 
+  errno = err;
   return -1;
 }
 

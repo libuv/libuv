@@ -22,6 +22,14 @@
 #include "uv.h"
 #include "task.h"
 
+#if defined(__linux__)
+# include <linux/filter.h>
+# include <linux/seccomp.h>
+# include <stddef.h>
+# include <sys/prctl.h>
+# include <sys/syscall.h>
+#endif
+
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(__sun) || \
     defined(_AIX) || defined(__MVS__) || \
@@ -36,6 +44,27 @@
 static const char fixture[] = "test/fixtures/load_error.node";
 static const char dst[] = "test_file_dst";
 static int result_check_count;
+
+
+#if defined(__linux__) && defined(__NR_copy_file_range)
+static int deny_copy_file_range(void) {
+  struct sock_filter filter[] = {
+    BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+    BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, __NR_copy_file_range, 0, 1),
+    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | EPERM),
+    BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+  };
+  struct sock_fprog program;
+
+  program.len = ARRAY_SIZE(filter);
+  program.filter = filter;
+
+  if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0))
+    return -1;
+
+  return prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &program);
+}
+#endif
 
 
 static void fail_cb(uv_fs_t* req) {
@@ -234,4 +263,35 @@ TEST_FS_IMPL(fs_copyfile) {
   unlink(dst); /* Cleanup */
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
+}
+
+
+TEST_FS_IMPL(fs_sendfile_preserves_errno) {
+#if defined(__linux__) && defined(__NR_copy_file_range)
+  uv_fs_t req;
+  uv_file srcfd;
+  int r;
+
+  r = uv_fs_open(NULL, &req, fixture, UV_FS_O_RDONLY, 0, NULL);
+  uv_fs_req_cleanup(&req);
+  ASSERT_GE(r, 0);
+  srcfd = r;
+
+  if (deny_copy_file_range()) {
+    ASSERT_OK(uv_fs_close(NULL, &req, srcfd, NULL));
+    uv_fs_req_cleanup(&req);
+    RETURN_SKIP("seccomp filter is unavailable");
+  }
+
+  r = uv_fs_sendfile(NULL, &req, -1, srcfd, 0, 1, NULL);
+  ASSERT_EQ(r, UV_EPERM);
+  ASSERT_EQ(req.result, UV_EPERM);
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_OK(uv_fs_close(NULL, &req, srcfd, NULL));
+  uv_fs_req_cleanup(&req);
+  return 0;
+#else
+  RETURN_SKIP("copy_file_range is unavailable");
+#endif
 }
