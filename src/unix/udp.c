@@ -160,7 +160,7 @@ static int uv__udp_recvmsg_errqueue(uv_udp_t* handle,
 
       offender = SO_EE_OFFENDER(serr);
       handle->recv_cb(handle,
-                      UV__ERR(serr->ee_errno),
+                      UV__ERR((int) serr->ee_errno),
                       buf,
                       offender,
                       flags);

@@ -49,6 +49,8 @@ static void read_cb(uv_udp_t* handle,
                     const struct sockaddr* addr,
                     unsigned flags) {
   ASSERT(flags == 0 || (flags & UV_UDP_LINUX_RECVERR));
+  if (flags & UV_UDP_LINUX_RECVERR)
+    ASSERT_EQ(nread, UV_ECONNREFUSED);
   recv_cb_called++;
 }
 
