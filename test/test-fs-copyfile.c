@@ -22,6 +22,11 @@
 #include "uv.h"
 #include "task.h"
 
+#if defined(__linux__)
+# include <fcntl.h>
+# include <sys/stat.h>
+#endif
+
 #if defined(__unix__) || defined(__POSIX__) || \
     defined(__APPLE__) || defined(__sun) || \
     defined(_AIX) || defined(__MVS__) || \
@@ -36,6 +41,44 @@
 static const char fixture[] = "test/fixtures/load_error.node";
 static const char dst[] = "test_file_dst";
 static int result_check_count;
+
+
+#if defined(__linux__)
+static int find_short_sysfs_file(const char** path) {
+  static const char* candidates[] = {
+    "/sys/devices/system/cpu/online",
+    "/sys/kernel/uevent_seqnum",
+    "/sys/kernel/warn_count",
+  };
+  struct stat st;
+  char buf[256];
+  ssize_t n;
+  size_t actual_size;
+  size_t i;
+  int fd;
+
+  for (i = 0; i < ARRAY_SIZE(candidates); i++) {
+    if (stat(candidates[i], &st) != 0 || st.st_size <= 0)
+      continue;
+
+    fd = open(candidates[i], O_RDONLY);
+    if (fd < 0)
+      continue;
+
+    actual_size = 0;
+    while ((n = read(fd, buf, sizeof(buf))) > 0)
+      actual_size += n;
+    close(fd);
+
+    if (n == 0 && actual_size < (size_t) st.st_size) {
+      *path = candidates[i];
+      return 0;
+    }
+  }
+
+  return -1;
+}
+#endif
 
 
 static void fail_cb(uv_fs_t* req) {
@@ -234,4 +277,36 @@ TEST_FS_IMPL(fs_copyfile) {
   unlink(dst); /* Cleanup */
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
+}
+
+
+TEST_FS_IMPL(fs_copyfile_short_source) {
+#if defined(__linux__)
+  const char* source;
+  uint64_t declared_size;
+  uv_fs_t req;
+  int r;
+
+  if (find_short_sysfs_file(&source))
+    RETURN_SKIP("no short sysfs file is available");
+
+  unlink(dst);
+  r = uv_fs_copyfile(NULL, &req, source, dst, 0, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_OK(uv_fs_stat(NULL, &req, source, NULL));
+  ASSERT_GT(req.statbuf.st_size, 0);
+  declared_size = req.statbuf.st_size;
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_OK(uv_fs_stat(NULL, &req, dst, NULL));
+  ASSERT_LT(req.statbuf.st_size, declared_size);
+  uv_fs_req_cleanup(&req);
+
+  unlink(dst);
+  return 0;
+#else
+  RETURN_SKIP("sysfs is unavailable");
+#endif
 }

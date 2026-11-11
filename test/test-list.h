@@ -417,6 +417,7 @@ TEST_FS_DECLARE   (fs_fstat_st_dev)
 TEST_FS_DECLARE   (fs_access)
 TEST_FS_DECLARE   (fs_chmod)
 TEST_FS_DECLARE   (fs_copyfile)
+TEST_FS_DECLARE   (fs_copyfile_short_source)
 TEST_FS_DECLARE   (fs_unlink_readonly)
 #ifdef _WIN32
 TEST_FS_DECLARE   (fs_unlink_archive_readonly)
@@ -1205,6 +1206,7 @@ TASK_LIST_START
   TEST_FS_ENTRY  (fs_access)
   TEST_FS_ENTRY  (fs_chmod)
   TEST_FS_ENTRY  (fs_copyfile)
+  TEST_FS_ENTRY  (fs_copyfile_short_source)
   TEST_FS_ENTRY  (fs_unlink_readonly)
 #ifdef _WIN32
   TEST_FS_ENTRY  (fs_unlink_archive_readonly)
