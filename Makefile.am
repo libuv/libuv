@@ -112,6 +112,7 @@ libuv_la_SOURCES += src/unix/async.c \
                    src/unix/poll.c \
                    src/unix/process.c \
                    src/unix/random-devurandom.c \
+                   src/unix/search-path.c \
                    src/unix/signal.c \
                    src/unix/stream.c \
                    src/unix/tcp.c \
@@ -189,6 +190,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-fork.c \
                          test/test-getters-setters.c \
                          test/test-get-currentexe.c \
+                         test/test-search-path.c \
                          test/test-get-loadavg.c \
                          test/test-get-memory.c \
                          test/test-get-passwd.c \
