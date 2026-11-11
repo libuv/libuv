@@ -2439,63 +2439,151 @@ next:
   return 0;
 }
 
-static const char* uv__cgroup1_find_cpu_controller(const char* cgroup,
-                                             int* cgroup_size) {
-  /* Seek to the cpu controller line. */
-  const char* cgroup_cpu = strstr(cgroup, ":cpu,");
+int uv__cgroup1_find_cpu_controller(const char* cgroup,
+                                    char* path,
+                                    size_t path_size) {
+  const char* controller;
+  const char* controller_end;
+  const char* controller_start;
+  const char* group_end;
+  const char* group_start;
+  const char* line_end;
+  const char* line_start;
+  size_t controller_list_size;
+  size_t controller_size;
+  size_t group_size;
+  int n;
 
-  if (cgroup_cpu != NULL) {
-    /* Skip the controller prefix to the start of the cgroup path. */
-    cgroup_cpu += sizeof(":cpu,") - 1;
-    /* Determine the length of the cgroup path, excluding the newline. */
-    *cgroup_size = (int)strcspn(cgroup_cpu, "\n");
+  for (line_start = cgroup; *line_start != '\0'; line_start = line_end + 1) {
+    line_end = strchr(line_start, '\n');
+    if (line_end == NULL)
+      line_end = line_start + strlen(line_start);
+
+    controller_start = memchr(line_start, ':', line_end - line_start);
+    if (controller_start == NULL)
+      goto next_line;
+    controller_start++;
+
+    controller_end = memchr(controller_start,
+                            ':',
+                            line_end - controller_start);
+    if (controller_end == NULL)
+      goto next_line;
+
+    for (controller = controller_start; controller < controller_end;) {
+      const char* comma;
+
+      comma = memchr(controller, ',', controller_end - controller);
+      if (comma == NULL)
+        comma = controller_end;
+      controller_size = comma - controller;
+      if (controller_size == sizeof("cpu") - 1 &&
+          memcmp(controller, "cpu", controller_size) == 0)
+        break;
+      controller = comma + 1;
+    }
+
+    if (controller >= controller_end)
+      goto next_line;
+
+    group_start = controller_end + 1;
+    if (group_start < line_end && *group_start == '/')
+      group_start++;
+    group_end = line_end;
+
+    controller_list_size = controller_end - controller_start;
+    group_size = group_end - group_start;
+    if (group_size == 0)
+      n = snprintf(path,
+                   path_size,
+                   "%.*s",
+                   (int) controller_list_size,
+                   controller_start);
+    else
+      n = snprintf(path,
+                   path_size,
+                   "%.*s/%.*s",
+                   (int) controller_list_size,
+                   controller_start,
+                   (int) group_size,
+                   group_start);
+
+    if (n < 0 || (size_t) n >= path_size)
+      return UV_ENOBUFS;
+    return 0;
+
+next_line:
+    if (*line_end == '\0')
+      break;
   }
 
-  return cgroup_cpu;
+  return UV_EIO;
 }
 
 static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
                                             long long* quota) {
-  char path[256];
+  char cgroup_mount[256];
+  char path[512];
+  char full_path[sizeof(path) + sizeof("/cpu.cfs_quota_us")];
   char buf[1024];
-  int cgroup_size;
-  const char* cgroup_cpu;
+  char cgroup_cpu[256];
+  char* controller_path;
+  char* last_slash;
+  long long constrained;
+  long long min_quota;
   long long period_length;
   long long quota_per_period;
 
-  cgroup_cpu = uv__cgroup1_find_cpu_controller(cgroup, &cgroup_size);
-
-  if (cgroup_cpu == NULL)
+  if (uv__cgroup1_find_cpu_controller(cgroup,
+                                      cgroup_cpu,
+                                      sizeof(cgroup_cpu)) < 0)
     return UV_EIO;
 
-  /* Construct the path to the cpu.cfs_quota_us file */
-  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_quota_us",
-           cgroup_size, cgroup_cpu);
+  controller_path = strchr(cgroup_cpu, '/');
+  if (controller_path == NULL)
+    controller_path = cgroup_cpu + strlen(cgroup_cpu);
 
-  /* Read cpu.cfs_quota_us */
-  if (uv__slurp(path, buf, sizeof(buf)) < 0)
+  snprintf(cgroup_mount,
+           sizeof(cgroup_mount),
+           "/sys/fs/cgroup/%.*s",
+           (int) (controller_path - cgroup_cpu),
+           cgroup_cpu);
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/%s", cgroup_cpu);
+  min_quota = LLONG_MAX;
+
+  while (strncmp(path, cgroup_mount, strlen(cgroup_mount)) == 0) {
+    snprintf(full_path, sizeof(full_path), "%s/cpu.cfs_quota_us", path);
+    if (uv__slurp(full_path, buf, sizeof(buf)) < 0)
+      goto next;
+    if (sscanf(buf, "%lld", &quota_per_period) != 1)
+      goto next;
+    if (quota_per_period < 0)
+      goto next;
+
+    snprintf(full_path, sizeof(full_path), "%s/cpu.cfs_period_us", path);
+    if (uv__slurp(full_path, buf, sizeof(buf)) < 0)
+      goto next;
+    if (sscanf(buf, "%lld", &period_length) != 1 || period_length == 0)
+      goto next;
+
+    constrained = quota_per_period / period_length;
+    if (constrained == 0)
+      constrained = 1;
+    if (constrained < min_quota)
+      min_quota = constrained;
+
+next:
+    if (strcmp(path, cgroup_mount) == 0)
+      break;
+    last_slash = strrchr(path, '/');
+    if (last_slash == NULL)
+      break;
+    *last_slash = '\0';
+  }
+
+  if (min_quota == LLONG_MAX)
     return UV_EIO;
-
-  if (sscanf(buf, "%lld", &quota_per_period) != 1)
-    return UV_EINVAL;
-
-  /* Construct the path to the cpu.cfs_period_us file */
-  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_period_us",
-           cgroup_size, cgroup_cpu);
-
-  /* Read cpu.cfs_period_us */
-  if (uv__slurp(path, buf, sizeof(buf)) < 0)
-    return UV_EIO;
-
-  if (sscanf(buf, "%lld", &period_length) != 1)
-    return UV_EINVAL;
-
-  /* Can't divide by 0 */
-  if (period_length == 0)
-    return UV_EINVAL;
-
-  *quota = quota_per_period / period_length;
-
+  *quota = min_quota;
   return 0;
 }
 
