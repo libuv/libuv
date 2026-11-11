@@ -235,3 +235,35 @@ TEST_FS_IMPL(fs_copyfile) {
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
+
+
+TEST_FS_IMPL(fs_copyfile_mtime) {
+  const char src[] = "test_file_src";
+  uv_fs_t req;
+  int r;
+
+  /* Writing the data must not leave the destination with the current time
+   * as its modification time.
+   */
+  unlink(src);
+  unlink(dst);
+  touch_file(src, 64);
+  r = uv_fs_utime(NULL, &req, src, 1000000000.0, 1000000000.0, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_copyfile(NULL, &req, src, dst, 0, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, dst, NULL);
+  ASSERT_OK(r);
+  ASSERT_EQ(req.statbuf.st_size, 64);
+  ASSERT_EQ(req.statbuf.st_mtim.tv_sec, 1000000000);
+  uv_fs_req_cleanup(&req);
+
+  unlink(src);
+  unlink(dst);
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}

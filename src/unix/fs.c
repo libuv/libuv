@@ -1306,6 +1306,8 @@ static int uv__fs_copyfile(uv_fs_t* req) {
 
   /**
    * Change the timestamps of the destination file to match the source file.
+   * This is done after the data is copied because writing to the destination
+   * file updates its modification time.
    */
 #if defined(__APPLE__)
   times[0] = src_statsbuf.st_atimespec;
@@ -1319,8 +1321,6 @@ static int uv__fs_copyfile(uv_fs_t* req) {
   times[0] = src_statsbuf.st_atim;
   times[1] = src_statsbuf.st_mtim;
 #endif
-
-  (void) futimens(dstfd, times);
 
   /*
    * Change the ownership and permissions of the destination file to match the
@@ -1354,6 +1354,7 @@ static int uv__fs_copyfile(uv_fs_t* req) {
       req->flags & UV_FS_COPYFILE_FICLONE_FORCE) {
     if (ioctl(dstfd, FICLONE, srcfd) == 0) {
       /* ioctl() with FICLONE succeeded. */
+      (void) futimens(dstfd, times);
       goto out;
     }
     /* If an error occurred and force was set, return the error to the caller;
@@ -1387,6 +1388,9 @@ static int uv__fs_copyfile(uv_fs_t* req) {
     bytes_to_send -= bytes_written;
     in_offset += bytes_written;
   }
+
+  if (err == 0)
+    (void) futimens(dstfd, times);
 
 out:
   if (err < 0)
