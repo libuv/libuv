@@ -19,14 +19,15 @@
  * IN THE SOFTWARE.
  */
 
-#if defined(__linux__) && !defined(USING_UV_SHARED)
+#ifdef __linux__
 
 #include "uv.h"
 #include "task.h"
 
 #include <string.h>
 
-#include "../src/unix/internal.h"
+#define uv__cgroup1_find_cpu_controller uv__test_cgroup1_find_cpu_controller
+#include "../src/unix/linux-cgroup.c"
 
 TEST_IMPL(cgroup1_cpu_controller) {
   static const struct {
