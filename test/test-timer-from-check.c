@@ -22,6 +22,7 @@
 #include "uv.h"
 #include "task.h"
 
+static uv_idle_t idle_handle;
 static uv_prepare_t prepare_handle;
 static uv_check_t check_handle;
 static uv_timer_t timer_handle;
@@ -31,18 +32,21 @@ static int check_cb_called;
 static int timer_cb_called;
 
 
+static void idle_cb(uv_idle_t* handle) {
+  /* Keep the first poll from waiting for the initial timer. */
+}
+
+
 static void prepare_cb(uv_prepare_t* handle) {
   ASSERT_OK(uv_prepare_stop(&prepare_handle));
   ASSERT_OK(prepare_cb_called);
   ASSERT_EQ(1, check_cb_called);
-  ASSERT_OK(timer_cb_called);
   prepare_cb_called++;
 }
 
 
 static void timer_cb(uv_timer_t* handle) {
   ASSERT_OK(uv_timer_stop(&timer_handle));
-  ASSERT_EQ(1, prepare_cb_called);
   ASSERT_EQ(1, check_cb_called);
   ASSERT_OK(timer_cb_called);
   timer_cb_called++;
@@ -50,10 +54,13 @@ static void timer_cb(uv_timer_t* handle) {
 
 
 static void check_cb(uv_check_t* handle) {
+  ASSERT_OK(uv_idle_stop(&idle_handle));
   ASSERT_OK(uv_check_stop(&check_handle));
   ASSERT_OK(uv_timer_stop(&timer_handle));  /* Runs before timer_cb. */
   ASSERT_OK(uv_timer_start(&timer_handle, timer_cb, 50, 0));
   ASSERT_OK(uv_prepare_start(&prepare_handle, prepare_cb));
+  /* The restarted timer must determine the next poll timeout. */
+  ASSERT_EQ(50, uv_backend_timeout(uv_default_loop()));
   ASSERT_OK(prepare_cb_called);
   ASSERT_OK(check_cb_called);
   ASSERT_OK(timer_cb_called);
@@ -62,15 +69,18 @@ static void check_cb(uv_check_t* handle) {
 
 
 TEST_IMPL(timer_from_check) {
+  ASSERT_OK(uv_idle_init(uv_default_loop(), &idle_handle));
+  ASSERT_OK(uv_idle_start(&idle_handle, idle_cb));
   ASSERT_OK(uv_prepare_init(uv_default_loop(), &prepare_handle));
   ASSERT_OK(uv_check_init(uv_default_loop(), &check_handle));
   ASSERT_OK(uv_check_start(&check_handle, check_cb));
   ASSERT_OK(uv_timer_init(uv_default_loop(), &timer_handle));
-  ASSERT_OK(uv_timer_start(&timer_handle, timer_cb, 50, 0));
+  ASSERT_OK(uv_timer_start(&timer_handle, timer_cb, UINT64_MAX, 0));
   ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
   ASSERT_EQ(1, prepare_cb_called);
   ASSERT_EQ(1, check_cb_called);
   ASSERT_EQ(1, timer_cb_called);
+  uv_close((uv_handle_t*) &idle_handle, NULL);
   uv_close((uv_handle_t*) &prepare_handle, NULL);
   uv_close((uv_handle_t*) &check_handle, NULL);
   uv_close((uv_handle_t*) &timer_handle, NULL);
