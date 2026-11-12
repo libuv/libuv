@@ -22,6 +22,7 @@
 #include "uv.h"
 #include "task.h"
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 
 static uv_fs_t opendir_req;
@@ -548,3 +549,90 @@ TEST_FS_IMPL(fs_readdir_symlink) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+#ifndef _WIN32
+static int dir_oom_armed;
+static int dir_oom_hits;
+
+static void* dir_oom_malloc(size_t size) {
+  if (dir_oom_armed) {
+    dir_oom_armed = 0;
+    dir_oom_hits++;
+    errno = 0;
+    return NULL;
+  }
+  return malloc(size);
+}
+
+TEST_IMPL(fs_readdir_oom) {
+  uv_fs_t req;
+  uv_dir_t* dir;
+  uv_dirent_t entry;
+  char path[64];
+  char file[80];
+  int fd;
+  int r;
+
+  ASSERT_OK(uv_replace_allocator(dir_oom_malloc, realloc, calloc, free));
+  ASSERT_OK(uv_fs_mkdtemp(NULL, &req, "fs-readdir-oom-XXXXXX", NULL));
+  strcpy(path, req.path);
+  uv_fs_req_cleanup(&req);
+  snprintf(file, sizeof(file), "%s/entry", path);
+  fd = uv_fs_open(NULL, &req, file, O_CREAT | O_WRONLY, 0600, NULL);
+  ASSERT_GE(fd, 0);
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_fs_close(NULL, &req, fd, NULL));
+  uv_fs_req_cleanup(&req);
+
+  /* The next libuv allocation is the directory object. */
+  dir_oom_armed = 1;
+  r = uv_fs_opendir(NULL, &req, path, NULL);
+  ASSERT_EQ(1, dir_oom_hits);
+  ASSERT_OK(dir_oom_armed);
+  ASSERT_EQ(UV_ENOMEM, r);
+  ASSERT_EQ(UV_ENOMEM, req.result);
+  ASSERT_NULL(req.ptr);
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_OK(uv_fs_opendir(NULL, &req, path, NULL));
+  dir = req.ptr;
+  ASSERT_NOT_NULL(dir);
+  uv_fs_req_cleanup(&req);
+  dir->dirents = &entry;
+  dir->nentries = 1;
+
+  /* The next libuv allocation copies the directory entry name. */
+  dir_oom_armed = 1;
+  r = uv_fs_readdir(NULL, &req, dir, NULL);
+  ASSERT_EQ(2, dir_oom_hits);
+  ASSERT_OK(dir_oom_armed);
+  ASSERT_EQ(UV_ENOMEM, r);
+  ASSERT_EQ(UV_ENOMEM, req.result);
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_fs_closedir(NULL, &req, dir, NULL));
+  uv_fs_req_cleanup(&req);
+
+  /* Reopen to check normal reading and EOF after allocation recovers. */
+  ASSERT_OK(uv_fs_opendir(NULL, &req, path, NULL));
+  dir = req.ptr;
+  uv_fs_req_cleanup(&req);
+  dir->dirents = &entry;
+  dir->nentries = 1;
+  ASSERT_EQ(1, uv_fs_readdir(NULL, &req, dir, NULL));
+  ASSERT_EQ(1, req.result);
+  ASSERT_STR_EQ("entry", entry.name);
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_fs_readdir(NULL, &req, dir, NULL));
+  ASSERT_OK(req.result);
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_fs_closedir(NULL, &req, dir, NULL));
+  uv_fs_req_cleanup(&req);
+
+  ASSERT_OK(uv_fs_unlink(NULL, &req, file, NULL));
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_fs_rmdir(NULL, &req, path, NULL));
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
+  return 0;
+}
+#endif
