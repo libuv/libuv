@@ -56,13 +56,24 @@ Data types
              */
             UV_UDP_MMSG_FREE = 16,
             /*
-             * Indicates if IP_RECVERR/IPV6_RECVERR will be set when binding the handle.
-             * This sets IP_RECVERR for IPv4 and IPV6_RECVERR for IPv6 UDP sockets on
-             * Linux. This stops the Linux kernel from suppressing some ICMP error messages
-             * and enables full ICMP error reporting for faster failover.
-             * This flag is no-op on platforms other than Linux.
+             * Indicates that ICMP errors should be reported to the receive callback,
+             * which receives them as a negative nread with UV_UDP_RECVERR set in flags.
+             *
+             * On Linux this sets IP_RECVERR for IPv4 and IPV6_RECVERR for IPv6 UDP
+             * sockets when binding the handle. This stops the Linux kernel from
+             * suppressing some ICMP error messages and enables full ICMP error reporting
+             * for faster failover.
+             *
+             * On Windows this stops WSAECONNRESET and WSAENETRESET, which the OS reports
+             * on a receive when a preceding send elicited an ICMP error, from being
+             * discarded. Unlike a genuine receive error these do not stop the handle from
+             * receiving, since the socket remains usable.
+             *
+             * This flag is a no-op on other platforms.
              */
-            UV_UDP_LINUX_RECVERR = 32,
+            UV_UDP_RECVERR = 32,
+            /* Alias for UV_UDP_RECVERR, which is no longer Linux-only. */
+            UV_UDP_LINUX_RECVERR = UV_UDP_RECVERR,
             /*
              * Indicates if SO_REUSEPORT will be set when binding the handle.
              * This sets the SO_REUSEPORT socket option on supported platforms.
@@ -228,6 +239,10 @@ API
     :returns: 0 on success, or an error code < 0 on failure.
 
     .. versionchanged:: 1.49.0 added the ``UV_UDP_REUSEPORT`` flag.
+
+    .. versionchanged:: 1.53.0 ``UV_UDP_RECVERR`` was added as a platform-neutral
+        name for ``UV_UDP_LINUX_RECVERR``, and now also reports ICMP errors on
+        Windows, where they used to be discarded.
 
     .. note::
         ``UV_UDP_REUSEPORT`` flag is available only on Linux 3.9+, DragonFlyBSD 3.6+,
