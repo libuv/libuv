@@ -1455,6 +1455,28 @@ TEST_FS_IMPL(fs_async_sendfile_nodata) {
 }
 
 
+TEST_FS_IMPL(fs_sendfile_pipe) {
+#ifdef _WIN32
+  RETURN_SKIP("UNIX-only test.");
+#else
+  uv_fs_t req;
+  int pfd[2];
+  int ffd;
+
+  ASSERT_OK(pipe(pfd));
+  ASSERT_NE(-1, (ffd = open("test_file", O_CREAT|O_RDWR)));
+  /* Observable with strace: copy_file_range fails with EINVAL,
+   * falls back to sendfile, which succeeds with zero bytes written.
+   */
+  ASSERT_OK(uv_fs_sendfile(NULL, &req, pfd[1], ffd, 0, 1, NULL));
+  close(pfd[0]);
+  close(pfd[1]);
+  close(ffd);
+  return 0;
+#endif
+}
+
+
 TEST_FS_IMPL(fs_mkdtemp) {
   int r;
   const char* path_template = "test_dir_XXXXXX";

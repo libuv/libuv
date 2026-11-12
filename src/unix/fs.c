@@ -1043,7 +1043,7 @@ static int uv__fs_sendfile(uv_fs_t* req) {
 
 #ifdef __linux__
     r = uv__fs_try_copy_file_range(in_fd, &off, out_fd, len);
-    try_sendfile = (r == -1 && errno == ENOSYS);
+    try_sendfile = (r == -1 && (errno == EINVAL || errno == ENOSYS));
 #endif
 
     if (try_sendfile)
