@@ -712,6 +712,7 @@ static int uv__fs_statfs(uv_fs_t* req) {
 #else
   stat_fs->f_frsize = buf.f_bsize;
 #endif
+  memset(stat_fs->f_spare, 0, sizeof(stat_fs->f_spare));
   req->ptr = stat_fs;
   return 0;
 }

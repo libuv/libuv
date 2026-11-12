@@ -3160,6 +3160,7 @@ static void fs__statfs(uv_fs_t* req) {
   stat_fs->f_bavail = info.CallerAvailableAllocationUnits.QuadPart;
   stat_fs->f_files = 0;
   stat_fs->f_ffree = 0;
+  memset(stat_fs->f_spare, 0, sizeof(stat_fs->f_spare));
   req->ptr = stat_fs;
   req->flags |= UV_FS_FREE_PTR;
   SET_REQ_RESULT(req, 0);

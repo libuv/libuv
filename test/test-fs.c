@@ -396,6 +396,10 @@ static void statfs_cb(uv_fs_t* req) {
   /* There is no assertion for stats->f_files that makes sense, so ignore it. */
   ASSERT_LE(stats->f_ffree, stats->f_files);
 #endif
+  /* Unsupported / reserved fields are documented to be zero. */
+  ASSERT_OK(stats->f_spare[0]);
+  ASSERT_OK(stats->f_spare[1]);
+  ASSERT_OK(stats->f_spare[2]);
   uv_fs_req_cleanup(req);
   ASSERT_NULL(req->ptr);
   statfs_cb_count++;
