@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "task.h"
+#include <stdlib.h>
 #include <string.h>
 
 #define PATHMAX 4096
@@ -31,6 +32,11 @@ TEST_IMPL(tmpdir) {
   size_t len;
   char last;
   int r;
+#ifndef _WIN32
+  const char* original_tmpdir;
+  char* saved_tmpdir;
+  char exact[5];
+#endif
 
   /* Test the normal case */
   len = sizeof tmpdir;
@@ -83,6 +89,34 @@ TEST_IMPL(tmpdir) {
   len = sizeof tmpdir;
   r = uv_os_tmpdir(tmpdir, &len);
   ASSERT_EQ(r, UV_ENOENT);
+#endif
+
+#ifndef _WIN32
+  /* Check capacity against the path after removing the trailing slash. */
+  original_tmpdir = getenv("TMPDIR");
+  saved_tmpdir = NULL;
+  if (original_tmpdir != NULL) {
+    saved_tmpdir = malloc(strlen(original_tmpdir) + 1);
+    ASSERT_NOT_NULL(saved_tmpdir);
+    strcpy(saved_tmpdir, original_tmpdir);
+  }
+
+  ASSERT_OK(uv_os_setenv("TMPDIR", "/tmp/"));
+  len = sizeof(exact);
+  ASSERT_OK(uv_os_tmpdir(exact, &len));
+  ASSERT_EQ(4, len);
+  ASSERT_STR_EQ("/tmp", exact);
+
+  len = sizeof(exact) - 1;
+  ASSERT_EQ(UV_ENOBUFS, uv_os_tmpdir(exact, &len));
+  ASSERT_EQ(5, len);
+
+  if (saved_tmpdir != NULL) {
+    ASSERT_OK(uv_os_setenv("TMPDIR", saved_tmpdir));
+    free(saved_tmpdir);
+  } else {
+    ASSERT_OK(uv_os_unsetenv("TMPDIR"));
+  }
 #endif
 
   return 0;
