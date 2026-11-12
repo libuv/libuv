@@ -778,6 +778,40 @@ TEST_IMPL(fork_threadpool_queue_work_simple) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+
+TEST_IMPL(fork_threadpool_unused_in_child) {
+  /* A child that doesn't use the threadpool can exit. */
+
+  pid_t child_pid;
+
+#ifdef __TSAN__
+  RETURN_SKIP("ThreadSanitizer doesn't support multi-threaded fork");
+#endif
+
+  /* Start the threadpool in the parent. */
+  assert_run_work(uv_default_loop());
+
+#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+  child_pid = -1;
+#else
+  child_pid = fork();
+#endif
+  ASSERT_NE(child_pid, -1);
+
+  if (child_pid != 0) {
+    /* Parent. */
+    assert_wait_child(child_pid);
+  } else {
+    /* Child. The uv_library_shutdown() call in MAKE_VALGRIND_HAPPY() must
+     * not wait for the parent's worker threads: they don't exist here.
+     */
+    ASSERT_OK(uv_loop_fork(uv_default_loop()));
+  }
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
 #endif /* !__MVS__ */
 
 #else

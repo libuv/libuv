@@ -633,6 +633,7 @@ TEST_DECLARE  (fork_fs_events_file_parent_child)
 #endif
 #ifndef __MVS__
 TEST_DECLARE  (fork_threadpool_queue_work_simple)
+TEST_DECLARE  (fork_threadpool_unused_in_child)
 #endif
 #endif
 
@@ -1356,6 +1357,7 @@ TASK_LIST_START
 #endif
 #ifndef __MVS__
   TEST_ENTRY  (fork_threadpool_queue_work_simple)
+  TEST_ENTRY  (fork_threadpool_unused_in_child)
 #endif
 #endif
 

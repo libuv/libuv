@@ -255,6 +255,14 @@ static void init_threads(void) {
 static void reset_once(void) {
   uv_once_t child_once = UV_ONCE_INIT;
   memcpy(&once, &child_once, sizeof(child_once));
+  /* The worker threads don't exist in the child. Forget them, so that
+   * uv__threadpool_cleanup() doesn't try to join them when the child never
+   * submits work and init_threads() doesn't start from the parent's counts
+   * when it does.
+   */
+  nthreads = 0;
+  idle_threads = 0;
+  slow_io_work_running = 0;
 }
 #endif
 
