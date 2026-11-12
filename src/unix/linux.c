@@ -1433,7 +1433,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
   int have_iou_events;
   int have_signals;
   int nevents;
-  int epollfd;
   int count;
   int nfds;
   int fd;
@@ -1467,8 +1466,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     user_timeout = 0;
   }
 
-  epollfd = loop->backend_fd;
-
+  /* Don't keep loop->backend_fd in a local variable: a callback can fork and
+   * call uv_loop_fork(), which closes it and opens a new one, and by the time
+   * the callback returns, the old number can belong to something else.
+   */
   memset(&e, 0, sizeof(e));
 
   while (!uv__queue_empty(&loop->watcher_queue)) {
@@ -1492,18 +1493,18 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     fd = w->fd;
 
     if (ctl->ringfd != -1) {
-      uv__epoll_ctl_prep(epollfd, ctl, &prep, op, fd, &e);
+      uv__epoll_ctl_prep(loop->backend_fd, ctl, &prep, op, fd, &e);
       continue;
     }
 
-    if (!epoll_ctl(epollfd, op, fd, &e))
+    if (!epoll_ctl(loop->backend_fd, op, fd, &e))
       continue;
 
     assert(op == EPOLL_CTL_ADD);
     assert(errno == EEXIST);
 
     /* File descriptor that's been watched before, update event mask. */
-    if (epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &e))
+    if (epoll_ctl(loop->backend_fd, EPOLL_CTL_MOD, fd, &e))
       abort();
   }
 
@@ -1521,10 +1522,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
      */
     if (ctl->ringfd != -1)
       while (*ctl->sqhead != *ctl->sqtail)
-        uv__epoll_ctl_flush(epollfd, ctl, &prep);
+        uv__epoll_ctl_flush(loop->backend_fd, ctl, &prep);
 
     uv__io_poll_prepare(loop, NULL, timeout);
-    nfds = epoll_pwait(epollfd, events, ARRAY_SIZE(events), timeout, sigmask);
+    nfds = epoll_pwait(loop->backend_fd,
+                       events,
+                       ARRAY_SIZE(events),
+                       timeout,
+                       sigmask);
     uv__io_poll_check(loop, NULL);
 
     if (nfds == -1)
@@ -1581,7 +1586,7 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
          * io_uring's submit queue, otherwise the file descriptor may
          * be closed by the time the kernel starts the operation.
          */
-        epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, pe);
+        epoll_ctl(loop->backend_fd, EPOLL_CTL_DEL, fd, pe);
         continue;
       }
 
@@ -1654,7 +1659,7 @@ update_timeout:
 
   if (ctl->ringfd != -1)
     while (*ctl->sqhead != *ctl->sqtail)
-      uv__epoll_ctl_flush(epollfd, ctl, &prep);
+      uv__epoll_ctl_flush(loop->backend_fd, ctl, &prep);
 }
 
 uint64_t uv__hrtime(uv_clocktype_t type) {

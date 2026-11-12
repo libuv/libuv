@@ -22,6 +22,7 @@
 /* These tests are Unix only. */
 #ifndef _WIN32
 
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
@@ -240,6 +241,154 @@ TEST_IMPL(fork_socketpair_started) {
   ASSERT_OK(close(sync_pipe[1]));
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
+static uv_pipe_t fork_io_cb_pipes[2];
+static int fork_io_cb_spare_fds[16];
+static int fork_io_cb_backend_fd;
+static uv_loop_t fork_io_cb_other_loop;
+static uv_poll_t fork_io_cb_other_poll;
+static int fork_io_cb_other_poll_called;
+static pid_t fork_io_cb_child_pid = -1;
+static char fork_io_cb_buf[1];
+
+
+static void fork_io_cb_alloc_cb(uv_handle_t* handle,
+                                size_t suggested_size,
+                                uv_buf_t* buf) {
+  *buf = uv_buf_init(fork_io_cb_buf, sizeof(fork_io_cb_buf));
+}
+
+
+static void fork_io_cb_other_poll_cb(uv_poll_t* handle,
+                                     int status,
+                                     int events) {
+  ASSERT_OK(status);
+  fork_io_cb_other_poll_called++;
+}
+
+
+static void fork_io_cb_read_cb(uv_stream_t* stream,
+                               ssize_t nread,
+                               const uv_buf_t* buf) {
+  int fillers[ARRAY_SIZE(fork_io_cb_spare_fds)];
+  int nfillers;
+  uv_pipe_t* other;
+  uv_os_fd_t other_fd;
+  int fd;
+  int i;
+
+  ASSERT_EQ(1, nread);
+  ASSERT_EQ(-1, fork_io_cb_child_pid);
+
+  /* The other pipe's event is still in the batch that uv_run() dispatches.
+   * Stop watching it, in both processes.
+   */
+  other = &fork_io_cb_pipes[stream == (uv_stream_t*) &fork_io_cb_pipes[0]];
+  ASSERT_OK(uv_fileno((uv_handle_t*) other, &other_fd));
+  ASSERT_OK(uv_read_stop((uv_stream_t*) &fork_io_cb_pipes[0]));
+  ASSERT_OK(uv_read_stop((uv_stream_t*) &fork_io_cb_pipes[1]));
+
+#if defined(__APPLE__) && (TARGET_OS_TV || TARGET_OS_WATCH)
+  fork_io_cb_child_pid = -1;
+#else
+  fork_io_cb_child_pid = fork();
+#endif
+  ASSERT_NE(fork_io_cb_child_pid, -1);
+
+  if (fork_io_cb_child_pid != 0)
+    return;  /* Parent. */
+
+  /* Child. Make room below the loop's file descriptors, so that
+   * uv_loop_fork() can move the loop to other ones.
+   */
+  for (i = 0; i < (int) ARRAY_SIZE(fork_io_cb_spare_fds); i++)
+    ASSERT_OK(close(fork_io_cb_spare_fds[i]));
+  ASSERT_OK(uv_loop_fork(stream->loop));
+
+  /* Create another loop. If the loop's old backend file descriptor is free,
+   * fill the gaps below it first, so that the new loop gets it.
+   */
+  nfillers = 0;
+  for (;;) {
+    fd = open("/dev/null", O_RDONLY);
+    ASSERT_GE(fd, 0);
+    if (fd >= fork_io_cb_backend_fd)
+      break;
+    ASSERT_LT(nfillers, (int) ARRAY_SIZE(fillers));
+    fillers[nfillers++] = fd;
+  }
+  ASSERT_OK(close(fd));
+  ASSERT_OK(uv_loop_init(&fork_io_cb_other_loop));
+  while (nfillers > 0)
+    ASSERT_OK(close(fillers[--nfillers]));
+
+  /* Watch the other pipe from the new loop. The rest of the batch must not
+   * touch the new loop.
+   */
+  ASSERT_OK(uv_poll_init(&fork_io_cb_other_loop,
+                         &fork_io_cb_other_poll,
+                         other_fd));
+  ASSERT_OK(uv_poll_start(&fork_io_cb_other_poll,
+                          UV_READABLE,
+                          fork_io_cb_other_poll_cb));
+  ASSERT_EQ(1, uv_run(&fork_io_cb_other_loop, UV_RUN_NOWAIT));
+  ASSERT_EQ(1, fork_io_cb_other_poll_called);
+}
+
+
+TEST_IMPL(fork_from_io_callback) {
+  /* A process can fork from inside an I/O callback and call uv_loop_fork()
+   * right there.
+   */
+  uv_loop_t loop;
+  int fds[2][2];
+  int i;
+
+  for (i = 0; i < (int) ARRAY_SIZE(fork_io_cb_spare_fds); i++) {
+    fork_io_cb_spare_fds[i] = open("/dev/null", O_RDONLY);
+    ASSERT_GE(fork_io_cb_spare_fds[i], 0);
+  }
+
+  ASSERT_OK(uv_loop_init(&loop));
+  fork_io_cb_backend_fd = uv_backend_fd(&loop);
+
+  for (i = 0; i < 2; i++) {
+    ASSERT_OK(socketpair(AF_UNIX, SOCK_STREAM, 0, fds[i]));
+    ASSERT_OK(uv_pipe_init(&loop, &fork_io_cb_pipes[i], 0));
+    ASSERT_OK(uv_pipe_open(&fork_io_cb_pipes[i], fds[i][0]));
+    ASSERT_OK(uv_read_start((uv_stream_t*) &fork_io_cb_pipes[i],
+                            fork_io_cb_alloc_cb,
+                            fork_io_cb_read_cb));
+    ASSERT_EQ(1, write(fds[i][1], "x", 1));
+  }
+
+  /* Both pipes are readable, so their events arrive in the same batch. */
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_NE(-1, fork_io_cb_child_pid);
+
+  if (fork_io_cb_child_pid != 0) {
+    /* Parent. */
+    assert_wait_child(fork_io_cb_child_pid);
+    for (i = 0; i < (int) ARRAY_SIZE(fork_io_cb_spare_fds); i++)
+      ASSERT_OK(close(fork_io_cb_spare_fds[i]));
+  } else {
+    /* Child. The new loop still sees the other pipe as readable. */
+    ASSERT_EQ(1, uv_run(&fork_io_cb_other_loop, UV_RUN_NOWAIT));
+    ASSERT_EQ(2, fork_io_cb_other_poll_called);
+    uv_close((uv_handle_t*) &fork_io_cb_other_poll, NULL);
+    ASSERT_OK(uv_run(&fork_io_cb_other_loop, UV_RUN_DEFAULT));
+    ASSERT_OK(uv_loop_close(&fork_io_cb_other_loop));
+  }
+
+  for (i = 0; i < 2; i++) {
+    uv_close((uv_handle_t*) &fork_io_cb_pipes[i], NULL);
+    ASSERT_OK(close(fds[i][1]));
+  }
+
+  MAKE_VALGRIND_HAPPY(&loop);
   return 0;
 }
 
