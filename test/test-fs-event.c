@@ -433,6 +433,82 @@ static void fs_event_cb_close(uv_fs_event_t* handle,
 }
 
 
+#if defined(__linux__)
+static int fs_event_overflow_cb_called;
+
+static void fs_event_cb_overflow(uv_fs_event_t* handle,
+                                 const char* filename,
+                                 int events,
+                                 int status) {
+  ASSERT_OK(status);
+  if (filename != NULL)
+    return;
+  /* The kernel dropped events: one callback without a file name. */
+  ASSERT_EQ(events, UV_CHANGE);
+  fs_event_overflow_cb_called++;
+  uv_close((uv_handle_t*) handle, close_cb);
+}
+#endif
+
+
+TEST_IMPL(fs_event_queue_overflow) {
+#if !defined(__linux__)
+  RETURN_SKIP("The inotify queue is specific to Linux.");
+#else
+  uv_loop_t* loop = uv_default_loop();
+  char path[64];
+  FILE* fp;
+  long limit;
+  long i;
+  int r;
+
+  fp = fopen("/proc/sys/fs/inotify/max_queued_events", "r");
+  if (fp == NULL)
+    RETURN_SKIP("Cannot read the inotify queue limit.");
+  r = fscanf(fp, "%ld", &limit);
+  fclose(fp);
+  if (r != 1 || limit < 1 || limit > 262144)
+    RETURN_SKIP("Unusable inotify queue limit.");
+
+  /* Setup */
+  for (i = 0; i < limit + 64; i++) {
+    snprintf(path, sizeof(path), "watch_dir/overflow-%ld", i);
+    delete_file(path);
+  }
+  delete_dir("watch_dir/");
+  create_dir("watch_dir");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_overflow, "watch_dir", 0);
+  ASSERT_OK(r);
+
+  /* Nothing reads the queue before the loop runs, so creating more files
+   * than it holds makes the kernel drop events and queue one overflow record.
+   */
+  for (i = 0; i < limit + 64; i++) {
+    snprintf(path, sizeof(path), "watch_dir/overflow-%ld", i);
+    create_file(path);
+  }
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(1, fs_event_overflow_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  /* Cleanup */
+  for (i = 0; i < limit + 64; i++) {
+    snprintf(path, sizeof(path), "watch_dir/overflow-%ld", i);
+    delete_file(path);
+  }
+  delete_dir("watch_dir/");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+#endif
+}
+
+
 TEST_IMPL(fs_event_watch_dir) {
 #if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);

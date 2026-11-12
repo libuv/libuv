@@ -448,6 +448,7 @@ TEST_FS_DECLARE   (fs_stat_missing_path)
 TEST_FS_DECLARE   (fs_read_bufs)
 TEST_FS_DECLARE   (fs_read_file_eof)
 TEST_DECLARE   (fs_event_watch_dir)
+TEST_DECLARE   (fs_event_queue_overflow)
 TEST_DECLARE   (fs_event_watch_delete_dir)
 #ifdef _WIN32
 TEST_DECLARE   (fs_event_watch_delete_dir_win)
@@ -1236,6 +1237,7 @@ TASK_LIST_START
   TEST_FS_ENTRY  (fs_read_file_eof)
   TEST_FS_ENTRY  (fs_file_open_append)
   TEST_ENTRY  (fs_event_watch_dir)
+  TEST_ENTRY  (fs_event_queue_overflow)
   TEST_ENTRY  (fs_event_watch_delete_dir)
 #ifdef _WIN32
   TEST_ENTRY  (fs_event_watch_delete_dir_win)

@@ -2648,6 +2648,53 @@ static void maybe_free_watcher_list(struct watcher_list* w, uv_loop_t* loop) {
 }
 
 
+/* The kernel dropped events because the queue was full and says so with one
+ * IN_Q_OVERFLOW record whose wd is -1. Any watched path may have changed.
+ * Report that to every handle as a change without a file name, which is what
+ * the Windows backend does when its buffer overflowed and what the
+ * documentation of uv_fs_event_cb allows.
+ *
+ * A callback may start or stop handles and so add or remove watcher lists,
+ * therefore the tree is walked by key: the next list is looked up again
+ * after the callbacks of the current one have run.
+ */
+static void uv__inotify_overflow(uv_loop_t* loop) {
+  struct watcher_list* w;
+  struct watcher_list key;
+  uv_fs_event_t* h;
+  struct uv__queue queue;
+  struct uv__queue* q;
+
+  key.wd = 0;
+  for (;;) {
+    w = RB_NFIND(watcher_root, uv__inotify_watchers(loop), &key);
+    if (w == NULL)
+      break;
+
+    key.wd = w->wd;
+
+    /* Same precautions as in uv__inotify_read(). */
+    w->iterating = 1;
+    uv__queue_move(&w->watchers, &queue);
+    while (!uv__queue_empty(&queue)) {
+      q = uv__queue_head(&queue);
+      h = uv__queue_data(q, uv_fs_event_t, watchers);
+
+      uv__queue_remove(q);
+      uv__queue_insert_tail(&w->watchers, q);
+
+      h->cb(h, NULL, UV_CHANGE, 0);
+    }
+    w->iterating = 0;
+    maybe_free_watcher_list(w, loop);
+
+    if (key.wd == INT_MAX)
+      break;
+    key.wd++;
+  }
+}
+
+
 void uv__inotify_read(uv_loop_t* loop, uv__io_t* dummy, unsigned int events) {
   const struct inotify_event* e;
   struct watcher_list* w;
@@ -2675,6 +2722,11 @@ void uv__inotify_read(uv_loop_t* loop, uv__io_t* dummy, unsigned int events) {
     /* Now we have one or more inotify_event structs. */
     for (p = buf; p < buf + size; p += sizeof(*e) + e->len) {
       e = (const struct inotify_event*) p;
+
+      if (e->mask & IN_Q_OVERFLOW) {
+        uv__inotify_overflow(loop);
+        continue;
+      }
 
       events = 0;
       if (e->mask & (IN_ATTRIB|IN_MODIFY))
