@@ -35,6 +35,10 @@
 #include <ifaddrs.h>
 #endif
 
+STATIC_ASSERT(sizeof(((uv_tcp_t*) 0)->u.tcp) <=
+              sizeof(((uv_tcp_t*) 0)->u.reserved));
+
+
 static int maybe_bind_socket(int fd) {
   union uv__sockaddr s;
   socklen_t slen;
@@ -123,6 +127,9 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
     return UV_EINVAL;
 
   uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
+  tcp->u.tcp.idle = 60;
+  tcp->u.tcp.interval = 1;
+  tcp->u.tcp.count = 10;
 
   /* If anything fails beyond this point we need to remove the handle from
    * the handle queue, since it was added by uv__handle_init in uv_stream_init.
@@ -602,22 +609,34 @@ int uv_tcp_keepalive_ex(uv_tcp_t* handle,
                         unsigned int cnt) {
   int err;
 
+  if (on && (idle < 1 || intvl < 1 || cnt < 1))
+    return UV_EINVAL;
+
   if (uv__stream_fd(handle) != -1) {
     err = uv__tcp_keepalive(uv__stream_fd(handle), on, idle, intvl, cnt);
     if (err)
       return err;
   }
 
-  if (on)
+  if (on) {
+    handle->u.tcp.idle = idle;
+    handle->u.tcp.interval = intvl;
+    handle->u.tcp.count = cnt;
     handle->flags |= UV_HANDLE_TCP_KEEPALIVE;
-  else
+  } else {
     handle->flags &= ~UV_HANDLE_TCP_KEEPALIVE;
-
-  /* TODO Store idle if uv__stream_fd(handle) == -1 but don't want to enlarge
-   *      uv_tcp_t with an int that's almost never used...
-   */
+  }
 
   return 0;
+}
+
+
+int uv__tcp_keepalive_replay(uv_tcp_t* handle, int fd) {
+  return uv__tcp_keepalive(fd,
+                          1,
+                          handle->u.tcp.idle,
+                          handle->u.tcp.interval,
+                          handle->u.tcp.count);
 }
 
 
