@@ -1537,11 +1537,14 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       if (reset_timeout != 0) {
         timeout = user_timeout;
         reset_timeout = 0;
-      } else if (nfds == 0) {
-        return;
       }
-
-      /* Interrupted by a signal. Update timeout and poll again. */
+      /* nfds==-1: interrupted by a signal, update timeout and poll again.
+       *
+       * nfds== 0: no fds ready, poll again because there may still be
+       *           some time left before |timeout| expires. The kernel
+       *           sometimes uses a higher resolution clock than we do
+       *           and there can be a minute difference between the two.
+       */
       goto update_timeout;
     }
 
