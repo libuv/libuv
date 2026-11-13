@@ -153,7 +153,12 @@ TEST_IMPL(pipe_getsockname) {
   ASSERT_OK(r);
 
 #ifndef _WIN32
-  ASSERT_STR_EQ(pipe_server.pipe_fname, TEST_PIPENAME);
+  /* pipe_fname is the bound path anchored at the working directory so that the
+   * unlink in uv__pipe_close() still finds the socket after a uv_chdir(). */
+  ASSERT_EQ(pipe_server.pipe_fname[0], '/');
+  ASSERT_OK(strcmp(pipe_server.pipe_fname +
+                   strlen(pipe_server.pipe_fname) - (sizeof(TEST_PIPENAME) - 1),
+                   TEST_PIPENAME));
 #endif
 
   r = uv_pipe_getsockname(&pipe_server, NULL, &len);
