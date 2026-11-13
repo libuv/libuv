@@ -494,6 +494,7 @@ int uv_utf16_to_wtf8(const uint16_t* w_source_ptr,
   }
 
   target_end = target + target_len;
+  target_len = 0;
 
   while (target != target_end && w_source_len) {
     code_point = uv__get_surrogate_value(w_source_ptr, w_source_len);
