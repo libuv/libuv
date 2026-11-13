@@ -291,6 +291,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
   list(APPEND uv_defines _GNU_SOURCE)
   list(APPEND uv_libraries dl)
   list(APPEND uv_sources
+       src/unix/linux-cgroup.c
        src/unix/linux.c
        src/unix/procfs-exepath.c
        src/unix/random-getentropy.c
@@ -346,6 +347,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   list(APPEND uv_defines _GNU_SOURCE _POSIX_C_SOURCE=200112)
   list(APPEND uv_libraries dl rt)
   list(APPEND uv_sources
+       src/unix/linux-cgroup.c
        src/unix/linux.c
        src/unix/procfs-exepath.c
        src/unix/random-getrandom.c
@@ -574,6 +576,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-barrier.c
        test/test-callback-stack.c
        test/test-close-fd.c
+       test/test-cgroup.c
        test/test-close-order.c
        test/test-condvar.c
        test/test-connect-unspecified.c

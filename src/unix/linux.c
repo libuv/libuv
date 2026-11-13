@@ -2442,63 +2442,70 @@ next:
   return 0;
 }
 
-static const char* uv__cgroup1_find_cpu_controller(const char* cgroup,
-                                             int* cgroup_size) {
-  /* Seek to the cpu controller line. */
-  const char* cgroup_cpu = strstr(cgroup, ":cpu,");
-
-  if (cgroup_cpu != NULL) {
-    /* Skip the controller prefix to the start of the cgroup path. */
-    cgroup_cpu += sizeof(":cpu,") - 1;
-    /* Determine the length of the cgroup path, excluding the newline. */
-    *cgroup_size = (int)strcspn(cgroup_cpu, "\n");
-  }
-
-  return cgroup_cpu;
-}
-
 static int uv__get_cgroupv1_constrained_cpu(const char* cgroup,
                                             long long* quota) {
-  char path[256];
+  char cgroup_mount[256];
+  char path[512];
+  char full_path[sizeof(path) + sizeof("/cpu.cfs_quota_us")];
   char buf[1024];
-  int cgroup_size;
-  const char* cgroup_cpu;
+  char cgroup_cpu[256];
+  char* controller_path;
+  char* last_slash;
+  long long constrained;
+  long long min_quota;
   long long period_length;
   long long quota_per_period;
 
-  cgroup_cpu = uv__cgroup1_find_cpu_controller(cgroup, &cgroup_size);
-
-  if (cgroup_cpu == NULL)
+  if (uv__cgroup1_find_cpu_controller(cgroup,
+                                      cgroup_cpu,
+                                      sizeof(cgroup_cpu)) < 0)
     return UV_EIO;
 
-  /* Construct the path to the cpu.cfs_quota_us file */
-  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_quota_us",
-           cgroup_size, cgroup_cpu);
+  controller_path = strchr(cgroup_cpu, '/');
+  if (controller_path == NULL)
+    controller_path = cgroup_cpu + strlen(cgroup_cpu);
 
-  /* Read cpu.cfs_quota_us */
-  if (uv__slurp(path, buf, sizeof(buf)) < 0)
+  snprintf(cgroup_mount,
+           sizeof(cgroup_mount),
+           "/sys/fs/cgroup/%.*s",
+           (int) (controller_path - cgroup_cpu),
+           cgroup_cpu);
+  snprintf(path, sizeof(path), "/sys/fs/cgroup/%s", cgroup_cpu);
+  min_quota = LLONG_MAX;
+
+  while (strncmp(path, cgroup_mount, strlen(cgroup_mount)) == 0) {
+    snprintf(full_path, sizeof(full_path), "%s/cpu.cfs_quota_us", path);
+    if (uv__slurp(full_path, buf, sizeof(buf)) < 0)
+      goto next;
+    if (sscanf(buf, "%lld", &quota_per_period) != 1)
+      goto next;
+    if (quota_per_period < 0)
+      goto next;
+
+    snprintf(full_path, sizeof(full_path), "%s/cpu.cfs_period_us", path);
+    if (uv__slurp(full_path, buf, sizeof(buf)) < 0)
+      goto next;
+    if (sscanf(buf, "%lld", &period_length) != 1 || period_length == 0)
+      goto next;
+
+    constrained = quota_per_period / period_length;
+    if (constrained == 0)
+      constrained = 1;
+    if (constrained < min_quota)
+      min_quota = constrained;
+
+next:
+    if (strcmp(path, cgroup_mount) == 0)
+      break;
+    last_slash = strrchr(path, '/');
+    if (last_slash == NULL)
+      break;
+    *last_slash = '\0';
+  }
+
+  if (min_quota == LLONG_MAX)
     return UV_EIO;
-
-  if (sscanf(buf, "%lld", &quota_per_period) != 1)
-    return UV_EINVAL;
-
-  /* Construct the path to the cpu.cfs_period_us file */
-  snprintf(path, sizeof(path), "/sys/fs/cgroup/%.*s/cpu.cfs_period_us",
-           cgroup_size, cgroup_cpu);
-
-  /* Read cpu.cfs_period_us */
-  if (uv__slurp(path, buf, sizeof(buf)) < 0)
-    return UV_EIO;
-
-  if (sscanf(buf, "%lld", &period_length) != 1)
-    return UV_EINVAL;
-
-  /* Can't divide by 0 */
-  if (period_length == 0)
-    return UV_EINVAL;
-
-  *quota = quota_per_period / period_length;
-
+  *quota = min_quota;
   return 0;
 }
 

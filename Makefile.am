@@ -165,6 +165,7 @@ test_run_tests_SOURCES = test/blackhole-server.c \
                          test/test-barrier.c \
                          test/test-callback-stack.c \
                          test/test-close-fd.c \
+                         test/test-cgroup.c \
                          test/test-close-order.c \
                          test/test-condvar.c \
                          test/test-connect-unspecified.c \
@@ -501,7 +502,8 @@ endif
 if LINUX
 uvinclude_HEADERS += include/uv/linux.h
 libuv_la_CFLAGS += -D_GNU_SOURCE
-libuv_la_SOURCES += src/unix/linux.c \
+libuv_la_SOURCES += src/unix/linux-cgroup.c \
+                    src/unix/linux.c \
                     src/unix/procfs-exepath.c \
                     src/unix/proctitle.c \
                     src/unix/random-getrandom.c \
