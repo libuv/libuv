@@ -23,6 +23,11 @@
 #include "task.h"
 #include <string.h> /* memset */
 
+#ifndef _WIN32
+#include <pthread.h>
+#include <signal.h>
+#endif
+
 #define UV_NS_TO_MS 1000000
 
 typedef struct {
@@ -105,6 +110,77 @@ static void metrics_routine_cb(void* arg) {
 
   close_loop(&loop);
   ASSERT_OK(uv_loop_close(&loop));
+}
+
+
+#ifndef _WIN32
+static pthread_t signal_target;
+static uv_sem_t signal_sender_stop;
+
+static void noop_signal_handler(int signum) {
+  (void) signum;
+}
+
+static void signal_sender(void* arg) {
+  (void) arg;
+  /* What a sampling profiler such as V8's does: signal the loop thread at
+   * a high rate. Each signal interrupts the backend's poll call. */
+  while (UV_EAGAIN == uv_sem_trywait(&signal_sender_stop)) {
+    pthread_kill(signal_target, SIGPROF);
+    uv_sleep(5);
+  }
+}
+
+static void signal_timer_cb(uv_timer_t* handle) {
+  (*(int*) handle->data)++;
+}
+#endif
+
+
+TEST_IMPL(metrics_idle_time_signal) {
+#if defined(_WIN32)
+  RETURN_SKIP("Test requires POSIX signals");
+#elif defined(__OpenBSD__)
+  RETURN_SKIP("Test does not currently work in OpenBSD");
+#else
+  const uint64_t timeout = 1000;
+  struct sigaction sa;
+  struct sigaction old_sa;
+  uv_thread_t sender;
+  uv_timer_t timer;
+  uint64_t idle_time;
+  int cntr;
+
+  cntr = 0;
+  timer.data = &cntr;
+  signal_target = pthread_self();
+  ASSERT_OK(uv_sem_init(&signal_sender_stop, 0));
+
+  memset(&sa, 0, sizeof(sa));
+  sa.sa_handler = noop_signal_handler;
+  ASSERT_OK(sigaction(SIGPROF, &sa, &old_sa));
+
+  ASSERT_OK(uv_loop_configure(uv_default_loop(), UV_METRICS_IDLE_TIME));
+  ASSERT_OK(uv_timer_init(uv_default_loop(), &timer));
+  ASSERT_OK(uv_timer_start(&timer, signal_timer_cb, timeout, 0));
+  ASSERT_OK(uv_thread_create(&sender, signal_sender, NULL));
+
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  uv_sem_post(&signal_sender_stop);
+  ASSERT_OK(uv_thread_join(&sender));
+  uv_sem_destroy(&signal_sender_stop);
+  ASSERT_OK(sigaction(SIGPROF, &old_sa, NULL));
+  ASSERT_EQ(1, cntr);
+
+  idle_time = uv_metrics_idle_time(uv_default_loop());
+
+  /* The loop slept for the whole timeout; signals must not erase that. */
+  ASSERT_GE(idle_time, (timeout - 500) * UV_NS_TO_MS);
+  ASSERT_LE(idle_time, (timeout + 500) * UV_NS_TO_MS);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+#endif
 }
 
 
