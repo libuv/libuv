@@ -500,15 +500,18 @@ int uv__tcp_keepalive(int fd,
    *
    * - The second implementation is activated if socket option TCP_KEEPINTVL and/or TCP_KEEPCNT are set.
    * The time between each consequent probes is set by TCP_KEEPINTVL in seconds.
-   * The minimum value is ten seconds. The maximum is ten days, while the default is two hours.
+   * On Solaris 11.4 the minimum interval is one second. The initial idle
+   * period still has a ten-second minimum.
    * The TCP connection will be aborted after certain amount of probes, which is set by TCP_KEEPCNT, without receiving response.
    */
 
-  /* Kernel expects at least 10 seconds for TCP_KEEPIDLE and TCP_KEEPINTVL. */
+  /* Kernel expects at least 10 seconds for TCP_KEEPIDLE. */
   if (idle < 10)
     idle = 10;
+#if !defined(UV__SOLARIS_11_4) || !UV__SOLARIS_11_4
   if (intvl < 10)
     intvl = 10;
+#endif
   /* Kernel expects at most 10 days for TCP_KEEPIDLE and TCP_KEEPINTVL. */
   if (idle > 10*24*60*60)
     idle = 10*24*60*60;
