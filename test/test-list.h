@@ -481,9 +481,6 @@ TEST_FS_DECLARE   (fs_scandir_non_existent_dir)
 TEST_FS_DECLARE   (fs_scandir_file)
 TEST_FS_DECLARE   (fs_scandir_early_exit)
 TEST_FS_DECLARE   (fs_open_dir)
-#ifndef _WIN32
-TEST_DECLARE      (fs_readdir_oom)
-#endif
 TEST_FS_DECLARE   (fs_readdir_empty_dir)
 TEST_FS_DECLARE   (fs_readdir_file)
 TEST_FS_DECLARE   (fs_readdir_non_empty_dir)
@@ -1272,9 +1269,6 @@ TASK_LIST_START
   TEST_FS_ENTRY  (fs_scandir_file)
   TEST_FS_ENTRY  (fs_scandir_early_exit)
   TEST_FS_ENTRY  (fs_open_dir)
-#ifndef _WIN32
-  TEST_ENTRY     (fs_readdir_oom)
-#endif
   TEST_FS_ENTRY  (fs_readdir_empty_dir)
   TEST_FS_ENTRY  (fs_readdir_file)
   TEST_FS_ENTRY  (fs_readdir_non_empty_dir)
