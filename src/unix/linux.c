@@ -868,6 +868,14 @@ static void uv__iou_submit(struct uv__iou* iou) {
                         *iou->sqtail + 1,
                         memory_order_release);
 
+  /* Before the kernel's SQPOLL thread goes to sleep, it sets NEED_WAKEUP,
+   * issues a full barrier and reads the tail again. Mirror that here: the
+   * tail store must be visible before the flags are loaded, else both sides
+   * can miss each other and the new entry sits in the ring unread. Release
+   * and acquire do not order a store before a later load; a full fence does.
+   */
+  atomic_thread_fence(memory_order_seq_cst);
+
   flags = atomic_load_explicit((_Atomic uint32_t*) iou->sqflags,
                                memory_order_acquire);
 
