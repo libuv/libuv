@@ -876,6 +876,11 @@ TEST_IMPL(fs_event_watch_file_modified_in_cb) {
   RETURN_SKIP(NO_FS_EVENTS);
 #endif
 
+#if defined(__sun)
+  /* Solaris appears to lose file changes made inside the callback too. */
+  RETURN_SKIP("File changes inside the callback may be lost on Solaris.");
+#endif
+
   uv_loop_t* loop = uv_default_loop();
 
   delete_file("watch_dir/watch_in_cb");
