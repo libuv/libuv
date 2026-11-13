@@ -273,6 +273,15 @@ TEST_IMPL(wtf8) {
 
   /* Invalid start byte for UTF-8/WTF-8 sequence */
   ASSERT_EQ(UV_EINVAL, uv_wtf8_length_as_utf16("\xFF"));
+
+  /* Overlong 3- and 4-byte encodings of '/' must be rejected. */
+  ASSERT_EQ(UV_EINVAL, uv_wtf8_length_as_utf16("\xE0\x80\xAF"));
+  ASSERT_EQ(UV_EINVAL, uv_wtf8_length_as_utf16("\xF0\x80\x80\xAF"));
+
+  /* The shortest 3- and 4-byte encodings, and a lone surrogate, are valid. */
+  ASSERT_EQ(2, uv_wtf8_length_as_utf16("\xE0\xA0\x80"));
+  ASSERT_EQ(3, uv_wtf8_length_as_utf16("\xF0\x90\x80\x80"));
+  ASSERT_EQ(2, uv_wtf8_length_as_utf16("\xED\xA0\x80"));
   return 0;
 }
 
