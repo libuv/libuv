@@ -27,6 +27,7 @@ static int uv__dlerror(uv_lib_t* lib, const char* filename, DWORD errorno);
 
 int uv_dlopen(const char* filename, uv_lib_t* lib) {
   WCHAR filename_w[32768];
+  DWORD flags;
   ssize_t r;
 
   lib->handle = NULL;
@@ -39,7 +40,8 @@ int uv_dlopen(const char* filename, uv_lib_t* lib) {
     return uv__dlerror(lib, filename, ERROR_INSUFFICIENT_BUFFER);
   uv_wtf8_to_utf16(filename, filename_w, r);
 
-  lib->handle = LoadLibraryExW(filename_w, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+  flags = LOAD_WITH_ALTERED_SEARCH_PATH | LOAD_LIBRARY_SAFE_CURRENT_DIRS;
+  lib->handle = LoadLibraryExW(filename_w, NULL, flags);
   if (lib->handle == NULL) {
     return uv__dlerror(lib, filename, GetLastError());
   }
