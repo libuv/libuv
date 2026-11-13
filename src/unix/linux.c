@@ -2654,27 +2654,28 @@ static void maybe_free_watcher_list(struct watcher_list* w, uv_loop_t* loop) {
  * the Windows backend does when its buffer overflowed and what the
  * documentation of uv_fs_event_cb allows.
  *
- * A callback may start or stop handles and so add or remove watcher lists,
- * therefore the tree is walked by key: the next list is looked up again
- * after the callbacks of the current one have run.
+ * A callback may stop any handle, and stopping the last handle of a watcher
+ * list frees that list unless it is being iterated over. Both the current
+ * list and the next one are therefore marked as being iterated over while
+ * the callbacks run, so that neither can be freed under the walk.
  */
 static void uv__inotify_overflow(uv_loop_t* loop) {
   struct watcher_list* w;
-  struct watcher_list key;
+  struct watcher_list* next;
   uv_fs_event_t* h;
   struct uv__queue queue;
   struct uv__queue* q;
 
-  key.wd = 0;
-  for (;;) {
-    w = RB_NFIND(watcher_root, uv__inotify_watchers(loop), &key);
-    if (w == NULL)
-      break;
+  w = RB_MIN(watcher_root, uv__inotify_watchers(loop));
+  if (w != NULL)
+    w->iterating = 1;
 
-    key.wd = w->wd;
+  while (w != NULL) {
+    next = RB_NEXT(watcher_root, w);
+    if (next != NULL)
+      next->iterating = 1;
 
     /* Same precautions as in uv__inotify_read(). */
-    w->iterating = 1;
     uv__queue_move(&w->watchers, &queue);
     while (!uv__queue_empty(&queue)) {
       q = uv__queue_head(&queue);
@@ -2688,9 +2689,7 @@ static void uv__inotify_overflow(uv_loop_t* loop) {
     w->iterating = 0;
     maybe_free_watcher_list(w, loop);
 
-    if (key.wd == INT_MAX)
-      break;
-    key.wd++;
+    w = next;
   }
 }
 
