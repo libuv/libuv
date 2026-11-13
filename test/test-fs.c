@@ -1464,7 +1464,7 @@ TEST_FS_IMPL(fs_sendfile_pipe) {
   int ffd;
 
   ASSERT_OK(pipe(pfd));
-  ASSERT_NE(-1, (ffd = open("test_file", O_CREAT|O_RDWR)));
+  ASSERT_NE(-1, (ffd = open("test_file", O_CREAT|O_RDWR, 0644)));
   /* Observable with strace: copy_file_range fails with EINVAL,
    * falls back to sendfile, which succeeds with zero bytes written.
    */
