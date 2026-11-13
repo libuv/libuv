@@ -1845,7 +1845,7 @@ static int uv__pipe_write_data(uv_loop_t* loop,
   } else if (handle->flags & UV_HANDLE_NON_OVERLAPPED_PIPE) {
     req->write_buffer = write_buf;
     uv__insert_non_overlapped_write_req(handle, req);
-    if (handle->stream.conn.write_reqs_pending == 0) {
+    if (handle->pipe.conn.non_overlapped_write_active == NULL) {
       uv__queue_non_overlapped_write(handle);
       /* There shouldn't have been any queued writes before, so we should have
        * dispatched the request we just added. Sanity check the state
