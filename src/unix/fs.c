@@ -591,8 +591,10 @@ static int uv__fs_opendir(uv_fs_t* req) {
   uv_dir_t* dir;
 
   dir = uv__malloc(sizeof(*dir));
-  if (dir == NULL)
+  if (dir == NULL) {
+    errno = ENOMEM;
     goto error;
+  }
 
   dir->dir = opendir(req->path);
   if (dir->dir == NULL)
@@ -635,8 +637,10 @@ static int uv__fs_readdir(uv_fs_t* req) {
     dirent = &dir->dirents[dirent_idx];
     dirent->name = uv__strdup(res->d_name);
 
-    if (dirent->name == NULL)
+    if (dirent->name == NULL) {
+      errno = ENOMEM;
       goto error;
+    }
 
     dirent->type = uv__fs_get_dirent_type(res);
     ++dirent_idx;
