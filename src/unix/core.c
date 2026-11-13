@@ -1329,14 +1329,14 @@ int uv_os_tmpdir(char* buffer, size_t* size) {
 return_buffer:
   len = strlen(buf);
 
-  if (len >= *size) {
-    *size = len + 1;
-    return UV_ENOBUFS;
-  }
-
   /* The returned directory should not have a trailing slash. */
   if (len > 1 && buf[len - 1] == '/') {
     len--;
+  }
+
+  if (len >= *size) {
+    *size = len + 1;
+    return UV_ENOBUFS;
   }
 
   memcpy(buffer, buf, len + 1);

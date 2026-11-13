@@ -31,6 +31,9 @@ TEST_IMPL(tmpdir) {
   size_t len;
   char last;
   int r;
+#ifndef _WIN32
+  char exact[5];
+#endif
 
   /* Test the normal case */
   len = sizeof tmpdir;
@@ -83,6 +86,19 @@ TEST_IMPL(tmpdir) {
   len = sizeof tmpdir;
   r = uv_os_tmpdir(tmpdir, &len);
   ASSERT_EQ(r, UV_ENOENT);
+#endif
+
+#ifndef _WIN32
+  /* Check capacity against the path after removing the trailing slash. */
+  ASSERT_OK(uv_os_setenv("TMPDIR", "/tmp/"));
+  len = sizeof(exact);
+  ASSERT_OK(uv_os_tmpdir(exact, &len));
+  ASSERT_EQ(4, len);
+  ASSERT_STR_EQ("/tmp", exact);
+
+  len = sizeof(exact) - 1;
+  ASSERT_EQ(UV_ENOBUFS, uv_os_tmpdir(exact, &len));
+  ASSERT_EQ(5, len);
 #endif
 
   return 0;
