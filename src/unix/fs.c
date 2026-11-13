@@ -1256,6 +1256,22 @@ static int uv__fs_copyfile(uv_fs_t* req) {
     goto out;
   }
 
+  /* The destination gets the source's timestamps once the data is copied,
+   * see below.
+   */
+#if defined(__APPLE__)
+  times[0] = src_statsbuf.st_atimespec;
+  times[1] = src_statsbuf.st_mtimespec;
+#elif defined(_AIX)
+  times[0].tv_sec = src_statsbuf.st_atime;
+  times[0].tv_nsec = src_statsbuf.st_atime_n;
+  times[1].tv_sec = src_statsbuf.st_mtime;
+  times[1].tv_nsec = src_statsbuf.st_mtime_n;
+#else
+  times[0] = src_statsbuf.st_atim;
+  times[1] = src_statsbuf.st_mtim;
+#endif
+
   dst_flags = O_WRONLY | O_CREAT;
 
   if (req->flags & UV_FS_COPYFILE_EXCL)
@@ -1308,24 +1324,6 @@ static int uv__fs_copyfile(uv_fs_t* req) {
       err = 0;
     }
   }
-
-  /**
-   * Change the timestamps of the destination file to match the source file.
-   */
-#if defined(__APPLE__)
-  times[0] = src_statsbuf.st_atimespec;
-  times[1] = src_statsbuf.st_mtimespec;
-#elif defined(_AIX)
-  times[0].tv_sec = src_statsbuf.st_atime;
-  times[0].tv_nsec = src_statsbuf.st_atime_n;
-  times[1].tv_sec = src_statsbuf.st_mtime;
-  times[1].tv_nsec = src_statsbuf.st_mtime_n;
-#else
-  times[0] = src_statsbuf.st_atim;
-  times[1] = src_statsbuf.st_mtim;
-#endif
-
-  (void) futimens(dstfd, times);
 
   /*
    * Change the ownership and permissions of the destination file to match the
@@ -1394,10 +1392,17 @@ static int uv__fs_copyfile(uv_fs_t* req) {
   }
 
 out:
-  if (err < 0)
+  if (err < 0) {
     result = err;
-  else
+  } else {
     result = 0;
+    /* Change the timestamps of the destination file to match the source file.
+     * This is done last because writing to the destination file updates its
+     * modification time. `cp -p` does not care about errors here, so we
+     * don't either.
+     */
+    (void) futimens(dstfd, times);
+  }
 
   /* Close the source file. */
   err = uv__close_nocheckstdio(srcfd);
