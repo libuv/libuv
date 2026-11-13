@@ -22,9 +22,9 @@
 #ifndef UV_FREERTOS_H
 #define UV_FREERTOS_H
 
-#include "FreeRTOS.h"
-#include "semphr.h"
-#include "timers.h"
+#include <FreeRTOS.h>
+#include <semphr.h>
+#include <timers.h>
 
 #include "uv/threadpool.h"
 
