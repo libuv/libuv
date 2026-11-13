@@ -270,7 +270,7 @@ struct uv__req_write_extra_s {
   uv_buf_t bufsml[4];                                                         \
 
 #define UV_CONNECT_PRIVATE_FIELDS                                             \
-  struct uv__queue queue;                                                     \
+  struct uv__queue queue;
 
 #define UV_SHUTDOWN_PRIVATE_FIELDS /* empty */
 
@@ -302,7 +302,9 @@ struct uv__req_write_extra_s {
   void* queued_fds;                                                           \
   UV_STREAM_PRIVATE_PLATFORM_FIELDS                                           \
 
-#define UV_TCP_PRIVATE_FIELDS /* empty */
+#define UV_TCP_PRIVATE_FIELDS                                                 \
+  unsigned int tcp_flags;                                                     \
+  int tfo_backlog;
 
 #define UV_UDP_PRIVATE_FIELDS                                                 \
   uv_alloc_cb alloc_cb;                                                       \

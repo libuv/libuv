@@ -460,7 +460,8 @@ struct uv__req_write_extra_s {
   union {                                                                     \
     struct { uv_tcp_server_fields } serv;                                     \
     struct { uv_tcp_connection_fields } conn;                                 \
-  } tcp;
+  } tcp;                                                                      \
+  int tcp_flags;
 
 #define UV_UDP_PRIVATE_FIELDS                                                 \
   SOCKET socket;                                                              \

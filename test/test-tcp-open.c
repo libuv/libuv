@@ -29,11 +29,20 @@
 # include <unistd.h>
 #endif
 
+#ifdef __linux__
+#include "tcp-tfo-info.h"
+#endif
+
 static int shutdown_cb_called = 0;
 static int shutdown_requested = 0;
 static int connect_cb_called = 0;
 static int write_cb_called = 0;
 static int close_cb_called = 0;
+static int connect_tfo_cb_sent = 0;
+
+#ifdef __linux__
+static int connect_tfo_used = 0;
+#endif
 
 static uv_connect_t connect_req;
 static uv_shutdown_t shutdown_req;
@@ -193,8 +202,20 @@ static void connect_cb(uv_connect_t* req, int status) {
   stream = req->handle;
   connect_cb_called++;
 
-  r = uv_write(&write_req, stream, &buf, 1, write_cb);
+#ifdef __linux__
+  uv_os_fd_t fd;
+  r = uv_fileno((uv_handle_t*)stream, &fd);
   ASSERT_OK(r);
+
+  connect_tfo_used = test_tcp_tfo_used(fd);
+#endif
+
+  if (!req->sent) {
+    r = uv_write(&write_req, stream, &buf, 1, write_cb);
+    ASSERT_OK(r);
+  }
+
+  connect_tfo_cb_sent = req->sent;
 
   /* Shutdown on drain. */
   r = uv_shutdown(&shutdown_req, stream, shutdown_cb);
@@ -404,4 +425,68 @@ TEST_IMPL(tcp_write_ready) {
 
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
+}
+
+static int tcp_open_tfo_base(int server_support) {
+  struct sockaddr_in addr;
+  uv_os_sock_t sock;
+  int r;
+  uv_buf_t send_buf;
+
+  ASSERT_OK(uv_ip4_addr("127.0.0.1", TEST_PORT, &addr));
+
+  startup();
+  sock = create_tcp_socket();
+
+  r = uv_tcp_init(uv_default_loop(), &client);
+  ASSERT_OK(r);
+
+  r = uv_tcp_fastopen(&client, UV_TCP_FASTOPEN_CONNECT, 10);
+  if (r == UV_ENOTSUP)
+    RETURN_SKIP("TFO is not supported by the OS");
+
+  r = uv_tcp_open(&client, sock);
+  ASSERT_OK(r);
+
+  ASSERT_OK(r);
+
+  send_buf = uv_buf_init("PING", 4);
+
+  r = uv_tcp_connect_ex(&connect_req,
+                     &client,
+                     (const struct sockaddr*) &addr,
+                     &send_buf,
+                     connect_cb);
+  ASSERT_OK(r);
+
+#ifdef TCP_FASTOPEN_CONNECT
+  int fastopen = 0;
+  socklen_t fastopen_len = sizeof(fastopen);
+  r = getsockopt(sock, IPPROTO_TCP, TCP_FASTOPEN_CONNECT, (void*)&fastopen, &fastopen_len);
+  ASSERT_EQ(0, r);
+  ASSERT_EQ(1, fastopen);
+#endif
+
+  uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+
+#ifdef __linux__
+  ASSERT_EQ(server_support, connect_tfo_used);
+#endif
+
+  ASSERT_EQ(4, connect_tfo_cb_sent);
+  ASSERT_EQ(1, shutdown_cb_called);
+  ASSERT_EQ(1, connect_cb_called);
+  ASSERT_EQ(0, write_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+TEST_IMPL(tcp_open_tfo) {
+  return tcp_open_tfo_base(1);
+}
+
+TEST_IMPL(tcp_open_tfo_nosv) {
+  return tcp_open_tfo_base(0);
 }

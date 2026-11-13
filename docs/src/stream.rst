@@ -86,6 +86,10 @@ Public members
 
     Pointer to the stream where this connection request is running.
 
+.. c:member:: size_t uv_connect_t.sent
+
+    Contains the amount of queued bytes during the handshake. Readonly.
+
 .. c:member:: uv_stream_t* uv_shutdown_t.handle
 
     Pointer to the stream where this shutdown request is running.
