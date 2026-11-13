@@ -697,6 +697,8 @@ struct uv__req_write_extra_s {
 #define UV_FS_O_TRUNC        _O_TRUNC
 #define UV_FS_O_WRONLY       _O_WRONLY
 
+#define UV_FS_AT_FDCWD       (-100)
+
 /* fs open() flags supported on other platforms (or mapped on this platform): */
 #define UV_FS_O_DIRECT       0x02000000 /* FILE_FLAG_NO_BUFFERING */
 #define UV_FS_O_DIRECTORY    0
