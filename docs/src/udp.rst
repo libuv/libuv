@@ -503,6 +503,12 @@ API
 
     Stop listening for incoming datagrams.
 
+    When using `UV_UDP_RECVMMSG`, this function must not be called
+    from a receive callback with the `UV_UDP_MMSG_CHUNK` flag.
+    Applications must wait for the corresponding `UV_UDP_MMSG_FREE`
+    notification before stopping reception, to ensure that the
+    allocated receive buffer can be released.
+
     :param handle: UDP handle. Should have been initialized with
         :c:func:`uv_udp_init`.
 
