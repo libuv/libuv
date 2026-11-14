@@ -2,7 +2,7 @@
 
 |  System | Support type | Supported versions | Notes |
 |---|---|---|---|
-| GNU/Linux | Tier 1 | Linux >= 3.10 with glibc >= 2.17 | |
+| GNU/Linux | Tier 1 | Linux >= 4.18 with glibc >= 2.28 | |
 | macOS | Tier 1 | macOS >= 11 | Currently supported macOS releases |
 | Windows | Tier 1 | >= Windows 10 | VS 2017 and later are supported |
 | FreeBSD | Tier 2 | >= 12 | |
