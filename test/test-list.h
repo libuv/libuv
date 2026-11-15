@@ -451,6 +451,7 @@ TEST_DECLARE   (fs_event_watch_dir)
 #if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(NO_FS_EVENTS)
 TEST_DECLARE   (fs_event_watch_dir_firmlink)
 TEST_DECLARE   (fs_event_darwin_path_attr)
+TEST_DECLARE   (fs_event_start_alloc_failure)
 #endif
 TEST_DECLARE   (fs_event_watch_delete_dir)
 #ifdef _WIN32
@@ -1244,6 +1245,7 @@ TASK_LIST_START
 #if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(NO_FS_EVENTS)
   TEST_ENTRY  (fs_event_watch_dir_firmlink)
   TEST_ENTRY  (fs_event_darwin_path_attr)
+  TEST_ENTRY  (fs_event_start_alloc_failure)
 #endif
   TEST_ENTRY  (fs_event_watch_delete_dir)
 #ifdef _WIN32

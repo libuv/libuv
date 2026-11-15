@@ -1509,6 +1509,73 @@ static void fs_event_no_leak_cb(uv_fs_event_t* handle,
   fs_event_cb_called++;
   uv_close((uv_handle_t*) handle, NULL);
 }
+
+static uv_thread_t fs_event_start_thread;
+static unsigned int fs_event_start_allocations;
+static unsigned int fs_event_start_fail_at;
+
+static void* fs_event_start_malloc(size_t size) {
+  uv_thread_t thread;
+
+  thread = uv_thread_self();
+  if (uv_thread_equal(&thread, &fs_event_start_thread)) {
+    fs_event_start_allocations++;
+    if (fs_event_start_allocations == fs_event_start_fail_at)
+      return NULL;
+  }
+  return malloc(size);
+}
+
+
+TEST_IMPL(fs_event_start_alloc_failure) {
+  uv_loop_t loop;
+  uv_fs_event_t anchor;
+  uv_fs_event_t watcher;
+
+  create_dir("watch_start_alloc_failure");
+  fs_event_start_thread = uv_thread_self();
+  ASSERT_OK(uv_replace_allocator(fs_event_start_malloc, realloc, calloc, free));
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_fs_event_init(&loop, &anchor));
+  ASSERT_OK(uv_fs_event_init(&loop, &watcher));
+  ASSERT_OK(uv_fs_event_start(&anchor,
+                              fs_event_no_leak_cb,
+                              "watch_start_alloc_failure",
+                              0));
+
+  fs_event_start_allocations = 0;
+  ASSERT_OK(uv_fs_event_start(&watcher,
+                              fail_cb,
+                              "watch_start_alloc_failure",
+                              0));
+  ASSERT_GT(fs_event_start_allocations, 0);
+  /* The last allocation during start reserves the CF thread signal. */
+  fs_event_start_fail_at = fs_event_start_allocations;
+  /* Stop waits for the CF thread to install the anchor's stream. */
+  ASSERT_OK(uv_fs_event_stop(&watcher));
+  fs_event_start_allocations = 0;
+  ASSERT_EQ(UV_ENOMEM, uv_fs_event_start(&watcher,
+                                         fail_cb,
+                                         "watch_start_alloc_failure",
+                                         0));
+  ASSERT_EQ(fs_event_start_fail_at, fs_event_start_allocations);
+
+  create_file("watch_start_alloc_failure/file");
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(1, fs_event_cb_called);
+  ASSERT_OK(uv_fs_event_start(&watcher,
+                              fail_cb,
+                              "watch_start_alloc_failure",
+                              0));
+  ASSERT_OK(uv_fs_event_stop(&watcher));
+  uv_close((uv_handle_t*) &watcher, NULL);
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_loop_close(&loop));
+  ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
+  ASSERT_OK(delete_file("watch_start_alloc_failure/file"));
+  ASSERT_OK(delete_dir("watch_start_alloc_failure"));
+  return 0;
+}
 #endif
 
 TEST_IMPL(fs_event_no_leak) {

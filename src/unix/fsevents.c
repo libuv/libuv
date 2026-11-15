@@ -770,15 +770,11 @@ static void uv__cf_loop_cb(void* arg) {
 
 
 /* Runs in UV loop to notify CF thread */
-int uv__cf_loop_signal(uv_loop_t* loop,
-                       uv_fs_event_t* handle,
-                       uv__cf_loop_signal_type_t type) {
-  uv__cf_loop_signal_t* item;
+static void uv__cf_loop_post(uv_loop_t* loop,
+                             uv__cf_loop_signal_t* item,
+                             uv_fs_event_t* handle,
+                             uv__cf_loop_signal_type_t type) {
   uv__cf_loop_state_t* state;
-
-  item = uv__malloc(sizeof(*item));
-  if (item == NULL)
-    return UV_ENOMEM;
 
   item->handle = handle;
   item->type = type;
@@ -792,10 +788,21 @@ int uv__cf_loop_signal(uv_loop_t* loop,
   pCFRunLoopWakeUp(state->loop);
 
   uv_mutex_unlock(&loop->cf_mutex);
-
-  return 0;
 }
 
+
+static int uv__cf_loop_signal(uv_loop_t* loop,
+                              uv_fs_event_t* handle,
+                              uv__cf_loop_signal_type_t type) {
+  uv__cf_loop_signal_t* item;
+
+  item = uv__malloc(sizeof(*item));
+  if (item == NULL)
+    return UV_ENOMEM;
+
+  uv__cf_loop_post(loop, item, handle, type);
+  return 0;
+}
 
 /*
  * A firmlink can give a directory two absolute paths that realpath() leaves
@@ -864,6 +871,7 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   int err;
   size_t alternate_len;
   struct uv__fsevents_async* callback;
+  uv__cf_loop_signal_t* signal;
   uv__cf_loop_state_t* state;
 
   err = uv__fsevents_loop_init(handle->loop);
@@ -895,20 +903,28 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
     goto fail_cf_cb_malloc;
   }
 
-  callback->alternate_len = alternate_len;
-  if (alternate_len != 0)
-    memcpy(callback->alternate, alternate, alternate_len + 1);
-  handle->cf_cb = &callback->async;
-  handle->cf_cb->data = handle;
-  uv_async_init(handle->loop, handle->cf_cb, uv__fsevents_cb);
-  handle->cf_cb->flags |= UV_HANDLE_INTERNAL;
-  uv_unref((uv_handle_t*) handle->cf_cb);
+  /* Reserve the signal before publishing the watcher to the CF thread. */
+  signal = uv__malloc(sizeof(*signal));
+  if (signal == NULL) {
+    err = UV_ENOMEM;
+    goto fail_signal_malloc;
+  }
 
   err = uv_mutex_init(&handle->cf_mutex);
   if (err)
     goto fail_cf_mutex_init;
 
-  /* Insert handle into the list */
+  callback->alternate_len = alternate_len;
+  if (alternate_len != 0)
+    memcpy(callback->alternate, alternate, alternate_len + 1);
+  callback->async.data = handle;
+  err = uv_async_init(handle->loop, &callback->async, uv__fsevents_cb);
+  if (err)
+    goto fail_async_init;
+  handle->cf_cb = &callback->async;
+  handle->cf_cb->flags |= UV_HANDLE_INTERNAL;
+  uv_unref((uv_handle_t*) handle->cf_cb);
+
   state = handle->loop->cf_state;
   uv_mutex_lock(&state->fsevent_mutex);
   uv__queue_insert_tail(&state->fsevent_handles, &handle->cf_member);
@@ -916,20 +932,17 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   state->fsevent_need_reschedule = 1;
   uv_mutex_unlock(&state->fsevent_mutex);
 
-  /* Reschedule FSEventStream */
-  assert(handle != NULL);
-  err = uv__cf_loop_signal(handle->loop, handle, kUVCFLoopSignalRegular);
-  if (err)
-    goto fail_loop_signal;
-
+  uv__cf_loop_post(handle->loop, signal, handle, kUVCFLoopSignalRegular);
   return 0;
 
-fail_loop_signal:
+fail_async_init:
   uv_mutex_destroy(&handle->cf_mutex);
 
 fail_cf_mutex_init:
-  uv__free(handle->cf_cb);
-  handle->cf_cb = NULL;
+  uv__free(signal);
+
+fail_signal_malloc:
+  uv__free(callback);
 
 fail_cf_cb_malloc:
   uv__free(handle->realpath);
