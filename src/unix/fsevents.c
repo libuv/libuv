@@ -41,11 +41,11 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 
 #else /* TARGET_OS_IPHONE */
 
+#include "darwin-attr.h"
 #include "darwin-stub.h"
 
 #include <dlfcn.h>
 #include <fcntl.h>
-#include <sys/attr.h>
 #include <sys/mount.h>
 #include <unistd.h>
 #include <assert.h>
@@ -804,11 +804,7 @@ int uv__cf_loop_signal(uv_loop_t* loop,
  */
 static size_t uv__fsevents_alternate_path(const char* path, char* alternate) {
 #ifdef ATTR_CMNEXT_RELPATH
-  struct {
-    uint32_t length;
-    attrreference_t relative;
-    char data[PATH_MAX];
-  } attrs;
+  struct uv__darwin_path_attr attrs;
   struct attrlist request;
   struct statfs volume;
   struct stat watched;
@@ -838,7 +834,9 @@ static size_t uv__fsevents_alternate_path(const char* path, char* alternate) {
   if (err != 0)
     return 0;
 
-  relative = (const char*) &attrs.relative + attrs.relative.attr_dataoffset;
+  relative = uv__darwin_path_attr_string(&attrs);
+  if (relative == NULL)
+    return 0;
 
   len = snprintf(alternate, PATH_MAX, "%s%s",
                  strcmp(volume.f_mntonname, "/") == 0 ? "" : volume.f_mntonname,

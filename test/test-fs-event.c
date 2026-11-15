@@ -27,6 +27,7 @@
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <AvailabilityMacros.h>
+# include "../src/unix/darwin-attr.h"
 #endif
 
 static uv_fs_event_t fs_event;
@@ -477,6 +478,42 @@ TEST_IMPL(fs_event_watch_dir) {
 }
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(NO_FS_EVENTS)
+TEST_IMPL(fs_event_darwin_path_attr) {
+  struct uv__darwin_path_attr attrs;
+
+  memset(&attrs, 0, sizeof(attrs));
+  memcpy(attrs.data, "/project", sizeof("/project"));
+  attrs.length = offsetof(struct uv__darwin_path_attr, data) + sizeof("/project");
+  attrs.relative.attr_dataoffset = sizeof(attrs.relative);
+  attrs.relative.attr_length = sizeof("/project");
+  ASSERT_STR_EQ(uv__darwin_path_attr_string(&attrs), "/project");
+
+  attrs.length--;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.length++;
+
+  attrs.data[sizeof("/project") - 1] = 'x';
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.data[sizeof("/project") - 1] = '\0';
+
+  attrs.relative.attr_length = 0;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.relative.attr_length = sizeof("/project");
+
+  attrs.relative.attr_dataoffset = -1;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.relative.attr_dataoffset = sizeof(attrs);
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.relative.attr_dataoffset = sizeof(attrs.relative);
+
+  attrs.length = sizeof(attrs) + 1;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.length = sizeof(attrs.length);
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  return 0;
+}
+
+
 static void fs_event_firmlink_timeout(uv_timer_t* handle) {
   uv_close((uv_handle_t*) handle, NULL);
   uv_close((uv_handle_t*) &fs_event, NULL);
