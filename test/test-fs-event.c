@@ -476,6 +476,85 @@ TEST_IMPL(fs_event_watch_dir) {
   return 0;
 }
 
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(NO_FS_EVENTS)
+static void fs_event_firmlink_timeout(uv_timer_t* handle) {
+  uv_close((uv_handle_t*) handle, NULL);
+  uv_close((uv_handle_t*) &fs_event, NULL);
+}
+
+
+static void fs_event_firmlink_write(uv_timer_t* handle) {
+  create_file(fs_event_filename);
+  ASSERT_OK(uv_timer_start(handle, fs_event_firmlink_timeout, 2000, 0));
+}
+
+
+static void fs_event_firmlink_cb(uv_fs_event_t* handle,
+                                const char* filename,
+                                int events,
+                                int status) {
+  ASSERT_OK(status);
+  if (filename == NULL || strcmp(filename, "file") != 0)
+    return;
+
+  ASSERT_NE(0, events);
+  fs_event_cb_called++;
+  uv_close((uv_handle_t*) &timer, NULL);
+  uv_close((uv_handle_t*) handle, NULL);
+}
+
+
+TEST_IMPL(fs_event_watch_dir_firmlink) {
+  const char* directory;
+  char alias[PATH_MAX];
+  uv_loop_t loop;
+  uv_stat_t original;
+  uv_fs_t temp;
+  uv_fs_t resolved;
+  uv_fs_t req;
+  int r;
+  int same_dir;
+
+  ASSERT_OK(uv_fs_mkdtemp(NULL, &temp, "watch_firmlink_XXXXXX", NULL));
+  ASSERT_OK(uv_fs_realpath(NULL, &resolved, temp.path, NULL));
+  directory = resolved.ptr;
+  r = snprintf(alias, sizeof(alias), "/System/Volumes/Data%s", directory);
+  ASSERT_GT(r, 0);
+  ASSERT_LT((size_t) r, sizeof(alias));
+
+  ASSERT_OK(uv_fs_stat(NULL, &req, directory, NULL));
+  original = req.statbuf;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_stat(NULL, &req, alias, NULL);
+  same_dir = r == 0 &&
+             original.st_dev == req.statbuf.st_dev &&
+             original.st_ino == req.statbuf.st_ino;
+  uv_fs_req_cleanup(&req);
+  uv_fs_req_cleanup(&resolved);
+  if (!same_dir) {
+    ASSERT_OK(delete_dir(temp.path));
+    uv_fs_req_cleanup(&temp);
+    RETURN_SKIP("Test directory is not reachable through a boot volume firmlink.");
+  }
+
+  snprintf(fs_event_filename, sizeof(fs_event_filename), "%s/file", temp.path);
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_fs_event_init(&loop, &fs_event));
+  ASSERT_OK(uv_fs_event_start(&fs_event, fs_event_firmlink_cb, alias, 0));
+  ASSERT_OK(uv_timer_init(&loop, &timer));
+  ASSERT_OK(uv_timer_start(&timer, fs_event_firmlink_write, 250, 0));
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_loop_close(&loop));
+
+  ASSERT_OK(delete_file(fs_event_filename));
+  ASSERT_OK(delete_dir(temp.path));
+  uv_fs_req_cleanup(&temp);
+  ASSERT_EQ(1, fs_event_cb_called);
+  return 0;
+}
+#endif
+
+
 TEST_IMPL(fs_event_watch_delete_dir) {
 #if defined(NO_FS_EVENTS)
   RETURN_SKIP(NO_FS_EVENTS);
