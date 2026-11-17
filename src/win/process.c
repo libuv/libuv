@@ -62,17 +62,13 @@ static const env_var_t required_vars[] = { /* keep me sorted */
 };
 
 
-static HANDLE uv_global_job_handle_;
-static uv_once_t uv_global_job_handle_init_guard_ = UV_ONCE_INIT;
-
-
-static void uv__init_global_job_handle(void) {
+static HANDLE uv__job_create(void) {
   /* Create a job object and set it up to kill all contained processes when
    * it's closed. Since this handle is made non-inheritable and we're not
    * giving it to anyone, we're the only process holding a reference to it.
    * That means that if this process exits it is closed and all the processes
-   * it contains are killed. All processes created with uv_spawn that are not
-   * spawned with the UV_PROCESS_DETACHED flag are assigned to this job.
+   * it contains are killed. Each process created with uv_spawn that is not
+   * spawned with the UV_PROCESS_DETACHED flag is assigned to a job of its own.
    *
    * We're setting the JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK flag so only the
    * processes that we explicitly add are affected, and *their* subprocesses
@@ -84,6 +80,8 @@ static void uv__init_global_job_handle(void) {
    */
   SECURITY_ATTRIBUTES attr;
   JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
+  HANDLE job;
+  DWORD err;
 
   memset(&attr, 0, sizeof attr);
   attr.bInheritHandle = FALSE;
@@ -95,30 +93,79 @@ static void uv__init_global_job_handle(void) {
       JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION |
       JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
-  uv_global_job_handle_ = CreateJobObjectW(&attr, NULL);
-  if (uv_global_job_handle_ == NULL)
-    uv_fatal_error(GetLastError(), "CreateJobObjectW");
+  job = CreateJobObjectW(&attr, NULL);
+  if (job == NULL)
+    return NULL;
 
-  if (!SetInformationJobObject(uv_global_job_handle_,
+  if (!SetInformationJobObject(job,
                                JobObjectExtendedLimitInformation,
                                &info,
-                               sizeof info))
-    uv_fatal_error(GetLastError(), "SetInformationJobObject");
-
-
-  if (!AssignProcessToJobObject(uv_global_job_handle_, GetCurrentProcess())) {
-    /* Make sure this handle is functional. The Windows kernel has a bug that
-     * if the first use of AssignProcessToJobObject is for a Windows Store
-     * program, subsequent attempts to use the handle with fail with
-     * INVALID_PARAMETER (87). This is possibly because all uses of the handle
-     * must be for the same Terminal Services session. We can ensure it is tied
-     * to our current session now by adding ourself to it. We could remove
-     * ourself afterwards, but there doesn't seem to be a reason to.
-     */
-    DWORD err = GetLastError();
-    if (err != ERROR_ACCESS_DENIED)
-      uv_fatal_error(err, "AssignProcessToJobObject");
+                               sizeof info)) {
+    err = GetLastError();
+    CloseHandle(job);
+    SetLastError(err);
+    return NULL;
   }
+
+  return job;
+}
+
+
+/* Closes the job of a child process that has exited. */
+static void uv__job_release(HANDLE job) {
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
+
+  if (QueryInformationJobObject(job,
+                                JobObjectExtendedLimitInformation,
+                                &info,
+                                sizeof info,
+                                NULL)) {
+    /* We don't intend to kill any subprocesses that may have joined the job,
+     * so remove the kill-on-close flag before closing. */
+    info.BasicLimitInformation.LimitFlags &=
+        ~JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    SetInformationJobObject(job,
+                            JobObjectExtendedLimitInformation,
+                            &info,
+                            sizeof info);
+  }
+
+  CloseHandle(job);
+}
+
+
+/* Waits for a child process to exit, and owns its process and job handles.
+ *
+ * The handle may be closed before the process exits. We cannot free the
+ * process's job at that time, since that would kill the process immediately.
+ * The job is stored in this separately allocated memory (the 'watch').
+ *  - If the child exits first, the watch transitions from RUNNING to EXITED
+ *    and reports the exit to the loop. The loop frees the watch.
+ *  - If the handle is closed first, the watch transitions from RUNNING to
+ *    ORPHANED and is freed when the callback runs.
+ */
+typedef struct {
+  uv_process_t* process;
+  HANDLE process_handle;
+  HANDLE job;
+  PTP_WAIT wait;
+  HMODULE module;
+  LONG volatile state;
+} uv__process_watch_t;
+
+enum {
+  UV__PROCESS_WATCH_RUNNING,
+  UV__PROCESS_WATCH_EXITED,
+  UV__PROCESS_WATCH_ORPHANED
+};
+
+
+static void uv__process_watch_free(uv__process_watch_t* watch) {
+  CloseThreadpoolWait(watch->wait);
+  if (watch->job != NULL)
+    uv__job_release(watch->job);
+  CloseHandle(watch->process_handle);
+  uv__free(watch);
 }
 
 
@@ -132,8 +179,9 @@ static void uv__process_init(uv_loop_t* loop, uv_process_t* handle) {
   handle->exit_cb = NULL;
   handle->pid = 0;
   handle->exit_signal = 0;
-  handle->wait_handle = INVALID_HANDLE_VALUE;
+  handle->exit_watch = NULL;
   handle->process_handle = INVALID_HANDLE_VALUE;
+  handle->job_handle = NULL;
   handle->exit_cb_pending = 0;
 
   UV_REQ_INIT(&handle->exit_req, UV_PROCESS_EXIT);
@@ -803,18 +851,37 @@ static WCHAR* find_path(WCHAR *env) {
  * Called on Windows thread-pool thread to indicate that
  * a child process has exited.
  */
-static void CALLBACK exit_wait_callback(void* data, BOOLEAN didTimeout) {
-  uv_process_t* process = (uv_process_t*) data;
-  uv_loop_t* loop = process->loop;
+static void CALLBACK exit_wait_callback(PTP_CALLBACK_INSTANCE instance,
+                                        void* context,
+                                        PTP_WAIT wait,
+                                        TP_WAIT_RESULT wait_result) {
+  uv__process_watch_t* watch = (uv__process_watch_t*) context;
+  uv_process_t* process;
+  LONG state;
 
-  assert(didTimeout == FALSE);
-  assert(process);
+  assert(wait_result == WAIT_OBJECT_0);
+  assert(watch);
+
+  /* Release the reference to libuv taken in uv_spawn once we've returned. */
+  FreeLibraryWhenCallbackReturns(instance, watch->module);
+
+  state = InterlockedCompareExchange(&watch->state,
+                                     UV__PROCESS_WATCH_EXITED,
+                                     UV__PROCESS_WATCH_RUNNING);
+  if (state == UV__PROCESS_WATCH_ORPHANED) {
+    /* The handle has already been closed. Clean up the orphaned watch. */
+    uv__process_watch_free(watch);
+    return;
+  }
+
+  assert(state == UV__PROCESS_WATCH_RUNNING);
+  process = watch->process;
   assert(!process->exit_cb_pending);
 
   process->exit_cb_pending = 1;
 
   /* Post completed */
-  POST_COMPLETION_FOR_REQ(loop, &process->exit_req);
+  POST_COMPLETION_FOR_REQ(process->loop, &process->exit_req);
 }
 
 
@@ -826,19 +893,6 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
   assert(handle->exit_cb_pending);
   handle->exit_cb_pending = 0;
 
-  /* If we're closing, don't call the exit callback. Just schedule a close
-   * callback now. */
-  if (handle->flags & UV_HANDLE_CLOSING) {
-    uv__want_endgame(loop, (uv_handle_t*) handle);
-    return;
-  }
-
-  /* Unregister from process notification. */
-  if (handle->wait_handle != INVALID_HANDLE_VALUE) {
-    UnregisterWait(handle->wait_handle);
-    handle->wait_handle = INVALID_HANDLE_VALUE;
-  }
-
   if (GetExitCodeProcess(handle->process_handle, &status)) {
     exit_code = status;
   } else {
@@ -846,10 +900,19 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
     exit_code = uv_translate_sys_error(GetLastError());
   }
 
-  /* Clean-up the process handle eagerly. */
-  CloseHandle(handle->process_handle);
+  /* Clean-up the process handle and watch eagerly. */
+  uv__process_watch_free((uv__process_watch_t*) handle->exit_watch);
+  handle->exit_watch = NULL;
   handle->process_handle = INVALID_HANDLE_VALUE;
+  handle->job_handle = NULL;
   handle->flags |= UV_HANDLE_ESRCH;
+
+  /* If we're closing, don't call the exit callback. Just schedule a close
+   * callback now. */
+  if (handle->flags & UV_HANDLE_CLOSING) {
+    uv__want_endgame(loop, (uv_handle_t*) handle);
+    return;
+  }
 
   /* Set the handle to inactive: no callbacks will be made after the exit
    * callback. */
@@ -863,23 +926,29 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
 
 
 void uv__process_close(uv_loop_t* loop, uv_process_t* handle) {
+  uv__process_watch_t* watch = (uv__process_watch_t*) handle->exit_watch;
+
   uv__handle_closing(handle);
 
-  if (handle->wait_handle != INVALID_HANDLE_VALUE) {
-    /* This blocks until either the wait was cancelled, or the callback has
-     * completed. */
-    BOOL r = UnregisterWaitEx(handle->wait_handle, INVALID_HANDLE_VALUE);
-    if (!r) {
-      /* This should never happen, and if it happens, we can't recover... */
-      uv_fatal_error(GetLastError(), "UnregisterWaitEx");
+  if (watch != NULL) {
+    if (InterlockedCompareExchange(&watch->state,
+                                   UV__PROCESS_WATCH_ORPHANED,
+                                   UV__PROCESS_WATCH_RUNNING) ==
+        UV__PROCESS_WATCH_EXITED) {
+      /* The child has exited and the exit callback is queued to the loop.
+       * The process will be destroyed there. */
+      return;
     }
 
-    handle->wait_handle = INVALID_HANDLE_VALUE;
+    /* The wait callback hasn't run yet. Orphan the watch from the handle
+     * so that the callback frees it when the child exits. */
+    handle->exit_watch = NULL;
+    handle->process_handle = INVALID_HANDLE_VALUE;
+    handle->job_handle = NULL;
+    handle->flags |= UV_HANDLE_ESRCH;
   }
 
-  if (!handle->exit_cb_pending) {
-    uv__want_endgame(loop, (uv_handle_t*)handle);
-  }
+  uv__want_endgame(loop, (uv_handle_t*) handle);
 }
 
 
@@ -887,10 +956,7 @@ void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle) {
   assert(!handle->exit_cb_pending);
   assert(handle->flags & UV_HANDLE_CLOSING);
   assert(!(handle->flags & UV_HANDLE_CLOSED));
-
-  /* Clean-up the process handle. */
-  if (handle->process_handle != INVALID_HANDLE_VALUE)
-    CloseHandle(handle->process_handle);
+  assert(handle->exit_watch == NULL);
 
   uv__handle_close(handle);
 }
@@ -902,7 +968,6 @@ int uv_spawn(uv_loop_t* loop,
   int i;
   int err = 0;
   WCHAR* path = NULL, *alloc_path = NULL;
-  BOOL result;
   WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
          *env = NULL, *cwd = NULL;
   STARTUPINFOEXW startup;
@@ -912,6 +977,10 @@ int uv_spawn(uv_loop_t* loop,
   HANDLE* handle_list;
   LPPROC_THREAD_ATTRIBUTE_LIST attr_list;
   int attr_list_initialized;
+  HANDLE job;
+  uv__process_watch_t* watch;
+  PTP_WAIT wait;
+  HMODULE module;
 
   uv__process_init(loop, process);
   process->exit_cb = options->exit_cb;
@@ -919,6 +988,10 @@ int uv_spawn(uv_loop_t* loop,
   handle_list = NULL;
   attr_list = NULL;
   attr_list_initialized = 0;
+  job = NULL;
+  watch = NULL;
+  wait = NULL;
+  module = NULL;
 
   if (options->flags & (UV_PROCESS_SETGID | UV_PROCESS_SETUID)) {
     return UV_ENOTSUP;
@@ -1126,7 +1199,38 @@ int uv_spawn(uv_loop_t* loop,
      * breakaway.
      */
     process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
+  }
+
+  /* If the process isn't spawned as detached, create a job object for it so
+   * Windows will kill it when the parent process dies. */
+  if (!(options->flags & UV_PROCESS_DETACHED)) {
+    job = uv__job_create();
+    if (job == NULL) {
+      err = GetLastError();
+      goto done;
+    }
     process_flags |= CREATE_SUSPENDED;
+  }
+
+  watch = (uv__process_watch_t*) uv__malloc(sizeof(*watch));
+  if (watch == NULL) {
+    err = ERROR_OUTOFMEMORY;
+    goto done;
+  }
+
+  wait = CreateThreadpoolWait(exit_wait_callback, watch, NULL);
+  if (wait == NULL) {
+    err = GetLastError();
+    goto done;
+  }
+
+  /* The wait can outlive the handle and the loop, so keep libuv loaded until
+   * the watch is freed. */
+  if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+                          (LPCWSTR) exit_wait_callback,
+                          &module)) {
+    err = GetLastError();
+    goto done;
   }
 
   if (!CreateProcessW(application_path,
@@ -1144,40 +1248,34 @@ int uv_spawn(uv_loop_t* loop,
     goto done;
   }
 
-  /* If the process isn't spawned as detached, assign to the global job object
-   * so windows will kill it when the parent process dies. */
-  if (!(options->flags & UV_PROCESS_DETACHED)) {
-    uv_once(&uv_global_job_handle_init_guard_, uv__init_global_job_handle);
-
-    if (!AssignProcessToJobObject(uv_global_job_handle_, info.hProcess)) {
-      /* AssignProcessToJobObject might fail if this process is under job
-       * control and the job doesn't have the
-       * JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK flag set, on a Windows version
-       * that doesn't support nested jobs.
-       *
-       * When that happens we just swallow the error and continue without
-       * establishing a kill-child-on-parent-exit relationship, otherwise
-       * there would be no way for libuv applications run under job control
-       * to spawn processes at all.
-       */
-      DWORD err = GetLastError();
-      if (err != ERROR_ACCESS_DENIED)
-        uv_fatal_error(err, "AssignProcessToJobObject");
-    }
-  }
-
-  if (process_flags & CREATE_SUSPENDED) {
-    if (ResumeThread(info.hThread) == ((DWORD)-1)) {
+  if (job != NULL) {
+    if (!AssignProcessToJobObject(job, info.hProcess) ||
+        ResumeThread(info.hThread) == (DWORD) -1) {
       err = GetLastError();
       TerminateProcess(info.hProcess, 1);
+      CloseHandle(info.hProcess);
+      CloseHandle(info.hThread);
       goto done;
     }
   }
 
   /* Spawn succeeded. Beyond this point, failure is reported asynchronously. */
 
+  watch->process = process;
+  watch->process_handle = info.hProcess;
+  watch->job = job;
+  watch->wait = wait;
+  watch->module = module;
+  watch->state = UV__PROCESS_WATCH_RUNNING;
+
+  process->exit_watch = watch;
   process->process_handle = info.hProcess;
+  process->job_handle = job;
   process->pid = info.dwProcessId;
+  job = NULL;
+  watch = NULL;
+  wait = NULL;
+  module = NULL;
 
   /* Set IPC pid to all IPC pipes. */
   for (i = 0; i < options->stdio_count; i++) {
@@ -1191,12 +1289,9 @@ int uv_spawn(uv_loop_t* loop,
   }
 
   /* Setup notifications for when the child process exits. */
-  result = RegisterWaitForSingleObject(&process->wait_handle,
-      process->process_handle, exit_wait_callback, (void*)process, INFINITE,
-      WT_EXECUTEINWAITTHREAD | WT_EXECUTEONLYONCE);
-  if (!result) {
-    uv_fatal_error(GetLastError(), "RegisterWaitForSingleObject");
-  }
+  SetThreadpoolWait(((uv__process_watch_t*) process->exit_watch)->wait,
+                    process->process_handle,
+                    NULL);
 
   CloseHandle(info.hThread);
 
@@ -1219,6 +1314,16 @@ int uv_spawn(uv_loop_t* loop,
   uv__free(cwd);
   uv__free(env);
   uv__free(alloc_path);
+
+  /* The job is only set here if the spawn failed. We don't want to close the
+   * job otherwise, since that would kill the process we just created. */
+  if (job != NULL)
+    CloseHandle(job);
+  if (wait != NULL)
+    CloseThreadpoolWait(wait);
+  if (module != NULL)
+    FreeLibrary(module);
+  uv__free(watch);
 
   if (attr_list != NULL) {
     if (attr_list_initialized)

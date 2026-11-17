@@ -618,9 +618,9 @@ struct uv__req_write_extra_s {
   struct uv_process_exit_s {                                                  \
     UV_REQ_FIELDS                                                             \
   } exit_req;                                                                 \
-  void* unused; /* TODO: retained for ABI compat; remove this in v2.x. */     \
+  HANDLE job_handle;                                                          \
   int exit_signal;                                                            \
-  HANDLE wait_handle;                                                         \
+  void* exit_watch;                                                           \
   HANDLE process_handle;                                                      \
   volatile char exit_cb_pending;
 
