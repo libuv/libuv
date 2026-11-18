@@ -361,10 +361,19 @@ static void uv__cpu_relax(void) {
  * Bits 1+: busy counter (2 per in-flight uv_async_send call).
  *
  * uv__pending_cas and uv__pending_fetch_or are seq_cst (InterlockedXxx on
- * MSVC, default memory_order_seq_cst on stdatomic). Their seq_cst pairing
- * with the fetch_and/InterlockedAnd on the callback side makes uv_async_send
- * and the uv_async_cb invocation sequentially consistent — all accesses
- * (reads and writes) before uv_async_send are visible to the callback.
+ * MSVC, default memory_order_seq_cst on stdatomic). Every uv_async_send ends
+ * in a successful CAS while bit 0 is set: either the one that sets it, or,
+ * when coalescing, one that writes back the value it read. Either way it is a
+ * release write that precedes the clearing fetch_and/InterlockedAnd on the
+ * callback side in the modification order. Every write to the field is an
+ * RMW, so that fetch_and reads from the CAS's release sequence and acquires
+ * it: all accesses (reads and writes) before uv_async_send happen-before the
+ * callback that answers it.
+ *
+ * A failed CAS would not do: it makes no write, so it is only a load and
+ * orders none of the caller's earlier accesses (on AArch64, an LDAXR or a
+ * failing CASAL), which allows a store-buffering outcome against the
+ * callback.
  *
  * uv__pending_fetch_add (busy counter decrement) is a release and
  * uv__pending_load (busy counter poll) is an acquire, so the sender's wakeup
@@ -406,12 +415,20 @@ int uv_async_send(uv_async_t* handle) {
 
   /* Atomically set the pending flag (bit 0) and increment the busy counter
    * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once.
-   * The seq_cst CAS synchronizes with the seq_cst fetch_and in the callback,
-   * making all accesses before this call visible to the callback (and vice
-   * versa from the callback). */
-  while (!uv__pending_cas(&handle->pending, &current, current + 3))
-    if (current & 1)
-      return 0;
+   * The CAS is a release that the fetch_and in the callback acquires, making
+   * all accesses before this call visible to the callback. */
+  for (;;) {
+    if (current & 1) {
+      /* Coalescing with a pending callback. Write back the value we read,
+       * rather than just returning after the failed CAS: a successful CAS is
+       * a release that the callback's fetch_and acquires, but a failed one is
+       * only a load that orders nothing. */
+      if (uv__pending_cas(&handle->pending, &current, current))
+        return 0;
+    } else if (uv__pending_cas(&handle->pending, &current, current + 3)) {
+      break;
+    }
+  }
 
   /* Wake up the event loop. The notification write establishes a
    * happens-before relationship with the reader via the kernel. */

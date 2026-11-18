@@ -9,10 +9,15 @@ called from another thread.
 
 .. note::
 
-    :c:func:`uv_async_send` and the :c:type:`uv_async_cb` invocation are
-    sequentially consistent (seq_cst) operations for a given async handle: all
-    memory accesses (reads and writes) made before :c:func:`uv_async_send` are
-    visible to that callback.
+    All memory accesses (reads and writes) made before
+    :c:func:`uv_async_send` are ordered before the :c:type:`uv_async_cb`
+    invocation that answers it, including when the call is coalesced with an
+    earlier one: the callback sees the caller's earlier writes, and the
+    caller's earlier reads do not see the callback's writes (so the callback
+    may, for example, free memory the caller read before sending). Each call,
+    coalesced or not, ends in an atomic read-modify-write of the handle's
+    pending flag that is a release, which the loop acquires when it clears the
+    flag before calling the callback.
 
 .. warning::
     libuv will coalesce calls to :c:func:`uv_async_send`, that is, not every
@@ -20,14 +25,15 @@ called from another thread.
     :c:func:`uv_async_send` is called 5 times in a row before the callback is
     called, the callback will only be called once. If :c:func:`uv_async_send`
     is called again after the callback was called, it will be called again.
-    However, since it is sequentially consistent, the values read or written in
-    that callback will always be the same (or newer) as those read or written
-    by the other thread.
+    However, the values read or written in that callback will always be the
+    same as (or newer than) those read or written by the other thread before
+    it called :c:func:`uv_async_send`.
 
-.. versionchanged:: 1.53.0
-    :c:func:`uv_async_send` and :c:type:`uv_async_cb` are sequentially
-    consistent. Prior to this version, any case where libuv might coalesce
-    calls probably requires a full `seq_cst` fence before it for correctness.
+.. versionchanged:: 1.53.1
+    Accesses before :c:func:`uv_async_send` are ordered before the callback,
+    including when the call is coalesced. Prior to this version, any case where
+    libuv might coalesce calls requires a full `seq_cst` fence before it for
+    correctness.
 
 
 Data types
