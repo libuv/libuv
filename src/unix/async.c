@@ -144,11 +144,14 @@ void uv__async_io(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
     uv__queue_insert_tail(&loop->async_handles, q);
 
     /* Atomically clear the pending flag (bit 0) and check if it was set.
-     * This acquires the release CAS of every uv_async_send call it answers,
-     * including coalesced ones, making all accesses before those calls
-     * happen-before the callback. */
+     * The acquire takes the release CAS of every uv_async_send call this
+     * answers, including coalesced ones, making all accesses before those
+     * calls happen-before the callback. The release orders our consumption of
+     * the wakeup (the read above, or the edge-triggered epoll event on Linux)
+     * before any uv_async_send that sees the flag clear and notifies again, so
+     * that notification isn't lost. */
     pending = (_Atomic int*) &h->pending;
-    if (!(atomic_fetch_and(pending, ~1) & 1))
+    if (!(atomic_fetch_and_explicit(pending, ~1, memory_order_acq_rel) & 1))
       continue;
 
     if (h->async_cb == NULL)

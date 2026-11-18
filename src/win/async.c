@@ -101,7 +101,9 @@ void uv__process_async_wakeup_req(uv_loop_t* loop, uv_async_t* handle,
   /* Clear pending flag, retain busy counter. This acquires the
    * InterlockedCompareExchange of every uv_async_send call it answers,
    * including coalesced ones, making all accesses before those calls
-   * happen-before the callback. */
+   * happen-before the callback. It must also be a release: a sender that sees
+   * the flag clear reposts async_req, which must happen after we dequeued it.
+   * InterlockedAnd is a full barrier, which covers both. */
   InterlockedAnd((LONG volatile*) &handle->pending, ~1);
 
   if (handle->flags & UV_HANDLE_CLOSING) {

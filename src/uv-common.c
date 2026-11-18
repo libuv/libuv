@@ -360,24 +360,32 @@ static void uv__cpu_relax(void) {
  * Bit 0: pending flag (notification sent or handle closing).
  * Bits 1+: busy counter (2 per in-flight uv_async_send call).
  *
- * uv__pending_cas and uv__pending_fetch_or are seq_cst (InterlockedXxx on
- * MSVC, default memory_order_seq_cst on stdatomic). Every uv_async_send ends
- * in a successful CAS while bit 0 is set: either the one that sets it, or,
- * when coalescing, one that writes back the value it read. Either way it is a
- * release write that precedes the clearing fetch_and/InterlockedAnd on the
- * callback side in the modification order. Every write to the field is an
- * RMW, so that fetch_and reads from the CAS's release sequence and acquires
- * it: all accesses (reads and writes) before uv_async_send happen-before the
- * callback that answers it.
+ * uv__pending_cas is acq_rel on success and relaxed on failure (a full
+ * barrier with InterlockedCompareExchange on MSVC, which has no acq_rel
+ * variant). The clearing fetch_and/InterlockedAnd on the callback side is
+ * acq_rel too. Both halves are needed:
+ *
+ *  - Release CAS, acquire clear: every uv_async_send ends in a successful CAS
+ *    while bit 0 is set, either the one that sets it or, when coalescing, one
+ *    that writes back the value it read. That write precedes the clear in the
+ *    modification order, and every write to the field is an RMW, so the clear
+ *    reads from the CAS's release sequence: all accesses (reads and writes)
+ *    before uv_async_send happen-before the callback that answers it.
+ *
+ *  - Release clear, acquire CAS: the loop drains the wakeup (reads the fd, or
+ *    dequeues the reused async_req on Windows) before clearing bit 0. A sender
+ *    whose CAS reads the cleared bit notifies again, and that notification
+ *    must not be consumed by the earlier drain, or the callback is lost.
  *
  * A failed CAS would not do: it makes no write, so it is only a load and
  * orders none of the caller's earlier accesses (on AArch64, an LDAXR or a
  * failing CASAL), which allows a store-buffering outcome against the
  * callback.
  *
- * uv__pending_fetch_add (busy counter decrement) is a release and
- * uv__pending_load (busy counter poll) is an acquire, so the sender's wakeup
- * happens-before uv__async_stop tears down the wakeup fd. */
+ * uv__pending_fetch_or (uv__async_spin) is seq_cst. uv__pending_fetch_add
+ * (busy counter decrement) is a release and uv__pending_load (busy counter
+ * poll) is an acquire, so the sender's wakeup happens-before uv__async_stop
+ * tears down the wakeup fd. */
 #ifdef _MSC_VER
 
 static int uv__pending_cas(int* p, int* expected, int desired) {
@@ -397,7 +405,11 @@ static int uv__pending_cas(int* p, int* expected, int desired) {
 #else  /* GCC / Clang / MinGW — use C11 stdatomic */
 
 static int uv__pending_cas(int* p, int* expected, int desired) {
-  return atomic_compare_exchange_weak((_Atomic int*) p, expected, desired);
+  return atomic_compare_exchange_weak_explicit((_Atomic int*) p,
+                                               expected,
+                                               desired,
+                                               memory_order_acq_rel,
+                                               memory_order_relaxed);
 }
 
 #define uv__pending_load(p) \
@@ -416,7 +428,9 @@ int uv_async_send(uv_async_t* handle) {
   /* Atomically set the pending flag (bit 0) and increment the busy counter
    * (bits 1+). Adding 3 sets bit 0 and adds 2 to the busy counter at once.
    * The CAS is a release that the fetch_and in the callback acquires, making
-   * all accesses before this call visible to the callback. */
+   * all accesses before this call visible to the callback, and an acquire of
+   * that fetch_and, so the loop's drain of the previous wakeup happens-before
+   * our notification. */
   for (;;) {
     if (current & 1) {
       /* Coalescing with a pending callback. Write back the value we read,
