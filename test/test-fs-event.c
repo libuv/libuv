@@ -559,6 +559,76 @@ TEST_IMPL(fs_event_watch_delete_dir_win) {
 }
 #endif
 
+#ifdef _WIN32
+static int fs_event_cb_del_file_perm_got_enoent;
+
+static void fs_event_cb_del_file_perm(uv_fs_event_t* handle,
+                                      const char* filename,
+                                      int events,
+                                      int status) {
+  /* A deleted parent directory must not surface as a UV_EPERM storm
+   * (libuv/libuv#5399); the watch is torn down with a single UV_ENOENT. */
+  ASSERT_NE(status, UV_EPERM);
+  if (status == 0 && (events & UV_RENAME) && filename != NULL)
+    ASSERT_STR_EQ(filename, "a.txt");
+  if (status == UV_ENOENT) {
+    fs_event_cb_del_file_perm_got_enoent = 1;
+    uv_close((uv_handle_t*)handle, close_cb);
+  }
+}
+
+static void fs_event_del_file_and_dir(uv_timer_t* handle) {
+  int r;
+
+  /* Remove the watched file, then its parent directory, so the watch ends up
+   * pointing at a directory that has been deleted. */
+  r = delete_file("watch_del_file_dir/a.txt");
+  ASSERT_OK(r);
+  r = delete_dir("watch_del_file_dir");
+  ASSERT_OK(r);
+
+  uv_close((uv_handle_t*)handle, close_cb);
+}
+
+TEST_IMPL(fs_event_watch_delete_file_win) {
+  uv_loop_t* loop = uv_default_loop();
+  int r;
+
+  /* Setup */
+  fs_event_cb_del_file_perm_got_enoent = 0;
+  fs_event_unlink_files(NULL);
+  delete_file("watch_del_file_dir/a.txt");
+  delete_dir("watch_del_file_dir/");
+  create_dir("watch_del_file_dir");
+  create_file("watch_del_file_dir/a.txt");
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event,
+                        fs_event_cb_del_file_perm,
+                        "watch_del_file_dir/a.txt",
+                        0);
+  ASSERT_OK(r);
+  r = uv_timer_init(loop, &timer);
+  ASSERT_OK(r);
+  r = uv_timer_start(&timer, fs_event_del_file_and_dir, 100, 0);
+  ASSERT_OK(r);
+
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(1, fs_event_cb_del_file_perm_got_enoent);
+  ASSERT_EQ(2, close_cb_called);
+
+  /* Cleanup */
+  fs_event_unlink_files(NULL);
+  delete_file("watch_del_file_dir/a.txt");
+  delete_dir("watch_del_file_dir/");
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
+#endif
+
 
 TEST_IMPL(fs_event_watch_dir_recursive) {
 #if defined(__APPLE__) && defined(__TSAN__)

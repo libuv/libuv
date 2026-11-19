@@ -451,6 +451,7 @@ TEST_DECLARE   (fs_event_watch_dir)
 TEST_DECLARE   (fs_event_watch_delete_dir)
 #ifdef _WIN32
 TEST_DECLARE   (fs_event_watch_delete_dir_win)
+TEST_DECLARE   (fs_event_watch_delete_file_win)
 #endif
 TEST_DECLARE   (fs_event_watch_dir_recursive)
 TEST_DECLARE   (fs_event_watch_dir_recursive_burst)
@@ -1240,6 +1241,7 @@ TASK_LIST_START
   TEST_ENTRY  (fs_event_watch_delete_dir)
 #ifdef _WIN32
   TEST_ENTRY  (fs_event_watch_delete_dir_win)
+  TEST_ENTRY  (fs_event_watch_delete_file_win)
 #endif
   TEST_ENTRY  (fs_event_watch_dir_recursive)
   TEST_ENTRY  (fs_event_watch_dir_recursive_burst)
