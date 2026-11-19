@@ -568,6 +568,7 @@ TEST_DECLARE   (closed_fd_events)
 TEST_DECLARE   (spawn_fs_open)
 #ifdef _WIN32
 TEST_DECLARE   (spawn_detect_pipe_name_collisions_on_windows)
+TEST_DECLARE   (spawn_job_on_windows)
 #if !defined(USING_UV_SHARED)
 TEST_DECLARE   (argument_escaping)
 TEST_DECLARE   (environment_creation)
@@ -1153,6 +1154,7 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_fs_open)
 #ifdef _WIN32
   TEST_ENTRY  (spawn_detect_pipe_name_collisions_on_windows)
+  TEST_ENTRY  (spawn_job_on_windows)
 #if !defined(USING_UV_SHARED)
   TEST_ENTRY  (argument_escaping)
   TEST_ENTRY  (environment_creation)
