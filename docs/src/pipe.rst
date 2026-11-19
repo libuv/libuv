@@ -64,6 +64,12 @@ API
         Paths on Unix get truncated to ``sizeof(sockaddr_un.sun_path)`` bytes,
         typically between 92 and 108 bytes.
 
+    .. note::
+        :c:func:`uv_close` unlinks the socket, resolving its path against the
+        working directory that is current at bind time. This is best effort:
+        an abnormal exit leaves the socket in place and a parent directory
+        renamed in the meantime still misdirects the unlink.
+
 .. c:function:: int uv_pipe_bind2(uv_pipe_t* handle, const char* name, size_t namelen, unsigned int flags)
 
     Bind the pipe to a file path (Unix) or a name (Windows).
@@ -80,6 +86,12 @@ API
         Paths on Unix get truncated to ``sizeof(sockaddr_un.sun_path)`` bytes,
         typically between 92 and 108 bytes, unless the ``UV_PIPE_NO_TRUNCATE``
         flag is specified, in which case an ``UV_EINVAL`` error is returned.
+
+    .. note::
+        :c:func:`uv_close` unlinks the socket, resolving its path against the
+        working directory that is current at bind time. This is best effort:
+        an abnormal exit leaves the socket in place and a parent directory
+        renamed in the meantime still misdirects the unlink.
 
 .. c:function:: void uv_pipe_connect(uv_connect_t* req, uv_pipe_t* handle, const char* name, uv_connect_cb cb)
 

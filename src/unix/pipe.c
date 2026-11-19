@@ -75,6 +75,42 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
 }
 
 
+/* Returns a newly allocated copy of |name| that names the same file system
+ * entity regardless of the current working directory, or NULL if that cannot
+ * be done: absolute paths need no help and a working directory that cannot be
+ * read (it may have been unlinked) offers nothing to anchor a path to.
+ *
+ * uv__pipe_close() unlinks the stored path and unlink() resolves a relative
+ * path against the working directory in effect at *that* moment, not the one
+ * bind() used. Storing the path as it was given therefore lets an application
+ * that changed directories in the meantime delete an unrelated file while
+ * leaving its own socket behind.
+ */
+static char* uv__pipe_abspath(const char* name, size_t namelen) {
+  char cwd[1 + UV__PATH_MAX];
+  char* result;
+  size_t size;
+
+  if (name[0] == '/')
+    return NULL;
+
+  size = sizeof(cwd);
+  if (uv_cwd(cwd, &size) != 0)
+    return NULL;
+
+  result = uv__malloc(size + 1 + namelen + 1);
+  if (result == NULL)
+    return NULL;
+
+  memcpy(result, cwd, size);
+  if (result[size - 1] != '/')
+    result[size++] = '/';
+  memcpy(result + size, name, namelen);
+  result[size + namelen] = '\0';
+  return result;
+}
+
+
 int uv_pipe_bind2(uv_pipe_t* handle,
                   const char* name,
                   size_t namelen,
@@ -126,11 +162,14 @@ int uv_pipe_bind2(uv_pipe_t* handle,
   if (*name == '\0') {
     addrlen = offsetof(struct sockaddr_un, sun_path) + namelen;
   } else {
-    pipe_fname = uv__malloc(namelen + 1);
-    if (pipe_fname == NULL)
-      return UV_ENOMEM;
-    memcpy(pipe_fname, name, namelen);
-    pipe_fname[namelen] = '\0';
+    pipe_fname = uv__pipe_abspath(name, namelen);
+    if (pipe_fname == NULL) {
+      pipe_fname = uv__malloc(namelen + 1);
+      if (pipe_fname == NULL)
+        return UV_ENOMEM;
+      memcpy(pipe_fname, name, namelen);
+      pipe_fname[namelen] = '\0';
+    }
     addrlen = sizeof saddr;
   }
 
