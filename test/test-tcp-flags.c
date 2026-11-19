@@ -26,6 +26,31 @@
 #include <stdlib.h>
 
 
+#if defined(__sun)
+#include <netinet/tcp.h>
+#endif
+
+/* Match the Solaris 11.4 feature detection in src/unix/internal.h. */
+#if defined(__sun) && !defined(__illumos__) && defined(SO_FLOW_NAME)
+static void check_keepalive(uv_tcp_t* handle, int idle, int interval, int count) {
+  uv_os_fd_t fd;
+  int value;
+  socklen_t size;
+
+  ASSERT_OK(uv_fileno((uv_handle_t*) handle, &fd));
+  size = sizeof(value);
+  ASSERT_OK(getsockopt(fd, IPPROTO_TCP, TCP_KEEPIDLE, &value, &size));
+  ASSERT_EQ(value, idle);
+  size = sizeof(value);
+  ASSERT_OK(getsockopt(fd, IPPROTO_TCP, TCP_KEEPINTVL, &value, &size));
+  ASSERT_EQ(value, interval);
+  size = sizeof(value);
+  ASSERT_OK(getsockopt(fd, IPPROTO_TCP, TCP_KEEPCNT, &value, &size));
+  ASSERT_EQ(value, count);
+}
+#endif
+
+
 TEST_IMPL(tcp_flags) {
   uv_loop_t* loop;
   uv_tcp_t handle;
@@ -42,6 +67,14 @@ TEST_IMPL(tcp_flags) {
 
   r = uv_tcp_keepalive(&handle, 1, 60);
   ASSERT_OK(r);
+
+#if defined(__sun) && !defined(__illumos__) && defined(SO_FLOW_NAME)
+  check_keepalive(&handle, 60, 1, 10);
+
+  /* The idle floor must not be applied to the probe interval. */
+  ASSERT_OK(uv_tcp_keepalive_ex(&handle, 1, 1, 1, 3));
+  check_keepalive(&handle, 10, 1, 3);
+#endif
 
   r = uv_tcp_keepalive(&handle, 0, 0);
   ASSERT_OK(r);
