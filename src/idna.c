@@ -50,8 +50,12 @@ static int32_t uv__wtf8_decode1(const char** input) {
   if ((b3 & 0xC0) != 0x80)
     return -1; /* invalid: not a continuation byte */
   code_point = (code_point << 6) | (b3 & 0x3F);
-  if (b1 <= 0xEF)
-    return 0xFFFF & code_point; /* three-byte character */
+  if (b1 <= 0xEF) {
+    code_point &= 0xFFFF;
+    if (code_point >= 0x800)
+      return code_point; /* three-byte character */
+    return -1; /* invalid: overlong encoding */
+  }
 
   b4 = *++*input;
   if ((b4 & 0xC0) != 0x80)
@@ -59,7 +63,7 @@ static int32_t uv__wtf8_decode1(const char** input) {
   code_point = (code_point << 6) | (b4 & 0x3F);
   if (b1 <= 0xF4) {
     code_point &= 0x1FFFFF;
-    if (code_point <= 0x10FFFF)
+    if (code_point >= 0x10000 && code_point <= 0x10FFFF)
       return code_point; /* four-byte character */
   }
 
