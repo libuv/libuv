@@ -57,7 +57,6 @@
 * Ruby
    * [libuv](https://github.com/cotag/libuv)
    * [uvrb](https://github.com/avalanche123/uvrb)
-   * [ruv](https://github.com/aq1018/ruv)
    * [rbuv](https://github.com/rbuv/rbuv)
    * [mruby-uv](https://github.com/mattn/mruby-uv): mruby binding
 * Lua
@@ -88,7 +87,7 @@
    * [luv](https://github.com/aantron/luv)
    * [uwt](https://github.com/fdopen/uwt)
 * ooc
-   * [ooc-uv](https://github.com/nddrylliog/ooc-uv)
+   * [ooc-uv](https://github.com/fasterthanlime/ooc-uv)
 * dylan
    * [uv-dylan](https://github.com/waywardmonkeys/uv-dylan)
 * R
@@ -96,8 +95,6 @@
    * [fs](https://fs.r-lib.org/): Cross-platform file system operations
 * Java
    * [libuv-java](https://java.net/projects/avatar-js/sources/libuv-java/show): Java bindings
-* Nim
-   * [nimuv](https://github.com/2vg/nimuv): Nim bindings
 * Lisp
    * [cl-libuv](https://github.com/orthecreedence/cl-libuv) Common Lisp bindings
    * [cl-async](https://github.com/orthecreedence/cl-async) Common Lisp async abstraction on top of cl-libuv
