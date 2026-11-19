@@ -19,10 +19,15 @@ is 1024).
 
 .. versionchanged:: 1.50.0 threads now have a default name of libuv-worker.
 
+.. versionchanged:: 1.54.0 one extra thread is started on top of
+   ``UV_THREADPOOL_SIZE``. Work submitted with :c:func:`uv_queue_work` never
+   runs on more than ``UV_THREADPOOL_SIZE`` threads at once, so file system
+   and DNS requests are not starved by CPU-bound work.
+
 The threadpool is global and shared across all event loops. When a particular
 function makes use of the threadpool (e.g. when using :c:func:`uv_queue_work`)
 libuv preallocates and initializes the maximum number of threads allowed by
-``UV_THREADPOOL_SIZE``. More threads usually means more throughput but a higher
+``UV_THREADPOOL_SIZE``, plus one. More threads usually means more throughput but a higher
 memory footprint. Thread stacks grow lazily on most platforms though.
 
 .. note::
