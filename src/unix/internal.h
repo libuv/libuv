@@ -195,6 +195,10 @@ struct uv__stream_queued_fds_s {
 };
 
 #ifdef __linux__
+int uv__cgroup1_find_cpu_controller(const char* cgroup,
+                                    char* path,
+                                    size_t path_size);
+
 struct uv__statx_timestamp {
   int64_t tv_sec;
   uint32_t tv_nsec;
