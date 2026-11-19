@@ -620,7 +620,7 @@ struct uv__req_write_extra_s {
   } exit_req;                                                                 \
   HANDLE job_handle;                                                          \
   int exit_signal;                                                            \
-  void* exit_watch;                                                           \
+  HANDLE wait_handle;                                                         \
   HANDLE process_handle;                                                      \
   volatile char exit_cb_pending;
 
