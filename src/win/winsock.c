@@ -75,6 +75,24 @@ BOOL uv__get_connectex_function(SOCKET socket, LPFN_CONNECTEX* target) {
 
 
 
+/* Whether WSAStartup() was reached, which the safe mode path below skips. */
+static int uv__winsock_started;
+
+
+void uv__winsock_cleanup(void) {
+  if (!uv__winsock_started)
+    return;
+
+  uv__winsock_started = 0;
+
+  /* WSAStartup() reference counts per process, so this only gives up the
+   * reference uv__winsock_init() took. Anything else in the process that
+   * started winsock for itself keeps it up.
+   */
+  WSACleanup();
+}
+
+
 void uv__winsock_init(void) {
   WSADATA wsa_data;
   int errorno;
@@ -99,6 +117,7 @@ void uv__winsock_init(void) {
   if (errorno != 0) {
     uv_fatal_error(errorno, "WSAStartup");
   }
+  uv__winsock_started = 1;
 
   /* Try to detect non-IFS LSPs */
   uv_tcp_non_ifs_lsp_ipv4 = 1;
