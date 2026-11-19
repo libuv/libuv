@@ -710,6 +710,103 @@ TEST_IMPL(fs_event_watch_dir_recursive_burst) {
 }
 
 #ifdef _WIN32
+#define ACCESS_DIR "watch_dir_access"
+#define ACCESS_STALE ACCESS_DIR "/stale"
+#define ACCESS_MARKER ACCESS_DIR "/marker"
+
+static void fs_event_cb_access(uv_fs_event_t* handle,
+                               const char* filename,
+                               int events,
+                               int status) {
+  ASSERT_OK(status);
+  ASSERT_EQ(UV_CHANGE, events);
+  /* Events arrive in order, so a reported read would come before this. */
+  ASSERT_STR_EQ(filename, "marker");
+  ++fs_event_cb_called;
+  uv_close((uv_handle_t*) handle, close_cb);
+}
+
+static void access_delete_files(void) {
+  delete_file(ACCESS_STALE);
+  delete_file(ACCESS_MARKER);
+  delete_dir(ACCESS_DIR);
+}
+#endif
+
+TEST_IMPL(fs_event_watch_dir_ignore_access) {
+#ifndef _WIN32
+  RETURN_SKIP("Tests the Windows ReadDirectoryChangesW filter.");
+#else
+  uv_loop_t* loop;
+  uv_fs_t req;
+  uv_file file;
+  uv_buf_t buf;
+  char data[4];
+  double atime;
+  double mtime;
+  int r;
+
+  loop = uv_default_loop();
+  access_delete_files();
+  create_dir(ACCESS_DIR);
+  create_file(ACCESS_STALE);
+  touch_file(ACCESS_STALE);
+  create_file(ACCESS_MARKER);
+
+  /* NTFS only writes the access time back once the stored one is more than
+     an hour old. */
+  r = uv_fs_stat(NULL, &req, ACCESS_STALE, NULL);
+  ASSERT_OK(r);
+  mtime = req.statbuf.st_mtim.tv_sec + req.statbuf.st_mtim.tv_nsec / 1e9;
+  atime = mtime - 2 * 3600;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_utime(NULL, &req, ACCESS_STALE, atime, mtime, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_event_init(loop, &fs_event);
+  ASSERT_OK(r);
+  r = uv_fs_event_start(&fs_event, fs_event_cb_access, ACCESS_DIR, 0);
+  ASSERT_OK(r);
+
+  r = uv_fs_open(NULL, &req, ACCESS_STALE, UV_FS_O_RDONLY, 0, NULL);
+  ASSERT_GE(r, 0);
+  file = r;
+  uv_fs_req_cleanup(&req);
+  buf = uv_buf_init(data, sizeof(data));
+  r = uv_fs_read(NULL, &req, file, &buf, 1, -1, NULL);
+  ASSERT_GT(r, 0);
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_close(NULL, &req, file, NULL);
+  ASSERT_OK(r);
+  uv_fs_req_cleanup(&req);
+
+  r = uv_fs_stat(NULL, &req, ACCESS_STALE, NULL);
+  ASSERT_OK(r);
+  if (req.statbuf.st_atim.tv_sec < (long) (mtime - 3600)) {
+    uv_fs_req_cleanup(&req);
+    uv_close((uv_handle_t*) &fs_event, close_cb);
+    uv_run(loop, UV_RUN_DEFAULT);
+    access_delete_files();
+    MAKE_VALGRIND_HAPPY(loop);
+    RETURN_SKIP("Last access time updates are disabled.");
+  }
+  uv_fs_req_cleanup(&req);
+
+  touch_file(ACCESS_MARKER);
+  uv_run(loop, UV_RUN_DEFAULT);
+
+  ASSERT_EQ(1, fs_event_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  access_delete_files();
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+#endif
+}
+
+#ifdef _WIN32
 static char short_path_file[MAX_PATH];
 
 static void short_path_timer_cb(uv_timer_t* handle) {
