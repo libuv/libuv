@@ -35,6 +35,10 @@
 #include <ifaddrs.h>
 #endif
 
+#if defined(__FreeBSD__)
+#include <sys/sysctl.h>
+#endif
+
 static int maybe_bind_socket(int fd) {
   union uv__sockaddr s;
   socklen_t slen;
@@ -121,6 +125,8 @@ int uv_tcp_init_ex(uv_loop_t* loop, uv_tcp_t* tcp, unsigned int flags) {
 
   if (flags & ~0xFF)
     return UV_EINVAL;
+
+  tcp->tcp_flags = 0;
 
   uv__stream_init(loop, (uv_stream_t*)tcp, UV_TCP);
 
@@ -273,17 +279,44 @@ static int uv__ipv6_link_local_scope_id(void) {
   return rv;
 }
 
+#ifdef TCP_FASTOPEN_CONNECT
+static int uv__tcp_fastopen_connect(uv_tcp_t* tcp, int on) {
+  int prev = !!(tcp->tcp_flags & UV_TCP_HANDLE_FASTOPEN_CONNECT);
+  int opt = on;
+
+  if (prev != on) {
+    if (!setsockopt(uv__stream_fd(tcp), IPPROTO_TCP, TCP_FASTOPEN_CONNECT,
+                                                                &opt, sizeof(opt))) {
+      if (opt)
+        tcp->tcp_flags |= UV_TCP_HANDLE_FASTOPEN_CONNECT;
+      else
+        tcp->tcp_flags &= ~UV_TCP_HANDLE_FASTOPEN_CONNECT;
+    }
+    else {
+      return UV__ERR(errno);
+    }
+  }
+
+  return 0;
+}
+#endif
 
 int uv__tcp_connect(uv_connect_t* req,
                     uv_tcp_t* handle,
                     const struct sockaddr* addr,
                     unsigned int addrlen,
+                    const uv_buf_t* send_buf,
                     uv_connect_cb cb) {
   struct sockaddr_in6 tmp6;
   int err;
   int r;
+#ifdef TCP_FASTOPEN_CONNECT
+  int tfo;
+#endif
 
   assert(handle->type == UV_TCP);
+
+  req->sent = 0;
 
   if (handle->connect_req != NULL)
     return UV_EALREADY;  /* FIXME(bnoordhuis) UV_EINVAL or maybe UV_EBUSY. */
@@ -305,10 +338,32 @@ int uv__tcp_connect(uv_connect_t* req,
     }
   }
 
+#ifdef TCP_FASTOPEN_CONNECT
+  tfo = !!(handle->tcp_flags & UV_TCP_HANDLE_WANTS_FASTOPEN_CONNECT) && send_buf;
+  err = uv__tcp_fastopen_connect(handle, tfo);
+  if (err)
+    return err;
+#endif
+
   do {
     errno = 0;
     r = connect(uv__stream_fd(handle), addr, addrlen);
   } while (r == -1 && errno == EINTR);
+
+  if (send_buf && (r == 0 || errno == EINPROGRESS)) {
+    int prev_errno = errno;
+    ssize_t s;
+    do {
+      s = write(uv__stream_fd(handle), send_buf->base, send_buf->len);
+      if (s > 0) {
+        req->sent = s;
+        break;
+      }
+    } while (s == -1 && errno == EINTR);
+
+    if (s != -1 || errno == EAGAIN)
+      errno = prev_errno;
+  }
 
   /* We not only check the return value, but also check the errno != 0.
    * Because in rare cases connect() will return -1 but the errno
@@ -420,6 +475,32 @@ int uv_tcp_close_reset(uv_tcp_t* handle, uv_close_cb close_cb) {
 }
 
 
+#ifdef TCP_FASTOPEN
+static int uv__tcp_fastopen_accept(uv_tcp_t* tcp, int on) {
+  int prev = !!(tcp->tcp_flags & UV_TCP_HANDLE_FASTOPEN_ACCEPT);
+#ifdef __linux__
+  int opt = on ? (tcp->tfo_backlog > 0 ? tcp->tfo_backlog : SOMAXCONN) : 0;
+#else
+  int opt = on;
+#endif
+
+  if (prev != on) {
+    if (!setsockopt(uv__stream_fd(tcp), IPPROTO_TCP, TCP_FASTOPEN,
+                                                                &opt, sizeof(opt))) {
+      if (opt)
+        tcp->tcp_flags |= UV_TCP_HANDLE_FASTOPEN_ACCEPT;
+      else
+        tcp->tcp_flags &= ~UV_TCP_HANDLE_FASTOPEN_ACCEPT;
+    }
+    else {
+      return UV__ERR(errno);
+    }
+  }
+
+  return 0;
+}
+#endif
+
 int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   unsigned int flags;
   int err;
@@ -438,6 +519,13 @@ int uv__tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
   err = maybe_new_socket(tcp, AF_INET, flags);
   if (err)
     return err;
+
+#ifdef TCP_FASTOPEN
+  err = uv__tcp_fastopen_accept(tcp,
+                         !!(tcp->tcp_flags & UV_TCP_HANDLE_WANTS_FASTOPEN_ACCEPT));
+  if (err)
+    return err;
+#endif
 
   if (listen(tcp->io_watcher.fd, backlog))
     return UV__ERR(errno);
@@ -582,11 +670,80 @@ int uv_tcp_nodelay(uv_tcp_t* handle, int on) {
   }
 
   if (on)
-    handle->flags |= UV_HANDLE_TCP_NODELAY;
+    handle->tcp_flags |= UV_TCP_HANDLE_NODELAY;
   else
-    handle->flags &= ~UV_HANDLE_TCP_NODELAY;
+    handle->tcp_flags &= ~UV_TCP_HANDLE_NODELAY;
 
   return 0;
+}
+
+
+int uv_tcp_fastopen(uv_tcp_t *handle, int flags, int backlog) {
+  int client_enable = 0;
+  int server_enable = 0;
+  int r = 0;
+  unsigned int old_tcp_flags = handle->tcp_flags;
+  int old_backlog = handle->tfo_backlog;
+
+#ifdef __linux__
+  int fd = open("/proc/sys/net/ipv4/tcp_fastopen", O_RDONLY);
+  if (fd >= 0) {
+    char buf[16];
+    memset(buf, 0, sizeof(buf));
+
+    read(fd, buf, sizeof(buf)-1);
+    int value;
+    if (sscanf(buf, "%i", &value) == 1) {
+      client_enable = value & 0x1;
+      server_enable = value & 0x2;
+    }
+
+    close(fd);
+  }
+#elif defined(__FreeBSD__)
+  size_t valuelen;
+  valuelen = sizeof(client_enable);
+  sysctlbyname("net.inet.tcp.fastopen.client_enable", 
+               &client_enable,
+               &valuelen,
+               NULL,
+               0);
+  valuelen = sizeof(server_enable);
+  sysctlbyname("net.inet.tcp.fastopen.server_enable", 
+               &server_enable,
+               &valuelen,
+               NULL,
+               0);
+#endif
+
+  if (flags & UV_TCP_FASTOPEN_CONNECT) {
+    if (!client_enable)
+      r = UV_ENOTSUP;
+    else
+      handle->tcp_flags |= UV_TCP_HANDLE_WANTS_FASTOPEN_CONNECT;
+  }
+  else {
+    handle->tcp_flags &= ~UV_TCP_HANDLE_WANTS_FASTOPEN_CONNECT;
+  }
+
+  if (flags & UV_TCP_FASTOPEN_ACCEPT) {
+    if (!server_enable)
+      r = UV_ENOTSUP;
+    else {
+      handle->tcp_flags |= UV_TCP_HANDLE_WANTS_FASTOPEN_ACCEPT;
+      handle->tfo_backlog = backlog;
+    }
+  }
+  else {
+    handle->tcp_flags &= ~UV_TCP_HANDLE_WANTS_FASTOPEN_ACCEPT;
+  }
+
+  if (r) {
+    handle->tcp_flags = old_tcp_flags;
+    handle->tfo_backlog = old_backlog;
+  }
+
+  return r;
 }
 
 
@@ -609,9 +766,9 @@ int uv_tcp_keepalive_ex(uv_tcp_t* handle,
   }
 
   if (on)
-    handle->flags |= UV_HANDLE_TCP_KEEPALIVE;
+    handle->tcp_flags |= UV_TCP_HANDLE_KEEPALIVE;
   else
-    handle->flags &= ~UV_HANDLE_TCP_KEEPALIVE;
+    handle->tcp_flags &= ~UV_TCP_HANDLE_KEEPALIVE;
 
   /* TODO Store idle if uv__stream_fd(handle) == -1 but don't want to enlarge
    *      uv_tcp_t with an int that's almost never used...

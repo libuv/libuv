@@ -84,6 +84,7 @@ HELPER_DECLARE    (tcp4_blackhole_server)
 HELPER_DECLARE    (tcp_pump_server)
 HELPER_DECLARE    (pipe_pump_server)
 HELPER_DECLARE    (tcp4_echo_server)
+HELPER_DECLARE    (tcp4_echo_server_tfo)
 HELPER_DECLARE    (pipe_echo_server)
 
 TASK_LIST_START

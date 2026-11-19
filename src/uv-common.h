@@ -105,13 +105,6 @@ enum {
   /* Used by uv_tcp_t and uv_udp_t handles */
   UV_HANDLE_IPV6                        = 0x00400000,
 
-  /* Only used by uv_tcp_t handles. */
-  UV_HANDLE_TCP_NODELAY                 = 0x01000000,
-  UV_HANDLE_TCP_KEEPALIVE               = 0x02000000,
-  UV_HANDLE_TCP_SINGLE_ACCEPT           = 0x04000000,
-  UV_HANDLE_TCP_ACCEPT_STATE_CHANGING   = 0x08000000,
-  UV_HANDLE_SHARED_TCP_SOCKET           = 0x10000000,
-
   /* Only used by uv_udp_t handles. */
   UV_HANDLE_UDP_PROCESSING              = 0x01000000,
   UV_HANDLE_UDP_CONNECTED               = 0x02000000,
@@ -140,6 +133,19 @@ enum {
 
   /* Only used by uv_fs_event_t handles. */
   UV_HANDLE_FS_EVENT_WATCH_SUBTREE      = 0x01000000
+};
+
+/* TCP handle flags. Only used by uv_tcp_t handles. */
+enum {
+  UV_TCP_HANDLE_NODELAY                 = 0x00000001,
+  UV_TCP_HANDLE_KEEPALIVE               = 0x00000002,
+  UV_TCP_HANDLE_SINGLE_ACCEPT           = 0x00000004,
+  UV_TCP_HANDLE_ACCEPT_STATE_CHANGING   = 0x00000008,
+  UV_TCP_HANDLE_SHARED_TCP_SOCKET       = 0x00000010,
+  UV_TCP_HANDLE_WANTS_FASTOPEN_CONNECT  = 0x00000020,
+  UV_TCP_HANDLE_FASTOPEN_CONNECT        = 0x00000040,
+  UV_TCP_HANDLE_WANTS_FASTOPEN_ACCEPT   = 0x00000080,
+  UV_TCP_HANDLE_FASTOPEN_ACCEPT         = 0x00000200,
 };
 
 static inline int uv__is_raw_tty_mode(uv_tty_mode_t m) {
@@ -172,6 +178,7 @@ int uv__tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
                    const uv_sockaddr_t* addr,
                    unsigned int addrlen,
+                   const uv_buf_t* send_buf,
                    uv_connect_cb cb);
 
 int uv__udp_init_ex(uv_loop_t* loop,
