@@ -28,15 +28,16 @@
 
 /* EAI_* constants. */
 #include <winsock2.h>
+#include <windns.h>
 
 /* Needed for ConvertInterfaceIndexToLuid and ConvertInterfaceLuidToNameA */
 #include <iphlpapi.h>
 
+#include <windns.h>
 int uv__getaddrinfo_translate_error(int sys_err) {
   switch (sys_err) {
     case 0:                       return 0;
     case WSATRY_AGAIN:            return UV_EAI_AGAIN;
-    case WSAEINVAL:               return UV_EAI_BADFLAGS;
     case WSANO_RECOVERY:          return UV_EAI_FAIL;
     case WSAEAFNOSUPPORT:         return UV_EAI_FAMILY;
     case WSA_NOT_ENOUGH_MEMORY:   return UV_EAI_MEMORY;
@@ -79,16 +80,143 @@ static size_t align_offset(size_t off, size_t alignment) {
 #define NDIS_IF_MAX_STRING_SIZE IF_MAX_STRING_SIZE
 #endif
 
+
+/* Placeholder for WinDNS conversion logic */
+static PADDRINFOW convert_dns_records_to_addrinfow(uv_getaddrinfo_t* req, PDNS_RECORD pDnsRecord) {
+  PDNS_RECORD pCurrent = pDnsRecord;
+  PADDRINFOW pHead = NULL;
+  PADDRINFOW pTail = NULL;
+  USHORT port = uv__get_addrinfo_get_port(req->service);
+
+  while (pCurrent != NULL) {
+    PADDRINFOW pAi = NULL;
+    struct sockaddr* pSa = NULL;
+
+    if (pCurrent->wType == DNS_TYPE_A) {
+      /* Handle IPv4 record. */
+      pAi = (PADDRINFOW)uv__calloc(1, sizeof(ADDRINFOW));
+      struct sockaddr_in* pSin = (struct sockaddr_in*)uv__calloc(1, sizeof(struct sockaddr_in));
+      if (pAi == NULL || pSin == NULL) {
+        uv__free(pAi); uv__free(pSin); break;
+      }
+      pSin->sin_family = AF_INET;
+      pSin->sin_port = port;
+      pSin->sin_addr.S_un.S_addr = pCurrent->Data.A.IpAddress;
+      pAi->ai_family = AF_INET;
+      pAi->ai_addrlen = sizeof(struct sockaddr_in);
+      pSa = (struct sockaddr*)pSin;
+    } else if (pCurrent->wType == DNS_TYPE_AAAA) {
+      /* Handle IPv6 record. */
+      pAi = (PADDRINFOW)uv__calloc(1, sizeof(ADDRINFOW));
+      struct sockaddr_in6* pSin6 = (struct sockaddr_in6*)uv__calloc(1, sizeof(struct sockaddr_in6));
+      if (pAi == NULL || pSin6 == NULL) {
+        uv__free(pAi); uv__free(pSin6); break;
+      }
+      pSin6->sin6_family = AF_INET6;
+      pSin6->sin6_port = port;
+      memcpy(&pSin6->sin6_addr, &pCurrent->Data.AAAA.IPv6Address, sizeof(struct in6_addr));
+      pAi->ai_family = AF_INET6;
+      pAi->ai_addrlen = sizeof(struct sockaddr_in6);
+      pSa = (struct sockaddr*)pSin6;
+    }
+
+    if (pAi && pSa) {
+      pAi->ai_addr = pSa;
+      pAi->ai_socktype = SOCK_STREAM; /* Default for getaddrinfo */
+      if (pHead == NULL) pHead = pAi;
+      else pTail->ai_next = pAi;
+      pTail = pAi;
+    } else {
+      uv__free(pAi);
+    }
+    pCurrent = pCurrent->pNext;
+  }
+  return pHead;
+}
+
+      /* Fill sockaddr_in. */
+      pSin->sin_family = AF_INET;
+      pSin->sin_port = port;
+      pSin->sin_addr.S_un.S_addr = pCurrent->Data.A.IpAddress;
+
+      /* Fill ADDRINFOW. */
+      pAi->ai_family = AF_INET;
+      pAi->ai_addrlen = sizeof(struct sockaddr_in);
+      pAi->ai_addr = (struct sockaddr*)pSin;
+
+      /* Link the structure. */
+      if (pHead == NULL) {
+        pHead = pAi;
+      } else {
+        pTail->ai_next = pAi;
+      }
+      pTail = pAi;
+    }
+    /* TODO: Add DNS_TYPE_AAAA handling for IPv6. */
+    pCurrent = pCurrent->pNext;
+  }
+  return pHead;
+}
+
+/* Helper to get port from service name/number. */
+static USHORT uv__get_addrinfo_get_port(const WCHAR* service) {
+  if (service == NULL) {
+    return 0;
+  }
+  /* Try converting service to a port number. */
+  /* For simplicity, directly convert for now. A real implementation
+     would use getservbyname for service names. */
+  return htons((USHORT)wcstoul(service, NULL, 10)); /* Assume numeric service */
+}
+
 static void uv__getaddrinfo_work(struct uv__work* w) {
   uv_getaddrinfo_t* req;
   struct addrinfoW* hints;
-  int err;
+  PDNS_RECORD pDnsRecord = NULL;
+  DNS_STATUS status;
 
   req = container_of(w, uv_getaddrinfo_t, work_req);
   hints = req->addrinfow;
   req->addrinfow = NULL;
-  err = GetAddrInfoW(req->node, req->service, hints, &req->addrinfow);
-  req->retcode = uv__getaddrinfo_translate_error(err);
+
+  /* Query DNS using DnsQuery_W */
+  /* This is a simplified replacement for GetAddrInfoW */
+  /* Note: Service/port handling needs to be added */
+  WORD dns_query_type;
+
+  if (hints == NULL) {
+    dns_query_type = DNS_TYPE_ALL;
+  } else {
+    switch (hints->ai_family) {
+      case AF_INET:
+        dns_query_type = DNS_TYPE_A;
+        break;
+      case AF_INET6:
+        dns_query_type = DNS_TYPE_AAAA;
+        break;
+      case AF_UNSPEC:
+        dns_query_type = DNS_TYPE_ALL;
+        break;
+      default:
+        req->retcode = UV_EAI_FAMILY;
+        return;
+    }
+  }
+
+  status = DnsQuery_W(req->node,
+                      dns_query_type,
+                      DNS_QUERY_STANDARD,
+                      NULL,
+                      &pDnsRecord,
+                      NULL);
+
+  if (status == ERROR_SUCCESS) {
+    req->addrinfow = convert_dns_records_to_addrinfow(req, pDnsRecord);
+    DnsRecordListFree(pDnsRecord, DnsFreeRecordList);
+    req->retcode = 0;
+  } else {
+    req->retcode = uv__getaddrinfo_translate_error(status);
+  }
 }
 
 
@@ -101,6 +229,17 @@ static void uv__getaddrinfo_work(struct uv__work* w) {
  * and copy all structs and referenced strings into the one block.
  * Each size calculation is adjusted to avoid unaligned pointers.
  */
+/* Helper to free our custom addrinfoW structures. */
+static void uv__freeaddrinfoW(PADDRINFOW pAi) {
+  PADDRINFOW pNext;
+  while (pAi != NULL) {
+    pNext = pAi->ai_next;
+    uv__free(pAi->ai_addr);
+    uv__free(pAi);
+    pAi = pNext;
+  }
+}
+
 static void uv__getaddrinfo_done(struct uv__work* w, int status) {
   uv_getaddrinfo_t* req = container_of(w, uv_getaddrinfo_t, work_req);
 
@@ -203,7 +342,7 @@ static void uv__getaddrinfo_done(struct uv__work* w, int status) {
 
   /* return memory to system */
   if (req->addrinfow != NULL) {
-    FreeAddrInfoW(req->addrinfow);
+    uv__freeaddrinfoW(req->addrinfow);
     req->addrinfow = NULL;
   }
 
