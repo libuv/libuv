@@ -46,6 +46,9 @@ jobs:
           ls -l build
           
           ls -l build\\RelWithDebInfo
+      - name: Enable NTFS last access updates
+        if: ${{ matrix.config.arch != 'arm64' }}
+        run: fsutil behavior set disablelastaccess 0
       - name: platform_output_a
         if: ${{ matrix.config.arch != 'arm64' }}
         shell: cmd
@@ -129,6 +132,8 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: mingw-${{ matrix.config.arch }}
+      - name: Enable NTFS last access updates
+        run: fsutil behavior set disablelastaccess 0
       - name: Test
         shell: cmd
         run: |
