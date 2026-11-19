@@ -2651,6 +2651,52 @@ static void maybe_free_watcher_list(struct watcher_list* w, uv_loop_t* loop) {
 }
 
 
+/* The kernel dropped events because the queue was full and says so with one
+ * IN_Q_OVERFLOW record whose wd is -1. Any watched path may have changed.
+ * Report that to every handle as a change without a file name, which is what
+ * the Windows backend does when its buffer overflowed and what the
+ * documentation of uv_fs_event_cb allows.
+ *
+ * A callback may stop any handle, and stopping the last handle of a watcher
+ * list frees that list unless it is being iterated over. Both the current
+ * list and the next one are therefore marked as being iterated over while
+ * the callbacks run, so that neither can be freed under the walk.
+ */
+static void uv__inotify_overflow(uv_loop_t* loop) {
+  struct watcher_list* w;
+  struct watcher_list* next;
+  uv_fs_event_t* h;
+  struct uv__queue queue;
+  struct uv__queue* q;
+
+  w = RB_MIN(watcher_root, uv__inotify_watchers(loop));
+  if (w != NULL)
+    w->iterating = 1;
+
+  while (w != NULL) {
+    next = RB_NEXT(watcher_root, w);
+    if (next != NULL)
+      next->iterating = 1;
+
+    /* Same precautions as in uv__inotify_read(). */
+    uv__queue_move(&w->watchers, &queue);
+    while (!uv__queue_empty(&queue)) {
+      q = uv__queue_head(&queue);
+      h = uv__queue_data(q, uv_fs_event_t, watchers);
+
+      uv__queue_remove(q);
+      uv__queue_insert_tail(&w->watchers, q);
+
+      h->cb(h, NULL, UV_CHANGE, 0);
+    }
+    w->iterating = 0;
+    maybe_free_watcher_list(w, loop);
+
+    w = next;
+  }
+}
+
+
 void uv__inotify_read(uv_loop_t* loop, uv__io_t* dummy, unsigned int events) {
   const struct inotify_event* e;
   struct watcher_list* w;
@@ -2678,6 +2724,11 @@ void uv__inotify_read(uv_loop_t* loop, uv__io_t* dummy, unsigned int events) {
     /* Now we have one or more inotify_event structs. */
     for (p = buf; p < buf + size; p += sizeof(*e) + e->len) {
       e = (const struct inotify_event*) p;
+
+      if (e->mask & IN_Q_OVERFLOW) {
+        uv__inotify_overflow(loop);
+        continue;
+      }
 
       events = 0;
       if (e->mask & (IN_ATTRIB|IN_MODIFY))
