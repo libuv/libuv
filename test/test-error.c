@@ -68,6 +68,7 @@ TEST_IMPL(sys_error) {
   ASSERT_EQ(uv_translate_sys_error(ERROR_ELEVATION_REQUIRED), UV_EACCES);
   ASSERT_EQ(uv_translate_sys_error(WSAEADDRINUSE), UV_EADDRINUSE);
   ASSERT_EQ(uv_translate_sys_error(ERROR_BAD_PIPE), UV_EPIPE);
+  ASSERT_EQ(uv_translate_sys_error(WSANOTINITIALISED), UV_ENETDOWN);
 #else
   ASSERT_EQ(uv_translate_sys_error(EPERM), UV_EPERM);
   ASSERT_EQ(uv_translate_sys_error(EPIPE), UV_EPIPE);

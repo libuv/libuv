@@ -128,6 +128,8 @@ int uv_translate_sys_error(int sys_errno) {
     case WSAEMSGSIZE:                       return UV_EMSGSIZE;
     case ERROR_BUFFER_OVERFLOW:             return UV_ENAMETOOLONG;
     case ERROR_FILENAME_EXCED_RANGE:        return UV_ENAMETOOLONG;
+    case WSAENETDOWN:                       return UV_ENETDOWN;
+    case WSANOTINITIALISED:                 return UV_ENETDOWN;
     case ERROR_NETWORK_UNREACHABLE:         return UV_ENETUNREACH;
     case WSAENETUNREACH:                    return UV_ENETUNREACH;
     case WSAENOBUFS:                        return UV_ENOBUFS;
