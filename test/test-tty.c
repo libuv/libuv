@@ -220,6 +220,126 @@ TEST_IMPL(tty_raw) {
   return 0;
 }
 
+#ifdef _WIN32
+static int tty_sigwinch_count;
+static uv_tty_t tty_sigwinch_tty;
+static uv_signal_t tty_sigwinch_signal;
+static uv_timer_t tty_sigwinch_timer;
+static char tty_sigwinch_buf[1024];
+
+static void tty_sigwinch_alloc(uv_handle_t* handle,
+                               size_t suggested_size,
+                               uv_buf_t* buf) {
+  buf->base = tty_sigwinch_buf;
+  buf->len = sizeof(tty_sigwinch_buf);
+}
+
+static void tty_sigwinch_read(uv_stream_t* stream,
+                              ssize_t nread,
+                              const uv_buf_t* buf) {
+}
+
+static void tty_sigwinch_cb(uv_signal_t* handle, int signum) {
+  tty_sigwinch_count++;
+}
+
+static void tty_sigwinch_stop(uv_timer_t* timer) {
+  uv_close((uv_handle_t*) &tty_sigwinch_tty, NULL);
+  uv_close((uv_handle_t*) &tty_sigwinch_signal, NULL);
+  uv_close((uv_handle_t*) timer, NULL);
+}
+#endif
+
+
+TEST_IMPL(tty_sigwinch_same_size) {
+#ifdef _WIN32
+  uv_loop_t* loop;
+  HANDLE conin;
+  HANDLE conout;
+  CONSOLE_SCREEN_BUFFER_INFO info;
+  INPUT_RECORD record;
+  DWORD written;
+  int fd;
+
+  tty_sigwinch_count = 0;
+
+  conin = CreateFileW(L"CONIN$",
+                      GENERIC_READ | GENERIC_WRITE,
+                      FILE_SHARE_READ | FILE_SHARE_WRITE,
+                      NULL,
+                      OPEN_EXISTING,
+                      FILE_ATTRIBUTE_NORMAL,
+                      NULL);
+  if (conin == INVALID_HANDLE_VALUE)
+    RETURN_SKIP("No console input");
+
+  conout = CreateFileW(L"CONOUT$",
+                       GENERIC_READ | GENERIC_WRITE,
+                       FILE_SHARE_READ | FILE_SHARE_WRITE,
+                       NULL,
+                       OPEN_EXISTING,
+                       FILE_ATTRIBUTE_NORMAL,
+                       NULL);
+  if (conout == INVALID_HANDLE_VALUE) {
+    CloseHandle(conin);
+    RETURN_SKIP("No console output");
+  }
+
+  if (!GetConsoleScreenBufferInfo(conout, &info)) {
+    CloseHandle(conin);
+    CloseHandle(conout);
+    RETURN_SKIP("No console screen buffer");
+  }
+
+  fd = _open_osfhandle((intptr_t) conin, 0);
+  ASSERT_GE(fd, 0);
+
+  loop = uv_default_loop();
+
+  if (uv_tty_init(loop, &tty_sigwinch_tty, fd, 1) != 0) {
+    _close(fd);
+    CloseHandle(conout);
+    RETURN_SKIP("Console input is not a tty");
+  }
+
+  ASSERT_OK(uv_read_start((uv_stream_t*) &tty_sigwinch_tty,
+                          tty_sigwinch_alloc,
+                          tty_sigwinch_read));
+  ASSERT_OK(uv_tty_set_mode(&tty_sigwinch_tty, UV_TTY_MODE_RAW));
+
+  ASSERT_OK(uv_signal_init(loop, &tty_sigwinch_signal));
+  ASSERT_OK(uv_signal_start(&tty_sigwinch_signal,
+                            tty_sigwinch_cb,
+                            SIGWINCH));
+
+  /* Let the console read thread block on ReadConsoleInputW. */
+  Sleep(100);
+
+  /* A resize notification whose size matches the current console size: the
+   * terminal did not change size, but it may still have reflowed. */
+  memset(&record, 0, sizeof(record));
+  record.EventType = WINDOW_BUFFER_SIZE_EVENT;
+  record.Event.WindowBufferSizeEvent.dwSize = info.dwSize;
+  ASSERT_NE(0, WriteConsoleInputW(conin, &record, 1, &written));
+  ASSERT_EQ(1, written);
+
+  ASSERT_OK(uv_timer_init(loop, &tty_sigwinch_timer));
+  ASSERT_OK(uv_timer_start(&tty_sigwinch_timer, tty_sigwinch_stop, 500, 0));
+
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  ASSERT_GE(tty_sigwinch_count, 1);
+
+  uv_tty_reset_mode();
+  CloseHandle(conout);
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+#else
+  RETURN_SKIP("Windows only");
+#endif
+}
+
+
 TEST_IMPL(tty_empty_write) {
   int r;
   int ttyout_fd;
