@@ -425,6 +425,7 @@ TEST_FS_DECLARE   (fs_chown)
 TEST_FS_DECLARE   (fs_link)
 TEST_FS_DECLARE   (fs_readlink)
 TEST_FS_DECLARE   (fs_realpath)
+TEST_DECLARE   (fs_realpath_rename_race)
 TEST_FS_DECLARE   (fs_symlink)
 TEST_FS_DECLARE   (fs_symlink_dir)
 #ifdef _WIN32
@@ -1220,6 +1221,7 @@ TASK_LIST_START
   TEST_FS_ENTRY  (fs_lutime)
   TEST_FS_ENTRY  (fs_readlink)
   TEST_FS_ENTRY  (fs_realpath)
+  TEST_ENTRY  (fs_realpath_rename_race)
   TEST_FS_ENTRY  (fs_symlink)
   TEST_FS_ENTRY  (fs_symlink_dir)
 #ifdef _WIN32

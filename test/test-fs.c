@@ -2367,6 +2367,70 @@ TEST_FS_IMPL(fs_realpath) {
   return 0;
 }
 
+#ifdef _WIN32
+static volatile LONG realpath_race_stop;
+
+static void realpath_race_rename(void* arg) {
+  (void) arg;
+  /* Rename the directory to a longer path and back. A rename can fail while
+   * the other thread has the directory open; just try again. */
+  while (!InterlockedCompareExchange(&realpath_race_stop, 0, 0)) {
+    MoveFileW(L"test_dir_rr", L"test_dir_rr_parent\\a_longer_name_for_the_dir");
+    MoveFileW(L"test_dir_rr_parent\\a_longer_name_for_the_dir", L"test_dir_rr");
+  }
+}
+#endif
+
+
+TEST_IMPL(fs_realpath_rename_race) {
+#ifndef _WIN32
+  RETURN_SKIP("Windows-only test.");
+#else
+  uv_thread_t thread;
+  uv_fs_t req;
+  uint64_t end;
+  int resolved;
+  int r;
+
+  /* Setup. */
+  rmdir("test_dir_rr");
+  rmdir("test_dir_rr_parent/a_longer_name_for_the_dir");
+  rmdir("test_dir_rr_parent");
+  ASSERT_OK(uv_fs_mkdir(NULL, &req, "test_dir_rr", 0777, NULL));
+  uv_fs_req_cleanup(&req);
+  ASSERT_OK(uv_fs_mkdir(NULL, &req, "test_dir_rr_parent", 0777, NULL));
+  uv_fs_req_cleanup(&req);
+
+  /* If the directory is renamed to a longer path while uv_fs_realpath() is
+   * resolving it, the result must be one of the two paths or UV_ENOENT. */
+  realpath_race_stop = 0;
+  ASSERT_OK(uv_thread_create(&thread, realpath_race_rename, NULL));
+  resolved = 0;
+  end = uv_hrtime() + 500 * 1000 * 1000;
+  while (uv_hrtime() < end) {
+    r = uv_fs_realpath(NULL, &req, "test_dir_rr", NULL);
+    if (r == 0) {
+      ASSERT_NOT_NULL(req.ptr);
+      resolved++;
+    } else {
+      ASSERT_EQ(r, UV_ENOENT);
+    }
+    uv_fs_req_cleanup(&req);
+  }
+  InterlockedExchange(&realpath_race_stop, 1);
+  ASSERT_OK(uv_thread_join(&thread));
+  ASSERT_GT(resolved, 0);
+
+  /* Cleanup. */
+  rmdir("test_dir_rr");
+  rmdir("test_dir_rr_parent/a_longer_name_for_the_dir");
+  rmdir("test_dir_rr_parent");
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+#endif
+}
+
 
 TEST_FS_IMPL(fs_symlink) {
   int r;
