@@ -505,6 +505,10 @@ static void uv__spawn_init_posix_spawn(void) {
    * Unices in that it returns 0 instead of EACCES or ENOENT for paths
    * that don't exist. See https://github.com/libuv/libuv/issues/5240.
    */
+#elif defined(__sun) && !defined(__illumos__)
+  /* Solaris posix_spawn() may return ENOENT when an already started
+   * shell cannot find its command. Use fork() to preserve the shell
+   * exit status. */
 #else
 #if !defined(__linux__) && !defined(_AIX) && !defined(__PASE__)
   posix_spawn_works = 1;
