@@ -95,7 +95,7 @@ static unsigned uv__utf8_decode1_slow(const char** p,
     }
     /* Fall through. */
   case 2:
-    if (a > 0xDF) {
+    if (a > 0xDF && a < 0xF0) {
       min = 0x800;
       b = 0x80 | (a & 15);
       c = (unsigned char) *(*p)++;
@@ -105,7 +105,7 @@ static unsigned uv__utf8_decode1_slow(const char** p,
     }
     /* Fall through. */
   case 1:
-    if (a > 0xBF) {
+    if (a > 0xBF && a < 0xE0) {
       min = 0x80;
       b = 0x80;
       c = 0x80 | (a & 31);
@@ -115,7 +115,7 @@ static unsigned uv__utf8_decode1_slow(const char** p,
     }
     /* Fall through. */
   case 0:
-    return -1;  /* Invalid continuation byte. */
+    return -1;  /* Invalid continuation byte or truncated sequence. */
   }
 
   if ((b & 0xC0) != 0x80 ||
