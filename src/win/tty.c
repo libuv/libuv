@@ -739,6 +739,7 @@ void uv_process_tty_read_raw_req(uv_loop_t* loop, uv_tty_t* handle,
     /* An error occurred while waiting for the event. */
     if ((handle->flags & UV_HANDLE_READING)) {
       handle->flags &= ~UV_HANDLE_READING;
+      DECREASE_ACTIVE_COUNT(loop, handle);
       handle->read_cb((uv_stream_t*)handle,
                       uv_translate_sys_error(GET_REQ_ERROR(req)),
                       &uv_null_buf_);
