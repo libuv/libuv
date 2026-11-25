@@ -21,8 +21,6 @@
 
 #include "uv.h"
 #include "task.h"
-#include <stdlib.h>
-#include <string.h>
 
 #ifndef _WIN32
 # include <fcntl.h>
@@ -30,72 +28,34 @@
 # include <unistd.h>
 #endif
 
-static int limit;
-static int alloc;
-
-static void* t_realloc(void* p, size_t n) {
-  alloc += n;
-  if (alloc > limit)
-    return NULL;
-  p = realloc(p, n);
-  ASSERT_NOT_NULL(p);
-  return p;
-}
-
-static void* t_calloc(size_t m, size_t n) {
-  return t_realloc(NULL, m * n);
-}
-
-static void* t_malloc(size_t n) {
-  return t_realloc(NULL, n);
-}
-
 TEST_IMPL(loop_init_oom) {
   uv_loop_t loop;
+  int skip;
   int err;
 
-  ASSERT_OK(uv_replace_allocator(t_malloc, t_realloc, t_calloc, free));
-  for (;;) {
+  oom_init();
+  /* Fail every allocation after the first `skip` until init succeeds. */
+  for (skip = 0; ; skip++) {
+    oom_fail(skip, -1);
     err = uv_loop_init(&loop);
     if (err == 0)
       break;
     ASSERT_EQ(err, UV_ENOMEM);
-    limit += 8;
-    alloc = 0;
+    ASSERT_GT(oom_failures(), 0);
+    ASSERT_OK(oom_live());
   }
+  ASSERT_OK(oom_failures());
+  oom_fail(0, 0);
   ASSERT_OK(uv_loop_close(&loop));
+  ASSERT_OK(oom_live());
+  oom_cleanup();
   return 0;
 }
 
 
 #ifndef _WIN32
-static uv_mutex_t resize_mutex;
-static void* resize_watchers;
-static int resize_fail;
 static int resize_poll_called;
 static int resize_connection_called;
-
-
-static void* resize_realloc(void* p, size_t n) {
-  int fail;
-
-  uv_mutex_lock(&resize_mutex);
-  fail = resize_fail && p == resize_watchers;
-  if (fail)
-    resize_fail = 0;
-  uv_mutex_unlock(&resize_mutex);
-
-  return fail ? NULL : realloc(p, n);
-}
-
-
-static void resize_free(void* p) {
-  uv_mutex_lock(&resize_mutex);
-  if (resize_watchers != NULL)
-    ASSERT_PTR_NE(p, resize_watchers);
-  uv_mutex_unlock(&resize_mutex);
-  free(p);
-}
 
 
 static void resize_poll_cb(uv_poll_t* handle, int status, int events) {
@@ -118,14 +78,15 @@ TEST_IMPL(loop_watcher_resize_oom) {
   uv_loop_t loop;
   uv_poll_t poll_handle;
   uv_tcp_t server;
+  void* watchers;
   int pair[2];
+  int live;
   int fd;
   int high_fd;
   int addrlen;
   int err;
 
-  ASSERT_OK(uv_mutex_init(&resize_mutex));
-  ASSERT_OK(uv_replace_allocator(malloc, resize_realloc, calloc, resize_free));
+  oom_init();
   ASSERT_OK(uv_loop_init(&loop));
   ASSERT_OK(socketpair(AF_UNIX, SOCK_STREAM, 0, pair));
   ASSERT_OK(uv_poll_init(&loop, &poll_handle, pair[0]));
@@ -143,16 +104,14 @@ TEST_IMPL(loop_watcher_resize_oom) {
   ASSERT_OK(uv_tcp_bind(&server, (const struct sockaddr*) &addr, 0));
 
   /* A failed resize must leave the existing watcher table owned by the loop. */
-  uv_mutex_lock(&resize_mutex);
-  resize_watchers = loop.watchers;
-  resize_fail = 1;
-  uv_mutex_unlock(&resize_mutex);
+  watchers = loop.watchers;
+  live = oom_live();
+  oom_fail(0, 1);
   err = uv_listen((uv_stream_t*) &server, 16, resize_connection_cb);
-  uv_mutex_lock(&resize_mutex);
-  ASSERT_OK(resize_fail);
-  resize_watchers = NULL;
-  uv_mutex_unlock(&resize_mutex);
+  ASSERT_EQ(1, oom_failures());
   ASSERT_EQ(UV_ENOMEM, err);
+  ASSERT_PTR_EQ(watchers, loop.watchers);
+  ASSERT_EQ(live, oom_live());
   ASSERT_OK(uv_is_active((uv_handle_t*) &server));
   ASSERT_OK(server.io_watcher.pevents);
 
@@ -174,8 +133,7 @@ TEST_IMPL(loop_watcher_resize_oom) {
   ASSERT_EQ(1, resize_connection_called);
   ASSERT_OK(close(fd));
   ASSERT_OK(uv_loop_close(&loop));
-  ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
-  uv_mutex_destroy(&resize_mutex);
+  oom_cleanup();
   return 0;
 }
 #endif
