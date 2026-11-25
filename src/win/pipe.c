@@ -235,7 +235,8 @@ static void close_pipe(uv_pipe_t* pipe) {
 
 static int uv__pipe_server(
     HANDLE* pipeHandle_ptr, DWORD access,
-    char* name, size_t nameSize, unsigned long long random) {
+    char* name, size_t nameSize, unsigned long long random,
+    SECURITY_ATTRIBUTES* server_sa) {
   HANDLE pipeHandle;
   int err;
 
@@ -245,7 +246,7 @@ static int uv__pipe_server(
     pipeHandle = CreateNamedPipeA(name,
       access | FILE_FLAG_FIRST_PIPE_INSTANCE,
       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT, 1, 65536, 65536, 0,
-      NULL);
+      server_sa);
 
     if (pipeHandle != INVALID_HANDLE_VALUE) {
       /* No name collisions.  We're done. */
@@ -280,6 +281,8 @@ static int uv__create_pipe_pair(
   /* allowed flags are: UV_READABLE_PIPE | UV_WRITABLE_PIPE | UV_NONBLOCK_PIPE */
   char pipe_name[64];
   SECURITY_ATTRIBUTES sa;
+  SECURITY_ATTRIBUTES server_sa;
+  SECURITY_DESCRIPTOR server_sd;
   DWORD server_access;
   DWORD client_access;
   HANDLE server_pipe;
@@ -309,12 +312,27 @@ static int uv__create_pipe_pair(
     client_access |= FILE_WRITE_ATTRIBUTES;
   client_access |= WRITE_DAC;
 
-  /* Create server pipe handle. */
+  /* Create server pipe handle.
+   *
+   * Passing a security descriptor that has no DACL makes the kernel assign the
+   * default DACL of the effective token, same as CreatePipe() does. Passing no
+   * security descriptor instead makes CreateNamedPipe() use a fixed DACL, which
+   * a restricted token cannot open for writing. Note that a DACL that is
+   * present but NULL is something else: that grants access to everyone.
+   */
+  if (!InitializeSecurityDescriptor(&server_sd, SECURITY_DESCRIPTOR_REVISION)) {
+    err = GetLastError();
+    goto error;
+  }
+  server_sa.nLength = sizeof server_sa;
+  server_sa.lpSecurityDescriptor = &server_sd;
+  server_sa.bInheritHandle = FALSE;
   err = uv__pipe_server(&server_pipe,
                         server_access,
                         pipe_name,
                         sizeof(pipe_name),
-                        random);
+                        random,
+                        &server_sa);
   if (err)
     goto error;
 
