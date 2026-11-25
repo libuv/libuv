@@ -62,17 +62,13 @@ static const env_var_t required_vars[] = { /* keep me sorted */
 };
 
 
-static HANDLE uv_global_job_handle_;
-static uv_once_t uv_global_job_handle_init_guard_ = UV_ONCE_INIT;
-
-
-static void uv__init_global_job_handle(void) {
+static HANDLE uv__job_create(void) {
   /* Create a job object and set it up to kill all contained processes when
    * it's closed. Since this handle is made non-inheritable and we're not
    * giving it to anyone, we're the only process holding a reference to it.
    * That means that if this process exits it is closed and all the processes
-   * it contains are killed. All processes created with uv_spawn that are not
-   * spawned with the UV_PROCESS_DETACHED flag are assigned to this job.
+   * it contains are killed. Each process created with uv_spawn that is not
+   * spawned with the UV_PROCESS_DETACHED flag is assigned to a job of its own.
    *
    * We're setting the JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK flag so only the
    * processes that we explicitly add are affected, and *their* subprocesses
@@ -84,6 +80,7 @@ static void uv__init_global_job_handle(void) {
    */
   SECURITY_ATTRIBUTES attr;
   JOBOBJECT_EXTENDED_LIMIT_INFORMATION info;
+  HANDLE job;
 
   memset(&attr, 0, sizeof attr);
   attr.bInheritHandle = FALSE;
@@ -95,30 +92,17 @@ static void uv__init_global_job_handle(void) {
       JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION |
       JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 
-  uv_global_job_handle_ = CreateJobObjectW(&attr, NULL);
-  if (uv_global_job_handle_ == NULL)
+  job = CreateJobObjectW(&attr, NULL);
+  if (job == NULL)
     uv_fatal_error(GetLastError(), "CreateJobObjectW");
 
-  if (!SetInformationJobObject(uv_global_job_handle_,
+  if (!SetInformationJobObject(job,
                                JobObjectExtendedLimitInformation,
                                &info,
                                sizeof info))
     uv_fatal_error(GetLastError(), "SetInformationJobObject");
 
-
-  if (!AssignProcessToJobObject(uv_global_job_handle_, GetCurrentProcess())) {
-    /* Make sure this handle is functional. The Windows kernel has a bug that
-     * if the first use of AssignProcessToJobObject is for a Windows Store
-     * program, subsequent attempts to use the handle with fail with
-     * INVALID_PARAMETER (87). This is possibly because all uses of the handle
-     * must be for the same Terminal Services session. We can ensure it is tied
-     * to our current session now by adding ourself to it. We could remove
-     * ourself afterwards, but there doesn't seem to be a reason to.
-     */
-    DWORD err = GetLastError();
-    if (err != ERROR_ACCESS_DENIED)
-      uv_fatal_error(err, "AssignProcessToJobObject");
-  }
+  return job;
 }
 
 
@@ -134,6 +118,7 @@ static void uv__process_init(uv_loop_t* loop, uv_process_t* handle) {
   handle->exit_signal = 0;
   handle->wait_handle = INVALID_HANDLE_VALUE;
   handle->process_handle = INVALID_HANDLE_VALUE;
+  handle->job_handle = NULL;
   handle->exit_cb_pending = 0;
 
   UV_REQ_INIT(&handle->exit_req, UV_PROCESS_EXIT);
@@ -846,10 +831,15 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
     exit_code = uv_translate_sys_error(GetLastError());
   }
 
-  /* Clean-up the process handle eagerly. */
+  /* Clean-up the process handle and job eagerly. */
   CloseHandle(handle->process_handle);
   handle->process_handle = INVALID_HANDLE_VALUE;
   handle->flags |= UV_HANDLE_ESRCH;
+
+  if (handle->job_handle != NULL) {
+    CloseHandle(handle->job_handle);
+    handle->job_handle = NULL;
+  }
 
   /* Set the handle to inactive: no callbacks will be made after the exit
    * callback. */
@@ -878,6 +868,9 @@ void uv__process_close(uv_loop_t* loop, uv_process_t* handle) {
   }
 
   if (!handle->exit_cb_pending) {
+    /* The child may still be running. Closing its job would kill it. So, leak
+     * the job handle instead. It will be closed when this process exits. */
+    handle->job_handle = NULL;
     uv__want_endgame(loop, (uv_handle_t*)handle);
   }
 }
@@ -891,6 +884,8 @@ void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle) {
   /* Clean-up the process handle. */
   if (handle->process_handle != INVALID_HANDLE_VALUE)
     CloseHandle(handle->process_handle);
+  if (handle->job_handle != NULL)
+    CloseHandle(handle->job_handle);
 
   uv__handle_close(handle);
 }
@@ -912,6 +907,7 @@ int uv_spawn(uv_loop_t* loop,
   HANDLE* handle_list;
   LPPROC_THREAD_ATTRIBUTE_LIST attr_list;
   int attr_list_initialized;
+  HANDLE job;
 
   uv__process_init(loop, process);
   process->exit_cb = options->exit_cb;
@@ -919,6 +915,7 @@ int uv_spawn(uv_loop_t* loop,
   handle_list = NULL;
   attr_list = NULL;
   attr_list_initialized = 0;
+  job = NULL;
 
   if (options->flags & (UV_PROCESS_SETGID | UV_PROCESS_SETUID)) {
     return UV_ENOTSUP;
@@ -1126,6 +1123,7 @@ int uv_spawn(uv_loop_t* loop,
      * breakaway.
      */
     process_flags |= DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
+  } else {
     process_flags |= CREATE_SUSPENDED;
   }
 
@@ -1144,25 +1142,20 @@ int uv_spawn(uv_loop_t* loop,
     goto done;
   }
 
-  /* If the process isn't spawned as detached, assign to the global job object
-   * so windows will kill it when the parent process dies. */
+  /* If the process isn't spawned as detached, assign it to a job object of its
+   * own so windows will kill it when the parent process dies. */
   if (!(options->flags & UV_PROCESS_DETACHED)) {
-    uv_once(&uv_global_job_handle_init_guard_, uv__init_global_job_handle);
+    job = uv__job_create();
 
-    if (!AssignProcessToJobObject(uv_global_job_handle_, info.hProcess)) {
-      /* AssignProcessToJobObject might fail if this process is under job
-       * control and the job doesn't have the
-       * JOB_OBJECT_LIMIT_SILENT_BREAKAWAY_OK flag set, on a Windows version
-       * that doesn't support nested jobs.
-       *
-       * When that happens we just swallow the error and continue without
-       * establishing a kill-child-on-parent-exit relationship, otherwise
-       * there would be no way for libuv applications run under job control
-       * to spawn processes at all.
-       */
+    if (!AssignProcessToJobObject(job, info.hProcess)) {
+      /* AssignProcessToJobObject fails with ERROR_ACCESS_DENIED if the child
+       * was terminated before we could assign it. */
       DWORD err = GetLastError();
       if (err != ERROR_ACCESS_DENIED)
         uv_fatal_error(err, "AssignProcessToJobObject");
+
+      CloseHandle(job);
+      job = NULL;
     }
   }
 
@@ -1170,6 +1163,8 @@ int uv_spawn(uv_loop_t* loop,
     if (ResumeThread(info.hThread) == ((DWORD)-1)) {
       err = GetLastError();
       TerminateProcess(info.hProcess, 1);
+      if (job != NULL)
+        CloseHandle(job);
       goto done;
     }
   }
@@ -1177,6 +1172,7 @@ int uv_spawn(uv_loop_t* loop,
   /* Spawn succeeded. Beyond this point, failure is reported asynchronously. */
 
   process->process_handle = info.hProcess;
+  process->job_handle = job;
   process->pid = info.dwProcessId;
 
   /* Set IPC pid to all IPC pipes. */

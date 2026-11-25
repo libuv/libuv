@@ -1452,6 +1452,37 @@ TEST_IMPL(spawn_detect_pipe_name_collisions_on_windows) {
 }
 
 
+TEST_IMPL(spawn_job_on_windows) {
+  HANDLE child;
+  BOOL in_job;
+
+  init_process_options("spawn_helper4", fail_cb);
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+
+  /* The child is in a job of its own; we aren't in it. */
+  ASSERT_NOT_NULL(process.job_handle);
+  ASSERT(IsProcessInJob(GetCurrentProcess(), process.job_handle, &in_job));
+  ASSERT(!in_job);
+
+  child = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, FALSE, process.pid);
+  ASSERT_NOT_NULL(child);
+
+  uv_close((uv_handle_t*) &process, close_cb);
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(1, close_cb_called);
+
+  /* Closing the handle must not kill the child. */
+  ASSERT_EQ(WAIT_TIMEOUT, WaitForSingleObject(child, 100));
+
+  ASSERT(TerminateProcess(child, 1));
+  ASSERT_EQ(WAIT_OBJECT_0, WaitForSingleObject(child, INFINITE));
+  CloseHandle(child);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+
+
 #if !defined(USING_UV_SHARED)
 int make_program_args(char** args, int verbatim_arguments, WCHAR** dst_ptr);
 WCHAR* quote_cmd_arg(const WCHAR *source, WCHAR *target);
