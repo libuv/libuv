@@ -26,7 +26,7 @@
 #include "uv.h"
 #include "task.h"
 
-#define REQ_COUNT 100
+#define REQ_COUNT 400
 
 static int close_cb_called;
 static int write_cb_called;
