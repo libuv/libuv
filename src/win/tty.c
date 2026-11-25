@@ -367,6 +367,7 @@ static void uv__tty_capture_initial_style(
 int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
   DWORD flags;
   DWORD try_set_flags;
+  DWORD current_mode;
   unsigned char was_reading;
   uv_alloc_cb alloc_cb;
   uv_read_cb read_cb;
@@ -374,10 +375,6 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
 
   if (!(tty->flags & UV_HANDLE_TTY_READABLE)) {
     return UV_EINVAL;
-  }
-
-  if ((int)mode == tty->tty.rd.mode.mode) {
-    return 0;
   }
 
   try_set_flags = 0;
@@ -396,6 +393,26 @@ int uv_tty_set_mode(uv_tty_t* tty, uv_tty_mode_t mode) {
       return UV_ENOTSUP;
     default:
       return UV_EINVAL;
+  }
+
+  /*
+   * Take the fast path only when the requested mode matches the mode we last
+   * set and the console still reflects it. A process that inherited the
+   * console, for example a spawned child, can switch it back to cooked mode
+   * behind our back. In that case the cached mode is stale and skipping
+   * SetConsoleMode() would leave the console in the wrong mode. Compare only
+   * the flags this function manages so that unrelated flags set by the
+   * application do not force a redundant re-apply.
+   * See https://github.com/libuv/libuv/issues/1292.
+   */
+  if ((int)mode == tty->tty.rd.mode.mode &&
+      GetConsoleMode(tty->handle, &current_mode)) {
+    DWORD managed = current_mode &
+        (ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT | ENABLE_PROCESSED_INPUT |
+         ENABLE_WINDOW_INPUT | ENABLE_VIRTUAL_TERMINAL_INPUT);
+    if (managed == (flags | try_set_flags) || managed == flags) {
+      return 0;
+    }
   }
 
   /* If currently reading, stop, and restart reading. */
