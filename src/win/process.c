@@ -38,6 +38,33 @@
 
 #define SIGKILL         9
 
+#ifndef PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE
+#define PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE \
+  ProcThreadAttributeValue(22, FALSE, TRUE, FALSE)
+#endif
+
+typedef struct {
+  HANDLE pty;
+
+  uv_thread_t stdin_pump_thread;
+  HANDLE pty_stdin_write;
+  HANDLE stdin_read;
+
+  uv_thread_t stdout_pump_thread;
+  HANDLE pty_stdout_read;
+  HANDLE stdout_write;
+} uv__pty_data;
+
+static inline uv__pty_data *proc_to_pty_data(uv_process_t *process) {
+  return (uv__pty_data*)process->u.reserved[0];
+}
+void pty_teardown(uv__pty_data *data);
+typedef VOID* HPCON;
+typedef HRESULT (__stdcall *PFNCREATEPSEUDOCONSOLE)(COORD c, HANDLE hIn, HANDLE hOut, DWORD dwFlags, HPCON* phpcon);
+typedef HRESULT (__stdcall *PFNRESIZEPSEUDOCONSOLE)(HPCON hpc, COORD newSize);
+typedef HRESULT (__stdcall *PFNCLEARPSEUDOCONSOLE)(HPCON hpc);
+typedef void (__stdcall *PFNCLOSEPSEUDOCONSOLE)(HPCON hpc);
+typedef HRESULT (__stdcall *PFNRELEASEPSEUDOCONSOLE)(HPCON hpc);
 
 typedef struct env_var {
   const WCHAR* const wide;
@@ -135,6 +162,8 @@ static void uv__process_init(uv_loop_t* loop, uv_process_t* handle) {
   handle->wait_handle = INVALID_HANDLE_VALUE;
   handle->process_handle = INVALID_HANDLE_VALUE;
   handle->exit_cb_pending = 0;
+  /* pty_data */
+  handle->u.reserved[0] = NULL;
 
   UV_REQ_INIT(&handle->exit_req, UV_PROCESS_EXIT);
   handle->exit_req.data = handle;
@@ -817,7 +846,6 @@ static void CALLBACK exit_wait_callback(void* data, BOOLEAN didTimeout) {
   POST_COMPLETION_FOR_REQ(loop, &process->exit_req);
 }
 
-
 /* Called on main thread after a child process has exited. */
 void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
   int64_t exit_code;
@@ -855,12 +883,15 @@ void uv__process_proc_exit(uv_loop_t* loop, uv_process_t* handle) {
    * callback. */
   uv__handle_stop(handle);
 
+  if (proc_to_pty_data(handle) != NULL) {
+    pty_teardown(proc_to_pty_data(handle));
+  }
+
   /* Fire the exit callback. */
   if (handle->exit_cb) {
     handle->exit_cb(handle, exit_code, handle->exit_signal);
   }
 }
-
 
 void uv__process_close(uv_loop_t* loop, uv_process_t* handle) {
   uv__handle_closing(handle);
@@ -882,7 +913,6 @@ void uv__process_close(uv_loop_t* loop, uv_process_t* handle) {
   }
 }
 
-
 void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle) {
   assert(!handle->exit_cb_pending);
   assert(handle->flags & UV_HANDLE_CLOSING);
@@ -895,12 +925,242 @@ void uv__process_endgame(uv_loop_t* loop, uv_process_t* handle) {
   uv__handle_close(handle);
 }
 
+int uv_pty_resize(uv_process_t* process,
+                  unsigned short cols,
+                  unsigned short rows) {
+  static PFNRESIZEPSEUDOCONSOLE pfnResize = NULL;
+
+  if (proc_to_pty_data(process) == NULL)
+    return UV_EINVAL;
+
+  if (pfnResize == NULL) {
+    HANDLE hLibrary = GetModuleHandleW(L"kernel32.dll");
+    if (!hLibrary)
+      return uv_translate_sys_error(GetLastError());
+
+    pfnResize = (PFNRESIZEPSEUDOCONSOLE)GetProcAddress((HMODULE)hLibrary,"ResizePseudoConsole");
+    if (!pfnResize) {
+      int err = GetLastError();
+      if (err == ERROR_PROC_NOT_FOUND)
+        return UV_ENOTSUP;
+      else
+        return uv_translate_sys_error(err);
+    }
+  }
+
+  COORD size = {cols, rows};
+  HRESULT hr = pfnResize(proc_to_pty_data(process)->pty, size);
+    // Failed to resize PTY device: (error code %i)
+  if (FAILED(hr))
+    return uv_translate_sys_error(hr);
+  return 0;
+}
+
+
+/*****************************************************************************/
+/* PTY Handling **************************************************************/
+/*****************************************************************************/
+
+const int pty_stdout_buf_len = 128 * 1024;
+const int pty_stdin_buf_len = 128 * 1024;
+
+void pty_init(uv__pty_data *data, HANDLE pty, HANDLE pty_stdin_write, HANDLE pty_stdout_read, HANDLE stdout_write, HANDLE stdin_read) {
+  data->pty = pty;
+  data->pty_stdin_write = pty_stdin_write;
+  data->pty_stdout_read = pty_stdout_read;
+  data->stdout_write = stdout_write;
+  data->stdin_read = stdin_read;
+}
+
+// Windows 10.0.29533 and later support overlapped IO with ConPTY.
+static BOOL pty_supports_overlapped_io(void) {
+    OSVERSIONINFOEXW version = {0};
+    version.dwOSVersionInfoSize = sizeof(version);
+    version.dwMajorVersion = 10;
+    version.dwMinorVersion = 0;
+    version.dwBuildNumber = 29533;
+
+    DWORDLONG condition = 0;
+    VER_SET_CONDITION(condition, VER_MAJORVERSION, VER_GREATER_EQUAL);
+    VER_SET_CONDITION(condition, VER_MINORVERSION, VER_GREATER_EQUAL);
+    VER_SET_CONDITION(condition, VER_BUILDNUMBER, VER_GREATER_EQUAL);
+
+    return VerifyVersionInfoW(&version,VER_MAJORVERSION | VER_MINORVERSION | VER_BUILDNUMBER, condition);
+}
+
+void pty_teardown(uv__pty_data *data) {
+  HANDLE hLibrary = LoadLibraryExW(L"kernel32.dll", 0, 0);
+  // Error loading kernel32.dll: (error code %i)
+  if (!hLibrary)
+    return;
+  //  return uv_translate_sys_error(GetLastError());
+
+  PFNCLOSEPSEUDOCONSOLE pfnClose = (PFNCLOSEPSEUDOCONSOLE)GetProcAddress((HMODULE)hLibrary,"ClosePseudoConsole");
+  if (!pfnClose)
+    return;
+//    int err = GetLastError();
+//    if (err == ERROR_PROC_NOT_FOUND)
+//      return UV_ENOTSUP;
+//    else
+//      return uv_translate_sys_error(err);
+
+  pfnClose(data->pty);
+  FreeLibrary(hLibrary);
+
+  /* We do not want to wait for the threads to finish. Doing so makes it very
+   * easy to deadlock. A process would then only call it's exit_cb once the
+   * pump threads have finished and the stdin pump thread typically only
+   * finishes when the stdin pipe is closed. That in turn is typically only
+   * done by users after the process has closed. So we just don't wait for them
+   * to finish.
+   */
+  //uv_thread_join(&data->stdin_pump_thread);
+  //uv_thread_join(&data->stdout_pump_thread);
+}
+
+void pty_stdin_pump_thread_cb(void *void_data) {
+  uv__pty_data *data = (uv__pty_data*)void_data;
+
+  DWORD nread = 0;
+  OVERLAPPED overlapped = { 0 };
+  char *buf = (char*)uv__malloc(sizeof(char) * pty_stdin_buf_len);
+
+  while (1) {
+    // Read from the overlapped stdin pipe
+    BOOL success = ReadFile(data->stdin_read, buf, pty_stdin_buf_len, &nread, &overlapped);
+    if (!success && GetLastError() == ERROR_IO_PENDING) {
+      success = GetOverlappedResult(data->stdin_read, &overlapped, &nread, TRUE);
+    }
+
+    if (!success) {
+      // TODO: Where would I report an error in the pipe pump thread?
+      break;
+    }
+
+    // Write to the synchronous PTY stdin pipe
+    DWORD off = 0;
+    while (off < nread) {
+      DWORD nwritten;
+      if (!WriteFile(data->pty_stdin_write, buf + off, nread - off, &nwritten, NULL)) {
+        // TODO: Where would I report an error in the pipe pump thread?
+        break;
+      }
+      off += nwritten;
+    }
+    if (off != nread) {
+      break;
+    }
+  }
+
+  uv__free(buf);
+  CloseHandle(data->stdin_read);
+  CloseHandle(data->pty_stdin_write);
+}
+
+void pty_stdout_pump_thread_cb(void *void_data) {
+  int err = 0;
+  uv__pty_data *data = (uv__pty_data*)void_data;
+
+  DWORD nread = 0;
+  OVERLAPPED overlapped = { 0 };
+  char *buf = (char*)uv__malloc(sizeof(char) * pty_stdout_buf_len);
+
+  while(1) {
+    // Read from the synchronous PTY stdout pipe
+    nread = 0;
+    if (!ReadFile(data->pty_stdout_read, buf, pty_stdout_buf_len, &nread, NULL)) {
+      err = GetLastError();
+      if (err != ERROR_BROKEN_PIPE) {
+        // TODO: Where would I report an error in the pipe pump thread?
+      }
+      break;
+    }
+
+    // Write to the overlapped stdout pipe
+    DWORD off = 0;
+    while (off < nread) {
+      DWORD nwritten;
+      BOOL success = WriteFile(data->stdout_write, buf + off, nread - off, &nwritten, &overlapped);
+      if (!success && GetLastError() == ERROR_IO_PENDING) {
+        success = GetOverlappedResult(data->stdout_write, &overlapped, &nwritten, TRUE);
+      }
+      if (!success) {
+        // TODO: Where would I report an error in the pipe pump thread?
+        break;
+      }
+      off += nwritten;
+    }
+
+    if (off != nread) {
+      break;
+    }
+  }
+
+  uv__free(buf);
+  CloseHandle(data->pty_stdout_read);
+  CloseHandle(data->stdout_write);
+}
+
+int pty_start_pipe_pumps(uv_loop_t *loop, uv__pty_data *data) {
+  int err = 0;
+
+  if (err = uv_thread_create(&data->stdin_pump_thread, &pty_stdin_pump_thread_cb, (void*)data)) {
+    return err;
+  }
+
+  if (err = uv_thread_create(&data->stdout_pump_thread, &pty_stdout_pump_thread_cb, (void*)data)) {
+    return err;
+  }
+
+  return 0;
+}
+
+// Copied from https://github.com/microsoft/terminal/blob/c4fbb58f69b0a5cc86c245505311d0a0b3cc1399/src/winconpty/winconpty.cpp#L532-L559
+typedef struct {
+    HANDLE hSignal;
+    HANDLE hPtyReference;
+    HANDLE hConPtyProcess;
+} uv__pseudo_console;
+HRESULT uv__release_pseudo_console(HPCON hPC) {
+  uv__pseudo_console *pPty = (uv__pseudo_console*)hPC;
+  if (pPty == NULL)
+    return E_INVALIDARG;
+
+  if (pPty->hPtyReference != INVALID_HANDLE_VALUE && pPty->hPtyReference != NULL) {
+    CloseHandle(pPty->hPtyReference);
+    pPty->hPtyReference = NULL;
+  }
+
+  return S_OK;
+}
 
 int uv_spawn(uv_loop_t* loop,
              uv_process_t* process,
              const uv_process_options_t* options) {
+  uv_process_options2_t options2;
+  options2.version     = UV_PROCESS_OPTIONS_VERSION_V0;
+  options2.exit_cb     = options->exit_cb;
+  options2.file        = options->file;
+  options2.args        = options->args;
+  options2.env         = options->env;
+  options2.cwd         = options->cwd;
+  options2.flags       = options->flags;
+  options2.stdio_count = options->stdio_count;
+  options2.stdio       = options->stdio;
+  options2.pty_cols    = 0;
+  options2.pty_rows    = 0;
+  options2.uid         = options->uid;
+  options2.gid         = options->gid;
+
+  return uv_spawn2(loop, process, &options2);
+}
+
+int uv_spawn2(uv_loop_t* loop,
+             uv_process_t* process,
+             const uv_process_options2_t* options) {
   int i;
   int err = 0;
+
   WCHAR* path = NULL, *alloc_path = NULL;
   BOOL result;
   WCHAR* application_path = NULL, *application = NULL, *arguments = NULL,
@@ -929,6 +1189,24 @@ int uv_spawn(uv_loop_t* loop,
     return UV_EINVAL;
   }
 
+  if (options->flags & UV_PROCESS_PTY) {
+    if (options->version < UV_PROCESS_OPTIONS_VERSION_V1)
+      return UV_EINVAL;
+    if (options->stdio_count < 3 ||
+        options->stdio[0].flags != (UV_CREATE_PIPE | UV_READABLE_PIPE) ||
+        options->stdio[0].data.stream->type != UV_NAMED_PIPE ||
+        options->stdio[1].flags != (UV_CREATE_PIPE | UV_WRITABLE_PIPE) ||
+        options->stdio[1].data.stream->type != UV_NAMED_PIPE ||
+        options->stdio[2].flags != UV_IGNORE)
+      return UV_EINVAL;
+    if (options->flags & (UV_PROCESS_WINDOWS_HIDE |
+                          UV_PROCESS_WINDOWS_HIDE_CONSOLE))
+      return UV_EINVAL;
+    if (options->pty_rows == 0 ||
+        options->pty_cols == 0)
+      return UV_EINVAL;
+  }
+
   assert(options->file != NULL);
   assert(!(options->flags & ~(UV_PROCESS_DETACHED |
                               UV_PROCESS_SETGID |
@@ -937,7 +1215,8 @@ int uv_spawn(uv_loop_t* loop,
                               UV_PROCESS_WINDOWS_HIDE |
                               UV_PROCESS_WINDOWS_HIDE_CONSOLE |
                               UV_PROCESS_WINDOWS_HIDE_GUI |
-                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS)));
+                              UV_PROCESS_WINDOWS_VERBATIM_ARGUMENTS |
+                              UV_PROCESS_PTY)));
 
   err = uv__utf8_to_utf16_alloc(options->file, &application);
   if (err)
@@ -1017,10 +1296,6 @@ int uv_spawn(uv_loop_t* loop,
     }
   }
 
-  err = uv__stdio_create(loop, options, &child_stdio_buffer);
-  if (err)
-    goto done;
-
   application_path = search_path(application,
                                  cwd,
                                  path,
@@ -1038,12 +1313,169 @@ int uv_spawn(uv_loop_t* loop,
   startup.StartupInfo.lpTitle = NULL;
   startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
 
+  err = uv__stdio_create(loop, options, &child_stdio_buffer);
+  if (err)
+    goto done;
+
+  if (options->flags & UV_PROCESS_PTY) {
+    HANDLE hLibrary = LoadLibraryExW(L"kernel32.dll", 0, 0);
+    if (!hLibrary) {
+      // Error loading kernel32.dll: (error code %i)
+      err = GetLastError();
+      goto done;
+    }
+
+    PFNCREATEPSEUDOCONSOLE pfnCreate = (PFNCREATEPSEUDOCONSOLE)GetProcAddress((HMODULE)hLibrary,"CreatePseudoConsole");
+    if (!pfnCreate) {
+      err = GetLastError();
+      if (err == ERROR_PROC_NOT_FOUND) {
+        err = UV_ENOTSUP;
+        goto done_uv;
+      }
+      else {
+        goto done;
+      }
+    }
+
+    /* STDIN pipe setup */
+    uv_pipe_t* in_write_pipe = (uv_pipe_t*) options->stdio[0].data.stream;
+    HANDLE in_read = INVALID_HANDLE_VALUE;
+    err = uv__create_stdio_pipe_pair(loop,
+                                     in_write_pipe,
+                                     &in_read,
+                                     options->stdio[0].flags);
+    if (err)
+      goto done;
+
+    /* STDOUT pipe setup */
+    uv_pipe_t* out_read_pipe = (uv_pipe_t*) options->stdio[1].data.stream;
+    HANDLE out_write = INVALID_HANDLE_VALUE;
+    err = uv__create_stdio_pipe_pair(loop,
+                                     out_read_pipe,
+                                     &out_write,
+                                     options->stdio[1].flags);
+    if (err)
+      goto done;
+
+    /* Setup the PTY object */
+    COORD size = {options->pty_cols, options->pty_rows};
+    uv__pty_data *pty_data = (uv__pty_data *)uv__malloc(sizeof(uv__pty_data));
+    process->u.reserved[0] = pty_data;
+
+    if (pty_supports_overlapped_io()) {
+      HANDLE pty;
+      HRESULT hr = pfnCreate(size, in_read, out_write, 0, &pty);
+      if (FAILED(hr)) {
+        // Failed to create PTY device: (error code %i)
+        err = hr;
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        goto done;
+      }
+
+      CloseHandle(in_read);
+      CloseHandle(out_write);
+
+      /* setup pty_data and fill in references */
+      pty_init(pty_data, pty, NULL, NULL, NULL, NULL);
+    }
+    else {
+      /* We are on an older version of Windows where ConPTY doesn't support
+       * overlapped IO / async pipes.
+       */
+
+      /* Forwarding PTY STDIN.
+       * We read an asynchronous pipe and in a separate thread write to a
+       * synchronous pipe. We need to do this, because older versions of ConPTY
+       * do not support async pipes.
+       */
+      HANDLE pty_in_read = INVALID_HANDLE_VALUE;
+      HANDLE pty_in_write = INVALID_HANDLE_VALUE;
+      if (!CreatePipe(&pty_in_read, &pty_in_write, NULL, 0)) {
+        err = GetLastError();
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        goto done;
+      }
+
+      /* Forwarding PTY STDOUT */
+      HANDLE pty_out_write = INVALID_HANDLE_VALUE;
+      HANDLE pty_out_read = INVALID_HANDLE_VALUE;
+      if (!CreatePipe(&pty_out_read, &pty_out_write, NULL, 0)) {
+        err = GetLastError();
+
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        CloseHandle(pty_in_read);
+        CloseHandle(pty_in_write);
+        FreeLibrary(hLibrary);
+        goto done;
+      }
+
+      /* Now setup the PTY object */
+      HANDLE pty;
+      HRESULT hr = pfnCreate(size, pty_in_read, pty_out_write, 0, &pty);
+      if (FAILED(hr)) {
+        // Failed to create PTY device: (error code %i)
+        err = hr;
+
+        CloseHandle(in_read);
+        CloseHandle(out_write);
+        CloseHandle(pty_in_read);
+        CloseHandle(pty_in_write);
+        CloseHandle(pty_out_read);
+        CloseHandle(pty_out_write);
+        FreeLibrary(hLibrary);
+        goto done;
+      }
+
+      CloseHandle(pty_in_read);
+      CloseHandle(pty_out_write);
+
+      /* setup pty_data and fill in references */
+      pty_init(pty_data, pty, pty_in_write, pty_out_read, out_write, in_read);
+
+      /* Start up the pump threads and STDIN reader. */
+      err = pty_start_pipe_pumps(loop, pty_data);
+      if (err)
+          goto done;
+    }
+
+    FreeLibrary(hLibrary);
+
+    startup.StartupInfo.hStdInput = NULL;
+    startup.StartupInfo.hStdOutput = NULL;
+    startup.StartupInfo.hStdError = NULL;
+  }
+  else {
+    startup.StartupInfo.hStdInput = uv__stdio_handle(child_stdio_buffer, 0);
+    startup.StartupInfo.hStdOutput = uv__stdio_handle(child_stdio_buffer, 1);
+    startup.StartupInfo.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
+  }
+
   startup.StartupInfo.cbReserved2 = uv__stdio_size(child_stdio_buffer);
   startup.StartupInfo.lpReserved2 = (BYTE*) child_stdio_buffer;
 
-  startup.StartupInfo.hStdInput = uv__stdio_handle(child_stdio_buffer, 0);
-  startup.StartupInfo.hStdOutput = uv__stdio_handle(child_stdio_buffer, 1);
-  startup.StartupInfo.hStdError = uv__stdio_handle(child_stdio_buffer, 2);
+  SIZE_T attr_size = 0;
+  /* 1. PROC_THREAD_ATTRIBUTE_HANDLE_LIST (only if any valid handles are found)
+   * 2. PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE
+   * It seems CreateProcessW is fine with an attribute list size larger than
+   * the actual attributes passed. So we don't bother determining whether we
+   * actually pass PROC_THREAD_ATTRIBUTE_HANDLE_LIST or not.
+   */
+  InitializeProcThreadAttributeList(NULL, 2, 0, &attr_size);
+  attr_list = (LPPROC_THREAD_ATTRIBUTE_LIST) uv__malloc(attr_size);
+  if (attr_list == NULL) {
+    err = ERROR_OUTOFMEMORY;
+    goto done;
+  }
+
+  if (!InitializeProcThreadAttributeList(attr_list, 2, 0, &attr_size)) {
+    err = GetLastError();
+    goto done;
+  }
+  attr_list_initialized = 1;
+  startup.lpAttributeList = attr_list;
 
   /* Build the list of handles to inherit. Using
    * PROC_THREAD_ATTRIBUTE_HANDLE_LIST ensures only these specific handles are
@@ -1055,7 +1487,6 @@ int uv_spawn(uv_loop_t* loop,
     int count = CHILD_STDIO_COUNT(child_stdio_buffer);
 #undef CHILD_STDIO_COUNT
     int n = 0;
-    SIZE_T attr_size = 0;
 
     handle_list = (HANDLE*) uv__malloc(count * sizeof(HANDLE));
     if (handle_list == NULL) {
@@ -1063,36 +1494,31 @@ int uv_spawn(uv_loop_t* loop,
       goto done;
     }
 
-    for (i = 0; i < count; i++) {
+    /* In PTY mode the STDIO handles are connected via a separate mechanism. Skip
+     * them here. */
+    if (options->flags & UV_PROCESS_PTY)
+      i = 3;
+    else
+      i = 0;
+
+    for (; i < count; i++) {
       HANDLE h = uv__stdio_handle(child_stdio_buffer, i);
       if (h != INVALID_HANDLE_VALUE)
         handle_list[n++] = h;
     }
-
-    InitializeProcThreadAttributeList(NULL, 1, 0, &attr_size);
-    attr_list = (LPPROC_THREAD_ATTRIBUTE_LIST) uv__malloc(attr_size);
-    if (attr_list == NULL) {
-      err = ERROR_OUTOFMEMORY;
-      goto done;
-    }
-    if (!InitializeProcThreadAttributeList(attr_list, 1, 0, &attr_size)) {
-      err = GetLastError();
-      goto done;
-    }
-    attr_list_initialized = 1;
-    if (!UpdateProcThreadAttribute(attr_list,
-                                   0,
-                                   PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
-                                   handle_list,
-                                   n * sizeof(HANDLE),
-                                   NULL,
-                                   NULL)) {
-      err = GetLastError();
-      goto done;
+    if (n > 0) {
+      if (!UpdateProcThreadAttribute(attr_list,
+                                     0,
+                                     PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+                                     handle_list,
+                                     n * sizeof(HANDLE),
+                                     NULL,
+                                     NULL)) {
+        err = GetLastError();
+        goto done;
+      }
     }
   }
-
-  startup.lpAttributeList = attr_list;
 
   process_flags = CREATE_UNICODE_ENVIRONMENT | EXTENDED_STARTUPINFO_PRESENT;
 
@@ -1129,11 +1555,25 @@ int uv_spawn(uv_loop_t* loop,
     process_flags |= CREATE_SUSPENDED;
   }
 
+  if (options->flags & UV_PROCESS_PTY) {
+    if (!UpdateProcThreadAttribute(startup.lpAttributeList,
+                                   0,
+                                   PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+                                   proc_to_pty_data(process)->pty,
+                                   sizeof(proc_to_pty_data(process)->pty),
+                                   NULL,
+                                   NULL)) {
+      // Failed to update proc thread attribute list. (error code %i)
+      err = GetLastError();
+      goto done;
+    }
+  }
+
   if (!CreateProcessW(application_path,
                      arguments,
                      NULL,
                      NULL,
-                     1,
+                     TRUE,
                      process_flags,
                      env,
                      cwd,
@@ -1173,6 +1613,31 @@ int uv_spawn(uv_loop_t* loop,
       goto done;
     }
   }
+
+  if (options->flags & UV_PROCESS_PTY) {
+    HANDLE hLibrary = LoadLibraryExW(L"kernel32.dll", 0, 0);
+    if (!hLibrary) {
+      // Error loading kernel32.dll: (error code %i)
+      err = GetLastError();
+      goto done;
+    }
+
+    PFNRELEASEPSEUDOCONSOLE pfnRelease = (PFNRELEASEPSEUDOCONSOLE)GetProcAddress((HMODULE)hLibrary,"ReleasePseudoConsole");
+    if (!pfnRelease) {
+      err = GetLastError();
+      if (err == ERROR_PROC_NOT_FOUND) {
+        err = 0;
+        uv__release_pseudo_console(proc_to_pty_data(process)->pty);
+      }
+      else {
+        goto done;
+      }
+    }
+    else {
+      pfnRelease(proc_to_pty_data(process)->pty);
+    }
+  }
+
 
   /* Spawn succeeded. Beyond this point, failure is reported asynchronously. */
 
