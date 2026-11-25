@@ -126,7 +126,7 @@ TEST_IMPL(platform_output) {
 
   // If we found cgroup parallelism constraints, assert and print them
   if (cgroup_par > 0) {
-    ASSERT_GE(par, cgroup_par);
+    ASSERT_LE(par, cgroup_par);
     printf("cgroup v%d available parallelism: %u\n", cgroup_version, cgroup_par);
   }
 #endif
