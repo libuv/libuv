@@ -316,6 +316,7 @@ TEST_DECLARE   (async)
 TEST_DECLARE   (async_null_cb)
 TEST_DECLARE   (eintr_handling)
 TEST_DECLARE   (get_currentexe)
+TEST_DECLARE   (search_path_empty_component)
 TEST_DECLARE   (process_title)
 TEST_DECLARE   (process_title_big_argv)
 TEST_DECLARE   (process_title_threadsafe)
@@ -1029,6 +1030,7 @@ TASK_LIST_START
   TEST_ENTRY  (eintr_handling)
 
   TEST_ENTRY  (get_currentexe)
+  TEST_ENTRY  (search_path_empty_component)
 
   TEST_ENTRY  (process_title)
   TEST_ENTRY  (process_title_big_argv)

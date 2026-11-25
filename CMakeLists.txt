@@ -265,6 +265,7 @@ else()
        src/unix/poll.c
        src/unix/process.c
        src/unix/random-devurandom.c
+       src/unix/search-path.c
        src/unix/signal.c
        src/unix/stream.c
        src/unix/tcp.c
@@ -597,6 +598,7 @@ if(LIBUV_BUILD_TESTS)
        test/test-fs-fd-hash.c
        test/test-fs-open-flags.c
        test/test-get-currentexe.c
+       test/test-search-path.c
        test/test-get-loadavg.c
        test/test-get-memory.c
        test/test-get-passwd.c
