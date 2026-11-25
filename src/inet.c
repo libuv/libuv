@@ -19,6 +19,7 @@
 #include "uv.h"
 #include "uv-common.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -324,6 +325,10 @@ int uv_ip6_addr(const char* ip, int port, uv_sockaddr_in6_t* addr) {
   char address_part[UV__INET6_ADDRSTRLEN];
   size_t address_part_size;
   const char* zone_index;
+#ifndef _WIN32
+  char* end;
+  unsigned long scope_id;
+#endif
 
   memset(addr, 0, sizeof(*addr));
   addr->sin6_family = AF_INET6;
@@ -348,6 +353,13 @@ int uv_ip6_addr(const char* ip, int port, uv_sockaddr_in6_t* addr) {
     addr->sin6_scope_id = atoi(zone_index);
 #else
     addr->sin6_scope_id = if_nametoindex(zone_index);
+    if (addr->sin6_scope_id == 0 &&
+        zone_index[0] >= '0' && zone_index[0] <= '9') {
+      errno = 0;
+      scope_id = strtoul(zone_index, &end, 10);
+      if (*end == '\0' && errno == 0 && scope_id <= UINT32_MAX)
+        addr->sin6_scope_id = (uint32_t) scope_id;
+    }
 #endif
   }
 
