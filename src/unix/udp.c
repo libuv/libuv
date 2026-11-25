@@ -1427,11 +1427,14 @@ static int uv__udp_sendmsgv(int fd,
   (defined(__sun__) && defined(MSG_WAITFORONE)) || defined(__QNX__)
   if (count > 1) {
     for (i = 0; i < count; /*empty*/) {
+      unsigned int j, k, n;
       struct mmsghdr m[20];
-      unsigned int n;
 
-      for (n = 0; i < count && n < ARRAY_SIZE(m); i++, n++)
-        if ((r = uv__udp_prep_pkt(&m[n].msg_hdr, bufs[i], nbufs[i], addrs[i])))
+      n = count - i;
+      if (n > ARRAY_SIZE(m))
+        n = ARRAY_SIZE(m);
+      for (j = i, k = 0; k < n; j++, k++)
+        if ((r = uv__udp_prep_pkt(&m[k].msg_hdr, bufs[j], nbufs[j], addrs[j])))
           goto exit;
 
       do
