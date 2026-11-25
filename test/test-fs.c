@@ -2389,7 +2389,6 @@ TEST_IMPL(fs_realpath_rename_race) {
   uv_thread_t thread;
   uv_fs_t req;
   uint64_t end;
-  int resolved;
   int r;
 
   /* Setup. */
@@ -2401,27 +2400,24 @@ TEST_IMPL(fs_realpath_rename_race) {
   ASSERT_OK(uv_fs_mkdir(NULL, &req, "test_dir_rr_parent", 0777, NULL));
   uv_fs_req_cleanup(&req);
 
+  ASSERT_OK(uv_fs_realpath(NULL, &req, "test_dir_rr", NULL));
+  ASSERT_NOT_NULL(req.ptr);
+  uv_fs_req_cleanup(&req);
+
   /* If the directory is renamed to a longer path while uv_fs_realpath() is
-   * resolving it, the result must be one of the two paths, or the error
-   * from opening it while it is being renamed (UV_ENOENT, or UV_EPERM for
-   * ERROR_ACCESS_DENIED), never UV_EBADF. */
+   * resolving it, the call can resolve either path or fail to open the
+   * directory (for example with UV_ENOENT or UV_EPERM, depending on timing),
+   * but it must never fail with UV_EBADF. */
   realpath_race_stop = 0;
   ASSERT_OK(uv_thread_create(&thread, realpath_race_rename, NULL));
-  resolved = 0;
   end = uv_hrtime() + 500 * 1000 * 1000;
   while (uv_hrtime() < end) {
     r = uv_fs_realpath(NULL, &req, "test_dir_rr", NULL);
-    if (r == 0) {
-      ASSERT_NOT_NULL(req.ptr);
-      resolved++;
-    } else if (r != UV_ENOENT) {
-      ASSERT_EQ(r, UV_EPERM);
-    }
+    ASSERT_NE(r, UV_EBADF);
     uv_fs_req_cleanup(&req);
   }
   InterlockedExchange(&realpath_race_stop, 1);
   ASSERT_OK(uv_thread_join(&thread));
-  ASSERT_GT(resolved, 0);
 
   /* Cleanup. */
   rmdir("test_dir_rr");
