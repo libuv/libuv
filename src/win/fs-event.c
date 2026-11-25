@@ -681,7 +681,6 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
      */
     FILE_STANDARD_INFO info;
     if (err == ERROR_ACCESS_DENIED &&
-        handle->dirw != NULL &&
         GetFileInformationByHandleEx(handle->dir_handle,
                                      FileStandardInfo,
                                      &info,
@@ -689,7 +688,14 @@ void uv__process_fs_event_req(uv_loop_t* loop, uv_req_t* req,
         info.Directory &&
         info.DeletePending) {
       dir_event_detected = 1;
-      uv__convert_utf16_to_utf8(handle->dirw, -1, &filename);
+      /*
+       * dirw is NULL for a file watch, in which case the watched name is the
+       * file, not the directory.
+       */
+      if (handle->dirw != NULL)
+        uv__convert_utf16_to_utf8(handle->dirw, -1, &filename);
+      else
+        uv__convert_utf16_to_utf8(handle->filew, -1, &filename);
       handle->cb(handle, filename, UV_RENAME, 0);
       uv__free(filename);
       filename = NULL;
