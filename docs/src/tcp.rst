@@ -36,6 +36,12 @@ Data types
              * FreeBSD 12.0+, Solaris 11.4, and AIX 7.2.5+ for now.
              */
             UV_TCP_REUSEPORT = 2,
+
+            /* Enable TCP fast open for outbound connections. */
+            UV_TCP_FASTOPEN_CONNECT = 4,
+
+            /* Enable TCP fast open for inbound connections. */
+            UV_TCP_FASTOPEN_ACCEPT = 8,
         };
 
 
@@ -76,6 +82,18 @@ API
 .. c:function:: int uv_tcp_nodelay(uv_tcp_t* handle, int enable)
 
     Enable `TCP_NODELAY`, which disables Nagle's algorithm.
+
+.. c:function:: int uv_tcp_fastopen(uv_tcp_t *handle, int flags, int backlog)
+
+    Enable `TCP_FASTOPEN_CONNECT` and/or `TCP_FASTOPEN`.
+    Must be called before bind.
+    
+    :param flags: Accepts `UV_TCP_FASTOPEN_CONNECT` and/or `UV_TCP_FASTOPEN_ACCEPT`.
+        `UV_TCP_FASTOPEN_CONNECT` enables client-side TFO support.
+        `UV_TCP_FASTOPEN_ACCEPT` enables server-side TFO support.
+
+    :param backlog: Currently only used on Linux to specify maximum length of 
+        pending SYNs. Can be 0 to use compile time `SOMAXCONN` instead.
 
 .. c:function:: int uv_tcp_keepalive(uv_tcp_t* handle, int enable, unsigned int delay)
 
@@ -187,6 +205,28 @@ API
 
     .. versionchanged:: 1.19.0 added ``0.0.0.0`` and ``::`` to ``localhost``
         mapping
+
+.. c:function:: int uv_tcp_connect_ex(uv_connect_t* req, uv_tcp_t* handle, const uv_sockaddr_t* addr, const uv_buf_t* buf, uv_connect_cb cb);
+
+    Same as :c:func:`uv_tcp_connect` but also attempts to queue send `buf`
+    as a part of the TCP handshake if allowed by the OS or TFO.
+
+    Primarily usage is to be combined with :c:func:`uv_tcp_fastopen`.
+
+    Sets amount of queued bytes in :c:type:`uv_connect_t` `sent` when data is queued.
+    User should send the remaining buffer bytes and access :c:type:`uv_connect_t` `sent`
+    only after connection is fired.
+
+    Queued buffer must be valid until connection is established.
+
+    This function enables TFO on the socket if requested previously by :c:func:`uv_tcp_fastopen`
+    only when `buf` is not `NULL`.
+
+    .. note::
+        On Linux man `tcp.7` `tcp_fastopen` specifies how kernel handles handshake data.
+        On Windows see mswsock `ConnectEx`.
+
+    .. versionadded:: 1.54.0
 
 .. seealso:: The :c:type:`uv_stream_t` API functions also apply.
 

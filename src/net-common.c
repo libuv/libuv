@@ -103,12 +103,13 @@ int uv_udp_bind(uv_udp_t* handle,
   return uv__udp_bind(handle, addr, addrlen, flags);
 }
 
-
-int uv_tcp_connect(uv_connect_t* req,
-                   uv_tcp_t* handle,
-                   const struct sockaddr* addr,
-                   uv_connect_cb cb) {
-  unsigned int addrlen;
+int uv_tcp_connect_ex(uv_connect_t* req,
+                             uv_tcp_t* handle,
+                             const struct sockaddr* addr,
+                             const uv_buf_t* buf,
+                             uv_connect_cb cb)
+{
+    unsigned int addrlen;
 
   if (handle->type != UV_TCP)
     return UV_EINVAL;
@@ -120,9 +121,15 @@ int uv_tcp_connect(uv_connect_t* req,
   else
     return UV_EINVAL;
 
-  return uv__tcp_connect(req, handle, addr, addrlen, cb);
+  return uv__tcp_connect(req, handle, addr, addrlen, buf, cb);
 }
 
+int uv_tcp_connect(uv_connect_t* req,
+                   uv_tcp_t* handle,
+                   const struct sockaddr* addr,
+                   uv_connect_cb cb) {
+  return uv_tcp_connect_ex(req, handle, addr, NULL, cb);
+}
 
 int uv_udp_connect(uv_udp_t* handle, const struct sockaddr* addr) {
   unsigned int addrlen;
