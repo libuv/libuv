@@ -728,7 +728,7 @@ static int uv__spawn_set_posix_spawn_file_actions(
        * FD_CLOEXEC flag set. */
       if (child_fds[fd2] == use_fd) {
         use_fd++;
-        fd2 = 0;
+        fd2 = -1;
       }
     }
     err = posix_spawn_file_actions_adddup2(

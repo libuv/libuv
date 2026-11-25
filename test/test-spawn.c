@@ -2432,3 +2432,77 @@ TEST_IMPL(spawn_empty_command_line) {
   MAKE_VALGRIND_HAPPY(uv_default_loop());
   return 0;
 }
+
+#ifndef _WIN32
+TEST_IMPL(spawn_posix_spawn_scratch_fd_collision) {
+  uv_stdio_container_t* stdio;
+  int in_pipe[2];
+  int out_pipe[2];
+  int base_fd;
+  char buf[32];
+  ssize_t n;
+  int i;
+
+  ASSERT_OK(pipe(in_pipe));
+  ASSERT_OK(pipe(out_pipe));
+
+  /* Find two consecutive unused fds after opening the pipes so dup2() cannot
+   * alias any pipe descriptor. */
+  base_fd = -1;
+  for (i = 10; i < 254; i++) {
+    if (fcntl(i, F_GETFD) == -1 && errno == EBADF &&
+        fcntl(i + 1, F_GETFD) == -1 && errno == EBADF) {
+      base_fd = i;
+      break;
+    }
+  }
+  ASSERT_NE(base_fd, -1);
+
+  ASSERT_EQ(dup2(out_pipe[1], base_fd), base_fd);
+  ASSERT_EQ(dup2(in_pipe[0], base_fd + 1), base_fd + 1);
+  ASSERT_OK(close(in_pipe[0]));
+  ASSERT_OK(close(out_pipe[1]));
+
+  ASSERT_EQ(6, write(in_pipe[1], "hello\n", 6));
+  ASSERT_OK(close(in_pipe[1]));
+
+  stdio = calloc(base_fd, sizeof(*stdio));
+  ASSERT_NOT_NULL(stdio);
+  for (i = 0; i < base_fd; i++)
+    stdio[i].flags = UV_IGNORE;
+
+  /* child_fds = { base_fd + 1, base_fd, 1, -1, ... } triggers the scratch-fd
+   * collision on fd 2: use_fd starts at base_fd, hits child_fds[1], increments
+   * to base_fd + 1, and must re-check child_fds[0]. */
+  stdio[0].flags = UV_INHERIT_FD;
+  stdio[0].data.fd = base_fd + 1;
+  stdio[1].flags = UV_INHERIT_FD;
+  stdio[1].data.fd = base_fd;
+  stdio[2].flags = UV_INHERIT_FD;
+  stdio[2].data.fd = 1;
+
+  init_process_options("spawn_helper3", exit_cb);
+  options.stdio = stdio;
+  options.stdio_count = base_fd;
+
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_OK(close(base_fd));
+  ASSERT_OK(close(base_fd + 1));
+
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+  free(stdio);
+
+  memset(buf, 0, sizeof(buf));
+  do
+    n = read(out_pipe[0], buf, sizeof(buf) - 1);
+  while (n == -1 && errno == EINTR);
+  ASSERT_OK(close(out_pipe[0]));
+  ASSERT_EQ(n, 6);
+  ASSERT_OK(strcmp(buf, "hello\n"));
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+#endif
