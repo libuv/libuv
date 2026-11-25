@@ -27,6 +27,7 @@
 
 #if defined(__APPLE__) && !TARGET_OS_IPHONE
 # include <AvailabilityMacros.h>
+# include "../src/unix/darwin-attr.h"
 #endif
 
 static uv_fs_event_t fs_event;
@@ -517,6 +518,121 @@ TEST_IMPL(fs_event_watch_dir) {
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
+
+#if defined(__APPLE__) && !TARGET_OS_IPHONE && !defined(NO_FS_EVENTS)
+TEST_IMPL(fs_event_darwin_path_attr) {
+  struct uv__darwin_path_attr attrs;
+
+  memset(&attrs, 0, sizeof(attrs));
+  memcpy(attrs.data, "/project", sizeof("/project"));
+  attrs.length = offsetof(struct uv__darwin_path_attr, data) + sizeof("/project");
+  attrs.relative.attr_dataoffset = sizeof(attrs.relative);
+  attrs.relative.attr_length = sizeof("/project");
+  ASSERT_STR_EQ(uv__darwin_path_attr_string(&attrs), "/project");
+
+  attrs.length--;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.length++;
+
+  attrs.data[sizeof("/project") - 1] = 'x';
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.data[sizeof("/project") - 1] = '\0';
+
+  attrs.relative.attr_length = 0;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.relative.attr_length = sizeof("/project");
+
+  attrs.relative.attr_dataoffset = -1;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.relative.attr_dataoffset = sizeof(attrs);
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.relative.attr_dataoffset = sizeof(attrs.relative);
+
+  attrs.length = sizeof(attrs) + 1;
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  attrs.length = sizeof(attrs.length);
+  ASSERT_NULL(uv__darwin_path_attr_string(&attrs));
+  return 0;
+}
+
+
+static void fs_event_firmlink_timeout(uv_timer_t* handle) {
+  uv_close((uv_handle_t*) handle, NULL);
+  uv_close((uv_handle_t*) &fs_event, NULL);
+}
+
+
+static void fs_event_firmlink_write(uv_timer_t* handle) {
+  create_file(fs_event_filename);
+  ASSERT_OK(uv_timer_start(handle, fs_event_firmlink_timeout, 2000, 0));
+}
+
+
+static void fs_event_firmlink_cb(uv_fs_event_t* handle,
+                                const char* filename,
+                                int events,
+                                int status) {
+  ASSERT_OK(status);
+  if (filename == NULL || strcmp(filename, "file") != 0)
+    return;
+
+  ASSERT_NE(0, events);
+  fs_event_cb_called++;
+  uv_close((uv_handle_t*) &timer, NULL);
+  uv_close((uv_handle_t*) handle, NULL);
+}
+
+
+TEST_IMPL(fs_event_watch_dir_firmlink) {
+  const char* directory;
+  char alias[PATH_MAX];
+  uv_loop_t loop;
+  uv_stat_t original;
+  uv_fs_t temp;
+  uv_fs_t resolved;
+  uv_fs_t req;
+  int r;
+  int same_dir;
+
+  ASSERT_OK(uv_fs_mkdtemp(NULL, &temp, "watch_firmlink_XXXXXX", NULL));
+  ASSERT_OK(uv_fs_realpath(NULL, &resolved, temp.path, NULL));
+  directory = resolved.ptr;
+  r = snprintf(alias, sizeof(alias), "/System/Volumes/Data%s", directory);
+  ASSERT_GT(r, 0);
+  ASSERT_LT((size_t) r, sizeof(alias));
+
+  ASSERT_OK(uv_fs_stat(NULL, &req, directory, NULL));
+  original = req.statbuf;
+  uv_fs_req_cleanup(&req);
+  r = uv_fs_stat(NULL, &req, alias, NULL);
+  same_dir = r == 0 &&
+             original.st_dev == req.statbuf.st_dev &&
+             original.st_ino == req.statbuf.st_ino;
+  uv_fs_req_cleanup(&req);
+  uv_fs_req_cleanup(&resolved);
+  if (!same_dir) {
+    ASSERT_OK(delete_dir(temp.path));
+    uv_fs_req_cleanup(&temp);
+    RETURN_SKIP("Test directory is not reachable through a boot volume firmlink.");
+  }
+
+  snprintf(fs_event_filename, sizeof(fs_event_filename), "%s/file", temp.path);
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_fs_event_init(&loop, &fs_event));
+  ASSERT_OK(uv_fs_event_start(&fs_event, fs_event_firmlink_cb, alias, 0));
+  ASSERT_OK(uv_timer_init(&loop, &timer));
+  ASSERT_OK(uv_timer_start(&timer, fs_event_firmlink_write, 250, 0));
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_loop_close(&loop));
+
+  ASSERT_OK(delete_file(fs_event_filename));
+  ASSERT_OK(delete_dir(temp.path));
+  uv_fs_req_cleanup(&temp);
+  ASSERT_EQ(1, fs_event_cb_called);
+  return 0;
+}
+#endif
+
 
 TEST_IMPL(fs_event_watch_delete_dir) {
 #if defined(NO_FS_EVENTS)
@@ -1510,6 +1626,73 @@ static void fs_event_no_leak_cb(uv_fs_event_t* handle,
   ASSERT_NE(0, events);
   fs_event_cb_called++;
   uv_close((uv_handle_t*) handle, NULL);
+}
+
+static uv_thread_t fs_event_start_thread;
+static unsigned int fs_event_start_allocations;
+static unsigned int fs_event_start_fail_at;
+
+static void* fs_event_start_malloc(size_t size) {
+  uv_thread_t thread;
+
+  thread = uv_thread_self();
+  if (uv_thread_equal(&thread, &fs_event_start_thread)) {
+    fs_event_start_allocations++;
+    if (fs_event_start_allocations == fs_event_start_fail_at)
+      return NULL;
+  }
+  return malloc(size);
+}
+
+
+TEST_IMPL(fs_event_start_alloc_failure) {
+  uv_loop_t loop;
+  uv_fs_event_t anchor;
+  uv_fs_event_t watcher;
+
+  create_dir("watch_start_alloc_failure");
+  fs_event_start_thread = uv_thread_self();
+  ASSERT_OK(uv_replace_allocator(fs_event_start_malloc, realloc, calloc, free));
+  ASSERT_OK(uv_loop_init(&loop));
+  ASSERT_OK(uv_fs_event_init(&loop, &anchor));
+  ASSERT_OK(uv_fs_event_init(&loop, &watcher));
+  ASSERT_OK(uv_fs_event_start(&anchor,
+                              fs_event_no_leak_cb,
+                              "watch_start_alloc_failure",
+                              0));
+
+  fs_event_start_allocations = 0;
+  ASSERT_OK(uv_fs_event_start(&watcher,
+                              fail_cb,
+                              "watch_start_alloc_failure",
+                              0));
+  ASSERT_GT(fs_event_start_allocations, 0);
+  /* The last allocation during start reserves the CF thread signal. */
+  fs_event_start_fail_at = fs_event_start_allocations;
+  /* Stop waits for the CF thread to install the anchor's stream. */
+  ASSERT_OK(uv_fs_event_stop(&watcher));
+  fs_event_start_allocations = 0;
+  ASSERT_EQ(UV_ENOMEM, uv_fs_event_start(&watcher,
+                                         fail_cb,
+                                         "watch_start_alloc_failure",
+                                         0));
+  ASSERT_EQ(fs_event_start_fail_at, fs_event_start_allocations);
+
+  create_file("watch_start_alloc_failure/file");
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(1, fs_event_cb_called);
+  ASSERT_OK(uv_fs_event_start(&watcher,
+                              fail_cb,
+                              "watch_start_alloc_failure",
+                              0));
+  ASSERT_OK(uv_fs_event_stop(&watcher));
+  uv_close((uv_handle_t*) &watcher, NULL);
+  ASSERT_OK(uv_run(&loop, UV_RUN_DEFAULT));
+  ASSERT_OK(uv_loop_close(&loop));
+  ASSERT_OK(uv_replace_allocator(malloc, realloc, calloc, free));
+  ASSERT_OK(delete_file("watch_start_alloc_failure/file"));
+  ASSERT_OK(delete_dir("watch_start_alloc_failure"));
+  return 0;
 }
 #endif
 

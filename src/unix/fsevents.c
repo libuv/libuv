@@ -41,9 +41,13 @@ void uv__fsevents_loop_delete(uv_loop_t* loop) {
 
 #else /* TARGET_OS_IPHONE */
 
+#include "darwin-attr.h"
 #include "darwin-stub.h"
 
 #include <dlfcn.h>
+#include <fcntl.h>
+#include <sys/mount.h>
+#include <unistd.h>
 #include <assert.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -89,6 +93,12 @@ struct uv__fsevents_event_s {
   struct uv__queue member;
   int events;
   char path[1];
+};
+
+struct uv__fsevents_async {
+  uv_async_t async;
+  size_t alternate_len;
+  char alternate[1];
 };
 
 struct uv__cf_loop_state_s {
@@ -211,6 +221,17 @@ static void uv__fsevents_push_event(uv_fs_event_t* handle,
 }
 
 
+static int uv__fsevents_path_matches(const char* path,
+                                     size_t len,
+                                     const char* root,
+                                     size_t root_len) {
+  return root_len != 0 &&
+         len >= root_len &&
+         (len == root_len || root_len == 1 || path[root_len] == '/') &&
+         memcmp(path, root, root_len) == 0;
+}
+
+
 /* Runs in CF thread, when there're events in FSEventStream */
 static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
                                   void* info,
@@ -219,11 +240,13 @@ static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
                                   const FSEventStreamEventFlags eventFlags[],
                                   const FSEventStreamEventId eventIds[]) {
   size_t i;
-  int len;
+  size_t len;
+  size_t root_len;
   char** paths;
   char* path;
   char* pos;
   uv_fs_event_t* handle;
+  struct uv__fsevents_async* callback;
   struct uv__queue* q;
   uv_loop_t* loop;
   uv__cf_loop_state_t* state;
@@ -240,6 +263,7 @@ static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
   uv_mutex_lock(&state->fsevent_mutex);
   uv__queue_foreach(q, &state->fsevent_handles) {
     handle = uv__queue_data(q, uv_fs_event_t, cf_member);
+    callback = container_of(handle->cf_cb, struct uv__fsevents_async, async);
     uv__queue_init(&head);
 
     /* Process and filter out events */
@@ -253,34 +277,23 @@ static void uv__fsevents_event_cb(const FSEventStreamRef streamRef,
       path = paths[i];
       len = strlen(path);
 
-      if (handle->realpath_len == 0)
-        continue; /* This should be unreachable */
+      root_len = handle->realpath_len;
+      if (!uv__fsevents_path_matches(path, len, handle->realpath, root_len)) {
+        root_len = callback->alternate_len;
+        if (!uv__fsevents_path_matches(path, len, callback->alternate, root_len))
+          continue;
+      }
 
-      /* Filter out paths that are outside handle's request */
-      if (len < handle->realpath_len)
-        continue;
-
-      /* Make sure that realpath actually named a directory,
-       * (unless watching root, which alone keeps a trailing slash on the realpath)
-       * or that we matched the whole string */
-      if (handle->realpath_len != len &&
-          handle->realpath_len > 1 &&
-          path[handle->realpath_len] != '/')
-        continue;
-
-      if (memcmp(path, handle->realpath, handle->realpath_len) != 0)
-        continue;
-
-      if (!(handle->realpath_len == 1 && handle->realpath[0] == '/')) {
+      if (root_len != 1) {
         /* Remove common prefix, unless the watched folder is "/" */
-        path += handle->realpath_len;
-        len -= handle->realpath_len;
+        path += root_len;
+        len -= root_len;
 
         if (len == 0) {
           /* Since we're using fsevents to watch the file itself,
            * realpath == path, and we now need to get the basename of the file back
            * (for commonality with other codepaths and platforms). */
-          while (len < handle->realpath_len && path[-1] != '/') {
+          while (len < root_len && path[-1] != '/') {
             path--;
             len++;
           }
@@ -757,15 +770,11 @@ static void uv__cf_loop_cb(void* arg) {
 
 
 /* Runs in UV loop to notify CF thread */
-int uv__cf_loop_signal(uv_loop_t* loop,
-                       uv_fs_event_t* handle,
-                       uv__cf_loop_signal_type_t type) {
-  uv__cf_loop_signal_t* item;
+static void uv__cf_loop_post(uv_loop_t* loop,
+                             uv__cf_loop_signal_t* item,
+                             uv_fs_event_t* handle,
+                             uv__cf_loop_signal_type_t type) {
   uv__cf_loop_state_t* state;
-
-  item = uv__malloc(sizeof(*item));
-  if (item == NULL)
-    return UV_ENOMEM;
 
   item->handle = handle;
   item->type = type;
@@ -779,15 +788,90 @@ int uv__cf_loop_signal(uv_loop_t* loop,
   pCFRunLoopWakeUp(state->loop);
 
   uv_mutex_unlock(&loop->cf_mutex);
+}
 
+
+static int uv__cf_loop_signal(uv_loop_t* loop,
+                              uv_fs_event_t* handle,
+                              uv__cf_loop_signal_type_t type) {
+  uv__cf_loop_signal_t* item;
+
+  item = uv__malloc(sizeof(*item));
+  if (item == NULL)
+    return UV_ENOMEM;
+
+  uv__cf_loop_post(loop, item, handle, type);
   return 0;
+}
+
+/*
+ * A firmlink can give a directory two absolute paths that realpath() leaves
+ * distinct. FSEvents may report the other spelling. Find the volume-relative
+ * path once so event delivery only has to compare prefixes.
+ */
+static size_t uv__fsevents_alternate_path(const char* path, char* alternate) {
+#ifdef ATTR_CMNEXT_RELPATH
+  struct uv__darwin_path_attr attrs;
+  struct attrlist request;
+  struct statfs volume;
+  struct stat watched;
+  struct stat candidate;
+  const char* relative;
+  int fd;
+  int err;
+  int len;
+
+  fd = uv__open_cloexec(path, O_EVTONLY);
+  if (fd < 0)
+    return 0;
+
+  memset(&request, 0, sizeof(request));
+  request.bitmapcount = ATTR_BIT_MAP_COUNT;
+  request.forkattr = ATTR_CMNEXT_RELPATH;
+  err = fstatfs(fd, &volume);
+  if (err == 0 && strcmp(volume.f_fstypename, "apfs") == 0)
+    err = fgetattrlist(fd, &request, &attrs, sizeof(attrs),
+                      FSOPT_ATTR_CMN_EXTENDED);
+  else
+    err = -1;
+  if (err == 0)
+    err = fstat(fd, &watched);
+  uv__close(fd);
+
+  if (err != 0)
+    return 0;
+
+  relative = uv__darwin_path_attr_string(&attrs);
+  if (relative == NULL)
+    return 0;
+
+  len = snprintf(alternate, PATH_MAX, "%s%s",
+                 strcmp(volume.f_mntonname, "/") == 0 ? "" : volume.f_mntonname,
+                 strcmp(relative, "/") == 0 ? "" : relative);
+  /* On the boot volume, FSEvents can use the path relative to /. */
+  if (len > 0 && len < PATH_MAX && strcmp(alternate, path) == 0)
+    len = snprintf(alternate, PATH_MAX, "%s", relative);
+  if (len <= 0 || len >= PATH_MAX || strcmp(alternate, path) == 0)
+    return 0;
+  if (stat(alternate, &candidate) != 0 ||
+      candidate.st_dev != watched.st_dev ||
+      candidate.st_ino != watched.st_ino)
+    return 0;
+  return len;
+#else
+  return 0;
+#endif
 }
 
 
 /* Runs in UV loop to initialize handle */
 int uv__fsevents_init(uv_fs_event_t* handle) {
+  char alternate[PATH_MAX];
   char* buf;
   int err;
+  size_t alternate_len;
+  struct uv__fsevents_async* callback;
+  uv__cf_loop_signal_t* signal;
   uv__cf_loop_state_t* state;
 
   err = uv__fsevents_loop_init(handle->loop);
@@ -812,22 +896,35 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
    * Events will occur in other thread.
    * Initialize callback for getting them back into event loop's thread
    */
-  handle->cf_cb = uv__malloc(sizeof(*handle->cf_cb));
-  if (handle->cf_cb == NULL) {
+  alternate_len = uv__fsevents_alternate_path(handle->realpath, alternate);
+  callback = uv__malloc(sizeof(*callback) + alternate_len);
+  if (callback == NULL) {
     err = UV_ENOMEM;
     goto fail_cf_cb_malloc;
   }
 
-  handle->cf_cb->data = handle;
-  uv_async_init(handle->loop, handle->cf_cb, uv__fsevents_cb);
-  handle->cf_cb->flags |= UV_HANDLE_INTERNAL;
-  uv_unref((uv_handle_t*) handle->cf_cb);
+  /* Reserve the signal before publishing the watcher to the CF thread. */
+  signal = uv__malloc(sizeof(*signal));
+  if (signal == NULL) {
+    err = UV_ENOMEM;
+    goto fail_signal_malloc;
+  }
 
   err = uv_mutex_init(&handle->cf_mutex);
   if (err)
     goto fail_cf_mutex_init;
 
-  /* Insert handle into the list */
+  callback->alternate_len = alternate_len;
+  if (alternate_len != 0)
+    memcpy(callback->alternate, alternate, alternate_len + 1);
+  callback->async.data = handle;
+  err = uv_async_init(handle->loop, &callback->async, uv__fsevents_cb);
+  if (err)
+    goto fail_async_init;
+  handle->cf_cb = &callback->async;
+  handle->cf_cb->flags |= UV_HANDLE_INTERNAL;
+  uv_unref((uv_handle_t*) handle->cf_cb);
+
   state = handle->loop->cf_state;
   uv_mutex_lock(&state->fsevent_mutex);
   uv__queue_insert_tail(&state->fsevent_handles, &handle->cf_member);
@@ -835,20 +932,17 @@ int uv__fsevents_init(uv_fs_event_t* handle) {
   state->fsevent_need_reschedule = 1;
   uv_mutex_unlock(&state->fsevent_mutex);
 
-  /* Reschedule FSEventStream */
-  assert(handle != NULL);
-  err = uv__cf_loop_signal(handle->loop, handle, kUVCFLoopSignalRegular);
-  if (err)
-    goto fail_loop_signal;
-
+  uv__cf_loop_post(handle->loop, signal, handle, kUVCFLoopSignalRegular);
   return 0;
 
-fail_loop_signal:
+fail_async_init:
   uv_mutex_destroy(&handle->cf_mutex);
 
 fail_cf_mutex_init:
-  uv__free(handle->cf_cb);
-  handle->cf_cb = NULL;
+  uv__free(signal);
+
+fail_signal_malloc:
+  uv__free(callback);
 
 fail_cf_cb_malloc:
   uv__free(handle->realpath);
