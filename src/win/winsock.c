@@ -91,14 +91,10 @@ void uv__winsock_init(void) {
     abort();
   }
 
-  /* Skip initialization in safe mode without network support */
-  if (1 == GetSystemMetrics(SM_CLEANBOOT)) return;
-
-  /* Initialize winsock */
+  /* Initialize winsock, which may be unavailable, such as in safe mode without
+   * network support. Socket operations then fail with WSANOTINITIALISED. */
   errorno = WSAStartup(MAKEWORD(2, 2), &wsa_data);
-  if (errorno != 0) {
-    uv_fatal_error(errorno, "WSAStartup");
-  }
+  if (errorno != 0) return;
 
   /* Try to detect non-IFS LSPs */
   uv_tcp_non_ifs_lsp_ipv4 = 1;
