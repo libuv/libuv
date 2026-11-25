@@ -454,6 +454,7 @@ TEST_DECLARE   (fs_event_watch_delete_dir_win)
 #endif
 TEST_DECLARE   (fs_event_watch_dir_recursive)
 TEST_DECLARE   (fs_event_watch_dir_recursive_burst)
+TEST_DECLARE   (fs_event_watch_dir_ignore_access)
 #ifdef _WIN32
 TEST_DECLARE   (fs_event_watch_dir_short_path)
 #endif
@@ -1245,6 +1246,7 @@ TASK_LIST_START
 #endif
   TEST_ENTRY  (fs_event_watch_dir_recursive)
   TEST_ENTRY  (fs_event_watch_dir_recursive_burst)
+  TEST_ENTRY  (fs_event_watch_dir_ignore_access)
 #ifdef _WIN32
   TEST_ENTRY  (fs_event_watch_dir_short_path)
 #endif
