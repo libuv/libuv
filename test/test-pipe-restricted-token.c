@@ -115,7 +115,86 @@ static HANDLE restricted_impersonation_token(void) {
   return imp;
 }
 
+
+
+/* Check that the DACL of the pipe is the default DACL of the token. Above all
+ * it must not be missing or NULL, because that grants access to everyone.
+ */
+static void check_pipe_dacl(uv_file fd, HANDLE token) {
+  GENERIC_MAPPING mapping = { FILE_GENERIC_READ,
+                              FILE_GENERIC_WRITE,
+                              FILE_GENERIC_EXECUTE,
+                              FILE_ALL_ACCESS };
+  SECURITY_DESCRIPTOR_CONTROL control;
+  ACCESS_ALLOWED_ACE* expected_ace;
+  ACCESS_ALLOWED_ACE* ace;
+  TOKEN_DEFAULT_DACL* expected;
+  PSECURITY_DESCRIPTOR sd;
+  ACCESS_MASK mask;
+  DWORD revision;
+  DWORD i;
+  DWORD n;
+  PACL dacl;
+
+  ASSERT_OK(GetSecurityInfo((HANDLE) _get_osfhandle(fd),
+                            SE_KERNEL_OBJECT,
+                            DACL_SECURITY_INFORMATION,
+                            NULL,
+                            NULL,
+                            &dacl,
+                            NULL,
+                            &sd));
+  ASSERT(GetSecurityDescriptorControl(sd, &control, &revision));
+  ASSERT(control & SE_DACL_PRESENT);
+  ASSERT_NOT_NULL(dacl);
+
+  n = 0;
+  GetTokenInformation(token, TokenDefaultDacl, NULL, 0, &n);
+  expected = malloc(n);
+  ASSERT_NOT_NULL(expected);
+  ASSERT(GetTokenInformation(token, TokenDefaultDacl, expected, n, &n));
+  ASSERT_NOT_NULL(expected->DefaultDacl);
+
+  ASSERT_GT(dacl->AceCount, 0);
+  ASSERT_EQ(dacl->AceCount, expected->DefaultDacl->AceCount);
+  for (i = 0; i < dacl->AceCount; i++) {
+    ASSERT(GetAce(dacl, i, (void**) &ace));
+    ASSERT(GetAce(expected->DefaultDacl, i, (void**) &expected_ace));
+    ASSERT_EQ(ACCESS_ALLOWED_ACE_TYPE, ace->Header.AceType);
+    ASSERT_EQ(ACCESS_ALLOWED_ACE_TYPE, expected_ace->Header.AceType);
+    ASSERT(EqualSid(&ace->SidStart, &expected_ace->SidStart));
+    /* Generic rights get mapped to file rights when the pipe is created. */
+    mask = expected_ace->Mask;
+    MapGenericMask(&mask, &mapping);
+    ASSERT_EQ(mask, ace->Mask);
+  }
+
+  free(expected);
+  LocalFree(sd);
+}
+
 #endif
+
+
+TEST_IMPL(pipe_default_dacl) {
+#ifndef _WIN32
+  RETURN_SKIP("Windows only");
+#else
+  uv_file fds[2];
+  HANDLE token;
+
+  ASSERT(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token));
+  ASSERT_OK(uv_pipe(fds, 0, 0));
+  check_pipe_dacl(fds[0], token);
+  check_pipe_dacl(fds[1], token);
+  ASSERT_OK(_close(fds[0]));
+  ASSERT_OK(_close(fds[1]));
+  CloseHandle(token);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+#endif
+}
 
 
 TEST_IMPL(pipe_restricted_token) {
@@ -126,13 +205,18 @@ TEST_IMPL(pipe_restricted_token) {
   HANDLE token;
   int r;
 
+  RETURN_SKIP_IN_APPCONTAINER("default DACL lacks the AppContainer SID");
+
   token = restricted_impersonation_token();
   ASSERT(SetThreadToken(NULL, token));
   r = uv_pipe(fds, 0, 0);
   ASSERT(RevertToSelf());
-  CloseHandle(token);
 
   ASSERT_OK(r);
+  check_pipe_dacl(fds[0], token);
+  check_pipe_dacl(fds[1], token);
+  CloseHandle(token);
+
   ASSERT_EQ(1, _write(fds[1], "x", 1));
   {
     char c;

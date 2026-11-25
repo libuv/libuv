@@ -233,54 +233,6 @@ static void close_pipe(uv_pipe_t* pipe) {
 }
 
 
-/* A security descriptor whose DACL is the default DACL of the token in
- * effect (the thread's when it impersonates, else the process's). With NULL
- * security attributes a named pipe gets the pipe file system's fixed default
- * descriptor, which grants Everyone only read: a restricted token, whose
- * restricting SIDs must also be granted, then cannot open the other end of a
- * pipe it just created for writing. Returns the allocated TOKEN_DEFAULT_DACL
- * (to free with uv__free) or NULL when there is none to use, in which case
- * the caller keeps the old behaviour.
- */
-static TOKEN_DEFAULT_DACL* uv__token_default_dacl(SECURITY_DESCRIPTOR* sd) {
-  TOKEN_DEFAULT_DACL* dacl;
-  HANDLE token;
-  DWORD len;
-
-  if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE, &token)) {
-    if (GetLastError() != ERROR_NO_TOKEN)
-      return NULL;
-    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
-      return NULL;
-  }
-
-  len = 0;
-  GetTokenInformation(token, TokenDefaultDacl, NULL, 0, &len);
-  if (GetLastError() != ERROR_INSUFFICIENT_BUFFER || len == 0) {
-    CloseHandle(token);
-    return NULL;
-  }
-
-  dacl = uv__malloc(len);
-  if (dacl == NULL) {
-    CloseHandle(token);
-    return NULL;
-  }
-
-  if (!GetTokenInformation(token, TokenDefaultDacl, dacl, len, &len) ||
-      dacl->DefaultDacl == NULL ||
-      !InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION) ||
-      !SetSecurityDescriptorDacl(sd, TRUE, dacl->DefaultDacl, FALSE)) {
-    CloseHandle(token);
-    uv__free(dacl);
-    return NULL;
-  }
-
-  CloseHandle(token);
-  return dacl;
-}
-
-
 static int uv__pipe_server(
     HANDLE* pipeHandle_ptr, DWORD access,
     char* name, size_t nameSize, unsigned long long random,
@@ -331,7 +283,6 @@ static int uv__create_pipe_pair(
   SECURITY_ATTRIBUTES sa;
   SECURITY_ATTRIBUTES server_sa;
   SECURITY_DESCRIPTOR server_sd;
-  TOKEN_DEFAULT_DACL* default_dacl;
   DWORD server_access;
   DWORD client_access;
   HANDLE server_pipe;
@@ -361,10 +312,20 @@ static int uv__create_pipe_pair(
     client_access |= FILE_WRITE_ATTRIBUTES;
   client_access |= WRITE_DAC;
 
-  /* Create server pipe handle, with the token's default DACL if any. */
-  default_dacl = uv__token_default_dacl(&server_sd);
+  /* Create server pipe handle.
+   *
+   * Passing a security descriptor that has no DACL makes the kernel assign the
+   * default DACL of the effective token, same as CreatePipe() does. Passing no
+   * security descriptor instead makes CreateNamedPipe() use a fixed DACL, which
+   * a restricted token cannot open for writing. Note that a DACL that is
+   * present but NULL is something else: that grants access to everyone.
+   */
+  if (!InitializeSecurityDescriptor(&server_sd, SECURITY_DESCRIPTOR_REVISION)) {
+    err = GetLastError();
+    goto error;
+  }
   server_sa.nLength = sizeof server_sa;
-  server_sa.lpSecurityDescriptor = default_dacl != NULL ? &server_sd : NULL;
+  server_sa.lpSecurityDescriptor = &server_sd;
   server_sa.bInheritHandle = FALSE;
   err = uv__pipe_server(&server_pipe,
                         server_access,
@@ -372,7 +333,6 @@ static int uv__create_pipe_pair(
                         sizeof(pipe_name),
                         random,
                         &server_sa);
-  uv__free(default_dacl);
   if (err)
     goto error;
 
