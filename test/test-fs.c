@@ -2402,7 +2402,9 @@ TEST_IMPL(fs_realpath_rename_race) {
   uv_fs_req_cleanup(&req);
 
   /* If the directory is renamed to a longer path while uv_fs_realpath() is
-   * resolving it, the result must be one of the two paths or UV_ENOENT. */
+   * resolving it, the result must be one of the two paths, or the error
+   * from opening it while it is being renamed (UV_ENOENT, or UV_EPERM for
+   * ERROR_ACCESS_DENIED), never UV_EBADF. */
   realpath_race_stop = 0;
   ASSERT_OK(uv_thread_create(&thread, realpath_race_rename, NULL));
   resolved = 0;
@@ -2412,8 +2414,8 @@ TEST_IMPL(fs_realpath_rename_race) {
     if (r == 0) {
       ASSERT_NOT_NULL(req.ptr);
       resolved++;
-    } else {
-      ASSERT_EQ(r, UV_ENOENT);
+    } else if (r != UV_ENOENT) {
+      ASSERT_EQ(r, UV_EPERM);
     }
     uv_fs_req_cleanup(&req);
   }
