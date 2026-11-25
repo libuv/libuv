@@ -356,6 +356,9 @@ TEST_DECLARE   (spawn_fails_stdio_close)
 #endif
 TEST_DECLARE   (spawn_empty_env)
 TEST_DECLARE   (spawn_exit_code)
+#if defined(__sun) && !defined(__illumos__)
+TEST_DECLARE   (spawn_shell_command_not_found)
+#endif
 TEST_DECLARE   (spawn_stdout)
 TEST_DECLARE   (spawn_stdin)
 TEST_DECLARE   (spawn_stdio_socket_buffer_size)
@@ -1102,6 +1105,9 @@ TASK_LIST_START
 #endif
   TEST_ENTRY  (spawn_empty_env)
   TEST_ENTRY  (spawn_exit_code)
+#if defined(__sun) && !defined(__illumos__)
+  TEST_ENTRY  (spawn_shell_command_not_found)
+#endif
   TEST_ENTRY  (spawn_stdout)
   TEST_ENTRY  (spawn_stdin)
 #ifndef _WIN32

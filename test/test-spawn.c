@@ -327,6 +327,37 @@ TEST_IMPL(spawn_exit_code) {
 }
 
 
+#if defined(__sun) && !defined(__illumos__)
+static void shell_exit_cb(uv_process_t* process,
+                          int64_t exit_status,
+                          int term_signal) {
+  exit_cb_called++;
+  ASSERT_EQ(127, exit_status);
+  ASSERT_OK(term_signal);
+  uv_close((uv_handle_t*) process, close_cb);
+}
+
+
+TEST_IMPL(spawn_shell_command_not_found) {
+  char* shell_args[] = {
+    "/bin/sh", "-c", "./libuv-spawn-missing-dir/command", NULL
+  };
+
+  options.file = shell_args[0];
+  options.args = shell_args;
+  options.exit_cb = shell_exit_cb;
+
+  ASSERT_OK(uv_spawn(uv_default_loop(), &process, &options));
+  ASSERT_OK(uv_run(uv_default_loop(), UV_RUN_DEFAULT));
+  ASSERT_EQ(1, exit_cb_called);
+  ASSERT_EQ(1, close_cb_called);
+
+  MAKE_VALGRIND_HAPPY(uv_default_loop());
+  return 0;
+}
+#endif
+
+
 TEST_IMPL(spawn_stdout) {
   int r;
   uv_pipe_t out;
