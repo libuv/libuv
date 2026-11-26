@@ -251,7 +251,7 @@ void uv_pipe_connect(uv_connect_t* req,
 
   err = uv_pipe_connect2(req, handle, name, strlen(name), 0, cb);
 
-  if (err) {
+  if (err && handle->connect_req == NULL) {
     handle->delayed_error = err;
     handle->connect_req = req;
 
@@ -273,7 +273,6 @@ int uv_pipe_connect2(uv_connect_t* req,
                      unsigned int flags,
                      uv_connect_cb cb) {
   union uv__sockaddr_un saddr;
-  int new_sock;
   int err;
   int r;
   socklen_t addrlen;
@@ -298,9 +297,10 @@ int uv_pipe_connect2(uv_connect_t* req,
   if (namelen > sizeof(saddr.up.path))
     namelen = sizeof(saddr.up.path);
 
-  new_sock = (uv__stream_fd(handle) == -1);
+  if (handle->connect_req != NULL)
+    return UV_EALREADY;
 
-  if (new_sock) {
+  if (uv__stream_fd(handle) == -1) {
     err = uv__socket(AF_UNIX, SOCK_STREAM, 0);
     if (err < 0)
       goto out;
@@ -326,20 +326,17 @@ int uv_pipe_connect2(uv_connect_t* req,
 #if defined(__CYGWIN__) || defined(__MSYS__)
     /* EBADF is supposed to mean that the socket fd is bad, but
        Cygwin reports EBADF instead of ENOTSOCK when the file is
-       not a socket.  We do not expect to see a bad fd here
-       (e.g. due to new_sock), so translate the error.  */
+       not a socket.  We do not expect to see a bad fd here,
+       so translate the error.  */
     if (err == UV_EBADF)
       err = UV_ENOTSOCK;
 #endif
     goto out;
   }
 
-  err = 0;
-  if (new_sock) {
-    err = uv__stream_open((uv_stream_t*)handle,
-                          uv__stream_fd(handle),
-                          UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
-  }
+  err = uv__stream_open((uv_stream_t*) handle,
+                        uv__stream_fd(handle),
+                        UV_HANDLE_READABLE | UV_HANDLE_WRITABLE);
 
   if (err == 0)
     uv__io_start(handle->loop, &handle->io_watcher, POLLOUT);
