@@ -383,10 +383,12 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       revents = 0;
 
       if (ev->filter == EVFILT_READ) {
-        if (w->pevents & POLLIN)
+        if (w->pevents & POLLIN) {
           revents |= POLLIN;
-        else
+        } else {
           uv__kqueue_delete(loop->backend_fd, ev);
+          w->events &= ~POLLIN;
+        }
 
         if ((ev->flags & EV_EOF) && (w->pevents & UV__POLLRDHUP))
           revents |= UV__POLLRDHUP;
@@ -398,17 +400,21 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 #else
       if (ev->filter == EV_OOBAND) {
 #endif
-        if (w->pevents & UV__POLLPRI)
+        if (w->pevents & UV__POLLPRI) {
           revents |= UV__POLLPRI;
-        else
+        } else {
           uv__kqueue_delete(loop->backend_fd, ev);
+          w->events &= ~UV__POLLPRI;
+        }
       }
 
       if (ev->filter == EVFILT_WRITE) {
-        if (w->pevents & POLLOUT)
+        if (w->pevents & POLLOUT) {
           revents |= POLLOUT;
-        else
+        } else {
           uv__kqueue_delete(loop->backend_fd, ev);
+          w->events &= ~POLLOUT;
+        }
       }
 
       if (ev->flags & EV_ERROR)
