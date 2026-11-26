@@ -3038,7 +3038,10 @@ static ssize_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
     w_realpath_len = GetFinalPathNameByHandleW(
         handle, w_realpath_buf, w_realpath_size, VOLUME_NAME_DOS);
     if (w_realpath_len == 0) {
+      /* uv__free can change the last error. */
+      DWORD error = GetLastError();
       uv__free(w_realpath_buf);
+      SetLastError(error);
       return -1;
     }
     if (w_realpath_len < w_realpath_size)
