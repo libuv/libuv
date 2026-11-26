@@ -3024,27 +3024,38 @@ static void fs__readlink(uv_fs_t* req) {
 static ssize_t fs__realpath_handle(HANDLE handle, char** realpath_ptr) {
   int r;
   DWORD w_realpath_len;
-  WCHAR* w_realpath_ptr = NULL;
+  DWORD w_realpath_size;
+  WCHAR* w_realpath_ptr;
   WCHAR* w_realpath_buf;
 
-  w_realpath_len = GetFinalPathNameByHandleW(handle, NULL, 0, VOLUME_NAME_DOS);
-  if (w_realpath_len == 0) {
-    return -1;
-  }
+  /* GetFinalPathNameByHandleW returns the length of the path when it fits in
+   * the buffer, and otherwise the buffer size it needs. The path can get
+   * longer between two calls (for example, if the file is renamed), so keep
+   * growing the buffer until the path fits. */
+  w_realpath_buf = NULL;
+  w_realpath_size = 0;
+  for (;;) {
+    w_realpath_len = GetFinalPathNameByHandleW(
+        handle, w_realpath_buf, w_realpath_size, VOLUME_NAME_DOS);
+    if (w_realpath_len == 0) {
+      /* uv__free can change the last error. */
+      DWORD error = GetLastError();
+      uv__free(w_realpath_buf);
+      SetLastError(error);
+      return -1;
+    }
+    if (w_realpath_len < w_realpath_size)
+      break;
 
-  w_realpath_buf = uv__malloc((w_realpath_len + 1) * sizeof(WCHAR));
-  if (w_realpath_buf == NULL) {
-    SetLastError(ERROR_OUTOFMEMORY);
-    return -1;
+    uv__free(w_realpath_buf);
+    w_realpath_size = w_realpath_len;
+    w_realpath_buf = uv__malloc(w_realpath_size * sizeof(WCHAR));
+    if (w_realpath_buf == NULL) {
+      SetLastError(ERROR_OUTOFMEMORY);
+      return -1;
+    }
   }
   w_realpath_ptr = w_realpath_buf;
-
-  if (GetFinalPathNameByHandleW(
-          handle, w_realpath_ptr, w_realpath_len, VOLUME_NAME_DOS) == 0) {
-    uv__free(w_realpath_buf);
-    SetLastError(ERROR_INVALID_HANDLE);
-    return -1;
-  }
 
   /* convert UNC path to long path */
   if (wcsncmp(w_realpath_ptr,
