@@ -304,7 +304,13 @@ static int uv__process_open_stream(uv_stdio_container_t* container,
   if (container->flags & UV_READABLE_PIPE)
     flags |= UV_HANDLE_WRITABLE;
 
-  return uv__stream_open(container->data.stream, pipefds[0], flags);
+  err = uv__stream_open(container->data.stream, pipefds[0], flags);
+  /* Ownership of pipefds[0] transferred to the stream, except stdio fds
+   * which uv__stream_close() does not close on rollback. */
+  if (err == 0 && pipefds[0] > STDERR_FILENO)
+    pipefds[0] = -1;
+
+  return err;
 }
 
 

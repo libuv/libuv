@@ -276,6 +276,225 @@ TEST_IMPL(spawn_fails_stdio_close) {
   MAKE_VALGRIND_HAPPY(loop);
   return 0;
 }
+
+
+struct spawn_fd_churn_ctx {
+  uv_mutex_t mutex;
+  uv_sem_t started;
+  int stop;
+  int bad_close;
+};
+
+
+static void spawn_fd_churn_thread(void* arg) {
+  struct spawn_fd_churn_ctx* ctx;
+  sigset_t set;
+  int fds[16][2];
+  int failed;
+  int stop;
+  int i;
+
+  ctx = (struct spawn_fd_churn_ctx*) arg;
+
+  /* Keep SIGCHLD on the event-loop thread so uv__signal_handler() does not
+   * run on this thread while the main thread updates loop->child_watcher. */
+  sigemptyset(&set);
+  sigaddset(&set, SIGCHLD);
+  ASSERT_OK(pthread_sigmask(SIG_BLOCK, &set, NULL));
+
+  uv_sem_post(&ctx->started);
+
+  for (;;) {
+    failed = 0;
+    for (i = 0; i < (int) ARRAY_SIZE(fds); i++)
+      ASSERT_OK(uv_pipe(fds[i], 0, 0));
+
+    for (i = 0; i < (int) ARRAY_SIZE(fds); i++) {
+      if (close(fds[i][0]) != 0 && errno == EBADF)
+        failed = 1;
+      if (close(fds[i][1]) != 0 && errno == EBADF)
+        failed = 1;
+    }
+
+    uv_mutex_lock(&ctx->mutex);
+    if (failed)
+      ctx->bad_close = 1;
+    stop = ctx->stop || failed;
+    uv_mutex_unlock(&ctx->mutex);
+
+    if (stop)
+      break;
+  }
+}
+
+
+/* Failing to open a later stdio stream must close each previously created pipe
+ * descriptor once, without double-closing fds that another thread may reuse
+ * and without leaking fds <= STDERR_FILENO. */
+TEST_IMPL(spawn_fails_open_stream) {
+  uv_loop_t* loop;
+  uv_pipe_t pipes[31];
+  uv_pipe_t busy_pipe;
+  uv_stdio_container_t stdio[32];
+  struct spawn_fd_churn_ctx ctx;
+  uv_thread_t thread;
+  uv_os_fd_t fd;
+  int busy_fds[2];
+  int inherit_fds[2];
+  int base_fd;
+  int after_fd;
+  int saved_stdin;
+  int bad_close;
+  int iter;
+  int i;
+
+  loop = uv_default_loop();
+  ASSERT_OK(uv_pipe(busy_fds, 0, 0));
+  ASSERT_OK(uv_pipe(inherit_fds, 0, 0));
+  ASSERT_OK(uv_pipe_init(loop, &busy_pipe, 0));
+  ASSERT_OK(uv_pipe_open(&busy_pipe, busy_fds[0]));
+
+  init_process_options("", fail_cb);
+  options.file = options.args[0] =
+      "/nonexistent/program-that-had-better-not-exist";
+
+  /* Verify stream rollback, preserved inherited/busy fds, and zero fd leaks. */
+  base_fd = dup(inherit_fds[0]);
+  ASSERT_GE(base_fd, 0);
+  ASSERT_OK(close(base_fd));
+
+  ASSERT_OK(uv_pipe_init(loop, &pipes[0], 0));
+  ASSERT_OK(uv_pipe_init(loop, &pipes[1], 0));
+  stdio[0].flags = UV_IGNORE;
+  stdio[1].flags = UV_INHERIT_FD;
+  stdio[1].data.fd = inherit_fds[0];
+  stdio[2].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  stdio[2].data.stream = (uv_stream_t*) &pipes[0];
+  stdio[3].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  stdio[3].data.stream = (uv_stream_t*) &busy_pipe;
+  stdio[4].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  stdio[4].data.stream = (uv_stream_t*) &pipes[1];
+  options.stdio = stdio;
+  options.stdio_count = 5;
+
+  ASSERT_EQ(UV_EBUSY, uv_spawn(loop, &process, &options));
+  ASSERT_EQ(UV_EBADF, uv_fileno((uv_handle_t*) &pipes[0], &fd));
+  ASSERT_OK(uv_is_readable((uv_stream_t*) &pipes[0]));
+  ASSERT_OK(uv_is_writable((uv_stream_t*) &pipes[0]));
+  ASSERT_EQ(UV_EBADF, uv_fileno((uv_handle_t*) &pipes[1], &fd));
+  ASSERT_OK(uv_fileno((uv_handle_t*) &busy_pipe, &fd));
+  ASSERT_EQ(busy_fds[0], fd);
+  ASSERT_NE(-1, fcntl(busy_fds[0], F_GETFD));
+  ASSERT_NE(-1, fcntl(inherit_fds[0], F_GETFD));
+
+  uv_close((uv_handle_t*) &process, NULL);
+  uv_close((uv_handle_t*) &pipes[0], NULL);
+  uv_close((uv_handle_t*) &pipes[1], NULL);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  after_fd = dup(inherit_fds[0]);
+  ASSERT_EQ(base_fd, after_fd);
+  ASSERT_OK(close(after_fd));
+
+  /* Reusing the same pipe handle across two stdio slots must also roll back
+   * cleanly without leaking or double-closing descriptors. */
+  ASSERT_OK(uv_pipe_init(loop, &pipes[0], 0));
+  stdio[0].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  stdio[0].data.stream = (uv_stream_t*) &pipes[0];
+  stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+  stdio[1].data.stream = (uv_stream_t*) &pipes[0];
+  options.stdio_count = 2;
+
+  ASSERT_EQ(UV_EBUSY, uv_spawn(loop, &process, &options));
+  ASSERT_EQ(UV_EBADF, uv_fileno((uv_handle_t*) &pipes[0], &fd));
+
+  uv_close((uv_handle_t*) &process, NULL);
+  uv_close((uv_handle_t*) &pipes[0], NULL);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+  after_fd = dup(inherit_fds[0]);
+  ASSERT_EQ(base_fd, after_fd);
+  ASSERT_OK(close(after_fd));
+
+  /* Verify a pipe fd <= STDERR_FILENO is closed by error cleanup rather than
+   * leaked when uv__stream_close() skips closing stdio descriptors. */
+  saved_stdin = dup(STDIN_FILENO);
+  if (saved_stdin != -1 &&
+      fcntl(STDOUT_FILENO, F_GETFD) != -1 &&
+      fcntl(STDERR_FILENO, F_GETFD) != -1) {
+    ASSERT_OK(close(STDIN_FILENO));
+    ASSERT_OK(uv_pipe_init(loop, &pipes[0], 0));
+    stdio[0].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+    stdio[0].data.stream = (uv_stream_t*) &pipes[0];
+    stdio[1].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+    stdio[1].data.stream = (uv_stream_t*) &busy_pipe;
+    options.stdio_count = 2;
+
+    ASSERT_EQ(UV_EBUSY, uv_spawn(loop, &process, &options));
+    ASSERT_EQ(-1, fcntl(STDIN_FILENO, F_GETFD));
+    ASSERT_EQ(EBADF, errno);
+
+    ASSERT_EQ(STDIN_FILENO, dup2(saved_stdin, STDIN_FILENO));
+    ASSERT_OK(close(saved_stdin));
+    uv_close((uv_handle_t*) &process, NULL);
+    uv_close((uv_handle_t*) &pipes[0], NULL);
+    ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  } else if (saved_stdin != -1) {
+    ASSERT_OK(close(saved_stdin));
+  }
+
+  /* Verify no double-close races with another thread allocating fds. */
+  ASSERT_OK(uv_mutex_init(&ctx.mutex));
+  ASSERT_OK(uv_sem_init(&ctx.started, 0));
+  ctx.stop = 0;
+  ctx.bad_close = 0;
+  ASSERT_OK(uv_thread_create(&thread, spawn_fd_churn_thread, &ctx));
+  uv_sem_wait(&ctx.started);
+
+  options.stdio = stdio;
+  options.stdio_count = (int) ARRAY_SIZE(stdio);
+  for (iter = 0; iter < 50; iter++) {
+    for (i = 0; i < (int) ARRAY_SIZE(pipes); i++) {
+      ASSERT_OK(uv_pipe_init(loop, &pipes[i], 0));
+      stdio[i].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+      stdio[i].data.stream = (uv_stream_t*) &pipes[i];
+    }
+    stdio[ARRAY_SIZE(pipes)].flags = UV_CREATE_PIPE | UV_WRITABLE_PIPE;
+    stdio[ARRAY_SIZE(pipes)].data.stream = (uv_stream_t*) &busy_pipe;
+
+    ASSERT_EQ(UV_EBUSY, uv_spawn(loop, &process, &options));
+
+    uv_close((uv_handle_t*) &process, NULL);
+    for (i = 0; i < (int) ARRAY_SIZE(pipes); i++)
+      uv_close((uv_handle_t*) &pipes[i], NULL);
+    ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+
+    uv_mutex_lock(&ctx.mutex);
+    bad_close = ctx.bad_close;
+    uv_mutex_unlock(&ctx.mutex);
+    if (bad_close)
+      break;
+  }
+
+  uv_mutex_lock(&ctx.mutex);
+  ctx.stop = 1;
+  uv_mutex_unlock(&ctx.mutex);
+
+  ASSERT_OK(uv_thread_join(&thread));
+  bad_close = ctx.bad_close;
+  uv_sem_destroy(&ctx.started);
+  uv_mutex_destroy(&ctx.mutex);
+  ASSERT_OK(bad_close);
+
+  uv_close((uv_handle_t*) &busy_pipe, NULL);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_OK(close(busy_fds[1]));
+  ASSERT_OK(close(inherit_fds[0]));
+  ASSERT_OK(close(inherit_fds[1]));
+
+  MAKE_VALGRIND_HAPPY(loop);
+  return 0;
+}
 #endif
 
 
