@@ -574,5 +574,6 @@ static void uv__signal_stop(uv_signal_t* handle) {
   uv__signal_unlock_and_unblock(&saved_sigmask);
 
   handle->signum = 0;
+  handle->flags &= ~UV_SIGNAL_ONE_SHOT;
   uv__handle_stop(handle);
 }

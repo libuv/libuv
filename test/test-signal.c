@@ -228,6 +228,23 @@ TEST_IMPL(we_get_signal_one_shot) {
   ASSERT_EQ(1, sc.ncalls);
 
   sc.ncalls = 0;
+  sc.stop_or_close = STOP;
+  ASSERT_OK(uv_signal_start(&sc.handle, signal_cb, SIGCHLD));
+  start_timer(loop, SIGCHLD, &tc);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
+  ASSERT_EQ(sc.ncalls, NSIGNALS);
+
+  sc.ncalls = 0;
+  ASSERT_OK(uv_signal_start_oneshot(&sc.handle, signal_cb_one_shot, SIGCHLD));
+  ASSERT_OK(uv_signal_stop(&sc.handle));
+  ASSERT_OK(uv_signal_start(&sc.handle, signal_cb, SIGCHLD));
+  start_timer(loop, SIGCHLD, &tc);
+  ASSERT_OK(uv_run(loop, UV_RUN_DEFAULT));
+  ASSERT_EQ(tc.ncalls, NSIGNALS);
+  ASSERT_EQ(sc.ncalls, NSIGNALS);
+
+  sc.ncalls = 0;
   sc.stop_or_close = CLOSE; /* now close it when it's done */
   uv_signal_start_oneshot(&sc.handle, signal_cb_one_shot, SIGCHLD);
   start_timer(loop, SIGCHLD, &tc);
